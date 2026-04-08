@@ -1,0 +1,215 @@
+generator client {
+provider = "prisma-client-js"
+}
+
+datasource db {
+provider = "mysql"
+url      = env("DATABASE_URL")
+}
+
+enum Role {
+ADMIN     @map("admin")
+MARKETING @map("marketing")
+CUSTOMER  @map("customer")
+}
+
+enum UnitStatus {
+TERSEDIA @map("Tersedia")
+BOOKING  @map("Booking")
+TERJUAL  @map("Terjual")
+}
+enum Sp3r {
+BANK @map("Bank")
+CASH_KERAS @map("Cash Keras")
+}
+
+enum CaraPembayaran {
+KPR_BRI
+KPR_BTN
+KPR_BSN
+KPR_BJBS
+KPR_BSI
+KPR_BNI
+CASH_TAHAP
+CASH_KERAS
+BANK
+}
+
+enum SprStatus {
+DRAFT               @map("Draft")
+MENUNGGU_PEMBAYARAN @map("Menunggu Pembayaran")
+AKTIF               @map("Aktif")
+DIBATALKAN          @map("Dibatalkan")
+}
+
+enum PaymentStatus {
+BELUM_BAYAR         @map("Belum Bayar")
+MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi")
+LUNAS               @map("Lunas")
+}
+
+enum StatusAkadPpjb {
+NOTARIS   @map("Notaris")
+DEVELOPER @map("Developer")
+KOSONG    @map("-")
+}
+
+model User {
+id        Int      @id @default(autoincrement())
+username  String   @db.VarChar(100)
+email     String   @unique @db.VarChar(100)
+password  String   @db.VarChar(255)
+role      Role
+createdAt DateTime @default(now()) @map("created_at")
+updatedAt DateTime @updatedAt @map("updated_at")
+
+customers Customer[]
+sprs      Spr[]      @relation("MarketingToSpr")
+
+@@map("users")
+}
+
+model Customer {
+id                  Int      @id @default(autoincrement())
+userId              Int?     @map("user_id")
+nikKtp              String   @unique @map("nik_ktp") @db.VarChar(20)
+nama                String   @db.VarChar(150)
+noHp                String   @map("no_hp") @db.VarChar(20)
+alamatKtp           String   @map("alamat_ktp") @db.Text
+alamatTinggal       String?  @map("alamat_tinggal") @db.Text
+email               String?  @db.VarChar(100)
+pekerjaan           String?  @db.VarChar(100)
+perusahaan          String?  @db.VarChar(150)
+alamatKorespondensi String?  @map("alamat_korespondensi") @db.Text
+fileKtp             String?  @map("file_ktp") @db.VarChar(255)
+fileKk              String?  @map("file_kk") @db.VarChar(255)
+fileNpwp            String?  @map("file_npwp") @db.VarChar(255)
+createdAt           DateTime @default(now()) @map("created_at")
+updatedAt           DateTime @updatedAt @map("updated_at")
+
+user User? @relation(fields: [userId], references: [id])
+sprs Spr[]
+
+@@map("customers")
+}
+
+model Unit {
+id              Int        @id @default(autoincrement())
+namaPerumahan   String     @map("nama_perumahan") @db.VarChar(150)
+blok            String     @db.VarChar(50)
+nomorUnit       String     @map("nomor_unit") @db.VarChar(50)
+tipe            String?    @db.VarChar(50)
+luasTanah       Int?       @map("luas_tanah")
+luasBangunan    Int?       @map("luas_bangunan")
+lantai          Int?
+lokasiStrategis String?    @map("lokasi_strategis") @db.VarChar(100)
+status          UnitStatus @default(TERSEDIA)
+createdAt       DateTime   @default(now()) @map("created_at")
+updatedAt       DateTime   @updatedAt @map("updated_at")
+
+sprs Spr[]
+
+@@map("units")
+}
+
+model BankRekeningPt {
+id         Int      @id @default(autoincrement())
+namaBank   String   @map("nama_bank") @db.VarChar(100)
+noRekening String   @map("no_rekening") @db.VarChar(50)
+atasNama   String   @map("atas_nama") @db.VarChar(150)
+createdAt  DateTime @default(now()) @map("created_at")
+
+sprs Spr[]
+
+@@map("bank_rekening_pt")
+}
+
+model Spr {
+id                   Int            @id @default(autoincrement())
+nomorSpr             String         @unique @map("nomor_spr") @db.VarChar(50)
+customerId           Int            @map("customer_id")
+unitId               Int            @map("unit_id")
+marketingUserId      Int            @map("marketing_user_id")
+bankRekeningPtId     Int            @map("bank_rekening_pt_id")
+hargaJual            Decimal        @map("harga_jual") @db.Decimal(15, 2)
+diskonPenjualan      Decimal?       @default(0) @map("diskon_penjualan") @db.Decimal(15, 2)
+paketPromosi         String?        @map("paket_promosi") @db.VarChar(255)
+caraPembayaran       CaraPembayaran @map("cara_pembayaran")
+bankKpr              String?        @map("bank_kpr") @db.VarChar(100)
+nilaiPengajuanKpr    Decimal?       @default(0) @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
+ttdPemesan           String?        @map("ttd_pemesan") @db.VarChar(255)
+ttdMarketing         String?        @map("ttd_marketing") @db.VarChar(255)
+ttdSupervisor        String?        @map("ttd_supervisor") @db.VarChar(255)
+ttdManager           String?        @map("ttd_manager") @db.VarChar(255)
+ttdSalesAdmin        String?        @map("ttd_sales_admin") @db.VarChar(255)
+tanggalTtdPemesan    DateTime?
+tanggalTtdMarketing  DateTime?
+tanggalTtdSupervisor DateTime?
+tanggalTtdManager    DateTime?
+tanggalTtdSalesAdmin DateTime?
+status               SprStatus      @default(DRAFT)
+alasanBatal          String?        @map("alasan_batal") @db.Text
+agent                String?        @db.VarChar(150)
+createdAt            DateTime       @default(now()) @map("created_at")
+updatedAt            DateTime       @updatedAt @map("updated_at")
+
+customer       Customer            @relation(fields: [customerId], references: [id])
+unit           Unit                @relation(fields: [unitId], references: [id])
+marketingUser  User                @relation("MarketingToSpr", fields: [marketingUserId], references: [id])
+bankRekeningPt BankRekeningPt      @relation(fields: [bankRekeningPtId], references: [id])
+payments       SprPayment[]
+progressMaster MasterDataProgress?
+
+@@map("spr")
+}
+
+model SprPayment {
+id               Int           @id @default(autoincrement())
+sprId            Int           @map("spr_id")
+keterangan       String        @db.VarChar(100)
+jatuhTempo       DateTime      @map("jatuh_tempo") @db.Date
+nilai            Decimal       @db.Decimal(15, 2)
+buktiTransfer    String?       @map("bukti_transfer") @db.VarChar(255)
+statusPembayaran PaymentStatus @default(BELUM_BAYAR) @map("status_pembayaran")
+createdAt        DateTime      @default(now()) @map("created_at")
+updatedAt        DateTime      @updatedAt @map("updated_at")
+
+spr Spr @relation(fields: [sprId], references: [id], onDelete: Cascade)
+
+@@map("spr_payments")
+}
+
+model MasterDataProgress {
+id                          Int             @id @default(autoincrement())
+sprId                       Int             @unique @map("spr_id")
+tanggalAkadPpjb             DateTime?       @map("tanggal_akad_ppjb") @db.Date
+statusAkadPpjb              StatusAkadPpjb? @map("status_akad_ppjb")
+tanggalAkadAjbPpat          DateTime?       @map("tanggal_akad_ajb_ppat") @db.Date
+tanggalPembayaranPph        DateTime?       @map("tanggal_pembayaran_pph") @db.Date
+tanggalPembayaranBphtb      DateTime?       @map("tanggal_pembayaran_bphtb") @db.Date
+pembiayaan                  String?         @db.VarChar(100)
+sp3r                        Sp3r?     @map("sp3r")
+hargaLebihTanah             Decimal?        @default(0) @map("harga_lebih_tanah") @db.Decimal(15, 2)
+biayaStrategis              Decimal?        @default(0) @map("biaya_strategis") @db.Decimal(15, 2)
+biayaKpr                    Decimal?        @default(0) @map("biaya_kpr") @db.Decimal(15, 2)
+biayaAsuransi               Decimal?        @default(0) @map("biaya_asuransi") @db.Decimal(15, 2)
+diskonAngsuran              Decimal?        @default(0) @map("diskon_angsuran") @db.Decimal(15, 2)
+diskonCashKeras             Decimal?        @default(0) @map("diskon_cash_keras") @db.Decimal(15, 2)
+diskonLainnya               Decimal?        @default(0) @map("diskon_lainnya") @db.Decimal(15, 2)
+biayaBalikNama              Decimal?        @default(0) @map("biaya_balik_nama") @db.Decimal(15, 2)
+biayaNotarisAjb             Decimal?        @default(0) @map("biaya_notaris_ajb") @db.Decimal(15, 2)
+biayaAppraisal              Decimal?        @default(0) @map("biaya_appraisal") @db.Decimal(15, 2)
+biayaBphtb                  Decimal?        @default(0) @map("biaya_bphtb") @db.Decimal(15, 2)
+biayaLainLain               Decimal?        @default(0) @map("biaya_lain_lain") @db.Decimal(15, 2)
+ppn                         Decimal?        @default(0) @map("ppn") @db.Decimal(15, 2)
+pph                         Decimal?        @default(0) @map("pph") @db.Decimal(15, 2)
+njopTanahPerMeter           Decimal?        @default(0) @map("njop_tanah_per_meter") @db.Decimal(15, 2)
+njopBangunanPerMeter        Decimal?        @default(0) @map("njop_bangunan_per_meter") @db.Decimal(15, 2)
+uping                       Decimal?        @default(0) @db.Decimal(15, 2)
+createdAt                   DateTime        @default(now()) @map("created_at")
+updatedAt                   DateTime        @updatedAt @map("updated_at")
+
+spr Spr @relation(fields: [sprId], references: [id], onDelete: Cascade)
+
+@@map("master_data_progress")
+}

@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    container_name: absensi-app
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - db
+    networks:
+      - proxy-network
+      - absensi-internal
+  db:
+    image: mysql:8.0
+    container_name: absensi-db
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - absensi_db_data:/var/lib/mysql
+    networks:
+      - absensi-internal
+
+networks:
+  proxy-network:
+    external: true
+  absensi-internal:
+    driver: bridge
+
+volumes:
+  absensi_db_data:
