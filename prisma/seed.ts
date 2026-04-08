@@ -1,53 +1,41 @@
 import { PrismaClient } from "@prisma/client";
-import { seedBankRekeningPt } from "./seeds/bankRekeningPtSeed.js";
-import { seedCustomers } from "./seeds/customerSeed.js";
-import { seedSprs } from "./seeds/sprSeed.js";
-import { seedUsers } from "./seeds/userSeed.js";
-import { seedUnits } from "./seeds/unitSeed.js";
-import { seedMasterDataProgress } from "./seeds/masterDataProgressSeed.js";
+import { seedUser } from "./seeds/userSeed";
+import { seedPerumahan } from "./seeds/perumahanSeed";
+import { seedNotaris } from "./seeds/notarisSeed";
+import { seedAgent } from "./seeds/agentSeed";
+import { seedBankRekeningPt } from "./seeds/bankRekeningPtSeed";
+import { seedCustomer } from "./seeds/customerSeed";
+import { seedKavling } from "./seeds/kavlingSeed";
+import { seedSpk } from "./seeds/spkSeed";
+import { seedPenjualan } from "./seeds/penjualanSeed";
+import { seedDetailKavlingPajak } from "./seeds/detailKavlingPajakSeed";
+import { seedTagihan } from "./seeds/tagihanSeed";
+import { seedFeeAgent } from "./seeds/feeAgentSeed";
+import { seedProgressProyek } from "./seeds/progressProyekSeed";
 
 const prisma = new PrismaClient();
 
-async function cleanDatabase() {
-  console.log("Membersihkan data lama...");
-  await prisma.masterDataProgress.deleteMany();
-  await prisma.sprPayment.deleteMany();
-  await prisma.spr.deleteMany();
-  await prisma.unit.deleteMany();
-  await prisma.customer.deleteMany();
-  await prisma.bankRekeningPt.deleteMany();
-  await prisma.user.deleteMany();
-}
-
 async function main() {
-  console.log("Mulai melakukan seeding database...");
-
-  await cleanDatabase();
-
-  console.log("Seeding Users...");
-  await seedUsers(prisma);
-
-  console.log("Seeding Units...");
-  await seedUnits(prisma);
-
-  console.log("Seeding Bank Rekening PT...");
+  await seedUser(prisma);
+  await seedPerumahan(prisma);
+  await seedNotaris(prisma);
+  await seedAgent(prisma);
   await seedBankRekeningPt(prisma);
 
-  console.log("Seeding Customers...");
-  await seedCustomers(prisma);
+  await seedCustomer(prisma);
+  await seedKavling(prisma);
+  await seedSpk(prisma);
 
-  console.log("Seeding Transaksi SPR & Payment...");
-  await seedSprs(prisma);
-
-  console.log("Seeding Master Data Progress (Kalkulasi Lengkap)...");
-  await seedMasterDataProgress(prisma);
-
-  console.log("Seeding selesai dengan sukses.");
+  await seedPenjualan(prisma);
+  await seedDetailKavlingPajak(prisma);
+  await seedTagihan(prisma);
+  await seedFeeAgent(prisma);
+  await seedProgressProyek(prisma);
 }
 
 main()
   .catch((e) => {
-    console.error("Error saat seeding:", e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

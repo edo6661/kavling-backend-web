@@ -1,39 +1,34 @@
-import { PrismaClient, Role } from "@prisma/client";
-import { faker } from "@faker-js/faker/locale/id_ID";
-import bcrypt from "bcrypt";
+import { PrismaClient } from "@prisma/client";
 
-export async function seedCustomers(prisma: PrismaClient) {
-  const defaultPassword = await bcrypt.hash("password123", 10);
-  const customers = [];
-
-  for (let i = 0; i < 10; i++) {
-    const customerUser = await prisma.user.create({
-      data: {
-        username: faker.internet.username(),
-        email: faker.internet.email(),
-        password: defaultPassword,
-        role: Role.CUSTOMER,
+export async function seedCustomer(prisma: PrismaClient) {
+  await prisma.customer.createMany({
+    data: [
+      {
+        userId: 3,
+        nikKtp: "3671000011112222",
+        nama: "Budi Gunawan",
+        noHp: "081122334455",
+        alamatKtp: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
+        alamatTinggal: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
+        email: "budigunawan@example.com",
+        pekerjaan: "Pegawai Swasta",
+        perusahaan: "PT Maju Terus Pantang Mundur",
+        bank: "BCA",
+        alamatKoresponden: "Sama dengan KTP",
       },
-    });
-
-    const customer = await prisma.customer.create({
-      data: {
-        userId: customerUser.id,
-        nikKtp: faker.string.numeric(16),
-        nama: faker.person.fullName(),
-        noHp: faker.phone.number({ style: "national" }),
-        alamatKtp: faker.location.streetAddress(),
-        alamatTinggal: faker.location.streetAddress(),
-        email: customerUser.email,
-        pekerjaan: faker.person.jobTitle(),
-        perusahaan: faker.company.name(),
-        alamatKorespondensi: faker.location.streetAddress(),
-        fileKtp: `ktp-${faker.string.uuid()}.pdf`,
-        fileKk: `kk-${faker.string.uuid()}.pdf`,
-        fileNpwp: `npwp-${faker.string.uuid()}.pdf`,
+      {
+        userId: null,
+        nikKtp: "3671000033334444",
+        nama: "Siti Rahmawati",
+        noHp: "081998877665",
+        alamatKtp: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
+        alamatTinggal: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
+        email: "sitirahma@example.com",
+        pekerjaan: "Wiraswasta",
+        perusahaan: "Toko Kelontong Rahma",
+        bank: "Mandiri",
+        alamatKoresponden: "Sama dengan KTP",
       },
-    });
-    customers.push(customer);
-  }
-  return customers;
+    ],
+  });
 }

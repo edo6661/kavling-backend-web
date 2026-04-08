@@ -1,0 +1,46 @@
+import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
+
+export async function seedPenjualan(prisma: PrismaClient) {
+  await prisma.penjualan.createMany({
+    data: [
+      {
+        noTransaksi: "TRX-202604-0001",
+        tanggal: new Date("2026-04-05"),
+        customerId: 1,
+        kavlingId: 1,
+        agentId: 1,
+        caraPembayaran: PaymentMethod.KPR,
+        hargaJual: 350000000.0,
+        dp: 35000000.0,
+        diskonPenjualan: 10000000.0,
+        paketPromosi: "Free Kanopi & AC 1 PK",
+        bank: "BCA",
+        nilaiPengajuanKpr: 305000000.0,
+        bookingFee: 5000000.0,
+        rekeningTujuanId: 1,
+        status: PenjualanStatus.LUNAS,
+        alasanBatal: null,
+        fileSpr: null,
+      },
+      {
+        noTransaksi: "TRX-202604-0002",
+        tanggal: new Date("2026-04-08"),
+        customerId: 2,
+        kavlingId: 2,
+        agentId: 1,
+        caraPembayaran: PaymentMethod.CASH_BERTAHAP,
+        hargaJual: 350000000.0,
+        dp: 100000000.0,
+        diskonPenjualan: 0,
+        paketPromosi: "Free Taman Depan",
+        bank: "Mandiri",
+        nilaiPengajuanKpr: null,
+        bookingFee: 5000000.0,
+        rekeningTujuanId: 1,
+        status: PenjualanStatus.BOOKED,
+        alasanBatal: null,
+        fileSpr: null,
+      },
+    ],
+  });
+}
