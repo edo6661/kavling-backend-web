@@ -37,6 +37,15 @@ import { GenerateCustomerAccountUseCase } from "../../application/usecases/custo
 import { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
 import { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
 import { CustomerController } from "../../presentation/controllers/customerController.js";
+import { PerumahanRepository } from "../../domain/repositories/perumahanRepo.js";
+import {
+  CreatePerumahanUseCase,
+  UpdatePerumahanUseCase,
+  GetPerumahanByIdUseCase,
+  GetPerumahanPaginatedUseCase,
+  DeletePerumahanUseCase,
+} from "../../application/usecases/perumahan/PerumahanUseCases.js";
+import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
 
 import { CloudinaryService } from "../external/CloudinaryService.js";
 
@@ -86,6 +95,24 @@ export const createContainer = (dbClient: PrismaClient) => {
     userRepo,
   );
 
+  const perumahanRepo = new PerumahanRepository(dbClient);
+
+  const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
+  const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
+  const getPerumahanByIdUseCase = new GetPerumahanByIdUseCase(perumahanRepo);
+  const getPerumahanPaginatedUseCase = new GetPerumahanPaginatedUseCase(
+    perumahanRepo,
+  );
+  const deletePerumahanUseCase = new DeletePerumahanUseCase(perumahanRepo);
+
+  const perumahanController = new PerumahanController(
+    createPerumahanUseCase,
+    updatePerumahanUseCase,
+    getPerumahanByIdUseCase,
+    getPerumahanPaginatedUseCase,
+    deletePerumahanUseCase,
+  );
+
   const ocrController = new OcrController(extractKtpDataUseCase);
   const authController = new AuthController(
     registerUseCase,
@@ -126,6 +153,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     ocrController,
     bankRekeningPtController,
     customerController,
+    perumahanRepo,
+    perumahanController,
   };
 };
 
