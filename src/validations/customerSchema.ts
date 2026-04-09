@@ -10,18 +10,19 @@ export const createCustomerSchema = {
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),
     pekerjaan: emptyAsUndefined(z.string().optional()),
     perusahaan: emptyAsUndefined(z.string().optional()),
-    alamatKorespondensi: emptyAsUndefined(z.string().optional()),
+    bank: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
     alamatKtp: z.string().min(5, "Alamat KTP wajib diisi"),
     alamatTinggal: emptyAsUndefined(z.string().optional()),
   }),
 };
 
 export const updateCustomerSchema = {
-  userId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
   params: z.object({
     id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
   }),
   body: z.object({
+    userId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
     nikKtp: emptyAsUndefined(
       z.string().length(16, "NIK harus tepat 16 karakter").optional(),
     ),
@@ -30,7 +31,8 @@ export const updateCustomerSchema = {
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),
     pekerjaan: emptyAsUndefined(z.string().optional()),
     perusahaan: emptyAsUndefined(z.string().optional()),
-    alamatKorespondensi: emptyAsUndefined(z.string().optional()),
+    bank: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
     alamatKtp: emptyAsUndefined(z.string().min(5).optional()),
     alamatTinggal: emptyAsUndefined(z.string().optional()),
   }),

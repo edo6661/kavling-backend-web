@@ -1,533 +1,3702 @@
 
-<file path="prisma/seeds/agentSeed.ts">
-import { PrismaClient, AgentStatus } from "@prisma/client";
-
-export async function seedAgent(prisma: PrismaClient) {
-  await prisma.agent.createMany({
-    data: [
-      {
-        nik: "3671001122334455",
-        kodeSales: "SLS-001",
-        nama: "Agus Pramono",
-        alamat: "Jl. Merdeka No. 10, Tangerang",
-        noHp: "081234567890",
-        email: "agus.agent@example.com",
-        target: "10 Unit/Bulan",
-        pencapaian: "2 Unit",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "3671009988776655",
-        kodeSales: "SLS-002",
-        nama: "Rina Wijaya",
-        alamat: "Jl. Sudirman No. 5, Tangerang",
-        noHp: "081987654321",
-        email: "rina.agent@example.com",
-        target: "5 Unit/Bulan",
-        pencapaian: "0 Unit",
-        status: AgentStatus.NONAKTIF,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/detailKavlingPajakSeed.ts">
-import { PrismaClient, SP3R } from "@prisma/client";
-
-export async function seedDetailKavlingPajak(prisma: PrismaClient) {
-  await prisma.detailKavlingPajak.create({
-    data: {
-      penjualanId: 1,
-      lantai: "1",
-      luasBangunan: "36",
-      lokasiStrategis: "Pojok / Hook",
-      tanggalAkadPpjb: new Date("2026-04-20"),
-      akadPpjb: "Notaris Budi Santoso",
-      tanggalAkadAjbPpat: new Date("2026-05-10"),
-      tanggalPembayaranPph: new Date("2026-05-01"),
-      tanggalPembayaranBphtb: new Date("2026-05-02"),
-      pembiayaan: "KPR BCA",
-      sp3r: SP3R.BANK,
-      lebihTanah: 0.0,
-      biayaStrategis: 5000000.0,
-      nrBiayaKprAsuransi: 15000000.0,
-      nrDiskonAngsuran: 0.0,
-      nrDiskonCash: 0.0,
-      nrBiayaBbn: 3500000.0,
-      nrBiayaNotarisAjb: 5000000.0,
-      nrBiayaAppraisal: 1500000.0,
-      nrBiayaBphtb: 12500000.0,
-      nrLainLain: 1000000.0,
-      nrPpn: 35000000.0,
-      nrBphtb: 12500000.0,
-      nrPph: 8750000.0,
-      pjBiayaKpr: 15000000.0,
-      pjBiayaAsuransi: 5000000.0,
-      pjDiskonAngsuran: 0.0,
-      pjBiayaBbn: 3500000.0,
-      pjBiayaAjb: 5000000.0,
-      pjBiayaAppraisal: 1500000.0,
-      pjBphtb: 12500000.0,
-      pjLainLain: 0.0,
-      pjPpn: 35000000.0,
-      pjBphtbPajak: 12500000.0,
-      pjPph: 8750000.0,
-      ajbNjopTanahPerMeter: 1500000.0,
-      ajbNjopTanah: 90000000.0,
-      ajbNjopBangunanPerMeter: 2000000.0,
-      ajbNjopBangunan: 72000000.0,
-      ajbPpn: 35000000.0,
-      ajbBphtb: 12500000.0,
-      ajbPph: 8750000.0,
-      ajbSelisihPajakPbb: 0.0,
-      ajbUping: 0.0,
-    },
-  });
-}
-</file>
-
-<file path="prisma/seeds/feeAgentSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedFeeAgent(prisma: PrismaClient) {
-  await prisma.feeAgent.createMany({
-    data: [
-      {
-        agentId: 1,
-        bookingNominal: 1000000.0,
-        bookingTanggal: new Date("2026-04-06"),
-        bookingBukti: "bukti_tf_agus_booking_01.pdf",
-        closingNominal: null,
-        closingTanggal: null,
-        closingBukti: null,
-        marketingNominal: null,
-        marketingTanggal: null,
-        marketingBukti: null,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/kavlingSeed.ts">
-import { PrismaClient, UnitStatus } from "@prisma/client";
-
-export async function seedKavling(prisma: PrismaClient) {
-  await prisma.kavling.createMany({
-    data: [
-      {
-        perumahanId: 1,
-        blok: "A1",
-        nomorUnit: "01",
-        tipe: "36/60",
-        hargaJual: 350000000.0,
-        status: UnitStatus.TERJUAL,
-      },
-      {
-        perumahanId: 1,
-        blok: "A1",
-        nomorUnit: "02",
-        tipe: "36/60",
-        hargaJual: 350000000.0,
-        status: UnitStatus.BOOKING,
-      },
-      {
-        perumahanId: 1,
-        blok: "B",
-        nomorUnit: "10A",
-        tipe: "45/72",
-        hargaJual: 550000000.0,
-        status: UnitStatus.AVAILABLE,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/notarisSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedNotaris(prisma: PrismaClient) {
-  await prisma.notaris.createMany({
-    data: [
-      {
-        nama: "Notaris Budi Santoso, S.H., M.Kn.",
-        biayaAjb: 5000000.0,
-      },
-      {
-        nama: "Notaris Siti Aminah, S.H., M.Kn.",
-        biayaAjb: 4500000.0,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/penjualanSeed.ts">
-import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
-
-export async function seedPenjualan(prisma: PrismaClient) {
-  await prisma.penjualan.createMany({
-    data: [
-      {
-        noTransaksi: "TRX-202604-0001",
-        tanggal: new Date("2026-04-05"),
-        customerId: 1,
-        kavlingId: 1,
-        caraPembayaran: PaymentMethod.KPR,
-        hargaJual: 350000000.0,
-        dp: 35000000.0,
-        diskonPenjualan: 10000000.0,
-        paketPromosi: "Free Kanopi & AC 1 PK",
-        bank: "BCA",
-        nilaiPengajuanKpr: 305000000.0,
-        bookingFee: 5000000.0,
-        rekeningTujuanId: 1,
-        status: PenjualanStatus.LUNAS,
-        alasanBatal: null,
-        fileSpr: null,
-      },
-      {
-        noTransaksi: "TRX-202604-0002",
-        tanggal: new Date("2026-04-08"),
-        customerId: 2,
-        kavlingId: 2,
-        caraPembayaran: PaymentMethod.CASH_BERTAHAP,
-        hargaJual: 350000000.0,
-        dp: 100000000.0,
-        diskonPenjualan: 0,
-        paketPromosi: "Free Taman Depan",
-        bank: "Mandiri",
-        nilaiPengajuanKpr: null,
-        bookingFee: 5000000.0,
-        rekeningTujuanId: 1,
-        status: PenjualanStatus.BOOKED,
-        alasanBatal: null,
-        fileSpr: null,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/perumahanSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedPerumahan(prisma: PrismaClient) {
-  await prisma.perumahan.createMany({
-    data: [
-      {
-        nama: "Puri Safana",
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/progressProyekSeed.ts">
-import { PrismaClient, ProgressStatus } from "@prisma/client";
-
-export async function seedProgressProyek(prisma: PrismaClient) {
-  await prisma.progressProyek.createMany({
-    data: [
-      {
-        kavlingId: 1,
-        pelaksana: "H. Mandor Surya",
-        tanggalLaporan: new Date("2026-04-10"),
-        tahapanPekerjaan: "Pondasi dan Cakar Ayam",
-        persentase: 15,
-        keterangan: "Penggalian dan pemasangan batu kali selesai",
-        kendala: "Hujan deras 2 hari berturut-turut",
-        fotoLapangan: ["pondasi_1.jpg", "pondasi_2.jpg"],
-        status: ProgressStatus.DISETUJUI,
-      },
-      {
-        kavlingId: 1,
-        pelaksana: "H. Mandor Surya",
-        tanggalLaporan: new Date("2026-04-17"),
-        tahapanPekerjaan: "Pemasangan Bata Merah",
-        persentase: 35,
-        keterangan: "Dinding lantai 1 hampir selesai",
-        kendala: null,
-        fotoLapangan: ["bata_1.jpg"],
-        status: ProgressStatus.MENUNGGU_VERIFIKASI,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/spkSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedSpk(prisma: PrismaClient) {
-  await prisma.spk.createMany({
-    data: [
-      {
-        noSpk: "SPK/001/SAR/IV/2026",
-        tanggalSpk: new Date("2026-04-01"),
-        judulPekerjaan: "Pembangunan Unit Rumah Blok A1 No. 01 & 02",
-        lokasi: "Sari Asih Residence Tangerang",
-        jangkaWaktu: 90,
-        nilaiKontrak: 300000000.0,
-        namaPihakPertama: "Direktur PT Sari Asih Group",
-        nikPihakPertama: "3671000055556666",
-        namaPihakKedua: "H. Mandor Surya",
-        nikPihakKedua: "3671000077778888",
-        alamatPihakKedua: "Jl. Pembangunan Raya No. 99, Tangerang",
-        namaBank: "BCA",
-        noRekening: "1234567890",
-        atasNamaRekening: "Surya",
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/tagihanSeed.ts">
-import { PrismaClient, PaymentStatus } from "@prisma/client";
-
-export async function seedTagihan(prisma: PrismaClient) {
-  await prisma.tagihan.createMany({
-    data: [
-      {
-        noTagihan: "INV-2604-001",
-        customerId: 1,
-        penjualanId: 1,
-        keterangan: "Pembayaran Booking Fee",
-        nominal: 5000000.0,
-        jatuhTempo: new Date("2026-04-06"),
-        status: PaymentStatus.LUNAS,
-      },
-      {
-        noTagihan: "INV-2604-002",
-        customerId: 2,
-        penjualanId: 2,
-        keterangan: "Pembayaran Booking Fee",
-        nominal: 5000000.0,
-        jatuhTempo: new Date("2026-04-09"),
-        status: PaymentStatus.LUNAS,
-      },
-      {
-        noTagihan: "INV-2604-003",
-        customerId: 2,
-        penjualanId: 2,
-        keterangan: "Pembayaran DP Cicilan 1",
-        nominal: 50000000.0,
-        jatuhTempo: new Date("2026-05-09"),
-        status: PaymentStatus.BELUM_BAYAR,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/bankRekeningPtSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedBankRekeningPt(prisma: PrismaClient) {
-  await prisma.bankRekeningPt.createMany({
-    data: [
-      {
-        namaBank: "BSI",
-        noRekening: "7326575644",
-        atasNama: "PT. Bintang Safana Gajah",
-      },
-      {
-        namaBank: "BSI",
-        noRekening: "7326573692",
-        atasNama: "PT. Bintang Safana Mahligai",
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/customerSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedCustomer(prisma: PrismaClient) {
-  await prisma.customer.createMany({
-    data: [
-      {
-        userId: 3,
-        nikKtp: "3671000011112222",
-        nama: "Budi Gunawan",
-        noHp: "081122334455",
-        alamatKtp: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
-        alamatTinggal: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
-        email: "budigunawan@example.com",
-        pekerjaan: "Pegawai Swasta",
-        perusahaan: "PT Maju Terus Pantang Mundur",
-        bank: "BCA",
-        alamatKoresponden: "Sama dengan KTP",
-      },
-      {
-        userId: null,
-        nikKtp: "3671000033334444",
-        nama: "Siti Rahmawati",
-        noHp: "081998877665",
-        alamatKtp: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
-        alamatTinggal: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
-        email: "sitirahma@example.com",
-        pekerjaan: "Wiraswasta",
-        perusahaan: "Toko Kelontong Rahma",
-        bank: "Mandiri",
-        alamatKoresponden: "Sama dengan KTP",
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/masterDataProgressSeed.ts">
-import { PrismaClient, StatusAkadPpjb, Sp3r } from "@prisma/client";
-import { faker } from "@faker-js/faker/locale/id_ID";
-
-export async function seedMasterDataProgress(prisma: PrismaClient) {
-  // Ambil semua SPR yang statusnya AKTIF atau DIBATALKAN untuk disimulasikan
-  const sprs = await prisma.spr.findMany({
-    where: { status: "AKTIF" },
-    include: { unit: true },
-  });
-
-  if (sprs.length === 0) {
-    console.log(
-      "Lewati seed Master Data Progress karena tidak ada SPR yang AKTIF.",
-    );
-    return;
+<file path="package.json">
+{
+  "name": "bumantara",
+  "version": "1.0.0",
+  "description": "Bumantara",
+  "license": "ISC",
+  "author": "Edawg",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --clean",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prisma:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:push:test": "dotenv -e .env.test -- npx prisma db push",
+    "test": "dotenv -e .env.test -- vitest",
+    "test:ui": "dotenv -e .env.test -- vitest --ui",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^5.3.4",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.19.2",
+    "@sentry/node": "^10.42.0",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "http-status-codes": "^2.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.0",
+    "pdfkit": "^0.18.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "sharp": "^0.34.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.3.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/hpp": "^0.2.7",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.3.0",
+    "@types/pdfkit": "^0.17.5",
+    "@types/pg": "^8.16.0",
+    "@types/supertest": "^7.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9.39.3",
+    "pino-pretty": "^13.1.3",
+    "prisma": "^6.19.2",
+    "supertest": "^7.2.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^3.2.4",
+    "vitest-mock-extended": "^3.1.0"
   }
+}
+</file>
 
-  for (const spr of sprs) {
-    // Cek apakah progress sudah terlanjur dibuat di seed SPR sebelumnya
-    const existingProgress = await prisma.masterDataProgress.findUnique({
-      where: { sprId: spr.id },
+<file path="src/app.ts">
+import { env } from "./config/env";
+import * as Sentry from "@sentry/node";
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: 1.0,
+    enableLogs: true,
+  });
+}
+import express, { type Application } from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import pinoHttp from "pino-http";
+import compression from "compression";
+import routes from "./presentation/routes";
+import {
+  notFoundHandler,
+  globalErrorHandler,
+} from "./middlewares/errorHandler";
+import { logger } from "./utils/logger";
+import hpp from "hpp";
+const app: Application = express();
+Sentry.setupExpressErrorHandler(app);
+
+app.set("trust proxy", 1);
+app.use(helmet());
+app.use(
+  cors({
+    origin: env.CORS_ORIGINS,
+    credentials: true,
+  }),
+);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(hpp());
+app.use(
+  pinoHttp({
+    logger,
+    genReqId: () => crypto.randomUUID(),
+  }),
+);
+app.use((req, res, next) => {
+  if (req.id) {
+    res.setHeader("X-Request-Id", req.id as string);
+  }
+  next();
+});
+app.use(compression());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "Too many requests from this IP, please try again later.",
+});
+if (env.NODE_ENV !== "test") {
+  app.use("/api", limiter);
+}
+
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    message: "Kavling API Service is Running 🚀",
+    version: "1.0.0",
+    server_time: new Date().toISOString(),
+  });
+});
+app.use("/api/v1", routes);
+
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
+
+export default app;
+</file>
+
+<file path="src/application/usecases/auth/GetProfileUseCase.ts">
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import type { UserResponseDTO } from "../../../domain/dtos/UserDTO.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class GetProfileUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute(userId: number): Promise<UserResponseDTO> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new AppError(StatusCodes.NOT_FOUND, "User tidak ditemukan");
+    }
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+  }
+}
+</file>
+
+<file path="src/application/usecases/auth/LoginUserUseCase.ts">
+import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import { comparePassword } from "../../../utils/hashing";
+import { AppError } from "../../../domain/errors/AppError";
+import { env } from "../../../config/env";
+import { StatusCodes } from "http-status-codes";
+import type {
+  JwtUserPayload,
+  LoginResponseDTO,
+  LoginUserDTO,
+} from "../../../domain/dtos/UserDTO.js";
+
+export class LoginUserUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute(data: LoginUserDTO): Promise<LoginResponseDTO> {
+    const user = await this.userRepo.findByEmail(data.email);
+    const invalidCredentialsError = new AppError(
+      StatusCodes.UNAUTHORIZED,
+      "Email atau Password salah",
+    );
+
+    if (!user?.password) {
+      throw invalidCredentialsError;
+    }
+
+    const isPasswordValid = await comparePassword(data.password, user.password);
+
+    if (!isPasswordValid) {
+      throw invalidCredentialsError;
+    }
+
+    const payload: JwtUserPayload = {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    };
+    const jwtOptions: SignOptions = { expiresIn: "1h" };
+    const token = jwt.sign(payload, env.JWT_SECRET, jwtOptions);
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
+}
+</file>
+
+<file path="src/application/usecases/auth/RegisterUserUseCase.ts">
+import type {
+  RegisterUserDTO,
+  UserResponseDTO,
+} from "../../../domain/dtos/UserDTO";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import { hashPassword } from "../../../utils/hashing";
+import { ConflictError } from "../../../domain/errors/ConflictError";
+import { Role } from "@prisma/client";
+
+export class RegisterUserUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute(data: RegisterUserDTO): Promise<UserResponseDTO> {
+    if (data.email) {
+      const existingUser = await this.userRepo.findByEmail(data.email);
+      if (existingUser) {
+        throw new ConflictError("Email sudah terdaftar");
+      }
+    }
+
+    const hashedPassword = await hashPassword(data.password!);
+    const roleToAssign = data.role ?? Role.CUSTOMER;
+
+    const newUser = await this.userRepo.create({
+      ...data,
+      password: hashedPassword,
+      role: roleToAssign,
     });
 
-    if (existingProgress) {
-      // Jika sudah ada, kita update saja biar datanya lengkap
-      const basePrice = Number(spr.hargaJual);
-      const isKpr = spr.caraPembayaran.includes("KPR");
+    return {
+      id: newUser.id,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+      createdAt: newUser.createdAt,
+    };
+  }
+}
+</file>
 
-      await prisma.masterDataProgress.update({
-        where: { sprId: spr.id },
-        data: {
-          tanggalAkadPpjb: faker.date.recent({ days: 30 }),
-          statusAkadPpjb: faker.helpers.arrayElement([
-            StatusAkadPpjb.NOTARIS,
-            StatusAkadPpjb.DEVELOPER,
-          ]),
-          tanggalAkadAjbPpat: faker.date.soon({ days: 14 }),
-          tanggalPembayaranPph: faker.date.soon({ days: 5 }),
-          tanggalPembayaranBphtb: faker.date.soon({ days: 7 }),
+<file path="src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.ts">
+import type { IBankRekeningPtRepository } from "../../../domain/repositories/IBankRekeningPtRepo.js";
+import type {
+  CreateBankRekeningPtDTO,
+  UpdateBankRekeningPtDTO,
+  BankRekeningPtFilterDTO,
+  BankRekeningPtResponseDTO,
+} from "../../../domain/dtos/BankRekeningPtDTO.js";
+import type { CursorPaginatedData } from "../../../types/response.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { BankRekeningPtMapper } from "../../../infrastructure/mapper/BankRekeningPtMapper.js";
 
-          pembiayaan: isKpr ? spr.bankKpr : "Cash",
-          sp3r: isKpr ? Sp3r.BANK : Sp3r.CASH_KERAS,
+export class CreateBankRekeningPtUseCase {
+  constructor(private readonly repo: IBankRekeningPtRepository) {}
+  async execute(
+    data: CreateBankRekeningPtDTO,
+  ): Promise<BankRekeningPtResponseDTO> {
+    const result = await this.repo.create(data);
+    return BankRekeningPtMapper.toDomain(result);
+  }
+}
 
-          hargaLebihTanah: 0,
-          biayaStrategis: spr.unit?.lokasiStrategis === "Hoek" ? 15000000 : 0,
-          biayaKpr: isKpr ? basePrice * 0.03 : 0,
-          biayaAsuransi: isKpr ? basePrice * 0.02 : 0,
+export class UpdateBankRekeningPtUseCase {
+  constructor(private readonly repo: IBankRekeningPtRepository) {}
+  async execute(
+    id: number,
+    data: UpdateBankRekeningPtDTO,
+  ): Promise<BankRekeningPtResponseDTO> {
+    const result = await this.repo.update(id, data);
+    return BankRekeningPtMapper.toDomain(result);
+  }
+}
 
-          diskonAngsuran: 0,
-          diskonCashKeras: isKpr ? 0 : 10000000,
-          diskonLainnya: faker.helpers.arrayElement([0, 2500000, 5000000]),
+export class GetBankRekeningPtByIdUseCase {
+  constructor(private readonly repo: IBankRekeningPtRepository) {}
+  async execute(id: number): Promise<BankRekeningPtResponseDTO> {
+    const result = await this.repo.findById(id);
+    if (!result) throw new NotFoundError("Rekening tidak ditemukan");
+    return BankRekeningPtMapper.toDomain(result);
+  }
+}
 
-          biayaBalikNama: 3500000,
-          biayaNotarisAjb: 4000000,
-          biayaAppraisal: isKpr ? 1500000 : 0,
-          biayaBphtb: Math.max(0, basePrice - 80000000) * 0.05,
-          biayaLainLain: 1000000,
+export class GetBankRekeningPtPaginatedUseCase {
+  constructor(private readonly repo: IBankRekeningPtRepository) {}
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: BankRekeningPtFilterDTO,
+  ): Promise<CursorPaginatedData<BankRekeningPtResponseDTO>> {
+    const result = await this.repo.findWithCursorPagination(
+      limit,
+      cursor,
+      filters,
+    );
+    const mappedItems = result.items.map((item) =>
+      BankRekeningPtMapper.toDomain(item),
+    );
+    return {
+      items: mappedItems,
+      meta: result.meta,
+    };
+  }
+}
 
-          ppn: basePrice * 0.11,
-          pph: basePrice * 0.025,
+export class DeleteBankRekeningPtUseCase {
+  constructor(private readonly repo: IBankRekeningPtRepository) {}
+  async execute(id: number): Promise<void> {
+    await this.repo.delete(id);
+  }
+}
+</file>
 
-          njopTanahPerMeter: faker.number.int({ min: 1500000, max: 3000000 }),
-          njopBangunanPerMeter: faker.number.int({
-            min: 2500000,
-            max: 4000000,
-          }),
-          uping: faker.number.int({ min: 5000000, max: 15000000 }),
-        },
+<file path="src/application/usecases/customer/CreateCustomerUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type {
+  CreateCustomerDTO,
+  CustomerResponseDTO,
+} from "../../../domain/dtos/CustomerDTO.js";
+import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
+
+export class CreateCustomerUseCase {
+  constructor(private readonly customerRepo: ICustomerRepository) {}
+
+  async execute(data: CreateCustomerDTO): Promise<CustomerResponseDTO> {
+    const customer = await this.customerRepo.create(data);
+    return CustomerMapper.toDomain(customer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/DeleteCustomerUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+
+export class DeleteCustomerUseCase {
+  constructor(private readonly customerRepo: ICustomerRepository) {}
+
+  async execute(id: number): Promise<void> {
+    await this.customerRepo.delete(id);
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/ExportCustomersPdfUseCase.ts">
+import PDFDocument from "pdfkit";
+import type { PrismaClient } from "@prisma/client";
+
+export class ExportCustomersPdfUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(): Promise<Buffer> {
+    const customers = await this.db.customer.findMany({
+      orderBy: { nama: "asc" },
+    });
+
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({
+          size: "A4",
+          layout: "landscape",
+          margin: 50,
+        });
+        const buffers: Buffer[] = [];
+
+        doc.on("data", (buffer) => buffers.push(buffer));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+        doc
+          .fontSize(18)
+          .font("Helvetica-Bold")
+          .text("Laporan Customer", { align: "center" });
+        doc.moveDown(2);
+
+        const startY = doc.y;
+        let y = startY;
+
+        // Header Tabel
+        doc.fontSize(10).font("Helvetica-Bold");
+        doc.text("No", 50, y, { width: 30 });
+        doc.text("NIK", 80, y, { width: 120 });
+        doc.text("Nama", 200, y, { width: 150 });
+        doc.text("No HP", 350, y, { width: 100 });
+        doc.text("Pekerjaan", 450, y, { width: 120 });
+        doc.text("Alamat", 570, y, { width: 200 });
+
+        doc
+          .moveTo(50, y + 15)
+          .lineTo(770, y + 15)
+          .stroke();
+        y += 25;
+
+        // Isi Tabel
+        doc.font("Helvetica");
+        customers.forEach((c, index) => {
+          if (y > 500) {
+            doc.addPage({ size: "A4", layout: "landscape", margin: 50 });
+            y = 50;
+          }
+
+          doc.text(`${index + 1}`, 50, y, { width: 30 });
+          doc.text(c.nikKtp, 80, y, { width: 120 });
+          doc.text(c.nama, 200, y, { width: 150 });
+          doc.text(c.noHp, 350, y, { width: 100 });
+          doc.text(c.pekerjaan ?? "-", 450, y, { width: 120 });
+
+          // Truncate alamat agar rapi di PDF
+          const alamatStr =
+            c.alamatKtp.length > 50
+              ? c.alamatKtp.substring(0, 47) + "..."
+              : c.alamatKtp;
+          doc.text(alamatStr, 570, y, { width: 200 });
+
+          y += 20;
+        });
+
+        doc.end();
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/ExportCustomersUseCase.ts">
+import ExcelJS from "exceljs";
+import type { PrismaClient } from "@prisma/client";
+
+export class ExportCustomersUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(): Promise<Buffer> {
+    const customers = await this.db.customer.findMany({
+      orderBy: { nama: "asc" },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Data Customer");
+
+    worksheet.columns = [
+      { header: "No", key: "no", width: 5 },
+      { header: "NIK KTP", key: "nikKtp", width: 20 },
+      { header: "Nama Lengkap", key: "nama", width: 25 },
+      { header: "No HP", key: "noHp", width: 15 },
+      { header: "Email", key: "email", width: 25 },
+      { header: "Pekerjaan", key: "pekerjaan", width: 20 },
+      { header: "Perusahaan", key: "perusahaan", width: 25 },
+      { header: "Alamat KTP", key: "alamatKtp", width: 40 },
+      { header: "Status Akun Portal", key: "statusAkun", width: 20 },
+    ];
+
+    customers.forEach((c, index) => {
+      worksheet.addRow({
+        no: index + 1,
+        nikKtp: c.nikKtp,
+        nama: c.nama,
+        noHp: c.noHp,
+        email: c.email ?? "-",
+        pekerjaan: c.pekerjaan ?? "-",
+        perusahaan: c.perusahaan ?? "-",
+        alamatKtp: c.alamatKtp,
+        statusAkun: c.userId ? "Sudah Punya Akun" : "Belum Punya Akun",
       });
-    } else {
-      // Jika belum ada, buat baru
-      const basePrice = Number(spr.hargaJual);
-      const isKpr = spr.caraPembayaran.includes("KPR");
+    });
 
-      await prisma.masterDataProgress.create({
-        data: {
-          sprId: spr.id,
-          tanggalAkadPpjb: faker.date.recent({ days: 30 }),
-          statusAkadPpjb: faker.helpers.arrayElement([
-            StatusAkadPpjb.NOTARIS,
-            StatusAkadPpjb.DEVELOPER,
-          ]),
-          tanggalAkadAjbPpat: faker.date.soon({ days: 14 }),
-          tanggalPembayaranPph: faker.date.soon({ days: 5 }),
-          tanggalPembayaranBphtb: faker.date.soon({ days: 7 }),
+    const headerRow = worksheet.getRow(1);
+    if (headerRow) {
+      headerRow.font = { bold: true };
+      headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    }
 
-          pembiayaan: isKpr ? spr.bankKpr : "Cash",
-          sp3r: isKpr ? Sp3r.BANK : Sp3r.CASH_KERAS,
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
+}
+</file>
 
-          hargaLebihTanah: 0,
-          biayaStrategis: spr.unit?.lokasiStrategis === "Hoek" ? 15000000 : 0,
-          biayaKpr: isKpr ? basePrice * 0.03 : 0,
-          biayaAsuransi: isKpr ? basePrice * 0.02 : 0,
+<file path="src/application/usecases/customer/GenerateCustomerAccountUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import { hashPassword } from "../../../utils/hashing.js";
+import { Role } from "@prisma/client";
 
-          diskonAngsuran: 0,
-          diskonCashKeras: isKpr ? 0 : 10000000,
-          diskonLainnya: faker.helpers.arrayElement([0, 2500000, 5000000]),
+export class GenerateCustomerAccountUseCase {
+  constructor(
+    private readonly customerRepo: ICustomerRepository,
+    private readonly userRepo: IUserRepository,
+  ) {}
 
-          biayaBalikNama: 3500000,
-          biayaNotarisAjb: 4000000,
-          biayaAppraisal: isKpr ? 1500000 : 0,
-          biayaBphtb: Math.max(0, basePrice - 80000000) * 0.05,
-          biayaLainLain: 1000000,
+  async execute(customerId: number, passwordInput: string) {
+    const customer = await this.customerRepo.findById(customerId);
+    if (!customer) {
+      throw new NotFoundError("Data profil Customer tidak ditemukan.");
+    }
 
-          ppn: basePrice * 0.11,
-          pph: basePrice * 0.025,
+    if (customer.userId) {
+      throw new ConflictError(
+        "Customer ini sudah memiliki akun portal yang tertaut.",
+      );
+    }
 
-          njopTanahPerMeter: faker.number.int({ min: 1500000, max: 3000000 }),
-          njopBangunanPerMeter: faker.number.int({
-            min: 2500000,
-            max: 4000000,
-          }),
-          uping: faker.number.int({ min: 5000000, max: 15000000 }),
-        },
+    if (!customer.email) {
+      throw new ConflictError(
+        "Customer tidak memiliki email. Update profil customer dengan email terlebih dahulu.",
+      );
+    }
+
+    const existingUser = await this.userRepo.findByEmail(customer.email);
+    if (existingUser) {
+      throw new ConflictError(
+        "Email customer ini sudah terdaftar sebagai User di dalam sistem.",
+      );
+    }
+
+    const hashedPassword = await hashPassword(passwordInput);
+    const newUser = await this.userRepo.create({
+      username: customer.nama,
+      email: customer.email,
+      password: hashedPassword,
+      role: Role.CUSTOMER,
+    });
+
+    await this.customerRepo.update(customerId, {
+      userId: newUser.id,
+    });
+
+    return {
+      message: "Akun portal customer berhasil dibuat dan ditautkan.",
+      akun: {
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+      },
+    };
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/GetCustomerByIdUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type { CustomerResponseDTO } from "../../../domain/dtos/CustomerDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
+
+export class GetCustomerByIdUseCase {
+  constructor(private readonly customerRepo: ICustomerRepository) {}
+
+  async execute(id: number): Promise<CustomerResponseDTO> {
+    const customer = await this.customerRepo.findById(id);
+    if (!customer) {
+      throw new NotFoundError("Customer tidak ditemukan");
+    }
+    return CustomerMapper.toDomain(customer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/GetCustomersPaginatedUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type {
+  CustomerFilterDTO,
+  CustomerResponseDTO,
+} from "../../../domain/dtos/CustomerDTO.js";
+import type { CursorPaginatedData } from "../../../types/response.js";
+import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
+
+export class GetCustomersPaginatedUseCase {
+  constructor(private readonly customerRepo: ICustomerRepository) {}
+
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerFilterDTO,
+  ): Promise<CursorPaginatedData<CustomerResponseDTO>> {
+    const result = await this.customerRepo.findWithCursorPagination(
+      limit,
+      cursor,
+      filters,
+    );
+
+    return {
+      items: result.items.map((customer) => CustomerMapper.toDomain(customer)),
+      meta: result.meta,
+    };
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/UpdateCustomerUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type {
+  UpdateCustomerDTO,
+  CustomerResponseDTO,
+} from "../../../domain/dtos/CustomerDTO.js";
+import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
+
+export class UpdateCustomerUseCase {
+  constructor(private readonly customerRepo: ICustomerRepository) {}
+
+  async execute(
+    id: number,
+    data: UpdateCustomerDTO,
+  ): Promise<CustomerResponseDTO> {
+    const customer = await this.customerRepo.update(id, data);
+    return CustomerMapper.toDomain(customer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/UploadCustomerDocumentUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { CustomerResponseDTO } from "../../../domain/dtos/CustomerDTO.js";
+import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class UploadCustomerDocumentUseCase {
+  constructor(
+    private readonly customerRepo: ICustomerRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    id: number,
+    fileBuffer: Buffer,
+    documentType: "fileKtp" | "fileKk" | "fileNpwp",
+  ): Promise<CustomerResponseDTO> {
+    const existing = await this.customerRepo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Customer tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing[documentType]) {
+      await this.cloudinaryService.deleteImageByUrl(existing[documentType]);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      `bumantara/customers/${documentType}`,
+    );
+
+    const updateData = {
+      [documentType]: imageUrl,
+    };
+
+    const result = await this.customerRepo.update(id, updateData);
+
+    return CustomerMapper.toDomain(result);
+  }
+}
+</file>
+
+<file path="src/application/usecases/ocr/ExtractKtpDataUseCase.ts">
+import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class ExtractKtpDataUseCase {
+  constructor(private readonly googleVisionService: GoogleVisionService) {}
+
+  async execute(fotoKtpBuffer: Buffer): Promise<{
+    nik: string | null;
+    nama: string | null;
+    alamat: string | null;
+  }> {
+    if (!fotoKtpBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Buffer foto KTP tidak boleh kosong.",
+      );
+    }
+
+    return this.googleVisionService.extractKtpData(fotoKtpBuffer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/user/GetAllUsersUseCase.ts">
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import type { UserResponseDTO } from "../../../domain/dtos/UserDTO";
+
+export class GetAllUsersUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute(): Promise<UserResponseDTO[]> {
+    const users = await this.userRepo.findAll();
+
+    return users.map((user) => ({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    }));
+  }
+}
+</file>
+
+<file path="src/application/usecases/user/GetUsersPaginatedUseCase.ts">
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import type {
+  UserFilterDTO,
+  UserResponseDTO,
+} from "../../../domain/dtos/UserDTO";
+import type { CursorPaginatedData } from "../../../types/response";
+
+export class GetUsersPaginatedUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: UserFilterDTO,
+  ): Promise<CursorPaginatedData<UserResponseDTO>> {
+    const result = await this.userRepo.findWithCursorPagination(
+      limit,
+      cursor,
+      filters,
+    );
+
+    const mappedItems: UserResponseDTO[] = result.items.map((user) => ({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    }));
+
+    return {
+      items: mappedItems,
+      meta: result.meta,
+    };
+  }
+}
+</file>
+
+<file path="src/application/usecases/user/UpdateUserUseCase.ts">
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import type {
+  UpdateUserDTO,
+  UserResponseDTO,
+} from "../../../domain/dtos/UserDTO";
+import { hashPassword } from "../../../utils/hashing";
+
+export class UpdateUserUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute(id: number, data: UpdateUserDTO): Promise<UserResponseDTO> {
+    const updateData = { ...data };
+
+    if (updateData.password) {
+      updateData.password = await hashPassword(updateData.password);
+    }
+
+    const updatedUser = await this.userRepo.update(id, updateData);
+
+    return {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      createdAt: updatedUser.createdAt,
+    };
+  }
+}
+</file>
+
+<file path="src/config/env.ts">
+import { z } from "zod";
+import dotenv from "dotenv";
+
+dotenv.config();
+const envSchema = z.object({
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
+  PORT: z.coerce.number().default(3000),
+  DATABASE_URL: z.string().url(),
+  CORS_ORIGINS: z
+    .string()
+    .default("http://localhost:3000")
+    .transform((val) => val.split(",").map((origin) => origin.trim())),
+  JWT_SECRET: z.string().min(10, "JWT Secret minimal 10 karakter"),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1),
+  CLOUDINARY_API_KEY: z.string().min(1),
+  CLOUDINARY_API_SECRET: z.string().min(1),
+  CLOUDINARY_URL: z.string().min(1),
+  SENTRY_DSN: z.string().min(1),
+  GEMINI_API_KEY: z.string().min(1),
+});
+
+const _env = envSchema.safeParse(process.env);
+
+if (!_env.success) {
+  console.error("❌ Invalid environment variables:", _env.error.format());
+  process.exit(1);
+}
+
+export const env = _env.data;
+</file>
+
+<file path="src/domain/dtos/BankRekeningPtDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreateBankRekeningPtDTO {
+  perumahanId: number;
+  namaBank: string;
+  noRekening: string;
+  atasNama: string;
+}
+
+export interface UpdateBankRekeningPtDTO {
+  perumahanId?: number | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNama?: string | undefined;
+}
+
+export interface BankRekeningPtResponseDTO {
+  id: number;
+  perumahanId: number;
+  namaBank: string;
+  noRekening: string;
+  atasNama: string;
+  createdAt: Date;
+}
+
+export type BankRekeningPtFilterDTO = BaseFilterDTO;
+</file>
+
+<file path="src/domain/dtos/BaseFilterDTO.ts">
+export interface BaseFilterDTO {
+  search?: string | undefined;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
+  orderBy?: { field: string; direction: "asc" | "desc" } | undefined;
+}
+</file>
+
+<file path="src/domain/dtos/CustomerDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreateCustomerDTO {
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email?: string | undefined;
+  pekerjaan?: string | undefined;
+  perusahaan?: string | undefined;
+  bank?: string | undefined;
+  alamatKoresponden?: string | undefined;
+  alamatKtp: string;
+  alamatTinggal?: string | undefined;
+}
+
+export interface UpdateCustomerDTO {
+  nikKtp?: string | undefined;
+  nama?: string | undefined;
+  userId?: number | undefined;
+  noHp?: string | undefined;
+  email?: string | undefined;
+  pekerjaan?: string | undefined;
+  perusahaan?: string | undefined;
+  bank?: string | undefined;
+  alamatKoresponden?: string | undefined;
+  alamatKtp?: string | undefined;
+  alamatTinggal?: string | undefined;
+  fileKtp?: string | undefined;
+  fileKk?: string | undefined;
+  fileNpwp?: string | undefined;
+}
+
+export interface CustomerResponseDTO {
+  id: number;
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email: string | null;
+  pekerjaan: string | null;
+  perusahaan: string | null;
+  bank: string | null;
+  alamatKoresponden: string | null;
+  alamatKtp: string;
+  alamatTinggal: string | null;
+  fileKtp: string | null;
+  fileKk: string | null;
+  fileNpwp: string | null;
+  userId: number | null;
+  hasAccount: boolean;
+  createdAt: Date;
+}
+
+export type CustomerFilterDTO = BaseFilterDTO;
+</file>
+
+<file path="src/domain/dtos/UserDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { Role } from "@prisma/client";
+
+export interface RegisterUserDTO {
+  username: string;
+  email: string;
+  password?: string;
+  role: Role;
+}
+
+export interface LoginUserDTO {
+  email: string;
+  password: string;
+}
+
+export interface UserResponseDTO {
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+  createdAt: Date;
+}
+
+export interface JwtUserPayload {
+  userId: number;
+  username: string;
+  email: string;
+  role: Role;
+}
+
+export interface LoginResponseDTO {
+  token: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    role: Role;
+  };
+}
+
+export interface UpdateUserDTO {
+  username?: string | undefined;
+  email?: string | undefined;
+  password?: string | undefined;
+  role?: Role | undefined;
+}
+
+export interface UserFilterDTO extends BaseFilterDTO {
+  role?: Role;
+}
+</file>
+
+<file path="src/domain/entities/BankRekeningPt.ts">
+export interface BankRekeningPtEntity {
+  id: number;
+  perumahanId: number;
+  namaBank: string;
+  noRekening: string;
+  atasNama: string;
+  createdAt: Date;
+}
+</file>
+
+<file path="src/domain/entities/Customer.ts">
+export interface CustomerEntity {
+  id: number;
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email: string | null;
+  pekerjaan: string | null;
+  perusahaan: string | null;
+  bank: string | null;
+  alamatKoresponden: string | null;
+  alamatKtp: string;
+  alamatTinggal: string | null;
+  fileKtp: string | null;
+  fileKk: string | null;
+  fileNpwp: string | null;
+  userId: number | null;
+  hasAccount: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
+<file path="src/domain/entities/User.ts">
+import type { Role } from "@prisma/client";
+
+export interface UserEntity {
+  id: number;
+  username: string;
+  email: string;
+  password?: string;
+  role: Role;
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
+<file path="src/domain/errors/AppError.ts">
+export class AppError extends Error {
+  public readonly statusCode: number;
+  public readonly isOperational: boolean;
+
+  constructor(statusCode: number, message: string, isOperational = true) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = isOperational;
+
+    Object.setPrototypeOf(this, new.target.prototype);
+    Error.captureStackTrace(this);
+  }
+}
+</file>
+
+<file path="src/domain/errors/ConflictError.ts">
+import { StatusCodes } from "http-status-codes";
+import { AppError } from "./AppError.js";
+
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(StatusCodes.CONFLICT, message, true);
+    this.name = "ConflictError";
+  }
+}
+</file>
+
+<file path="src/domain/errors/NotFoundError.ts">
+import { StatusCodes } from "http-status-codes";
+import { AppError } from "./AppError";
+
+export class NotFoundError extends AppError {
+  constructor(message: string) {
+    super(StatusCodes.NOT_FOUND, message, true);
+    this.name = "NotFoundError";
+  }
+}
+</file>
+
+<file path="src/domain/repositories/bankRekeningPtRepo.ts">
+import { Prisma } from "@prisma/client";
+import type { PrismaClient, BankRekeningPt } from "@prisma/client";
+import type { IBankRekeningPtRepository } from "./IBankRekeningPtRepo.js";
+import type {
+  CreateBankRekeningPtDTO,
+  UpdateBankRekeningPtDTO,
+  BankRekeningPtFilterDTO,
+} from "../dtos/BankRekeningPtDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+
+export class BankRekeningPtRepository implements IBankRekeningPtRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateBankRekeningPtDTO): Promise<BankRekeningPt> {
+    const checkDuplicate = await this.db.bankRekeningPt.findFirst({
+      where: { noRekening: data.noRekening },
+    });
+    if (checkDuplicate) {
+      throw new ConflictError("Nomor rekening sudah terdaftar");
+    }
+
+    const result = await this.db.bankRekeningPt.create({
+      data: {
+        perumahanId: data.perumahanId,
+        namaBank: data.namaBank,
+        noRekening: data.noRekening,
+        atasNama: data.atasNama,
+      },
+    });
+    return result;
+  }
+
+  async findById(id: number): Promise<BankRekeningPt | null> {
+    return await this.db.bankRekeningPt.findUnique({ where: { id } });
+  }
+
+  async update(
+    id: number,
+    data: UpdateBankRekeningPtDTO,
+  ): Promise<BankRekeningPt> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Rekening tidak ditemukan");
+
+    if (data.noRekening && data.noRekening !== existing.noRekening) {
+      const checkDuplicate = await this.db.bankRekeningPt.findFirst({
+        where: { noRekening: data.noRekening },
       });
+      if (checkDuplicate) {
+        throw new ConflictError("Nomor rekening sudah digunakan");
+      }
+    }
+
+    const updateData: Prisma.BankRekeningPtUncheckedUpdateInput = {};
+    if (data.perumahanId !== undefined)
+      updateData.perumahanId = data.perumahanId;
+    if (data.namaBank !== undefined) updateData.namaBank = data.namaBank;
+    if (data.noRekening !== undefined) updateData.noRekening = data.noRekening;
+    if (data.atasNama !== undefined) updateData.atasNama = data.atasNama;
+
+    return await this.db.bankRekeningPt.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: BankRekeningPtFilterDTO,
+  ): Promise<CursorPaginatedData<BankRekeningPt>> {
+    const where: Prisma.BankRekeningPtWhereInput = {};
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { namaBank: { contains: filters.search } },
+        { atasNama: { contains: filters.search } },
+        { noRekening: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.BankRekeningPtOrderByWithRelationInput[] = [
+      { createdAt: "desc" },
+      { id: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["namaBank", "atasNama", "noRekening", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.bankRekeningPt.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
+
+    return {
+      items,
+      meta: { nextCursor, hasNextPage },
+    };
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Rekening tidak ditemukan");
+
+    try {
+      await this.db.bankRekeningPt.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ConflictError(
+          "Rekening tidak dapat dihapus karena sudah terhubung dengan data SPR.",
+        );
+      }
+      throw error;
     }
   }
 }
 </file>
 
-<file path="prisma/seeds/userSeed.ts">
-import { PrismaClient, Role } from "@prisma/client";
+<file path="src/domain/repositories/customerRepo.ts">
+import { Prisma } from "@prisma/client";
+import type { PrismaClient, Customer } from "@prisma/client";
+import type { ICustomerRepository } from "./ICustomerRepo.js";
+import type {
+  CreateCustomerDTO,
+  UpdateCustomerDTO,
+  CustomerFilterDTO,
+} from "../dtos/CustomerDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
 
-export async function seedUser(prisma: PrismaClient) {
-  await prisma.user.createMany({
-    data: [
-      {
-        username: "admin_twinly",
-        email: "admin@twinlytech.com",
-        password: "hashedpassword123",
-        role: Role.ADMIN,
+export class CustomerRepository implements ICustomerRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateCustomerDTO): Promise<Customer> {
+    const existingCustomer = await this.findByNik(data.nikKtp);
+    if (existingCustomer) {
+      throw new ConflictError("Customer dengan NIK tersebut sudah terdaftar");
+    }
+
+    return await this.db.customer.create({
+      data: {
+        nikKtp: data.nikKtp,
+        nama: data.nama,
+        noHp: data.noHp,
+        email: data.email ?? null,
+        pekerjaan: data.pekerjaan ?? null,
+        perusahaan: data.perusahaan ?? null,
+        bank: data.bank ?? null,
+        alamatKoresponden: data.alamatKoresponden ?? null,
+        alamatKtp: data.alamatKtp,
+        alamatTinggal: data.alamatTinggal ?? null,
       },
-      {
-        username: "marketing_01",
-        email: "marketing1@sariasih.com",
-        password: "hashedpassword123",
-        role: Role.MARKETING,
-      },
-      {
-        username: "customer_01",
-        email: "customer1@gmail.com",
-        password: "hashedpassword123",
-        role: Role.CUSTOMER,
-      },
-    ],
+    });
+  }
+
+  async findById(id: number): Promise<Customer | null> {
+    return await this.db.customer.findUnique({ where: { id } });
+  }
+
+  async findByNik(nikKtp: string): Promise<Customer | null> {
+    return await this.db.customer.findUnique({ where: { nikKtp } });
+  }
+  async update(id: number, data: UpdateCustomerDTO): Promise<Customer> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
+
+    if (data.nikKtp && data.nikKtp !== existing.nikKtp) {
+      const checkDuplicate = await this.findByNik(data.nikKtp);
+      if (checkDuplicate) {
+        throw new ConflictError("NIK sudah digunakan oleh customer lain");
+      }
+    }
+
+    const updateData: Prisma.CustomerUncheckedUpdateInput = {};
+    if (data.userId !== undefined) updateData.userId = data.userId;
+    if (data.nikKtp !== undefined) updateData.nikKtp = data.nikKtp;
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.email !== undefined) updateData.email = data.email ?? null;
+    if (data.pekerjaan !== undefined)
+      updateData.pekerjaan = data.pekerjaan ?? null;
+    if (data.perusahaan !== undefined)
+      updateData.perusahaan = data.perusahaan ?? null;
+    if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+    if (data.alamatKoresponden !== undefined)
+      updateData.alamatKoresponden = data.alamatKoresponden ?? null;
+    if (data.alamatKtp !== undefined) updateData.alamatKtp = data.alamatKtp;
+    if (data.alamatTinggal !== undefined)
+      updateData.alamatTinggal = data.alamatTinggal ?? null;
+    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
+    if (data.fileKk !== undefined) updateData.fileKk = data.fileKk ?? null;
+    if (data.fileNpwp !== undefined)
+      updateData.fileNpwp = data.fileNpwp ?? null;
+
+    return await this.db.customer.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerFilterDTO,
+  ): Promise<CursorPaginatedData<Customer>> {
+    const where: Prisma.CustomerWhereInput = {};
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { nama: { contains: filters.search } },
+        { nikKtp: { contains: filters.search } },
+        { noHp: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.CustomerOrderByWithRelationInput[] = [
+      { createdAt: "desc" },
+      { id: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "nikKtp", "noHp", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.customer.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
+
+    return { items, meta: { nextCursor, hasNextPage } };
+  }
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
+
+    try {
+      await this.db.customer.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ConflictError(
+          "Customer tidak dapat dihapus karena sudah memiliki data SPR/Booking.",
+        );
+      }
+      throw error;
+    }
+  }
+  async findByUserId(userId: number): Promise<Customer | null> {
+    return await this.db.customer.findFirst({ where: { userId } });
+  }
+}
+</file>
+
+<file path="src/domain/repositories/IBankRekeningPtRepo.ts">
+import type { BankRekeningPt } from "@prisma/client";
+import type {
+  CreateBankRekeningPtDTO,
+  UpdateBankRekeningPtDTO,
+  BankRekeningPtFilterDTO,
+} from "../dtos/BankRekeningPtDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export interface IBankRekeningPtRepository {
+  create(data: CreateBankRekeningPtDTO): Promise<BankRekeningPt>;
+  findById(id: number): Promise<BankRekeningPt | null>;
+  update(id: number, data: UpdateBankRekeningPtDTO): Promise<BankRekeningPt>;
+  delete(id: number): Promise<void>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: BankRekeningPtFilterDTO,
+  ): Promise<CursorPaginatedData<BankRekeningPt>>;
+}
+</file>
+
+<file path="src/domain/repositories/ICustomerRepo.ts">
+import type { Customer } from "@prisma/client";
+import type {
+  CreateCustomerDTO,
+  UpdateCustomerDTO,
+  CustomerFilterDTO,
+} from "../dtos/CustomerDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export interface ICustomerRepository {
+  create(data: CreateCustomerDTO): Promise<Customer>;
+  findById(id: number): Promise<Customer | null>;
+  findByUserId(userId: number): Promise<Customer | null>;
+  findByNik(nikKtp: string): Promise<Customer | null>;
+  update(id: number, data: UpdateCustomerDTO): Promise<Customer>;
+  delete(id: number): Promise<void>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerFilterDTO,
+  ): Promise<CursorPaginatedData<Customer>>;
+}
+</file>
+
+<file path="src/domain/repositories/IUserRepo.ts">
+import type { UserEntity } from "../entities/User";
+import type {
+  RegisterUserDTO,
+  UpdateUserDTO,
+  UserFilterDTO,
+} from "../dtos/UserDTO";
+import type { CursorPaginatedData } from "../../types/response";
+
+export interface IUserRepository {
+  create(data: RegisterUserDTO): Promise<UserEntity>;
+  findByEmail(email: string): Promise<UserEntity | null>;
+  findById(id: number): Promise<UserEntity | null>;
+  findAll(): Promise<UserEntity[]>;
+  update(id: number, data: UpdateUserDTO): Promise<UserEntity>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: UserFilterDTO,
+  ): Promise<CursorPaginatedData<UserEntity>>;
+}
+</file>
+
+<file path="src/domain/repositories/userRepo.ts">
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IUserRepository } from "./IUserRepo";
+import type { UserEntity } from "../entities/User";
+import type {
+  RegisterUserDTO,
+  UpdateUserDTO,
+  UserFilterDTO,
+} from "../dtos/UserDTO";
+import { UserMapper } from "../../infrastructure/mapper/UserMapper";
+import { ConflictError } from "../errors/ConflictError";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export class UserRepository implements IUserRepository {
+  constructor(private readonly db: PrismaClient) {}
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: UserFilterDTO,
+  ): Promise<CursorPaginatedData<UserEntity>> {
+    const where: Prisma.UserWhereInput = {};
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { username: { contains: filters.search } },
+        { email: { contains: filters.search } },
+      ];
+    }
+    if (filters?.role) {
+      where.role = filters.role;
+    }
+
+    let orderByClause: Prisma.UserOrderByWithRelationInput[] = [
+      { createdAt: "desc" },
+      { id: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["username", "email", "role", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.user.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
+
+    return {
+      items: items.map((item) => UserMapper.toDomain(item)),
+      meta: { nextCursor, hasNextPage },
+    };
+  }
+
+  async create(data: RegisterUserDTO): Promise<UserEntity> {
+    try {
+      const result = await this.db.user.create({
+        data: {
+          username: data.username,
+          email: data.email,
+          password: data.password ?? "",
+          role: data.role,
+        },
+      });
+      return UserMapper.toDomain(result);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError("Email sudah terdaftar");
+      }
+      throw error;
+    }
+  }
+
+  async update(id: number, data: UpdateUserDTO): Promise<UserEntity> {
+    try {
+      const existing = await this.db.user.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError("User tidak ditemukan");
+
+      const updateData: Prisma.UserUpdateInput = {};
+
+      if (data.username !== undefined) updateData.username = data.username;
+      if (data.email !== undefined) updateData.email = data.email;
+      if (data.password !== undefined) updateData.password = data.password;
+      if (data.role !== undefined) updateData.role = data.role;
+
+      const result = await this.db.user.update({
+        where: { id },
+        data: updateData,
+      });
+
+      return UserMapper.toDomain(result);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError("Email sudah digunakan user lain.");
+      }
+      throw error;
+    }
+  }
+
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    const result = await this.db.user.findUnique({ where: { email } });
+    if (!result) return null;
+    return UserMapper.toDomain(result);
+  }
+
+  async findById(id: number): Promise<UserEntity | null> {
+    const result = await this.db.user.findUnique({ where: { id } });
+    if (!result) return null;
+    return UserMapper.toDomain(result);
+  }
+
+  async findAll(): Promise<UserEntity[]> {
+    const results = await this.db.user.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return results.map((u) => UserMapper.toDomain(u));
+  }
+}
+</file>
+
+<file path="src/infrastructure/database/prisma.ts">
+import { PrismaClient } from "@prisma/client";
+import { env } from "../../config/env";
+
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log:
+      env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : env.NODE_ENV === "test"
+          ? []
+          : ["error"],
   });
+};
+
+declare global {
+  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
+}
+
+export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+
+if (env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
+</file>
+
+<file path="src/infrastructure/di/container.ts">
+import { UserRepository } from "../../domain/repositories/userRepo.js";
+import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
+import { CustomerRepository } from "../../domain/repositories/customerRepo.js";
+
+import { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
+import { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
+import { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
+import { AuthController } from "../../presentation/controllers/authController.js";
+import { prisma } from "../../infrastructure/database/prisma.js";
+import type { PrismaClient } from "@prisma/client/extension";
+
+import { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersUseCase.js";
+import { UserController } from "../../presentation/controllers/userController.js";
+import { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
+import { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
+
+import { GoogleVisionService } from "../external/GoogleVisionService.js";
+import { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
+import { OcrController } from "../../presentation/controllers/ocrController.js";
+
+import {
+  CreateBankRekeningPtUseCase,
+  UpdateBankRekeningPtUseCase,
+  GetBankRekeningPtByIdUseCase,
+  GetBankRekeningPtPaginatedUseCase,
+  DeleteBankRekeningPtUseCase,
+} from "../../application/usecases/bankRekeningPt/BankRekeningPtUseCases.js";
+import { BankRekeningPtController } from "../../presentation/controllers/bankRekeningPtController.js";
+
+import { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
+import { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
+import { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
+import { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
+import { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
+import { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
+import { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
+import { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
+import { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
+import { CustomerController } from "../../presentation/controllers/customerController.js";
+
+import { CloudinaryService } from "../external/CloudinaryService.js";
+
+export const createContainer = (dbClient: PrismaClient) => {
+  const googleVisionService = new GoogleVisionService();
+  const cloudinaryService = new CloudinaryService();
+
+  const userRepo = new UserRepository(dbClient);
+  const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
+  const customerRepo = new CustomerRepository(dbClient);
+
+  const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
+
+  const registerUseCase = new RegisterUserUseCase(userRepo);
+  const loginUseCase = new LoginUserUseCase(userRepo);
+  const getProfileUseCase = new GetProfileUseCase(userRepo);
+
+  const getAllUsersUseCase = new GetAllUsersUseCase(userRepo);
+  const updateUserUseCase = new UpdateUserUseCase(userRepo);
+  const getUsersPaginatedUseCase = new GetUsersPaginatedUseCase(userRepo);
+
+  const createBankUseCase = new CreateBankRekeningPtUseCase(bankRekeningPtRepo);
+  const updateBankUseCase = new UpdateBankRekeningPtUseCase(bankRekeningPtRepo);
+  const getBankByIdUseCase = new GetBankRekeningPtByIdUseCase(
+    bankRekeningPtRepo,
+  );
+  const getBanksPaginatedUseCase = new GetBankRekeningPtPaginatedUseCase(
+    bankRekeningPtRepo,
+  );
+  const deleteBankUseCase = new DeleteBankRekeningPtUseCase(bankRekeningPtRepo);
+
+  const exportCustomersUseCase = new ExportCustomersUseCase(dbClient);
+  const exportCustomersPdfUseCase = new ExportCustomersPdfUseCase(dbClient);
+  const createCustomerUseCase = new CreateCustomerUseCase(customerRepo);
+  const updateCustomerUseCase = new UpdateCustomerUseCase(customerRepo);
+  const uploadCustomerDocumentUseCase = new UploadCustomerDocumentUseCase(
+    customerRepo,
+    cloudinaryService,
+  );
+  const getCustomerByIdUseCase = new GetCustomerByIdUseCase(customerRepo);
+  const getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
+    customerRepo,
+  );
+  const deleteCustomerUseCase = new DeleteCustomerUseCase(customerRepo);
+  const generateCustomerAccountUseCase = new GenerateCustomerAccountUseCase(
+    customerRepo,
+    userRepo,
+  );
+
+  const ocrController = new OcrController(extractKtpDataUseCase);
+  const authController = new AuthController(
+    registerUseCase,
+    loginUseCase,
+    getProfileUseCase,
+  );
+  const userController = new UserController(
+    getAllUsersUseCase,
+    updateUserUseCase,
+    getUsersPaginatedUseCase,
+  );
+
+  const bankRekeningPtController = new BankRekeningPtController(
+    createBankUseCase,
+    updateBankUseCase,
+    getBankByIdUseCase,
+    getBanksPaginatedUseCase,
+    deleteBankUseCase,
+  );
+  const customerController = new CustomerController(
+    createCustomerUseCase,
+    updateCustomerUseCase,
+    getCustomerByIdUseCase,
+    getCustomersPaginatedUseCase,
+    deleteCustomerUseCase,
+    uploadCustomerDocumentUseCase,
+    generateCustomerAccountUseCase,
+    exportCustomersUseCase,
+    exportCustomersPdfUseCase,
+  );
+
+  return {
+    authController,
+    userRepo,
+    bankRekeningPtRepo,
+    customerRepo,
+    userController,
+    ocrController,
+    bankRekeningPtController,
+    customerController,
+  };
+};
+
+export const container = createContainer(prisma as any);
+</file>
+
+<file path="src/infrastructure/external/CloudinaryService.ts">
+import { v2 as cloudinary } from "cloudinary";
+import { env } from "../../config/env";
+import { AppError } from "../../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import sharp from "sharp";
+
+export class CloudinaryService {
+  constructor() {
+    cloudinary.config({
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
+    });
+  }
+
+  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    const compressedBuffer = await sharp(buffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary Upload Error:", error);
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mengunggah gambar ke penyimpanan cloud.",
+              ),
+            );
+          }
+          if (!result) {
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mendapatkan respon dari penyimpanan cloud.",
+              ),
+            );
+          }
+          resolve(result.secure_url);
+        },
+      );
+
+      uploadStream.end(compressedBuffer);
+    });
+  }
+  async deleteImageByUrl(imageUrl: string): Promise<void> {
+    try {
+      const urlParts = imageUrl.split("/");
+      const filenameWithExt = urlParts.pop();
+      const folder = urlParts.pop();
+
+      if (!filenameWithExt || !folder) return;
+
+      const filename = filenameWithExt.split(".")[0];
+      const publicId = `${folder}/${filename}`;
+
+      await cloudinary.uploader.destroy(publicId);
+      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
+    } catch (error) {
+      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
+    }
+  }
+}
+</file>
+
+<file path="src/infrastructure/external/GoogleVisionService.ts">
+import {
+  GoogleGenerativeAI,
+  SchemaType,
+  type Schema,
+} from "@google/generative-ai";
+import { AppError } from "../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+import { writeFileSync } from "fs";
+
+export class GoogleVisionService {
+  private genAI: GoogleGenerativeAI;
+
+  constructor() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("Peringatan: GEMINI_API_KEY belum diset di file .env");
+    }
+    this.genAI = new GoogleGenerativeAI(apiKey ?? "");
+  }
+
+  async extractKtpData(imageBuffer: Buffer): Promise<{
+    nik: string | null;
+    nama: string | null;
+    alamat: string | null;
+  }> {
+    try {
+      const ktpSchema: Schema = {
+        type: SchemaType.OBJECT,
+        properties: {
+          nik: {
+            type: SchemaType.STRING,
+            description: "16 digit angka NIK. Perbaiki typo umum OCR.",
+          },
+          nama: {
+            type: SchemaType.STRING,
+            description: "Nama lengkap tanpa kata 'Nama' atau 'Name'.",
+          },
+          alamat: {
+            type: SchemaType.STRING,
+            description:
+              "Gabungan Alamat, RT/RW, Kel/Desa, dan Kecamatan menjadi satu string lengkap dan rapi.",
+          },
+        },
+        required: ["nik", "nama", "alamat"],
+      };
+
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: ktpSchema,
+          temperature: 0.0,
+        },
+      });
+
+      const imagePart = {
+        inlineData: {
+          data: imageBuffer.toString("base64"),
+          mimeType: "image/jpeg",
+        },
+      };
+
+      const prompt = `
+    Anda adalah sistem ekstraksi OCR khusus KTP Indonesia yang berpresisi tinggi.
+    Tugas Anda mengekstrak informasi dari gambar KTP terlampir ke format JSON.
+
+    ATURAN SANGAT KETAT (DILARANG MELANGGAR):
+    1. ANTI-HALUSINASI: BACA HANYA teks yang benar-benar tertulis di gambar. DILARANG KERAS mengarang, memanipulasi, atau menebak nama/data.
+    2. JIKA BURAM: Jika bagian NIK atau Nama buram, tertutup jari, terkena pantulan cahaya, atau tidak terbaca dengan yakin 100%, Anda WAJIB mereturn null. Jangan pernah menebak.
+    3. NIK harus tepat 16 digit. Jika ada karakter mirip angka (O jadi 0, l/I jadi 1), perbaiki.
+    4. NAMA: Ambil nama persis seperti yang tertulis.
+  `;
+
+      writeFileSync("debug_ktp.jpg", imageBuffer);
+      console.log(
+        "Gambar KTP untuk debug telah disimpan sebagai debug_ktp.jpg",
+      );
+
+      const result = await model.generateContent([prompt, imagePart]);
+      const responseText = result.response.text();
+
+      interface ExpectedKtpJson {
+        nik?: string | null;
+        nama?: string | null;
+        alamat?: string | null;
+      }
+
+      const parsedData = JSON.parse(responseText) as ExpectedKtpJson;
+
+      return {
+        nik: parsedData.nik ?? null,
+        nama: parsedData.nama ?? null,
+        alamat: parsedData.alamat ?? null,
+      };
+    } catch (error) {
+      console.error("Gemini Multimodal Extraction Error:", error);
+      throw new AppError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Gagal memproses gambar KTP.",
+      );
+    }
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/BankRekeningPtMapper.ts">
+import type { BankRekeningPt as PrismaBankRekeningPt } from "@prisma/client";
+import type { BankRekeningPtEntity } from "../../domain/entities/BankRekeningPt.js";
+
+export class BankRekeningPtMapper {
+  static toDomain(
+    prismaBankRekeningPt: PrismaBankRekeningPt,
+  ): BankRekeningPtEntity {
+    return {
+      id: prismaBankRekeningPt.id,
+      perumahanId: prismaBankRekeningPt.perumahanId,
+      namaBank: prismaBankRekeningPt.namaBank,
+      noRekening: prismaBankRekeningPt.noRekening,
+      atasNama: prismaBankRekeningPt.atasNama,
+      createdAt: prismaBankRekeningPt.createdAt,
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/CustomerMapper.ts">
+import type { Customer as PrismaCustomer } from "@prisma/client";
+import type { CustomerEntity } from "../../domain/entities/Customer.js";
+
+export class CustomerMapper {
+  static toDomain(prismaCustomer: PrismaCustomer): CustomerEntity {
+    return {
+      id: prismaCustomer.id,
+      nikKtp: prismaCustomer.nikKtp,
+      nama: prismaCustomer.nama,
+      noHp: prismaCustomer.noHp,
+      email: prismaCustomer.email,
+      pekerjaan: prismaCustomer.pekerjaan,
+      perusahaan: prismaCustomer.perusahaan,
+      bank: prismaCustomer.bank,
+      alamatKoresponden: prismaCustomer.alamatKoresponden,
+      alamatKtp: prismaCustomer.alamatKtp,
+      alamatTinggal: prismaCustomer.alamatTinggal,
+      fileKtp: prismaCustomer.fileKtp,
+      fileKk: prismaCustomer.fileKk,
+      fileNpwp: prismaCustomer.fileNpwp,
+      userId: prismaCustomer.userId,
+      hasAccount: prismaCustomer.userId !== null,
+      createdAt: prismaCustomer.createdAt,
+      updatedAt: prismaCustomer.updatedAt,
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/UserMapper.ts">
+import type { User as PrismaUser } from "@prisma/client";
+import type { UserEntity } from "../../domain/entities/User";
+
+export class UserMapper {
+  static toDomain(prismaUser: PrismaUser): UserEntity {
+    return {
+      id: prismaUser.id,
+      username: prismaUser.username,
+      email: prismaUser.email,
+      password: prismaUser.password,
+      role: prismaUser.role,
+      createdAt: prismaUser.createdAt,
+      updatedAt: prismaUser.updatedAt,
+    };
+  }
+}
+</file>
+
+<file path="src/middlewares/authMiddleware.ts">
+import type { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { StatusCodes } from "http-status-codes";
+import { env } from "../config/env";
+import { sendResponse } from "../utils/response";
+import type { JwtUserPayload } from "../domain/dtos/UserDTO";
+
+export const authenticate = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    sendResponse(
+      res,
+      StatusCodes.UNAUTHORIZED,
+      "Access denied. No token provided.",
+    );
+    return;
+  }
+
+  const token = authHeader.split(" ").pop()?.trim();
+
+  if (!token) {
+    sendResponse(
+      res,
+      StatusCodes.UNAUTHORIZED,
+      "Access denied. Invalid token format.",
+    );
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtUserPayload;
+    req.user = decoded;
+    next();
+  } catch (error) {
+    let message = "Invalid token.";
+    if (error instanceof jwt.TokenExpiredError) {
+      message = "Token expired.";
+    }
+    sendResponse(res, StatusCodes.UNAUTHORIZED, message);
+  }
+};
+
+export const requireRole = (allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "User not authenticated");
+      return;
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      sendResponse(
+        res,
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to access this resource",
+      );
+      return;
+    }
+
+    next();
+  };
+};
+</file>
+
+<file path="src/middlewares/errorHandler.ts">
+import type { Request, Response, NextFunction } from "express";
+import { sendResponse } from "../utils/response";
+import { env } from "../config/env";
+import { StatusCodes } from "http-status-codes";
+import { ZodError } from "zod";
+import { AppError } from "../domain/errors/AppError.js";
+import * as Sentry from "@sentry/node";
+
+export const notFoundHandler = (req: Request, res: Response): void => {
+  sendResponse(
+    res,
+    StatusCodes.NOT_FOUND,
+    `Endpoint ${req.originalUrl} not found`,
+  );
+};
+
+export const globalErrorHandler = (
+  err: Error,
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+): void => {
+  req.log?.error(err);
+
+  const isProd = env.NODE_ENV === "production";
+  let statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
+  let message = "Internal Server Error";
+  let errorsDetail: unknown = undefined;
+
+  if (
+    err instanceof SyntaxError &&
+    "status" in err &&
+    err.status === 400 &&
+    "body" in err
+  ) {
+    statusCode = StatusCodes.BAD_REQUEST;
+    message = "Invalid JSON payload passed";
+    errorsDetail = { detail: err.message };
+  } else if (err instanceof ZodError) {
+    statusCode = StatusCodes.BAD_REQUEST;
+    message = "Validation Error";
+    errorsDetail = err.issues.map((e) => ({
+      field: e.path.join("."),
+      message: e.message,
+    }));
+  } else if (err instanceof AppError) {
+    statusCode = err.statusCode;
+    message = err.message;
+  }
+
+  if (statusCode === StatusCodes.INTERNAL_SERVER_ERROR) {
+    Sentry.captureException(err);
+  }
+
+  const shouldShowStack =
+    !isProd && statusCode === StatusCodes.INTERNAL_SERVER_ERROR;
+
+  sendResponse(
+    res,
+    statusCode,
+    message,
+    null,
+    errorsDetail ??
+      (shouldShowStack
+        ? { message: err.message, stack: err.stack }
+        : undefined),
+  );
+};
+</file>
+
+<file path="src/middlewares/upload.ts">
+import multer from "multer";
+import { AppError } from "../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+const storage = multer.memoryStorage();
+
+export const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(
+        new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Hanya file gambar yang diperbolehkan!",
+          true,
+        ),
+      );
+    }
+  },
+});
+</file>
+
+<file path="src/middlewares/validate.ts">
+import type { Request, Response, NextFunction } from "express";
+import type { z } from "zod";
+
+interface ValidationSchemas {
+  body?: z.ZodTypeAny;
+  query?: z.ZodTypeAny;
+  params?: z.ZodTypeAny;
+}
+
+export const validate = (schemas: ValidationSchemas) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      if (schemas.body) {
+        req.body = schemas.body.parse(req.body);
+      }
+
+      if (schemas.params) {
+        const validatedParams = schemas.params.parse(req.params);
+        Object.keys(req.params).forEach((key) => delete req.params[key]);
+        Object.assign(req.params, validatedParams);
+      }
+
+      if (schemas.query) {
+        const validatedQuery = schemas.query.parse(req.query);
+
+        Object.keys(req.query).forEach((key) => delete req.query[key]);
+
+        Object.assign(req.query, validatedQuery);
+      }
+
+      next();
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+};
+</file>
+
+<file path="src/presentation/controllers/authController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response";
+import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase";
+import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
+import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
+
+export class AuthController {
+  constructor(
+    private readonly registerUseCase: RegisterUserUseCase,
+    private readonly loginUseCase: LoginUserUseCase,
+    private readonly getProfileUseCase: GetProfileUseCase,
+  ) {}
+
+  register = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.registerUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "User registered successfully",
+      result,
+    );
+  };
+
+  login = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.loginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Sukses", result);
+  };
+
+  getProfile = async (req: Request, res: Response): Promise<void> => {
+    if (!req.user?.userId) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
+      return;
+    }
+
+    const user = await this.getProfileUseCase.execute(req.user.userId);
+    sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
+  };
+}
+</file>
+
+<file path="src/presentation/controllers/bankRekeningPtController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+import type {
+  CreateBankRekeningPtUseCase,
+  UpdateBankRekeningPtUseCase,
+  GetBankRekeningPtByIdUseCase,
+  GetBankRekeningPtPaginatedUseCase,
+  DeleteBankRekeningPtUseCase,
+} from "../../application/usecases/bankRekeningPt/BankRekeningPtUseCases.js";
+import type {
+  createBankRekeningPtSchema,
+  updateBankRekeningPtSchema,
+} from "../../validations/bankRekeningPtSchema.js";
+import { getBankRekeningPtPaginatedSchema } from "../../validations/bankRekeningPtSchema.js";
+import type { BankRekeningPtFilterDTO } from "../../domain/dtos/BankRekeningPtDTO.js";
+
+export class BankRekeningPtController {
+  constructor(
+    private readonly createUseCase: CreateBankRekeningPtUseCase,
+    private readonly updateUseCase: UpdateBankRekeningPtUseCase,
+    private readonly getByIdUseCase: GetBankRekeningPtByIdUseCase,
+    private readonly getPaginatedUseCase: GetBankRekeningPtPaginatedUseCase,
+    private readonly deleteUseCase: DeleteBankRekeningPtUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createBankRekeningPtSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Rekening berhasil ditambahkan",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateBankRekeningPtSchema.body,
+      any,
+      typeof updateBankRekeningPtSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Rekening berhasil diperbarui", result);
+  };
+
+  getById = async (
+    req: TypedRequest<any, any, typeof updateBankRekeningPtSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getByIdUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Data rekening berhasil diambil", result);
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getBankRekeningPtPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as BankRekeningPtFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar rekening berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updateBankRekeningPtSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Rekening berhasil dihapus");
+  };
+}
+</file>
+
+<file path="src/presentation/controllers/customerController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
+import type { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
+import type { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
+import type { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
+import type { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
+import type { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
+import type { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
+import type { generateAccountSchema } from "../../validations/customerSchema.js";
+import type {
+  createCustomerSchema,
+  updateCustomerSchema,
+} from "../../validations/customerSchema.js";
+import { getCustomersPaginatedSchema } from "../../validations/customerSchema.js";
+import type { CustomerFilterDTO } from "../../domain/dtos/CustomerDTO.js";
+import type { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
+import type { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
+
+export class CustomerController {
+  constructor(
+    private readonly createCustomerUseCase: CreateCustomerUseCase,
+    private readonly updateCustomerUseCase: UpdateCustomerUseCase,
+    private readonly getCustomerByIdUseCase: GetCustomerByIdUseCase,
+    private readonly getCustomersPaginatedUseCase: GetCustomersPaginatedUseCase,
+    private readonly deleteCustomerUseCase: DeleteCustomerUseCase,
+    private readonly uploadDocumentUseCase: UploadCustomerDocumentUseCase,
+    private readonly generateAccountUseCase: GenerateCustomerAccountUseCase,
+    private readonly exportCustomersUseCase: ExportCustomersUseCase,
+    private readonly exportCustomersPdfUseCase: ExportCustomersPdfUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createCustomerSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createCustomerUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Customer berhasil ditambahkan",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateCustomerSchema.body,
+      any,
+      typeof updateCustomerSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateCustomerUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Customer berhasil diperbarui", result);
+  };
+
+  getById = async (
+    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getCustomerByIdUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Data customer berhasil diambil", result);
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getCustomersPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getCustomersPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as CustomerFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar customer berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteCustomerUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Customer berhasil dihapus");
+  };
+
+  uploadDocument = async (req: Request, res: Response): Promise<void> => {
+    const idParam = req.params.id as string;
+    const docType = req.params.docType as string;
+
+    const id = parseInt(idParam, 10);
+
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+
+    if (!["fileKtp", "fileKk", "fileNpwp"].includes(docType)) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "Parameter docType harus berupa fileKtp, fileKk, atau fileNpwp",
+      );
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadDocumentUseCase.execute(
+      id,
+      req.file.buffer,
+      docType as "fileKtp" | "fileKk" | "fileNpwp",
+    );
+
+    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
+  };
+  generateAccount = async (
+    req: TypedRequest<
+      typeof generateAccountSchema.body,
+      any,
+      typeof generateAccountSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { password } = req.body;
+
+    const result = await this.generateAccountUseCase.execute(id, password);
+
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Akun portal customer berhasil di-generate",
+      result,
+    );
+  };
+  exportExcel = async (_req: Request, res: Response): Promise<void> => {
+    const excelBuffer = await this.exportCustomersUseCase.execute();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Customer_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(excelBuffer);
+  };
+
+  exportPdf = async (_req: Request, res: Response): Promise<void> => {
+    const pdfBuffer = await this.exportCustomersPdfUseCase.execute();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Customer_${timestamp}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(pdfBuffer);
+  };
+}
+</file>
+
+<file path="src/presentation/controllers/healthController.ts">
+import type { Request, Response } from "express";
+import { sendResponse } from "../../utils/response";
+import type { ApiResponse } from "../../types/response";
+import { prisma } from "../../infrastructure/database/prisma";
+import { StatusCodes } from "http-status-codes";
+
+export const checkHealth = async (
+  _req: Request,
+  res: Response<ApiResponse>,
+): Promise<void> => {
+  await prisma.$queryRaw`SELECT 1`;
+  sendResponse(res, StatusCodes.OK, "API & Database healthy");
+};
+</file>
+
+<file path="src/presentation/controllers/ocrController.ts">
+import type { Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+import type { ocrExtractSchema } from "../../validations/ocrSchema.js";
+import type { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
+
+export class OcrController {
+  constructor(private readonly extractKtpDataUseCase: ExtractKtpDataUseCase) {}
+
+  extractKtpData = async (
+    req: TypedRequest<typeof ocrExtractSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const fotoKtpBuffer = req.file?.buffer;
+
+    if (!fotoKtpBuffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File foto KTP (foto_ktp) wajib diunggah.",
+      );
+      return;
+    }
+
+    const result = await this.extractKtpDataUseCase.execute(fotoKtpBuffer);
+
+    sendResponse(res, StatusCodes.OK, "Berhasil mengekstrak data KTP", result);
+  };
+}
+</file>
+
+<file path="src/presentation/controllers/userController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersUseCase.js";
+import type { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
+import type { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
+
+import type {
+  updateUserSchema} from "../../validations/userSchema.js";
+import {
+  getUsersPaginatedSchema
+} from "../../validations/userSchema.js";
+import type { UserFilterDTO } from "../../domain/dtos/UserDTO.js";
+
+export class UserController {
+  constructor(
+    private readonly getAllUsersUseCase: GetAllUsersUseCase,
+    private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly getUsersPaginatedUseCase: GetUsersPaginatedUseCase,
+  ) {}
+
+  getAll = async (_req: Request, res: Response): Promise<void> => {
+    const result = await this.getAllUsersUseCase.execute();
+    sendResponse(res, StatusCodes.OK, "Semua user berhasil diambil", result);
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateUserSchema.body,
+      any,
+      typeof updateUserSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+
+    const result = await this.updateUserUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "User berhasil diupdate", result);
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } = getUsersPaginatedSchema.query.parse(
+      req.query,
+    );
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getUsersPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as UserFilterDTO,
+    );
+    sendResponse(res, StatusCodes.OK, "Data user berhasil diambil", result);
+  };
+}
+</file>
+
+<file path="src/presentation/routes/authRoutes.ts">
+import { Router } from "express";
+import { validate } from "../../middlewares/validate";
+import { authenticate } from "../../middlewares/authMiddleware";
+import { registerSchema, loginSchema } from "../../validations/authSchema";
+import type { AuthController } from "../controllers/authController";
+
+export const createAuthRoutes = (authController: AuthController): Router => {
+  const router = Router();
+
+  router.post("/register", validate(registerSchema), authController.register);
+
+  router.post("/login", validate(loginSchema), authController.login);
+
+  router.get("/profile", authenticate, authController.getProfile);
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/bankRekeningPtRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import {
+  createBankRekeningPtSchema,
+  updateBankRekeningPtSchema,
+  getBankRekeningPtPaginatedSchema,
+} from "../../validations/bankRekeningPtSchema.js";
+import type { BankRekeningPtController } from "../controllers/bankRekeningPtController.js";
+
+export const createBankRekeningPtRoutes = (
+  controller: BankRekeningPtController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.post(
+    "/",
+    requireRole(["ADMIN"]),
+    validate(createBankRekeningPtSchema),
+    controller.create,
+  );
+
+  router.get(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getBankRekeningPtPaginatedSchema),
+    controller.getPaginated,
+  );
+
+  router.get(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate({ params: updateBankRekeningPtSchema.params }),
+    controller.getById,
+  );
+
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate(updateBankRekeningPtSchema),
+    controller.update,
+  );
+
+  router.delete(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate({ params: updateBankRekeningPtSchema.params }),
+    controller.delete,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/customerRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+  getCustomersPaginatedSchema,
+  generateAccountSchema,
+} from "../../validations/customerSchema.js";
+import type { CustomerController } from "../controllers/customerController.js";
+
+export const createCustomerRoutes = (
+  customerController: CustomerController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.post(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(createCustomerSchema),
+    customerController.create,
+  );
+
+  router.get(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getCustomersPaginatedSchema),
+    customerController.getPaginated,
+  );
+
+  router.get(
+    "/export/excel",
+    requireRole(["ADMIN", "MARKETING"]),
+    customerController.exportExcel,
+  );
+
+  router.get(
+    "/export/pdf",
+    requireRole(["ADMIN", "MARKETING"]),
+    customerController.exportPdf,
+  );
+
+  router.get(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.getById,
+  );
+
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(updateCustomerSchema),
+    customerController.update,
+  );
+
+  router.patch(
+    "/:id/upload/:docType",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("file"),
+    customerController.uploadDocument,
+  );
+
+  router.delete(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.delete,
+  );
+  router.post(
+    "/:id/generate-account",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(generateAccountSchema),
+    customerController.generateAccount,
+  );
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/index.ts">
+import { Router } from "express";
+import { checkHealth } from "../controllers/healthController.js";
+import { createAuthRoutes } from "./authRoutes.js";
+import { createUserRoutes } from "./userRoutes.js";
+import { createOcrRoutes } from "./ocrRoutes.js";
+import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
+import { createCustomerRoutes } from "./customerRoutes.js";
+import { container } from "../../infrastructure/di/container.js";
+export const createMainRouter = (deps: typeof container): Router => {
+  const router = Router();
+
+  router.get("/health", checkHealth);
+  router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/users", createUserRoutes(deps.userController));
+  router.use("/ocr", createOcrRoutes(deps.ocrController));
+
+  router.use(
+    "/bank-rekening",
+    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  );
+
+  router.use("/customers", createCustomerRoutes(deps.customerController));
+  return router;
+};
+
+const router = createMainRouter(container);
+export default router;
+</file>
+
+<file path="src/presentation/routes/ocrRoutes.ts">
+import { Router } from "express";
+import { authenticate } from "../../middlewares/authMiddleware.js";
+import { upload } from "../../middlewares/upload.js";
+import { validate } from "../../middlewares/validate.js";
+import { ocrExtractSchema } from "../../validations/ocrSchema.js";
+import type { OcrController } from "../controllers/ocrController.js";
+
+export const createOcrRoutes = (controller: OcrController): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.post(
+    "/extract-ktp",
+    upload.single("foto_ktp"),
+    validate(ocrExtractSchema),
+    controller.extractKtpData,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/userRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import {
+  getUsersPaginatedSchema,
+  updateUserSchema,
+} from "../../validations/userSchema.js";
+import type { UserController } from "../controllers/userController.js";
+
+export const createUserRoutes = (userController: UserController): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.get(
+    "/",
+    requireRole(["ADMIN"]),
+    validate(getUsersPaginatedSchema),
+    userController.getPaginated,
+  );
+
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate(updateUserSchema),
+    userController.update,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/server.ts">
+import app from "./app";
+import { env } from "./config/env";
+import { prisma } from "./infrastructure/database/prisma";
+import { logger } from "./utils/logger";
+const PORT = env.PORT;
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+});
+const shutdown = (signal: string) => {
+  console.log(`\n${signal} received. Closing resources...`);
+  server.close(async () => {
+    await prisma.$disconnect();
+    console.log("HTTP server and Database connection closed.");
+    process.exit(0);
+  });
+};
+process.on("uncaughtException", (err) => {
+  logger.fatal(err, "Uncaught Exception terdeteksi. Mematikan server...");
+  process.exit(1);
+});
+
+process.on("unhandledRejection", async (reason) => {
+  logger.fatal({ reason }, "Unhandled Rejection");
+  await prisma.$disconnect();
+  server.close(() => process.exit(1));
+});
+process.on("SIGUSR2", () => shutdown("SIGUSR2"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+</file>
+
+<file path="src/tests/factories/bankRekeningPtFactory.ts">
+import type { Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import { faker } from "@faker-js/faker/locale/id_ID";
+
+const prisma = new PrismaClient();
+
+export const BankRekeningPtFactory = {
+  async create(
+    overrides: Partial<Prisma.BankRekeningPtUncheckedCreateInput> = {},
+  ) {
+    const data = {
+      perumahanId: 1,
+      namaBank: "BCA",
+      noRekening: faker.finance.accountNumber(),
+      atasNama: "PT Bumantara Sejahtera",
+      ...overrides,
+    } as Prisma.BankRekeningPtUncheckedCreateInput;
+
+    Object.keys(data).forEach((key) => {
+      if (data[key as keyof typeof data] === undefined) {
+        delete data[key as keyof typeof data];
+      }
+    });
+
+    return await prisma.bankRekeningPt.create({ data });
+  },
+};
+</file>
+
+<file path="src/tests/factories/customerFactory.ts">
+import type { Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import { faker } from "@faker-js/faker/locale/id_ID";
+
+const prisma = new PrismaClient();
+
+export const CustomerFactory = {
+  async create(overrides: Partial<Prisma.CustomerUncheckedCreateInput> = {}) {
+    const data = {
+      nikKtp: faker.string.numeric(16),
+      nama: faker.person.fullName(),
+      noHp: faker.phone.number(),
+      alamatKtp: faker.location.streetAddress(),
+      ...overrides,
+    } as Prisma.CustomerUncheckedCreateInput;
+
+    Object.keys(data).forEach((key) => {
+      if (data[key as keyof typeof data] === undefined) {
+        delete data[key as keyof typeof data];
+      }
+    });
+
+    return await prisma.customer.create({ data });
+  },
+};
+</file>
+
+<file path="src/tests/factories/index.ts">
+export * from "./userFactory.js";
+export * from "./customerFactory.js";
+export * from "./bankRekeningPtFactory.js";
+</file>
+
+<file path="src/tests/factories/userFactory.ts">
+import { PrismaClient, Role } from "@prisma/client";
+import { faker } from "@faker-js/faker/locale/id_ID";
+import bcrypt from "bcrypt";
+
+const prisma = new PrismaClient();
+
+export const UserFactory = {
+  async create(
+    overrides: Partial<Parameters<typeof prisma.user.create>[0]["data"]> = {},
+  ) {
+    const defaultPassword = await bcrypt.hash("password123", 10);
+    return await prisma.user.create({
+      data: {
+        username: faker.internet.displayName(),
+        email: faker.internet.email(),
+        password: defaultPassword,
+        role: Role.CUSTOMER,
+        ...overrides,
+      },
+    });
+  },
+};
+</file>
+
+<file path="src/tests/setup.ts">
+import { prisma } from "../infrastructure/database/prisma";
+
+export const prismaTest = prisma;
+
+export const clearDatabase = async () => {
+  const tableNames = await prismaTest.$queryRaw<
+    { TABLE_NAME: string }[]
+  >`SELECT TABLE_NAME from information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME != '_prisma_migrations';`;
+
+  for (const { TABLE_NAME } of tableNames) {
+    if (TABLE_NAME !== "_prisma_migrations") {
+      try {
+        await prismaTest.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 0;`);
+        await prismaTest.$executeRawUnsafe(`TRUNCATE TABLE \`${TABLE_NAME}\`;`);
+        await prismaTest.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 1;`);
+      } catch (error) {
+        console.log({ error });
+      }
+    }
+  }
+};
+
+export const disconnectDatabase = async () => {
+  await prismaTest.$disconnect();
+};
+</file>
+
+<file path="src/types/express.d.ts">
+import type { JwtUserPayload } from "../domain/dtos/UserDTO.js";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtUserPayload;
+    }
+  }
+}
+</file>
+
+<file path="src/types/request.ts">
+import type { Request } from "express";
+import type { z } from "zod";
+
+export type TypedRequest<
+  TBody extends z.ZodTypeAny = z.ZodTypeAny,
+  TQuery extends z.ZodTypeAny = z.ZodTypeAny,
+  TParams extends z.ZodTypeAny = z.ZodTypeAny,
+> = Request<z.infer<TParams>, unknown, z.infer<TBody>, z.infer<TQuery>>;
+</file>
+
+<file path="src/types/response.ts">
+export interface CursorPaginationMeta {
+  nextCursor: string | number | null;
+  hasNextPage: boolean;
+}
+
+export interface CursorPaginatedData<T> {
+  items: T[];
+  meta: CursorPaginationMeta;
+}
+
+export interface ApiResponse<T = null> {
+  success: boolean;
+  message: string;
+  data: T | null;
+  error?: unknown;
+}
+</file>
+
+<file path="src/utils/hashing.ts">
+import bcrypt from "bcrypt";
+
+const SALT_ROUNDS = 10;
+
+export const hashPassword = async (password: string): Promise<string> => {
+  return bcrypt.hash(password, SALT_ROUNDS);
+};
+
+export const comparePassword = async (
+  plain: string,
+  hashed: string,
+): Promise<boolean> => {
+  return bcrypt.compare(plain, hashed);
+};
+</file>
+
+<file path="src/utils/logger.ts">
+import pino from "pino";
+import { env } from "../config/env";
+
+export const logger = pino({
+  level:
+    env.NODE_ENV === "test"
+      ? "silent"
+      : env.NODE_ENV === "production"
+        ? "info"
+        : "debug",
+  redact: ["req.headers.authorization", "req.headers.cookie"],
+
+  serializers: {
+    req: () => undefined,
+    res: () => undefined,
+  },
+
+  ...(env.NODE_ENV !== "production" &&
+    env.NODE_ENV !== "test" && {
+      transport: {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          ignore: "req,res,pid,hostname,responseTime",
+          translateTime: "SYS:standard",
+        },
+      },
+    }),
+});
+</file>
+
+<file path="src/utils/response.ts">
+// src/utils/response.ts
+import type { Response } from "express";
+import type { ApiResponse } from "../types/response";
+
+export const sendResponse = <T>(
+  res: Response<ApiResponse<T>>,
+  statusCode: number,
+  message: string,
+  data: T | null = null,
+  error?: unknown,
+): void => {
+  res.status(statusCode).json({
+    success: statusCode >= 200 && statusCode < 300,
+    message,
+    data,
+    ...(error ? { error } : {}),
+  });
+};
+</file>
+
+<file path="src/validations/authSchema.ts">
+import { z } from "zod";
+import { Role } from "@prisma/client";
+
+export const registerSchema = {
+  body: z.object({
+    username: z.string().min(3, "Username minimal 3 karakter"),
+    email: z.string().email("Format email tidak valid"),
+    password: z.string().min(6, "Password minimal 6 karakter"),
+    role: z.nativeEnum(Role).default(Role.CUSTOMER),
+  }),
+};
+
+export const loginSchema = {
+  body: z.object({
+    email: z.string().email("Format email tidak valid"),
+    password: z.string().min(1, "Password wajib diisi"),
+  }),
+};
+</file>
+
+<file path="src/validations/bankRekeningPtSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createBankRekeningPtSchema = {
+  body: z.object({
+    perumahanId: z
+      .number({ error: "Perumahan ID wajib diisi" })
+      .int()
+      .positive(),
+    namaBank: z.string().min(2, "Nama bank minimal 2 karakter"),
+    noRekening: z.string().min(5, "Nomor rekening wajib diisi"),
+    atasNama: z.string().min(3, "Atas nama wajib diisi"),
+  }),
+};
+
+export const updateBankRekeningPtSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    perumahanId: emptyAsUndefined(
+      z.coerce.number().int().positive().optional(),
+    ),
+    namaBank: emptyAsUndefined(z.string().min(2).optional()),
+    noRekening: emptyAsUndefined(z.string().min(5).optional()),
+    atasNama: emptyAsUndefined(z.string().min(3).optional()),
+  }),
+};
+
+export const getBankRekeningPtPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+</file>
+
+<file path="src/validations/customerSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createCustomerSchema = {
+  body: z.object({
+    nikKtp: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nama: z.string().min(3, "Nama minimal 3 karakter"),
+    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    pekerjaan: emptyAsUndefined(z.string().optional()),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    bank: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+    alamatKtp: z.string().min(5, "Alamat KTP wajib diisi"),
+    alamatTinggal: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const updateCustomerSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    userId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
+    nikKtp: emptyAsUndefined(
+      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
+    ),
+    nama: emptyAsUndefined(z.string().min(3).optional()),
+    noHp: emptyAsUndefined(z.string().min(9).optional()),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    pekerjaan: emptyAsUndefined(z.string().optional()),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    bank: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+    alamatKtp: emptyAsUndefined(z.string().min(5).optional()),
+    alamatTinggal: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const getCustomersPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+
+export const generateAccountSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Customer harus berupa angka"),
+  }),
+  body: z.object({
+    password: z
+      .string()
+      .min(6, "Password minimal 6 karakter untuk akun Customer"),
+  }),
+};
+</file>
+
+<file path="src/validations/emptySchema.ts">
+import { z } from "zod";
+
+export const emptyAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((val) => {
+    if (val === "" || val === "null" || val === "undefined" || val === null) {
+      return undefined;
+    }
+    return val;
+  }, schema);
+</file>
+
+<file path="src/validations/ocrSchema.ts">
+import { z } from "zod";
+
+export const ocrExtractSchema = {
+  body: z.object({}),
+};
+</file>
+
+<file path="src/validations/paginationSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+
+const baseFilterSchema = z.object({
+  search: emptyAsUndefined(z.string().optional()),
+  startDate: emptyAsUndefined(z.string().datetime().optional()),
+  endDate: emptyAsUndefined(z.string().datetime().optional()),
+  orderBy: emptyAsUndefined(
+    z
+      .string()
+      .regex(
+        /^[a-zA-Z0-9_]+:(asc|desc)$/,
+        "Format harus field:asc atau field:desc",
+      )
+      .optional(),
+  ),
+});
+
+export const cursorPaginationQuerySchema = baseFilterSchema.extend({
+  limit: z.coerce.number().min(1).max(100).default(20),
+  cursor: emptyAsUndefined(z.string().optional()),
+});
+
+export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
+</file>
+
+<file path="src/validations/userSchema.ts">
+// src/validations/userSchema.ts
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { Role } from "@prisma/client";
+
+export const getUsersPaginatedSchema = {
+  query: cursorPaginationQuerySchema.extend({
+    role: emptyAsUndefined(z.nativeEnum(Role).optional()),
+    orderBy: emptyAsUndefined(
+      z
+        .string()
+        .regex(
+          /^(username|createdAt):(asc|desc)$/,
+          "Format orderBy salah. Coba username:asc",
+        )
+        .transform((val) => {
+          const parts = val.split(":");
+          return { field: parts[0], direction: parts[1] as "asc" | "desc" };
+        })
+        .optional(),
+    ),
+  }),
+};
+
+export const userIdParamSchema = z.object({
+  id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+});
+
+export const updateUserSchema = {
+  params: userIdParamSchema,
+  body: z.object({
+    username: emptyAsUndefined(
+      z.string().min(3, "Username minimal 3 karakter").optional(),
+    ),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    password: emptyAsUndefined(
+      z.string().min(6, "Password minimal 6 karakter").optional(),
+    ),
+    role: emptyAsUndefined(z.nativeEnum(Role).optional()),
+  }),
+};
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "module": "ESNext",
+    "target": "esnext",
+    "moduleResolution": "bundler",
+    "types": [],
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strictNullChecks": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "prisma/seed.ts", "prisma/seeds/**/*"]
+}
+</file>
+
+<file path="prisma/schema.prisma">
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+enum Role {
+  ADMIN      @map("admin")
+  MARKETING  @map("marketing")
+  CUSTOMER   @map("customer")
+}
+enum UnitStatus {
+  AVAILABLE  @map("Available")
+  BOOKING    @map("Booking")
+  TERJUAL    @map("Terjual")
+}
+enum PaymentStatus {
+  BELUM_BAYAR @map("Belum Bayar")
+  LUNAS       @map("Lunas")
+}
+enum PaymentMethod {
+  CASH_KERAS    @map("CASH KERAS")
+  CASH_BERTAHAP @map("CASH BERTAHAP")
+  KPR           @map("KPR")
+}
+enum ProgressStatus {
+  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
+  DISETUJUI           @map("Disetujui")
+  REVISI              @map("Revisi")
+}
+enum PenjualanStatus {
+  BOOKED    @map("Booked")
+  PROSES    @map("Proses")
+  LUNAS     @map("Lunas")
+  BATAL     @map("Batal")
+}
+enum AgentStatus {
+  AKTIF      @map("Aktif")
+  NONAKTIF   @map("Nonaktif")
+}
+enum SP3R {
+  BANK  @map("BANK")
+  CASH  @map("Cash")
+}
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  customers Customer[]
+  @@map("users")
+}
+model Customer {
+  id                 Int         @id @default(autoincrement())
+  userId             Int?        @map("user_id")
+  nikKtp             String      @unique @map("nik_ktp") @db.VarChar(20)
+  nama               String      @db.VarChar(150)
+  noHp               String      @map("no_hp") @db.VarChar(20)
+  alamatKtp          String      @map("alamat_ktp") @db.Text
+  alamatTinggal      String?     @map("alamat_tinggal") @db.Text
+  email              String?     @db.VarChar(100)
+  pekerjaan          String?     @db.VarChar(100)
+  perusahaan         String?     @db.VarChar(150)
+  bank               String?     @db.VarChar(100)
+  alamatKoresponden  String?     @map("alamat_korespondensi") @db.Text
+  fileKtp            String?     @map("file_ktp") @db.VarChar(255)
+  fileKk             String?     @map("file_kk") @db.VarChar(255)
+  fileNpwp           String?     @map("file_npwp") @db.VarChar(255)
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  user               User?       @relation(fields: [userId], references: [id])
+  penjualan          Penjualan[]
+  tagihan            Tagihan[]
+  @@map("customers")
+}
+model Perumahan {
+  id             Int              @id @default(autoincrement())
+  nama           String           @unique @db.VarChar(150)
+  logo           String           @unique @db.VarChar(150)
+  alamat           String           @unique @db.VarChar(150)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  kavlings       Kavling[]
+  bankRekeningPt BankRekeningPt[]
+  @@map("perumahan")
+}
+model BankRekeningPt {
+  id          Int         @id @default(autoincrement())
+  perumahanId Int         @map("perumahan_id")
+  namaBank    String      @map("nama_bank") @db.VarChar(100)
+  noRekening  String      @map("no_rekening") @db.VarChar(50)
+  atasNama    String      @map("atas_nama") @db.VarChar(150)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  penjualan   Penjualan[]
+  @@map("bank_rekening_pt")
+}
+model Notaris {
+  id                 Int                  @id @default(autoincrement())
+  nama               String               @db.VarChar(150)
+  biayaAjb           Decimal              @map("biaya_ajb") @db.Decimal(15, 2)
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  pics               PicNotaris[]
+  detailKavlingPajak DetailKavlingPajak[]
+  @@map("notaris")
+}
+model PicNotaris {
+  id        Int      @id @default(autoincrement())
+  notarisId Int      @map("notaris_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
+  @@map("pic_notaris")
+}
+model Agent {
+  id         Int         @id @default(autoincrement())
+  nik        String      @unique @db.VarChar(20)
+  kodeSales  String?     @unique @map("kode_sales") @db.VarChar(20)
+  nama       String      @db.VarChar(150)
+  alamat     String?     @db.Text
+  noHp       String      @map("no_hp") @db.VarChar(20)
+  email      String?     @db.VarChar(100)
+  status     AgentStatus @default(AKTIF)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  pics       PicAgent[]
+  fees       FeeAgent[]
+  penjualan  Penjualan[]
+  @@map("agents")
+}
+model PicAgent {
+  id        Int      @id @default(autoincrement())
+  agentId   Int      @map("agent_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@map("pic_agents")
+}
+model Kavling {
+  id                  Int              @id @default(autoincrement())
+  perumahanId         Int              @map("perumahan_id")
+  blok                String           @db.VarChar(10)
+  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
+  tipe                String           @db.VarChar(50)
+  hargaJual           Decimal          @map("harga_jual") @db.Decimal(15, 2)
+  status              UnitStatus       @default(AVAILABLE)
+  filePbg             String?          @map("file_pbg") @db.VarChar(255)
+  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
+  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  penjualan           Penjualan[]
+  progressProyek      ProgressProyek[]
+  @@map("kavling")
+}
+model Penjualan {
+  id                Int                 @id @default(autoincrement())
+  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
+  tanggal           DateTime            @db.Date
+  customerId        Int                 @map("customer_id")
+  kavlingId         Int                 @map("kavling_id")
+  agentId           Int?                @map("agent_id")
+  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
+  caraPembayaran    PaymentMethod       @map("cara_pembayaran")
+  hargaJual         Decimal             @map("harga_jual") @db.Decimal(15, 2)
+  dp                Decimal?            @db.Decimal(15, 2)
+  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
+  paketPromosi      String?             @map("paket_promosi") @db.VarChar(150)
+  bank              String?             @db.VarChar(100)
+  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
+  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
+  status            PenjualanStatus     @default(BOOKED)
+  alasanBatal       String?             @map("alasan_batal") @db.Text
+  fileSpr           String?             @map("file_spr") @db.VarChar(255)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  customer          Customer            @relation(fields: [customerId], references: [id])
+  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
+  agent             Agent?              @relation(fields: [agentId], references: [id])
+  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
+  tagihan           Tagihan[]
+  detailKavlingPajak DetailKavlingPajak?
+  @@map("penjualan")
+}
+model DetailKavlingPajak {
+  id                      Int        @id @default(autoincrement())
+  penjualanId             Int        @unique @map("penjualan_id")
+  notarisId               Int?       @map("notaris_id")
+  lantai                  String?    @db.VarChar(10)
+  luasBangunan            String?    @map("luas_bangunan") @db.VarChar(20)
+  lokasiStrategis         String?    @map("lokasi_strategis") @db.VarChar(50)
+  tanggalAkadPpjb         DateTime?  @map("tanggal_akad_ppjb") @db.Date
+  akadPpjb                String?    @map("akad_ppjb") @db.VarChar(100)
+  tanggalAkadAjbPpat      DateTime?  @map("tanggal_akad_ajb_ppat") @db.Date
+  tanggalPembayaranPph    DateTime?  @map("tanggal_pembayaran_pph") @db.Date
+  tanggalPembayaranBphtb  DateTime?  @map("tanggal_pembayaran_bphtb") @db.Date
+  pembiayaan              String?    @db.VarChar(100)
+  sp3r                    SP3R?    @default(BANK) 
+  lebihTanah              Decimal?   @map("lebih_tanah") @db.Decimal(15, 2)
+  biayaStrategis          Decimal?   @map("biaya_strategis") @db.Decimal(15, 2)
+  nrBiayaKprAsuransi      Decimal?   @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
+  nrDiskonAngsuran        Decimal?   @map("nr_diskon_angsuran") @db.Decimal(15, 2)
+  nrDiskonCash            Decimal?   @map("nr_diskon_cash") @db.Decimal(15, 2)
+  nrBiayaBbn              Decimal?   @map("nr_biaya_bbn") @db.Decimal(15, 2)
+  nrBiayaNotarisAjb       Decimal?   @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
+  nrBiayaAppraisal        Decimal?   @map("nr_biaya_appraisal") @db.Decimal(15, 2)
+  nrBiayaBphtb            Decimal?   @map("nr_biaya_bphtb") @db.Decimal(15, 2)
+  nrLainLain              Decimal?   @map("nr_lain_lain") @db.Decimal(15, 2)
+  nrTotalSubsidi          Decimal?   @map("nr_total_subsidi") @db.Decimal(15, 2) 
+  nrNilaiPenyerahan       Decimal?   @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
+  nrPpn                   Decimal?   @map("nr_ppn") @db.Decimal(15, 2)
+  nrBphtb                 Decimal?   @map("nr_bphtb") @db.Decimal(15, 2)
+  nrPph                   Decimal?   @map("nr_pph") @db.Decimal(15, 2)
+  pjBiayaKpr              Decimal?   @map("pj_biaya_kpr") @db.Decimal(15, 2)
+  pjBiayaAsuransi         Decimal?   @map("pj_biaya_asuransi") @db.Decimal(15, 2)
+  pjDiskonAngsuran        Decimal?   @map("pj_diskon_angsuran") @db.Decimal(15, 2)
+  pjBiayaBbn              Decimal?   @map("pj_biaya_bbn") @db.Decimal(15, 2)
+  pjBiayaAjb              Decimal?   @map("pj_biaya_ajb") @db.Decimal(15, 2)
+  pjBiayaAppraisal        Decimal?   @map("pj_biaya_appraisal") @db.Decimal(15, 2)
+  pjBphtb                 Decimal?   @map("pj_bphtb") @db.Decimal(15, 2)
+  pjLainLain              Decimal?   @map("pj_lain_lain") @db.Decimal(15, 2)
+  pjTotalSubsidi          Decimal?   @map("pj_total_subsidi") @db.Decimal(15, 2) 
+  pjNilaiPenyerahan       Decimal?   @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
+  pjPpn                   Decimal?   @map("pj_ppn") @db.Decimal(15, 2)
+  pjBphtbPajak            Decimal?   @map("pj_bphtb_pajak") @db.Decimal(15, 2)
+  pjPph                   Decimal?   @map("pj_pph") @db.Decimal(15, 2)
+  pjTotalBphtbPph         Decimal?   @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbNjopTanahPerMeter    Decimal?   @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
+  ajbNjopTanah            Decimal?   @map("ajb_njop_tanah") @db.Decimal(15, 2)
+  ajbNjopBangunanPerMeter Decimal?   @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
+  ajbNjopBangunan         Decimal?   @map("ajb_njop_bangunan") @db.Decimal(15, 2)
+  ajbNjopTotal            Decimal?   @map("ajb_njop_total") @db.Decimal(15, 2) 
+  ajbPpn                  Decimal?   @map("ajb_ppn") @db.Decimal(15, 2)
+  ajbBphtb                Decimal?   @map("ajb_bphtb") @db.Decimal(15, 2)
+  ajbPph                  Decimal?   @map("ajb_pph") @db.Decimal(15, 2)
+  ajbTotalBphtbPph        Decimal?   @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbSelisihPajakPbb      Decimal?   @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
+  ajbUping                Decimal?   @map("ajb_uping") @db.Decimal(15, 2)
+  penjualan               Penjualan  @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  notaris                 Notaris?   @relation(fields: [notarisId], references: [id], onDelete: SetNull)
+  @@map("detail_kavling_pajak")
+}
+model Tagihan {
+  id          Int           @id @default(autoincrement())
+  noTagihan   String        @unique @map("no_tagihan") @db.VarChar(50)
+  customerId  Int           @map("customer_id")
+  penjualanId Int           @map("penjualan_id")
+  keterangan  String        @db.VarChar(255)
+  nominal     Decimal       @db.Decimal(15, 2)
+  jatuhTempo  DateTime      @map("jatuh_tempo") @db.Date
+  status      PaymentStatus @default(BELUM_BAYAR)
+  fileBukti   String?       @map("file_bukti") @db.VarChar(255)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  penjualan   Penjualan     @relation(fields: [penjualanId], references: [id])
+  @@map("tagihan")
+}
+model FeeAgent {
+  id               Int       @id @default(autoincrement())
+  agentId          Int       @map("agent_id")
+  bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
+  bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
+  bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
+  closingNominal   Decimal?  @map("closing_nominal") @db.Decimal(15, 2)
+  closingTanggal   DateTime? @map("closing_tanggal") @db.Date
+  closingBukti     String?   @map("closing_bukti") @db.VarChar(255)
+  marketingNominal Decimal?  @map("marketing_nominal") @db.Decimal(15, 2)
+  marketingTanggal DateTime? @map("marketing_tanggal") @db.Date
+  marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  agent            Agent     @relation(fields: [agentId], references: [id])
+  @@map("fee_agent")
+}
+model Spk {
+  id               Int      @id @default(autoincrement())
+  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
+  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
+  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
+  lokasi           String   @db.Text
+  jangkaWaktu      Int      @map("jangka_waktu")
+  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
+  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
+  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
+  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
+  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
+  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
+  namaBank         String   @map("nama_bank") @db.VarChar(100)
+  noRekening       String   @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
+  fileSpk          String?  @map("file_spk") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  @@map("spk")
+}
+model ProgressProyek {
+  id               Int            @id @default(autoincrement())
+  kavlingId        Int            @map("kavling_id")
+  pelaksana        String         @db.VarChar(150)
+  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
+  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
+  persentase       Int            @default(0)
+  keterangan       String         @db.Text
+  kendala          String?        @db.Text
+  fotoLapangan     Json?          @map("foto_lapangan")
+  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
+  @@map("progress_proyek")
 }
 </file>
 

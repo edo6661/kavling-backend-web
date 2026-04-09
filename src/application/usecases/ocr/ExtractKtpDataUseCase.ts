@@ -9,7 +9,6 @@ export class ExtractKtpDataUseCase {
     nik: string | null;
     nama: string | null;
     alamat: string | null;
-    statusPerkawinan: string | null;
   }> {
     if (!fotoKtpBuffer) {
       throw new AppError(

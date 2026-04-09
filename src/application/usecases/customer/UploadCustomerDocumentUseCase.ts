@@ -35,7 +35,7 @@ export class UploadCustomerDocumentUseCase {
 
     const imageUrl = await this.cloudinaryService.uploadImage(
       fileBuffer,
-      `customer_${documentType}`,
+      `bumantara/customers/${documentType}`,
     );
 
     const updateData = {

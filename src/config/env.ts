@@ -13,10 +13,6 @@ const envSchema = z.object({
     .default("http://localhost:3000")
     .transform((val) => val.split(",").map((origin) => origin.trim())),
   JWT_SECRET: z.string().min(10, "JWT Secret minimal 10 karakter"),
-  AWS_ACCESS_KEY_ID: z.string().min(1),
-  AWS_SECRET_ACCESS_KEY: z.string().min(1),
-  AWS_REGION: z.string().default("ap-southeast-1"),
-  AWS_REKOGNITION_COLLECTION_ID: z.string().default("absensi-app"),
   CLOUDINARY_CLOUD_NAME: z.string().min(1),
   CLOUDINARY_API_KEY: z.string().min(1),
   CLOUDINARY_API_SECRET: z.string().min(1),

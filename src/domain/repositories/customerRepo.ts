@@ -27,7 +27,8 @@ export class CustomerRepository implements ICustomerRepository {
         email: data.email ?? null,
         pekerjaan: data.pekerjaan ?? null,
         perusahaan: data.perusahaan ?? null,
-        alamatKorespondensi: data.alamatKorespondensi ?? null,
+        bank: data.bank ?? null,
+        alamatKoresponden: data.alamatKoresponden ?? null,
         alamatKtp: data.alamatKtp,
         alamatTinggal: data.alamatTinggal ?? null,
       },
@@ -53,8 +54,7 @@ export class CustomerRepository implements ICustomerRepository {
     }
 
     const updateData: Prisma.CustomerUncheckedUpdateInput = {};
-    if (data.userId !== undefined)
-      updateData.userId = data.userId ? Number(data.userId) : null;
+    if (data.userId !== undefined) updateData.userId = data.userId;
     if (data.nikKtp !== undefined) updateData.nikKtp = data.nikKtp;
     if (data.nama !== undefined) updateData.nama = data.nama;
     if (data.noHp !== undefined) updateData.noHp = data.noHp;
@@ -63,8 +63,9 @@ export class CustomerRepository implements ICustomerRepository {
       updateData.pekerjaan = data.pekerjaan ?? null;
     if (data.perusahaan !== undefined)
       updateData.perusahaan = data.perusahaan ?? null;
-    if (data.alamatKorespondensi !== undefined)
-      updateData.alamatKorespondensi = data.alamatKorespondensi ?? null;
+    if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+    if (data.alamatKoresponden !== undefined)
+      updateData.alamatKoresponden = data.alamatKoresponden ?? null;
     if (data.alamatKtp !== undefined) updateData.alamatKtp = data.alamatKtp;
     if (data.alamatTinggal !== undefined)
       updateData.alamatTinggal = data.alamatTinggal ?? null;

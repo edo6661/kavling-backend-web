@@ -6,7 +6,8 @@ export interface CustomerEntity {
   email: string | null;
   pekerjaan: string | null;
   perusahaan: string | null;
-  alamatKorespondensi: string | null;
+  bank: string | null;
+  alamatKoresponden: string | null;
   alamatKtp: string;
   alamatTinggal: string | null;
   fileKtp: string | null;

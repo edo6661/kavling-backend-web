@@ -1,12 +1,14 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 
 export interface CreateBankRekeningPtDTO {
+  perumahanId: number;
   namaBank: string;
   noRekening: string;
   atasNama: string;
 }
 
 export interface UpdateBankRekeningPtDTO {
+  perumahanId?: number | undefined;
   namaBank?: string | undefined;
   noRekening?: string | undefined;
   atasNama?: string | undefined;
@@ -14,6 +16,7 @@ export interface UpdateBankRekeningPtDTO {
 
 export interface BankRekeningPtResponseDTO {
   id: number;
+  perumahanId: number;
   namaBank: string;
   noRekening: string;
   atasNama: string;

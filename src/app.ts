@@ -48,7 +48,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(compression());
-// Rate Limiting
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
@@ -60,17 +60,15 @@ if (env.NODE_ENV !== "test") {
   app.use("/api", limiter);
 }
 
-// Routes
 app.get("/", (_req, res) => {
   res.status(200).json({
-    message: "Absensi API Service is Running 🚀",
+    message: "Kavling API Service is Running 🚀",
     version: "1.0.0",
     server_time: new Date().toISOString(),
   });
 });
 app.use("/api/v1", routes);
 
-// Error Handling Middlewares
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 

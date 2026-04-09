@@ -7,6 +7,7 @@ export class BankRekeningPtMapper {
   ): BankRekeningPtEntity {
     return {
       id: prismaBankRekeningPt.id,
+      perumahanId: prismaBankRekeningPt.perumahanId,
       namaBank: prismaBankRekeningPt.namaBank,
       noRekening: prismaBankRekeningPt.noRekening,
       atasNama: prismaBankRekeningPt.atasNama,

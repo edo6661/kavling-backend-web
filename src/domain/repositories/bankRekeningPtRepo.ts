@@ -23,6 +23,7 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
 
     const result = await this.db.bankRekeningPt.create({
       data: {
+        perumahanId: data.perumahanId,
         namaBank: data.namaBank,
         noRekening: data.noRekening,
         atasNama: data.atasNama,
@@ -51,7 +52,9 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
       }
     }
 
-    const updateData: Prisma.BankRekeningPtUpdateInput = {};
+    const updateData: Prisma.BankRekeningPtUncheckedUpdateInput = {};
+    if (data.perumahanId !== undefined)
+      updateData.perumahanId = data.perumahanId;
     if (data.namaBank !== undefined) updateData.namaBank = data.namaBank;
     if (data.noRekening !== undefined) updateData.noRekening = data.noRekening;
     if (data.atasNama !== undefined) updateData.atasNama = data.atasNama;

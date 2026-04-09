@@ -45,7 +45,7 @@ export class GenerateCustomerAccountUseCase {
     });
 
     await this.customerRepo.update(customerId, {
-      userId: String(newUser.id),
+      userId: newUser.id,
     });
 
     return {

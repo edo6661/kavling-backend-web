@@ -11,7 +11,7 @@ import { seedPenjualan } from "./seeds/penjualanSeed";
 import { seedDetailKavlingPajak } from "./seeds/detailKavlingPajakSeed";
 import { seedTagihan } from "./seeds/tagihanSeed";
 import { seedFeeAgent } from "./seeds/feeAgentSeed";
-import { seedProgressProyek } from "./seeds/progressProyekSeed";
+import { seedProgressProyek } from "./seeds/progressPoyekSeed.ts";
 
 const prisma = new PrismaClient();
 

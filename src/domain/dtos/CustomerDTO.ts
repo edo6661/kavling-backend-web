@@ -7,7 +7,8 @@ export interface CreateCustomerDTO {
   email?: string | undefined;
   pekerjaan?: string | undefined;
   perusahaan?: string | undefined;
-  alamatKorespondensi?: string | undefined;
+  bank?: string | undefined;
+  alamatKoresponden?: string | undefined;
   alamatKtp: string;
   alamatTinggal?: string | undefined;
 }
@@ -15,12 +16,13 @@ export interface CreateCustomerDTO {
 export interface UpdateCustomerDTO {
   nikKtp?: string | undefined;
   nama?: string | undefined;
-  userId?: string | undefined;
+  userId?: number | undefined;
   noHp?: string | undefined;
   email?: string | undefined;
   pekerjaan?: string | undefined;
   perusahaan?: string | undefined;
-  alamatKorespondensi?: string | undefined;
+  bank?: string | undefined;
+  alamatKoresponden?: string | undefined;
   alamatKtp?: string | undefined;
   alamatTinggal?: string | undefined;
   fileKtp?: string | undefined;
@@ -36,7 +38,8 @@ export interface CustomerResponseDTO {
   email: string | null;
   pekerjaan: string | null;
   perusahaan: string | null;
-  alamatKorespondensi: string | null;
+  bank: string | null;
+  alamatKoresponden: string | null;
   alamatKtp: string;
   alamatTinggal: string | null;
   fileKtp: string | null;

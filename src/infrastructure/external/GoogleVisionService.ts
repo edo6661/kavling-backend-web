@@ -22,7 +22,6 @@ export class GoogleVisionService {
     nik: string | null;
     nama: string | null;
     alamat: string | null;
-    statusPerkawinan: string | null;
   }> {
     try {
       const ktpSchema: Schema = {
@@ -41,13 +40,8 @@ export class GoogleVisionService {
             description:
               "Gabungan Alamat, RT/RW, Kel/Desa, dan Kecamatan menjadi satu string lengkap dan rapi.",
           },
-          statusPerkawinan: {
-            type: SchemaType.STRING,
-            description:
-              "Status perkawinan, HANYA boleh bernilai: 'BELUM KAWIN', 'KAWIN', 'CERAI HIDUP', atau 'CERAI MATI'.",
-          },
         },
-        required: ["nik", "nama", "alamat", "statusPerkawinan"],
+        required: ["nik", "nama", "alamat"],
       };
 
       const model = this.genAI.getGenerativeModel({
@@ -67,15 +61,15 @@ export class GoogleVisionService {
       };
 
       const prompt = `
-        Anda adalah sistem ekstraksi OCR khusus KTP Indonesia yang berpresisi tinggi.
-        Tugas Anda mengekstrak informasi dari gambar KTP terlampir ke format JSON.
+    Anda adalah sistem ekstraksi OCR khusus KTP Indonesia yang berpresisi tinggi.
+    Tugas Anda mengekstrak informasi dari gambar KTP terlampir ke format JSON.
 
-        ATURAN SANGAT KETAT (DILARANG MELANGGAR):
-        1. ANTI-HALUSINASI: BACA HANYA teks yang benar-benar tertulis di gambar. DILARANG KERAS mengarang, memanipulasi, atau menebak nama/data.
-        2. JIKA BURAM: Jika bagian NIK atau Nama buram, tertutup jari, terkena pantulan cahaya, atau tidak terbaca dengan yakin 100%, Anda WAJIB mereturn null. Jangan pernah menebak.
-        3. NIK harus tepat 16 digit. Jika ada karakter mirip angka (O jadi 0, l/I jadi 1), perbaiki.
-        4. NAMA: Ambil nama persis seperti yang tertulis.
-      `;
+    ATURAN SANGAT KETAT (DILARANG MELANGGAR):
+    1. ANTI-HALUSINASI: BACA HANYA teks yang benar-benar tertulis di gambar. DILARANG KERAS mengarang, memanipulasi, atau menebak nama/data.
+    2. JIKA BURAM: Jika bagian NIK atau Nama buram, tertutup jari, terkena pantulan cahaya, atau tidak terbaca dengan yakin 100%, Anda WAJIB mereturn null. Jangan pernah menebak.
+    3. NIK harus tepat 16 digit. Jika ada karakter mirip angka (O jadi 0, l/I jadi 1), perbaiki.
+    4. NAMA: Ambil nama persis seperti yang tertulis.
+  `;
 
       writeFileSync("debug_ktp.jpg", imageBuffer);
       console.log(
@@ -89,7 +83,6 @@ export class GoogleVisionService {
         nik?: string | null;
         nama?: string | null;
         alamat?: string | null;
-        statusPerkawinan?: string | null;
       }
 
       const parsedData = JSON.parse(responseText) as ExpectedKtpJson;
@@ -98,7 +91,6 @@ export class GoogleVisionService {
         nik: parsedData.nik ?? null,
         nama: parsedData.nama ?? null,
         alamat: parsedData.alamat ?? null,
-        statusPerkawinan: parsedData.statusPerkawinan ?? null,
       };
     } catch (error) {
       console.error("Gemini Multimodal Extraction Error:", error);

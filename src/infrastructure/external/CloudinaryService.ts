@@ -13,7 +13,7 @@ export class CloudinaryService {
     });
   }
 
-  async uploadImage(buffer: Buffer, folder = "absensi"): Promise<string> {
+  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
     const compressedBuffer = await sharp(buffer)
       .resize({ width: 800, withoutEnlargement: true })
       .jpeg({ quality: 80 })
