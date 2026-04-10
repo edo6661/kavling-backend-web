@@ -81,6 +81,13 @@ import {
 } from "../../application/usecases/kavling/KavlingUseCases.js";
 import { KavlingController } from "../../presentation/controllers/kavlingController.js";
 
+import { DetailKavlingPajakRepository } from "../../domain/repositories/detailKavlingPajakRepo.js";
+import {
+  GetCustomerKavlingsPaginatedUseCase,
+  UpdateCustomerKavlingUseCase,
+} from "../../application/usecases/customerKavling/CustomerKavlingUseCases.js";
+import { CustomerKavlingController } from "../../presentation/controllers/customerKavlingController.js";
+
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -176,6 +183,21 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteKavlingUseCase,
   );
 
+  const detailKavlingPajakRepo = new DetailKavlingPajakRepository(dbClient);
+
+  const getCustomerKavlingsPaginatedUseCase =
+    new GetCustomerKavlingsPaginatedUseCase(dbClient);
+  const updateCustomerKavlingUseCase = new UpdateCustomerKavlingUseCase(
+    dbClient,
+    kavlingRepo,
+    detailKavlingPajakRepo,
+  );
+
+  const customerKavlingController = new CustomerKavlingController(
+    getCustomerKavlingsPaginatedUseCase,
+    updateCustomerKavlingUseCase,
+  );
+
   const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
 
   const notarisRepo = new NotarisRepository(dbClient);
@@ -245,6 +267,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     agentController,
     notarisController,
     kavlingController,
+    customerKavlingController,
   };
 };
 

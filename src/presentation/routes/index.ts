@@ -11,6 +11,7 @@ import { createDashboardRoutes } from "./dashboardRoutes.js";
 import { createAgentRoutes } from "./agentRoutes.js";
 import { createNotarisRoutes } from "./notarisRoutes.js";
 import { createKavlingRoutes } from "./kavlingRoutes.js";
+import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -30,6 +31,10 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use("/agents", createAgentRoutes(deps.agentController));
   router.use("/notaris", createNotarisRoutes(deps.notarisController));
   router.use("/kavling", createKavlingRoutes(deps.kavlingController));
+  router.use(
+    "/customer-kavling",
+    createCustomerKavlingRoutes(deps.customerKavlingController),
+  );
   return router;
 };
 
