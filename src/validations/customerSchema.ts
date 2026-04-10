@@ -12,7 +12,7 @@ export const createCustomerSchema = {
     perusahaan: emptyAsUndefined(z.string().optional()),
     bank: emptyAsUndefined(z.string().optional()),
     alamatKoresponden: emptyAsUndefined(z.string().optional()),
-    alamatKtp: z.string().min(5, "Alamat KTP wajib diisi"),
+    alamatKtp: z.string().min(5, "Alamat KTP minimal 5 karakter"),
     alamatTinggal: emptyAsUndefined(z.string().optional()),
   }),
 };

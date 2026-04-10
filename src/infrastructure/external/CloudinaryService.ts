@@ -13,6 +13,25 @@ export class CloudinaryService {
     });
   }
 
+  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "auto",
+        },
+        (error, result) => {
+          if (error)
+            return reject(
+              new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Gagal upload"),
+            );
+          resolve(result!.secure_url);
+        },
+      );
+      uploadStream.end(buffer);
+    });
+  }
+
   async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
     const compressedBuffer = await sharp(buffer)
       .resize({ width: 800, withoutEnlargement: true })
