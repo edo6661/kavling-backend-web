@@ -9,6 +9,8 @@ import { container } from "../../infrastructure/di/container.js";
 import { createPerumahanRoutes } from "./perumahanRoutes.js";
 import { createDashboardRoutes } from "./dashboardRoutes.js";
 import { createAgentRoutes } from "./agentRoutes.js";
+import { createNotarisRoutes } from "./notarisRoutes.js";
+import { createKavlingRoutes } from "./kavlingRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -26,6 +28,8 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
   router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
   router.use("/agents", createAgentRoutes(deps.agentController));
+  router.use("/notaris", createNotarisRoutes(deps.notarisController));
+  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
   return router;
 };
 

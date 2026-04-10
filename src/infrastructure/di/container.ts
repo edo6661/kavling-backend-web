@@ -61,6 +61,26 @@ import { CloudinaryService } from "../external/CloudinaryService.js";
 import { AgentRepository } from "../../domain/repositories/agentRepo.js";
 import { AgentController } from "../../presentation/controllers/agentController.js";
 
+import { NotarisRepository } from "../../domain/repositories/notarisRepo.js";
+import {
+  CreateNotarisUseCase,
+  UpdateNotarisUseCase,
+  GetNotarisByIdUseCase,
+  GetNotarisPaginatedUseCase,
+  DeleteNotarisUseCase,
+} from "../../application/usecases/notaris/NotarisUseCases.js";
+import { NotarisController } from "../../presentation/controllers/notarisController.js";
+
+import { KavlingRepository } from "../../domain/repositories/kavlingRepo.js";
+import {
+  CreateKavlingUseCase,
+  UpdateKavlingUseCase,
+  GetKavlingByIdUseCase,
+  GetKavlingsPaginatedUseCase,
+  DeleteKavlingUseCase,
+} from "../../application/usecases/kavling/KavlingUseCases.js";
+import { KavlingController } from "../../presentation/controllers/kavlingController.js";
+
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -139,8 +159,42 @@ export const createContainer = (dbClient: PrismaClient) => {
     getPerumahanPaginatedUseCase,
     deletePerumahanUseCase,
   );
+  const kavlingRepo = new KavlingRepository(dbClient);
+  const createKavlingUseCase = new CreateKavlingUseCase(kavlingRepo);
+  const updateKavlingUseCase = new UpdateKavlingUseCase(kavlingRepo);
+  const getKavlingByIdUseCase = new GetKavlingByIdUseCase(kavlingRepo);
+  const getKavlingsPaginatedUseCase = new GetKavlingsPaginatedUseCase(
+    kavlingRepo,
+  );
+  const deleteKavlingUseCase = new DeleteKavlingUseCase(kavlingRepo);
+
+  const kavlingController = new KavlingController(
+    createKavlingUseCase,
+    updateKavlingUseCase,
+    getKavlingByIdUseCase,
+    getKavlingsPaginatedUseCase,
+    deleteKavlingUseCase,
+  );
 
   const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
+
+  const notarisRepo = new NotarisRepository(dbClient);
+  const createNotarisUseCase = new CreateNotarisUseCase(notarisRepo);
+  const updateNotarisUseCase = new UpdateNotarisUseCase(notarisRepo);
+  const getNotarisByIdUseCase = new GetNotarisByIdUseCase(notarisRepo);
+  const getNotarisPaginatedUseCase = new GetNotarisPaginatedUseCase(
+    notarisRepo,
+  );
+  const deleteNotarisUseCase = new DeleteNotarisUseCase(notarisRepo);
+
+  const notarisController = new NotarisController(
+    createNotarisUseCase,
+    updateNotarisUseCase,
+    getNotarisByIdUseCase,
+    getNotarisPaginatedUseCase,
+    deleteNotarisUseCase,
+  );
+
   const dashboardController = new DashboardController(
     getDashboardSummaryUseCase,
   );
@@ -189,6 +243,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     perumahanController,
     dashboardController,
     agentController,
+    notarisController,
+    kavlingController,
   };
 };
 
