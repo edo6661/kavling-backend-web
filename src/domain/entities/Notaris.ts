@@ -8,11 +8,18 @@ export interface PicNotarisEntity {
   updatedAt: Date;
 }
 
+export interface AjbDitanganiEntity {
+  id: string;
+  customer: string;
+  kavling: string;
+}
+
 export interface NotarisEntity {
   id: number;
   nama: string;
   biayaAjb: number;
   pics: PicNotarisEntity[];
+  ajbDitangani?: AjbDitanganiEntity[];
   createdAt: Date;
   updatedAt: Date;
 }

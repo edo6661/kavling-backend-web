@@ -7,6 +7,12 @@ export interface PicNotarisDTO {
   alamat?: string | undefined;
 }
 
+export interface AjbDitanganiDTO {
+  id: string;
+  customer: string;
+  kavling: string;
+}
+
 export interface CreateNotarisDTO {
   nama: string;
   biayaAjb: number;
@@ -24,6 +30,7 @@ export interface NotarisResponseDTO {
   nama: string;
   biayaAjb: number;
   pics: PicNotarisDTO[];
+  ajbDitangani: AjbDitanganiDTO[];
   createdAt: Date;
 }
 

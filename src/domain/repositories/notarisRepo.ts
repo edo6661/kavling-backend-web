@@ -12,6 +12,23 @@ import { NotFoundError } from "../errors/NotFoundError.js";
 import { NotarisMapper } from "../../infrastructure/mapper/NotarisMapper.js";
 import { ConflictError } from "../errors/ConflictError.js";
 
+// Reusable include object agar query seragam
+const notarisIncludeRelations = {
+  pics: true,
+  detailKavlingPajak: {
+    include: {
+      penjualan: {
+        include: {
+          customer: { select: { nama: true } },
+          kavling: {
+            include: { perumahan: { select: { nama: true } } },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.NotarisInclude;
+
 export class NotarisRepository implements INotarisRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -33,7 +50,7 @@ export class NotarisRepository implements INotarisRepository {
 
     const result = await this.db.notaris.create({
       data: createData,
-      include: { pics: true },
+      include: notarisIncludeRelations,
     });
 
     return NotarisMapper.toDomain(result);
@@ -42,7 +59,7 @@ export class NotarisRepository implements INotarisRepository {
   async findById(id: number): Promise<NotarisEntity | null> {
     const result = await this.db.notaris.findUnique({
       where: { id },
-      include: { pics: true },
+      include: notarisIncludeRelations,
     });
     if (!result) return null;
     return NotarisMapper.toDomain(result);
@@ -71,7 +88,7 @@ export class NotarisRepository implements INotarisRepository {
     const result = await this.db.notaris.update({
       where: { id },
       data: updateData,
-      include: { pics: true },
+      include: notarisIncludeRelations,
     });
 
     return NotarisMapper.toDomain(result);
@@ -93,7 +110,7 @@ export class NotarisRepository implements INotarisRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: [{ id: "desc" }],
-      include: { pics: true },
+      include: notarisIncludeRelations,
     });
 
     let hasNextPage = false;
