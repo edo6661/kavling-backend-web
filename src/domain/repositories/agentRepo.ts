@@ -48,7 +48,27 @@ export class AgentRepository implements IAgentRepository {
 
     const result = await this.db.agent.create({
       data: createData,
-      include: { pics: true },
+      include: {
+        pics: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
     return AgentMapper.toDomain(result);
@@ -57,7 +77,27 @@ export class AgentRepository implements IAgentRepository {
   async findById(id: number): Promise<AgentEntity | null> {
     const result = await this.db.agent.findUnique({
       where: { id },
-      include: { pics: true },
+      include: {
+        pics: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
     });
     if (!result) return null;
     return AgentMapper.toDomain(result);
@@ -92,7 +132,27 @@ export class AgentRepository implements IAgentRepository {
     const result = await this.db.agent.update({
       where: { id },
       data: updateData,
-      include: { pics: true },
+      include: {
+        pics: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
     return AgentMapper.toDomain(result);
@@ -117,7 +177,6 @@ export class AgentRepository implements IAgentRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: [{ id: "desc" }],
-
       include: {
         pics: true,
         penjualan: {
