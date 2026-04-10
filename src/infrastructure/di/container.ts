@@ -14,6 +14,14 @@ import { UserController } from "../../presentation/controllers/userController.js
 import { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
 import { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
 
+import {
+  CreateAgentUseCase,
+  UpdateAgentUseCase,
+  GetAgentByIdUseCase,
+  GetAgentsPaginatedUseCase,
+  DeleteAgentUseCase,
+} from "../../application/usecases/agent/AgentUseCases.js";
+
 import { GoogleVisionService } from "../external/GoogleVisionService.js";
 import { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
 import { OcrController } from "../../presentation/controllers/ocrController.js";
@@ -46,8 +54,12 @@ import {
   DeletePerumahanUseCase,
 } from "../../application/usecases/perumahan/PerumahanUseCases.js";
 import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
-
+import { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
+import { DashboardController } from "../../presentation/controllers/dashboardController.js";
 import { CloudinaryService } from "../external/CloudinaryService.js";
+
+import { AgentRepository } from "../../domain/repositories/agentRepo.js";
+import { AgentController } from "../../presentation/controllers/agentController.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -97,6 +109,21 @@ export const createContainer = (dbClient: PrismaClient) => {
 
   const perumahanRepo = new PerumahanRepository(dbClient);
 
+  const agentRepo = new AgentRepository(dbClient);
+
+  const createAgentUseCase = new CreateAgentUseCase(agentRepo);
+  const updateAgentUseCase = new UpdateAgentUseCase(agentRepo);
+  const getAgentByIdUseCase = new GetAgentByIdUseCase(agentRepo);
+  const getAgentsPaginatedUseCase = new GetAgentsPaginatedUseCase(agentRepo);
+  const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
+
+  const agentController = new AgentController(
+    createAgentUseCase,
+    updateAgentUseCase,
+    getAgentByIdUseCase,
+    getAgentsPaginatedUseCase,
+    deleteAgentUseCase,
+  );
   const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
   const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
   const getPerumahanByIdUseCase = new GetPerumahanByIdUseCase(perumahanRepo);
@@ -111,6 +138,11 @@ export const createContainer = (dbClient: PrismaClient) => {
     getPerumahanByIdUseCase,
     getPerumahanPaginatedUseCase,
     deletePerumahanUseCase,
+  );
+
+  const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
+  const dashboardController = new DashboardController(
+    getDashboardSummaryUseCase,
   );
 
   const ocrController = new OcrController(extractKtpDataUseCase);
@@ -155,6 +187,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerController,
     perumahanRepo,
     perumahanController,
+    dashboardController,
+    agentController,
   };
 };
 

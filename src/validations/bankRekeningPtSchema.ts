@@ -9,8 +9,8 @@ export const createBankRekeningPtSchema = {
       .int()
       .positive(),
     namaBank: z.string().min(2, "Nama bank minimal 2 karakter"),
-    noRekening: z.string().min(5, "Nomor rekening wajib diisi"),
-    atasNama: z.string().min(3, "Atas nama wajib diisi"),
+    noRekening: z.string().min(5, "Nomor rekening minimal 5 karakter"),
+    atasNama: z.string().min(3, "Atas nama minimal 3 karakter"),
   }),
 };
 

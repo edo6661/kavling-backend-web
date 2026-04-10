@@ -1,234 +1,253 @@
-
-<file path="src/application/usecases/perumahan/PerumahanUseCases.ts">
-import type { IPerumahanRepository } from "../../../domain/repositories/IPerumahanRepo.js";
+kode backend:
+<file path="src/application/usecases/agent/AgentUseCases.ts">
+import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
 import type {
-  CreatePerumahanDTO,
-  UpdatePerumahanDTO,
-  PerumahanFilterDTO,
-  PerumahanResponseDTO,
-} from "../../../domain/dtos/PerumahanDTO.js";
+  CreateAgentDTO,
+  UpdateAgentDTO,
+  AgentFilterDTO,
+} from "../../../domain/dtos/AgentDTO.js";
 import type { CursorPaginatedData } from "../../../types/response.js";
+import type { AgentEntity } from "../../../domain/entities/Agent.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { PerumahanMapper } from "../../../infrastructure/mapper/PerumahanMapper.js";
 
-export class CreatePerumahanUseCase {
-  constructor(private readonly repo: IPerumahanRepository) {}
-  async execute(data: CreatePerumahanDTO): Promise<PerumahanResponseDTO> {
-    const result = await this.repo.create(data);
-    return PerumahanMapper.toDomain(result);
+export class CreateAgentUseCase {
+  constructor(private readonly repo: IAgentRepository) {}
+  async execute(data: CreateAgentDTO): Promise<AgentEntity> {
+    return await this.repo.create(data);
   }
 }
 
-export class UpdatePerumahanUseCase {
-  constructor(private readonly repo: IPerumahanRepository) {}
-  async execute(
-    id: number,
-    data: UpdatePerumahanDTO,
-  ): Promise<PerumahanResponseDTO> {
-    const result = await this.repo.update(id, data);
-    return PerumahanMapper.toDomain(result);
+export class UpdateAgentUseCase {
+  constructor(private readonly repo: IAgentRepository) {}
+  async execute(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
+    return await this.repo.update(id, data);
   }
 }
 
-export class GetPerumahanByIdUseCase {
-  constructor(private readonly repo: IPerumahanRepository) {}
-  async execute(id: number): Promise<PerumahanResponseDTO> {
+export class GetAgentByIdUseCase {
+  constructor(private readonly repo: IAgentRepository) {}
+  async execute(id: number): Promise<AgentEntity> {
     const result = await this.repo.findById(id);
-    if (!result) throw new NotFoundError("Perumahan tidak ditemukan");
-    return PerumahanMapper.toDomain(result);
+    if (!result) throw new NotFoundError("Agent tidak ditemukan");
+    return result;
   }
 }
 
-export class GetPerumahanPaginatedUseCase {
-  constructor(private readonly repo: IPerumahanRepository) {}
+export class GetAgentsPaginatedUseCase {
+  constructor(private readonly repo: IAgentRepository) {}
   async execute(
     limit: number,
     cursor?: number,
-    filters?: PerumahanFilterDTO,
-  ): Promise<CursorPaginatedData<PerumahanResponseDTO>> {
-    const result = await this.repo.findWithCursorPagination(
-      limit,
-      cursor,
-      filters,
-    );
-    const mappedItems = result.items.map((item) =>
-      PerumahanMapper.toDomain(item),
-    );
-    return {
-      items: mappedItems,
-      meta: result.meta,
-    };
+    filters?: AgentFilterDTO,
+  ): Promise<CursorPaginatedData<AgentEntity>> {
+    return await this.repo.findWithCursorPagination(limit, cursor, filters);
   }
 }
 
-export class DeletePerumahanUseCase {
-  constructor(private readonly repo: IPerumahanRepository) {}
+export class DeleteAgentUseCase {
+  constructor(private readonly repo: IAgentRepository) {}
   async execute(id: number): Promise<void> {
     await this.repo.delete(id);
   }
 }
 </file>
 
-<file path="src/domain/dtos/PerumahanDTO.ts">
+<file path="src/domain/dtos/AgentDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { AgentStatus } from "@prisma/client";
 
-export interface CreatePerumahanDTO {
+export interface PicAgentDTO {
+  id?: number | undefined;
   nama: string;
-  logo: string;
-  alamat: string;
-}
-
-export interface UpdatePerumahanDTO {
-  nama?: string | undefined;
-  logo?: string | undefined;
+  noHp: string;
   alamat?: string | undefined;
 }
 
-export interface PerumahanResponseDTO {
-  id: number;
+export interface CreateAgentDTO {
+  nik: string;
   nama: string;
-  logo: string;
-  alamat: string;
+  alamat?: string | undefined;
+  noHp: string;
+  email?: string | undefined;
+  status?: AgentStatus | undefined;
+  pics?: PicAgentDTO[] | undefined;
+}
+
+export interface UpdateAgentDTO {
+  nik?: string | undefined;
+  nama?: string | undefined;
+  alamat?: string | undefined;
+  noHp?: string | undefined;
+  email?: string | undefined;
+  status?: AgentStatus | undefined;
+  pics?: PicAgentDTO[] | undefined;
+}
+
+export interface AgentResponseDTO {
+  id: number;
+  nik: string;
+  kodeSales: string | null;
+  nama: string;
+  alamat: string | null;
+  noHp: string;
+  email: string | null;
+  status: AgentStatus;
+  pics: PicAgentDTO[];
   createdAt: Date;
 }
 
-export type PerumahanFilterDTO = BaseFilterDTO;
+export type AgentFilterDTO = BaseFilterDTO;
 </file>
 
-<file path="src/domain/entities/Perumahan.ts">
-export interface PerumahanEntity {
+<file path="src/domain/entities/Agent.ts">
+import type { AgentStatus } from "@prisma/client";
+
+export interface PicAgentEntity {
   id: number;
+  agentId: number;
   nama: string;
-  logo: string;
-  alamat: string;
+  noHp: string;
+  alamat: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AgentEntity {
+  id: number;
+  nik: string;
+  kodeSales: string | null;
+  nama: string;
+  alamat: string | null;
+  noHp: string;
+  email: string | null;
+  status: AgentStatus;
+  pics: PicAgentEntity[];
   createdAt: Date;
   updatedAt: Date;
 }
 </file>
 
-<file path="src/domain/repositories/IPerumahanRepo.ts">
-import type { Perumahan } from "@prisma/client";
+<file path="src/domain/repositories/agentRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IAgentRepository } from "./IAgentRepo.js";
+import type { AgentEntity } from "../entities/Agent.js";
 import type {
-  CreatePerumahanDTO,
-  UpdatePerumahanDTO,
-  PerumahanFilterDTO,
-} from "../dtos/PerumahanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-
-export interface IPerumahanRepository {
-  create(data: CreatePerumahanDTO): Promise<Perumahan>;
-  findById(id: number): Promise<Perumahan | null>;
-  update(id: number, data: UpdatePerumahanDTO): Promise<Perumahan>;
-  delete(id: number): Promise<void>;
-  findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: PerumahanFilterDTO,
-  ): Promise<CursorPaginatedData<Perumahan>>;
-}
-</file>
-
-<file path="src/domain/repositories/perumahanRepo.ts">
-import { Prisma } from "@prisma/client";
-import type { PrismaClient, Perumahan } from "@prisma/client";
-import type { IPerumahanRepository } from "./IPerumahanRepo.js";
-import type {
-  CreatePerumahanDTO,
-  UpdatePerumahanDTO,
-  PerumahanFilterDTO,
-} from "../dtos/PerumahanDTO.js";
+  CreateAgentDTO,
+  UpdateAgentDTO,
+  AgentFilterDTO,
+} from "../dtos/AgentDTO.js";
 import type { CursorPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
 
-export class PerumahanRepository implements IPerumahanRepository {
+export class AgentRepository implements IAgentRepository {
   constructor(private readonly db: PrismaClient) {}
 
-  async create(data: CreatePerumahanDTO): Promise<Perumahan> {
-    try {
-      return await this.db.perumahan.create({ data });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        throw new ConflictError(
-          "Nama, Logo, atau Alamat Perumahan sudah terdaftar",
-        );
-      }
-      throw error;
+  async create(data: CreateAgentDTO): Promise<AgentEntity> {
+    const checkDuplicate = await this.db.agent.findFirst({
+      where: { nik: data.nik },
+    });
+
+    if (checkDuplicate) {
+      throw new ConflictError("NIK Agent sudah terdaftar");
     }
+
+    const createData: Prisma.AgentCreateInput = {
+      nik: data.nik,
+      nama: data.nama,
+      noHp: data.noHp,
+      email: data.email ?? null,
+      alamat: data.alamat ?? null,
+    };
+
+    if (data.status) {
+      createData.status = data.status;
+    }
+
+    if (data.pics && data.pics.length > 0) {
+      createData.pics = {
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
+
+    const result = await this.db.agent.create({
+      data: createData,
+      include: { pics: true },
+    });
+
+    return AgentMapper.toDomain(result);
   }
 
-  async findById(id: number): Promise<Perumahan | null> {
-    return await this.db.perumahan.findUnique({ where: { id } });
+  async findById(id: number): Promise<AgentEntity | null> {
+    const result = await this.db.agent.findUnique({
+      where: { id },
+      include: { pics: true },
+    });
+    if (!result) return null;
+    return AgentMapper.toDomain(result);
   }
 
-  async update(id: number, data: UpdatePerumahanDTO): Promise<Perumahan> {
+  async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
     const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Perumahan tidak ditemukan");
-
-    try {
-      const updateData: Prisma.PerumahanUncheckedUpdateInput = {};
-      if (data.nama !== undefined) updateData.nama = data.nama;
-      if (data.logo !== undefined) updateData.logo = data.logo;
-      if (data.alamat !== undefined) updateData.alamat = data.alamat;
-
-      return await this.db.perumahan.update({
-        where: { id },
-        data: updateData,
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        throw new ConflictError(
-          "Nama, Logo, atau Alamat Perumahan sudah digunakan",
-        );
-      }
-      throw error;
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
     }
+
+    const updateData: Prisma.AgentUpdateInput = {};
+
+    if (data.nik !== undefined) updateData.nik = data.nik;
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.email !== undefined) updateData.email = data.email ?? null;
+    if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
+    if (data.status !== undefined) updateData.status = data.status;
+
+    if (data.pics) {
+      updateData.pics = {
+        deleteMany: {},
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
+
+    const result = await this.db.agent.update({
+      where: { id },
+      data: updateData,
+      include: { pics: true },
+    });
+
+    return AgentMapper.toDomain(result);
   }
 
   async findWithCursorPagination(
     limit: number,
     cursor?: number,
-    filters?: PerumahanFilterDTO,
-  ): Promise<CursorPaginatedData<Perumahan>> {
-    const where: Prisma.PerumahanWhereInput = {};
-
-    if (filters?.startDate || filters?.endDate) {
-      where.createdAt = {};
-      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
-      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
-    }
+    filters?: AgentFilterDTO,
+  ): Promise<CursorPaginatedData<AgentEntity>> {
+    const where: Prisma.AgentWhereInput = {};
 
     if (filters?.search) {
       where.OR = [
         { nama: { contains: filters.search } },
-        { alamat: { contains: filters.search } },
+        { nik: { contains: filters.search } },
       ];
     }
 
-    let orderByClause: Prisma.PerumahanOrderByWithRelationInput[] = [
-      { createdAt: "desc" },
-      { id: "asc" },
-    ];
-
-    if (filters?.orderBy) {
-      const { field, direction } = filters.orderBy;
-      const validFields = ["nama", "alamat", "createdAt"];
-      if (validFields.includes(field)) {
-        orderByClause = [{ [field]: direction }, { id: "asc" }];
-      }
-    }
-
-    const items = await this.db.perumahan.findMany({
+    const items = await this.db.agent.findMany({
       take: limit + 1,
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
-      orderBy: orderByClause,
+      orderBy: [{ id: "desc" }],
+      include: { pics: true },
     });
 
     let hasNextPage = false;
@@ -237,199 +256,225 @@ export class PerumahanRepository implements IPerumahanRepository {
       items.pop();
     }
 
-    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
-
     return {
-      items,
-      meta: { nextCursor, hasNextPage },
+      items: items.map((item) => AgentMapper.toDomain(item)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
     };
   }
 
   async delete(id: number): Promise<void> {
     const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Perumahan tidak ditemukan");
-
-    try {
-      await this.db.perumahan.delete({ where: { id } });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2003"
-      ) {
-        throw new ConflictError(
-          "Perumahan tidak dapat dihapus karena sudah terhubung dengan data Kavling atau Rekening PT.",
-        );
-      }
-      throw error;
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
     }
+
+    await this.db.agent.delete({ where: { id } });
   }
 }
 </file>
 
-<file path="src/infrastructure/mapper/PerumahanMapper.ts">
-import type { Perumahan as PrismaPerumahan } from "@prisma/client";
-import type { PerumahanEntity } from "../../domain/entities/Perumahan.js";
+<file path="src/domain/repositories/IAgentRepo.ts">
+import type { AgentEntity } from "../entities/Agent.js";
+import type {
+  CreateAgentDTO,
+  UpdateAgentDTO,
+  AgentFilterDTO,
+} from "../dtos/AgentDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
 
-export class PerumahanMapper {
-  static toDomain(prismaPerumahan: PrismaPerumahan): PerumahanEntity {
+export interface IAgentRepository {
+  create(data: CreateAgentDTO): Promise<AgentEntity>;
+  findById(id: number): Promise<AgentEntity | null>;
+  update(id: number, data: UpdateAgentDTO): Promise<AgentEntity>;
+  delete(id: number): Promise<void>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: AgentFilterDTO,
+  ): Promise<CursorPaginatedData<AgentEntity>>;
+}
+</file>
+
+<file path="src/infrastructure/mapper/AgentMapper.ts">
+import type {
+  Agent as PrismaAgent,
+  PicAgent as PrismaPicAgent,
+} from "@prisma/client";
+import type { AgentEntity } from "../../domain/entities/Agent.js";
+
+type AgentWithPics = PrismaAgent & {
+  pics: PrismaPicAgent[];
+};
+
+export class AgentMapper {
+  static toDomain(prismaAgent: AgentWithPics): AgentEntity {
     return {
-      id: prismaPerumahan.id,
-      nama: prismaPerumahan.nama,
-      logo: prismaPerumahan.logo,
-      alamat: prismaPerumahan.alamat,
-      createdAt: prismaPerumahan.createdAt,
-      updatedAt: prismaPerumahan.updatedAt,
+      id: prismaAgent.id,
+      nik: prismaAgent.nik,
+      kodeSales: prismaAgent.kodeSales,
+      nama: prismaAgent.nama,
+      alamat: prismaAgent.alamat,
+      noHp: prismaAgent.noHp,
+      email: prismaAgent.email,
+      status: prismaAgent.status,
+      createdAt: prismaAgent.createdAt,
+      updatedAt: prismaAgent.updatedAt,
+      pics: prismaAgent.pics.map((pic) => ({
+        id: pic.id,
+        agentId: pic.agentId,
+        nama: pic.nama,
+        noHp: pic.noHp,
+        alamat: pic.alamat,
+        createdAt: pic.createdAt,
+        updatedAt: pic.updatedAt,
+      })),
     };
   }
 }
 </file>
 
-<file path="src/presentation/controllers/perumahanController.ts">
+<file path="src/presentation/controllers/agentController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../../utils/response.js";
 import type { TypedRequest } from "../../types/request.js";
-import type {
-  CreatePerumahanUseCase,
-  UpdatePerumahanUseCase,
-  GetPerumahanByIdUseCase,
-  GetPerumahanPaginatedUseCase,
-  DeletePerumahanUseCase,
-} from "../../application/usecases/perumahan/PerumahanUseCases.js";
-import type {
-  createPerumahanSchema,
-  updatePerumahanSchema,
-} from "../../validations/perumahanSchema.js";
-import { getPerumahanPaginatedSchema } from "../../validations/perumahanSchema.js";
-import type { PerumahanFilterDTO } from "../../domain/dtos/PerumahanDTO.js";
 
-export class PerumahanController {
+import type {
+  CreateAgentUseCase,
+  UpdateAgentUseCase,
+  GetAgentByIdUseCase,
+  GetAgentsPaginatedUseCase,
+  DeleteAgentUseCase,
+} from "../../application/usecases/agent/AgentUseCases.js";
+
+import type {
+  createAgentSchema,
+  updateAgentSchema,
+} from "../../validations/agentSchema.js";
+import { getAgentsPaginatedSchema } from "../../validations/agentSchema.js";
+import type { AgentFilterDTO } from "../../domain/dtos/AgentDTO.js";
+
+export class AgentController {
   constructor(
-    private readonly createUseCase: CreatePerumahanUseCase,
-    private readonly updateUseCase: UpdatePerumahanUseCase,
-    private readonly getByIdUseCase: GetPerumahanByIdUseCase,
-    private readonly getPaginatedUseCase: GetPerumahanPaginatedUseCase,
-    private readonly deleteUseCase: DeletePerumahanUseCase,
+    private readonly createUseCase: CreateAgentUseCase,
+    private readonly updateUseCase: UpdateAgentUseCase,
+    private readonly getByIdUseCase: GetAgentByIdUseCase,
+    private readonly getPaginatedUseCase: GetAgentsPaginatedUseCase,
+    private readonly deleteUseCase: DeleteAgentUseCase,
   ) {}
 
   create = async (
-    req: TypedRequest<typeof createPerumahanSchema.body>,
+    req: TypedRequest<typeof createAgentSchema.body>,
     res: Response,
   ): Promise<void> => {
     const result = await this.createUseCase.execute(req.body);
     sendResponse(
       res,
       StatusCodes.CREATED,
-      "Perumahan berhasil ditambahkan",
+      "Agent berhasil ditambahkan",
       result,
     );
   };
 
   update = async (
     req: TypedRequest<
-      typeof updatePerumahanSchema.body,
+      typeof updateAgentSchema.body,
       any,
-      typeof updatePerumahanSchema.params
+      typeof updateAgentSchema.params
     >,
     res: Response,
   ): Promise<void> => {
     const id = parseInt(req.params.id, 10);
     const result = await this.updateUseCase.execute(id, req.body);
-    sendResponse(res, StatusCodes.OK, "Perumahan berhasil diperbarui", result);
+    sendResponse(res, StatusCodes.OK, "Agent berhasil diperbarui", result);
   };
 
   getById = async (
-    req: TypedRequest<any, any, typeof updatePerumahanSchema.params>,
+    req: TypedRequest<any, any, typeof updateAgentSchema.params>,
     res: Response,
   ): Promise<void> => {
     const id = parseInt(req.params.id, 10);
     const result = await this.getByIdUseCase.execute(id);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data perumahan berhasil diambil",
-      result,
-    );
+    sendResponse(res, StatusCodes.OK, "Data agent berhasil diambil", result);
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getPerumahanPaginatedSchema.query.parse(req.query);
+    const { limit, cursor, ...filters } = getAgentsPaginatedSchema.query.parse(
+      req.query,
+    );
     const parsedCursor = cursor ? Number(cursor) : undefined;
+
     const result = await this.getPaginatedUseCase.execute(
       limit,
       parsedCursor,
-      filters as PerumahanFilterDTO,
+      filters as AgentFilterDTO,
     );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar perumahan berhasil diambil",
-      result,
-    );
+
+    sendResponse(res, StatusCodes.OK, "Daftar agent berhasil diambil", result);
   };
 
   delete = async (
-    req: TypedRequest<any, any, typeof updatePerumahanSchema.params>,
+    req: TypedRequest<any, any, typeof updateAgentSchema.params>,
     res: Response,
   ): Promise<void> => {
     const id = parseInt(req.params.id, 10);
     await this.deleteUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Perumahan berhasil dihapus");
+    sendResponse(res, StatusCodes.OK, "Agent berhasil dihapus");
   };
 }
 </file>
 
-<file path="src/presentation/routes/perumahanRoutes.ts">
+<file path="src/presentation/routes/agentRoutes.ts">
 import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
-  createPerumahanSchema,
-  updatePerumahanSchema,
-  getPerumahanPaginatedSchema,
-} from "../../validations/perumahanSchema.js";
-import type { PerumahanController } from "../controllers/perumahanController.js";
+  createAgentSchema,
+  updateAgentSchema,
+  getAgentsPaginatedSchema,
+} from "../../validations/agentSchema.js";
+import type { AgentController } from "../controllers/agentController.js";
 
-export const createPerumahanRoutes = (
-  controller: PerumahanController,
-): Router => {
+export const createAgentRoutes = (controller: AgentController): Router => {
   const router = Router();
 
   router.use(authenticate);
 
   router.post(
     "/",
-    requireRole(["ADMIN"]),
-    validate(createPerumahanSchema),
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(createAgentSchema),
     controller.create,
   );
 
   router.get(
     "/",
     requireRole(["ADMIN", "MARKETING"]),
-    validate(getPerumahanPaginatedSchema),
+    validate(getAgentsPaginatedSchema),
     controller.getPaginated,
   );
 
   router.get(
     "/:id",
     requireRole(["ADMIN", "MARKETING"]),
-    validate({ params: updatePerumahanSchema.params }),
+    validate({ params: updateAgentSchema.params }),
     controller.getById,
   );
 
   router.patch(
     "/:id",
     requireRole(["ADMIN"]),
-    validate(updatePerumahanSchema),
+    validate(updateAgentSchema),
     controller.update,
   );
 
   router.delete(
     "/:id",
     requireRole(["ADMIN"]),
-    validate({ params: updatePerumahanSchema.params }),
+    validate({ params: updateAgentSchema.params }),
     controller.delete,
   );
 
@@ -437,31 +482,49 @@ export const createPerumahanRoutes = (
 };
 </file>
 
-<file path="src/validations/perumahanSchema.ts">
+<file path="src/validations/agentSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { AgentStatus } from "@prisma/client";
 
-export const createPerumahanSchema = {
+// Schema untuk nested PIC
+const picSchema = z.object({
+  nama: z.string().min(3, "Nama PIC minimal 3 karakter"),
+  noHp: z.string().min(9, "Nomor HP PIC minimal 9 karakter"),
+  alamat: emptyAsUndefined(z.string().optional()),
+});
+
+export const createAgentSchema = {
   body: z.object({
-    nama: z.string().min(3, "Nama perumahan minimal 3 karakter"),
-    logo: z.string().min(1, "Logo wajib diisi"),
-    alamat: z.string().min(5, "Alamat wajib diisi"),
+    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
+    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
+    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),
 };
 
-export const updatePerumahanSchema = {
+export const updateAgentSchema = {
   params: z.object({
     id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
   }),
   body: z.object({
+    nik: emptyAsUndefined(
+      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
+    ),
     nama: emptyAsUndefined(z.string().min(3).optional()),
-    logo: emptyAsUndefined(z.string().min(1).optional()),
-    alamat: emptyAsUndefined(z.string().min(5).optional()),
+    noHp: emptyAsUndefined(z.string().min(9).optional()),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
+    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),
 };
 
-export const getPerumahanPaginatedSchema = {
+export const getAgentsPaginatedSchema = {
   query: cursorPaginationQuerySchema,
 };
 </file>
@@ -895,6 +958,76 @@ export class UpdateCustomerUseCase {
 }
 </file>
 
+<file path="src/application/usecases/perumahan/PerumahanUseCases.ts">
+import type { IPerumahanRepository } from "../../../domain/repositories/IPerumahanRepo.js";
+import type {
+  CreatePerumahanDTO,
+  UpdatePerumahanDTO,
+  PerumahanFilterDTO,
+  PerumahanResponseDTO,
+} from "../../../domain/dtos/PerumahanDTO.js";
+import type { CursorPaginatedData } from "../../../types/response.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { PerumahanMapper } from "../../../infrastructure/mapper/PerumahanMapper.js";
+
+export class CreatePerumahanUseCase {
+  constructor(private readonly repo: IPerumahanRepository) {}
+  async execute(data: CreatePerumahanDTO): Promise<PerumahanResponseDTO> {
+    const result = await this.repo.create(data);
+    return PerumahanMapper.toDomain(result);
+  }
+}
+
+export class UpdatePerumahanUseCase {
+  constructor(private readonly repo: IPerumahanRepository) {}
+  async execute(
+    id: number,
+    data: UpdatePerumahanDTO,
+  ): Promise<PerumahanResponseDTO> {
+    const result = await this.repo.update(id, data);
+    return PerumahanMapper.toDomain(result);
+  }
+}
+
+export class GetPerumahanByIdUseCase {
+  constructor(private readonly repo: IPerumahanRepository) {}
+  async execute(id: number): Promise<PerumahanResponseDTO> {
+    const result = await this.repo.findById(id);
+    if (!result) throw new NotFoundError("Perumahan tidak ditemukan");
+    return PerumahanMapper.toDomain(result);
+  }
+}
+
+export class GetPerumahanPaginatedUseCase {
+  constructor(private readonly repo: IPerumahanRepository) {}
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: PerumahanFilterDTO,
+  ): Promise<CursorPaginatedData<PerumahanResponseDTO>> {
+    const result = await this.repo.findWithCursorPagination(
+      limit,
+      cursor,
+      filters,
+    );
+    const mappedItems = result.items.map((item) =>
+      PerumahanMapper.toDomain(item),
+    );
+    return {
+      items: mappedItems,
+      meta: result.meta,
+    };
+  }
+}
+
+export class DeletePerumahanUseCase {
+  constructor(private readonly repo: IPerumahanRepository) {}
+  async execute(id: number): Promise<void> {
+    await this.repo.delete(id);
+  }
+}
+</file>
+
 <file path="src/application/usecases/user/GetAllUsersUseCase.ts">
 import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
 import type { UserResponseDTO } from "../../../domain/dtos/UserDTO";
@@ -994,6 +1127,32 @@ export interface BaseFilterDTO {
 }
 </file>
 
+<file path="src/domain/dtos/PerumahanDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreatePerumahanDTO {
+  nama: string;
+  logo: string;
+  alamat: string;
+}
+
+export interface UpdatePerumahanDTO {
+  nama?: string | undefined;
+  logo?: string | undefined;
+  alamat?: string | undefined;
+}
+
+export interface PerumahanResponseDTO {
+  id: number;
+  nama: string;
+  logo: string;
+  alamat: string;
+  createdAt: Date;
+}
+
+export type PerumahanFilterDTO = BaseFilterDTO;
+</file>
+
 <file path="src/domain/dtos/UserDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { Role } from "@prisma/client";
@@ -1044,6 +1203,17 @@ export interface UpdateUserDTO {
 
 export interface UserFilterDTO extends BaseFilterDTO {
   role?: Role;
+}
+</file>
+
+<file path="src/domain/entities/Perumahan.ts">
+export interface PerumahanEntity {
+  id: number;
+  nama: string;
+  logo: string;
+  alamat: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 </file>
 
@@ -1147,6 +1317,28 @@ export interface ICustomerRepository {
 }
 </file>
 
+<file path="src/domain/repositories/IPerumahanRepo.ts">
+import type { Perumahan } from "@prisma/client";
+import type {
+  CreatePerumahanDTO,
+  UpdatePerumahanDTO,
+  PerumahanFilterDTO,
+} from "../dtos/PerumahanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export interface IPerumahanRepository {
+  create(data: CreatePerumahanDTO): Promise<Perumahan>;
+  findById(id: number): Promise<Perumahan | null>;
+  update(id: number, data: UpdatePerumahanDTO): Promise<Perumahan>;
+  delete(id: number): Promise<void>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PerumahanFilterDTO,
+  ): Promise<CursorPaginatedData<Perumahan>>;
+}
+</file>
+
 <file path="src/domain/repositories/IUserRepo.ts">
 import type { UserEntity } from "../entities/User";
 import type {
@@ -1167,6 +1359,144 @@ export interface IUserRepository {
     cursor?: number,
     filters?: UserFilterDTO,
   ): Promise<CursorPaginatedData<UserEntity>>;
+}
+</file>
+
+<file path="src/domain/repositories/perumahanRepo.ts">
+import { Prisma } from "@prisma/client";
+import type { PrismaClient, Perumahan } from "@prisma/client";
+import type { IPerumahanRepository } from "./IPerumahanRepo.js";
+import type {
+  CreatePerumahanDTO,
+  UpdatePerumahanDTO,
+  PerumahanFilterDTO,
+} from "../dtos/PerumahanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+
+export class PerumahanRepository implements IPerumahanRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreatePerumahanDTO): Promise<Perumahan> {
+    try {
+      return await this.db.perumahan.create({ data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError(
+          "Nama, Logo, atau Alamat Perumahan sudah terdaftar",
+        );
+      }
+      throw error;
+    }
+  }
+
+  async findById(id: number): Promise<Perumahan | null> {
+    return await this.db.perumahan.findUnique({ where: { id } });
+  }
+
+  async update(id: number, data: UpdatePerumahanDTO): Promise<Perumahan> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Perumahan tidak ditemukan");
+
+    try {
+      const updateData: Prisma.PerumahanUncheckedUpdateInput = {};
+      if (data.nama !== undefined) updateData.nama = data.nama;
+      if (data.logo !== undefined) updateData.logo = data.logo;
+      if (data.alamat !== undefined) updateData.alamat = data.alamat;
+
+      return await this.db.perumahan.update({
+        where: { id },
+        data: updateData,
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError(
+          "Nama, Logo, atau Alamat Perumahan sudah digunakan",
+        );
+      }
+      throw error;
+    }
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PerumahanFilterDTO,
+  ): Promise<CursorPaginatedData<Perumahan>> {
+    const where: Prisma.PerumahanWhereInput = {};
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { nama: { contains: filters.search } },
+        { alamat: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.PerumahanOrderByWithRelationInput[] = [
+      { createdAt: "desc" },
+      { id: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "alamat", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.perumahan.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
+
+    return {
+      items,
+      meta: { nextCursor, hasNextPage },
+    };
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Perumahan tidak ditemukan");
+
+    try {
+      await this.db.perumahan.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ConflictError(
+          "Perumahan tidak dapat dihapus karena sudah terhubung dengan data Kavling atau Rekening PT.",
+        );
+      }
+      throw error;
+    }
+  }
 }
 </file>
 
@@ -1338,6 +1668,24 @@ declare global {
 export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 
 if (env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
+</file>
+
+<file path="src/infrastructure/mapper/PerumahanMapper.ts">
+import type { Perumahan as PrismaPerumahan } from "@prisma/client";
+import type { PerumahanEntity } from "../../domain/entities/Perumahan.js";
+
+export class PerumahanMapper {
+  static toDomain(prismaPerumahan: PrismaPerumahan): PerumahanEntity {
+    return {
+      id: prismaPerumahan.id,
+      nama: prismaPerumahan.nama,
+      logo: prismaPerumahan.logo,
+      alamat: prismaPerumahan.alamat,
+      createdAt: prismaPerumahan.createdAt,
+      updatedAt: prismaPerumahan.updatedAt,
+    };
+  }
+}
 </file>
 
 <file path="src/infrastructure/mapper/UserMapper.ts">
@@ -1924,6 +2272,102 @@ export class OcrController {
 }
 </file>
 
+<file path="src/presentation/controllers/perumahanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+import type {
+  CreatePerumahanUseCase,
+  UpdatePerumahanUseCase,
+  GetPerumahanByIdUseCase,
+  GetPerumahanPaginatedUseCase,
+  DeletePerumahanUseCase,
+} from "../../application/usecases/perumahan/PerumahanUseCases.js";
+import type {
+  createPerumahanSchema,
+  updatePerumahanSchema,
+} from "../../validations/perumahanSchema.js";
+import { getPerumahanPaginatedSchema } from "../../validations/perumahanSchema.js";
+import type { PerumahanFilterDTO } from "../../domain/dtos/PerumahanDTO.js";
+
+export class PerumahanController {
+  constructor(
+    private readonly createUseCase: CreatePerumahanUseCase,
+    private readonly updateUseCase: UpdatePerumahanUseCase,
+    private readonly getByIdUseCase: GetPerumahanByIdUseCase,
+    private readonly getPaginatedUseCase: GetPerumahanPaginatedUseCase,
+    private readonly deleteUseCase: DeletePerumahanUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createPerumahanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Perumahan berhasil ditambahkan",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updatePerumahanSchema.body,
+      any,
+      typeof updatePerumahanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Perumahan berhasil diperbarui", result);
+  };
+
+  getById = async (
+    req: TypedRequest<any, any, typeof updatePerumahanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getByIdUseCase.execute(id);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data perumahan berhasil diambil",
+      result,
+    );
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getPerumahanPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as PerumahanFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar perumahan berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updatePerumahanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Perumahan berhasil dihapus");
+  };
+}
+</file>
+
 <file path="src/presentation/controllers/userController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -2161,6 +2605,65 @@ export const createOcrRoutes = (controller: OcrController): Router => {
     upload.single("foto_ktp"),
     validate(ocrExtractSchema),
     controller.extractKtpData,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/perumahanRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import {
+  createPerumahanSchema,
+  updatePerumahanSchema,
+  getPerumahanPaginatedSchema,
+} from "../../validations/perumahanSchema.js";
+import type { PerumahanController } from "../controllers/perumahanController.js";
+
+export const createPerumahanRoutes = (
+  controller: PerumahanController,
+): Router => {
+  const router = Router();
+
+  // 1. Pindahkan endpoint GET / ke atas SEBELUM middleware authenticate
+  // agar bisa diakses oleh halaman Login secara publik.
+  router.get(
+    "/",
+    validate(getPerumahanPaginatedSchema),
+    controller.getPaginated,
+  );
+
+  // 2. Aktifkan perlindungan token untuk semua route di bawah ini
+  router.use(authenticate);
+
+  router.post(
+    "/",
+    requireRole(["ADMIN"]),
+    validate(createPerumahanSchema),
+    controller.create,
+  );
+
+  router.get(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate({ params: updatePerumahanSchema.params }),
+    controller.getById,
+  );
+
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate(updatePerumahanSchema),
+    controller.update,
+  );
+
+  router.delete(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate({ params: updatePerumahanSchema.params }),
+    controller.delete,
   );
 
   return router;
@@ -2463,6 +2966,35 @@ export const cursorPaginationQuerySchema = baseFilterSchema.extend({
 });
 
 export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
+</file>
+
+<file path="src/validations/perumahanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createPerumahanSchema = {
+  body: z.object({
+    nama: z.string().min(3, "Nama perumahan minimal 3 karakter"),
+    logo: z.string().min(1, "Logo wajib diisi"),
+    alamat: z.string().min(5, "Alamat wajib diisi"),
+  }),
+};
+
+export const updatePerumahanSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    nama: emptyAsUndefined(z.string().min(3).optional()),
+    logo: emptyAsUndefined(z.string().min(1).optional()),
+    alamat: emptyAsUndefined(z.string().min(5).optional()),
+  }),
+};
+
+export const getPerumahanPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
 </file>
 
 <file path="src/validations/userSchema.ts">
@@ -2811,6 +3343,165 @@ export class UploadCustomerDocumentUseCase {
 }
 </file>
 
+<file path="src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import type {
+  DashboardResponseDTO,
+  DocumentAlertDTO,
+} from "../../../domain/dtos/DashboardDTO.js";
+
+export class GetDashboardSummaryUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(): Promise<DashboardResponseDTO> {
+    const now = new Date();
+
+    const totalTagihanLunas = await this.db.tagihan.aggregate({
+      _sum: { nominal: true },
+      where: { status: "LUNAS" },
+    });
+
+    const kavlingTerjualCount = await this.db.kavling.count({
+      where: { status: "TERJUAL" },
+    });
+
+    const totalKavlingCount = await this.db.kavling.count();
+
+    const tagihanJatuhTempo = await this.db.tagihan.aggregate({
+      _sum: { nominal: true },
+      where: { status: "BELUM_BAYAR", jatuhTempo: { lt: now } },
+    });
+
+    const customerJatuhTempo = await this.db.tagihan.groupBy({
+      by: ["customerId"],
+      where: { status: "BELUM_BAYAR", jatuhTempo: { lt: now } },
+    });
+
+    const proyekAktifCount = await this.db.spk.count();
+
+    const progressProyek = await this.db.progressProyek.aggregate({
+      _avg: { persentase: true },
+    });
+
+    const recentPenjualan = await this.db.penjualan.findMany({
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: {
+        customer: { select: { nama: true } },
+        kavling: { select: { blok: true, nomorUnit: true } },
+      },
+    });
+
+    const recentTransactions = recentPenjualan.map((p) => ({
+      id: p.noTransaksi,
+      customer: p.customer.nama,
+      kavling: `Blok ${p.kavling.blok} - ${p.kavling.nomorUnit}`,
+      type: p.caraPembayaran,
+      amount: Number(p.hargaJual),
+      status: p.status,
+      date: p.createdAt.toISOString().substring(0, 10),
+    }));
+
+    const latestProgress = await this.db.progressProyek.findMany({
+      take: 5,
+      orderBy: { tanggalLaporan: "desc" },
+      include: {
+        kavling: {
+          include: {
+            penjualan: {
+              include: { customer: { select: { nama: true } } },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    const progressData = latestProgress.map((prog) => ({
+      kavling: `Blok ${prog.kavling.blok} - ${prog.kavling.nomorUnit}`,
+      customer: prog.kavling.penjualan[0]?.customer?.nama ?? "Unknown",
+      progress: prog.persentase,
+      tahap: prog.tahapanPekerjaan,
+      isLate: false,
+    }));
+
+    const topAgentsData = await this.db.penjualan.groupBy({
+      by: ["agentId"],
+      _count: { id: true },
+      where: { agentId: { not: null }, status: { in: ["LUNAS", "PROSES"] } },
+      orderBy: { _count: { id: "desc" } },
+      take: 3,
+    });
+
+    const topAgents = await Promise.all(
+      topAgentsData.map(async (ta) => {
+        const agent = await this.db.agent.findUnique({
+          where: { id: ta.agentId! },
+          select: { nama: true },
+        });
+
+        const fee = await this.db.feeAgent.aggregate({
+          _sum: { closingNominal: true },
+          where: { agentId: ta.agentId! },
+        });
+
+        return {
+          name: agent?.nama ?? "Unknown",
+          closing: ta._count.id,
+          feeStatus: `Rp ${(fee._sum.closingNominal ?? 0).toLocaleString("id-ID")}`,
+        };
+      }),
+    );
+
+    const missingDocsCustomers = await this.db.customer.findMany({
+      where: {
+        OR: [{ fileKtp: null }, { fileKk: null }, { fileNpwp: null }],
+      },
+      include: {
+        penjualan: {
+          include: { kavling: { select: { blok: true, nomorUnit: true } } },
+          take: 1,
+        },
+      },
+      take: 5,
+    });
+
+    const documentAlerts: DocumentAlertDTO[] = missingDocsCustomers.map(
+      (cust) => {
+        const missing = [];
+        if (!cust.fileKtp) missing.push("KTP");
+        if (!cust.fileKk) missing.push("KK");
+        if (!cust.fileNpwp) missing.push("NPWP");
+
+        return {
+          customer: cust.nama,
+          kavling: cust.penjualan[0]
+            ? `Blok ${cust.penjualan[0].kavling.blok} - ${cust.penjualan[0].kavling.nomorUnit}`
+            : "Belum Beli",
+          missing,
+        };
+      },
+    );
+
+    return {
+      stats: {
+        totalPendapatan: Number(totalTagihanLunas._sum.nominal ?? 0),
+        kavlingTerjual: kavlingTerjualCount,
+        totalKavling: totalKavlingCount,
+        tagihanJatuhTempo: Number(tagihanJatuhTempo._sum.nominal ?? 0),
+        customerJatuhTempo: customerJatuhTempo.length,
+        proyekAktif: proyekAktifCount,
+        rataRataProgress: Number(progressProyek._avg.persentase ?? 0),
+      },
+      recentTransactions,
+      progressData,
+      topAgents,
+      documentAlerts,
+    };
+  }
+}
+</file>
+
 <file path="src/application/usecases/ocr/ExtractKtpDataUseCase.ts">
 import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
 import { AppError } from "../../../domain/errors/AppError.js";
@@ -2890,6 +3581,7 @@ export interface UpdateBankRekeningPtDTO {
 export interface BankRekeningPtResponseDTO {
   id: number;
   perumahanId: number;
+  perumahan?: string;
   namaBank: string;
   noRekening: string;
   atasNama: string;
@@ -2953,6 +3645,56 @@ export interface CustomerResponseDTO {
 }
 
 export type CustomerFilterDTO = BaseFilterDTO;
+</file>
+
+<file path="src/domain/dtos/DashboardDTO.ts">
+export interface DashboardStatsDTO {
+  totalPendapatan: number;
+  kavlingTerjual: number;
+  totalKavling: number;
+  tagihanJatuhTempo: number;
+  customerJatuhTempo: number;
+  proyekAktif: number;
+  rataRataProgress: number;
+}
+
+export interface RecentTransactionDTO {
+  id: string;
+  customer: string;
+  kavling: string;
+  type: string;
+  amount: number;
+  status: string;
+  date: string;
+}
+
+export interface ProgressDataDTO {
+  kavling: string;
+  customer: string;
+  progress: number;
+  tahap: string;
+  isLate: boolean;
+}
+
+export interface TopAgentDTO {
+  name: string;
+  closing: number;
+  feeStatus: string;
+}
+
+export interface DocumentAlertDTO {
+  customer: string;
+  kavling: string;
+  missing: string[];
+}
+
+export interface DashboardResponseDTO {
+  stats: DashboardStatsDTO;
+  recentTransactions: RecentTransactionDTO[];
+  progressData: ProgressDataDTO[];
+  topAgents: TopAgentDTO[];
+  documentAlerts: DocumentAlertDTO[];
+}
 </file>
 
 <file path="src/domain/entities/BankRekeningPt.ts">
@@ -3025,7 +3767,10 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
   }
 
   async findById(id: number): Promise<BankRekeningPt | null> {
-    return await this.db.bankRekeningPt.findUnique({ where: { id } });
+    return await this.db.bankRekeningPt.findUnique({
+      where: { id },
+      include: { perumahan: true },
+    });
   }
 
   async update(
@@ -3095,6 +3840,7 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: orderByClause,
+      include: { perumahan: true },
     });
 
     let hasNextPage = false;
@@ -3289,170 +4035,6 @@ export class CustomerRepository implements ICustomerRepository {
 }
 </file>
 
-<file path="src/infrastructure/di/container.ts">
-import { UserRepository } from "../../domain/repositories/userRepo.js";
-import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
-import { CustomerRepository } from "../../domain/repositories/customerRepo.js";
-
-import { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
-import { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
-import { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
-import { AuthController } from "../../presentation/controllers/authController.js";
-import { prisma } from "../../infrastructure/database/prisma.js";
-import type { PrismaClient } from "@prisma/client/extension";
-
-import { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersUseCase.js";
-import { UserController } from "../../presentation/controllers/userController.js";
-import { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
-import { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
-
-import { GoogleVisionService } from "../external/GoogleVisionService.js";
-import { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
-import { OcrController } from "../../presentation/controllers/ocrController.js";
-
-import {
-  CreateBankRekeningPtUseCase,
-  UpdateBankRekeningPtUseCase,
-  GetBankRekeningPtByIdUseCase,
-  GetBankRekeningPtPaginatedUseCase,
-  DeleteBankRekeningPtUseCase,
-} from "../../application/usecases/bankRekeningPt/BankRekeningPtUseCases.js";
-import { BankRekeningPtController } from "../../presentation/controllers/bankRekeningPtController.js";
-
-import { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
-import { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
-import { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
-import { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
-import { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
-import { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
-import { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
-import { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
-import { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
-import { CustomerController } from "../../presentation/controllers/customerController.js";
-import { PerumahanRepository } from "../../domain/repositories/perumahanRepo.js";
-import {
-  CreatePerumahanUseCase,
-  UpdatePerumahanUseCase,
-  GetPerumahanByIdUseCase,
-  GetPerumahanPaginatedUseCase,
-  DeletePerumahanUseCase,
-} from "../../application/usecases/perumahan/PerumahanUseCases.js";
-import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
-
-import { CloudinaryService } from "../external/CloudinaryService.js";
-
-export const createContainer = (dbClient: PrismaClient) => {
-  const googleVisionService = new GoogleVisionService();
-  const cloudinaryService = new CloudinaryService();
-
-  const userRepo = new UserRepository(dbClient);
-  const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
-  const customerRepo = new CustomerRepository(dbClient);
-
-  const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
-
-  const registerUseCase = new RegisterUserUseCase(userRepo);
-  const loginUseCase = new LoginUserUseCase(userRepo);
-  const getProfileUseCase = new GetProfileUseCase(userRepo);
-
-  const getAllUsersUseCase = new GetAllUsersUseCase(userRepo);
-  const updateUserUseCase = new UpdateUserUseCase(userRepo);
-  const getUsersPaginatedUseCase = new GetUsersPaginatedUseCase(userRepo);
-
-  const createBankUseCase = new CreateBankRekeningPtUseCase(bankRekeningPtRepo);
-  const updateBankUseCase = new UpdateBankRekeningPtUseCase(bankRekeningPtRepo);
-  const getBankByIdUseCase = new GetBankRekeningPtByIdUseCase(
-    bankRekeningPtRepo,
-  );
-  const getBanksPaginatedUseCase = new GetBankRekeningPtPaginatedUseCase(
-    bankRekeningPtRepo,
-  );
-  const deleteBankUseCase = new DeleteBankRekeningPtUseCase(bankRekeningPtRepo);
-
-  const exportCustomersUseCase = new ExportCustomersUseCase(dbClient);
-  const exportCustomersPdfUseCase = new ExportCustomersPdfUseCase(dbClient);
-  const createCustomerUseCase = new CreateCustomerUseCase(customerRepo);
-  const updateCustomerUseCase = new UpdateCustomerUseCase(customerRepo);
-  const uploadCustomerDocumentUseCase = new UploadCustomerDocumentUseCase(
-    customerRepo,
-    cloudinaryService,
-  );
-  const getCustomerByIdUseCase = new GetCustomerByIdUseCase(customerRepo);
-  const getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
-    customerRepo,
-  );
-  const deleteCustomerUseCase = new DeleteCustomerUseCase(customerRepo);
-  const generateCustomerAccountUseCase = new GenerateCustomerAccountUseCase(
-    customerRepo,
-    userRepo,
-  );
-
-  const perumahanRepo = new PerumahanRepository(dbClient);
-
-  const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
-  const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
-  const getPerumahanByIdUseCase = new GetPerumahanByIdUseCase(perumahanRepo);
-  const getPerumahanPaginatedUseCase = new GetPerumahanPaginatedUseCase(
-    perumahanRepo,
-  );
-  const deletePerumahanUseCase = new DeletePerumahanUseCase(perumahanRepo);
-
-  const perumahanController = new PerumahanController(
-    createPerumahanUseCase,
-    updatePerumahanUseCase,
-    getPerumahanByIdUseCase,
-    getPerumahanPaginatedUseCase,
-    deletePerumahanUseCase,
-  );
-
-  const ocrController = new OcrController(extractKtpDataUseCase);
-  const authController = new AuthController(
-    registerUseCase,
-    loginUseCase,
-    getProfileUseCase,
-  );
-  const userController = new UserController(
-    getAllUsersUseCase,
-    updateUserUseCase,
-    getUsersPaginatedUseCase,
-  );
-
-  const bankRekeningPtController = new BankRekeningPtController(
-    createBankUseCase,
-    updateBankUseCase,
-    getBankByIdUseCase,
-    getBanksPaginatedUseCase,
-    deleteBankUseCase,
-  );
-  const customerController = new CustomerController(
-    createCustomerUseCase,
-    updateCustomerUseCase,
-    getCustomerByIdUseCase,
-    getCustomersPaginatedUseCase,
-    deleteCustomerUseCase,
-    uploadCustomerDocumentUseCase,
-    generateCustomerAccountUseCase,
-    exportCustomersUseCase,
-    exportCustomersPdfUseCase,
-  );
-
-  return {
-    authController,
-    userRepo,
-    bankRekeningPtRepo,
-    customerRepo,
-    userController,
-    ocrController,
-    bankRekeningPtController,
-    customerController,
-    perumahanRepo,
-    perumahanController,
-  };
-};
-
-export const container = createContainer(prisma as any);
-</file>
-
 <file path="src/infrastructure/external/CloudinaryService.ts">
 import { v2 as cloudinary } from "cloudinary";
 import { env } from "../../config/env";
@@ -3633,16 +4215,21 @@ export class GoogleVisionService {
 </file>
 
 <file path="src/infrastructure/mapper/BankRekeningPtMapper.ts">
-import type { BankRekeningPt as PrismaBankRekeningPt } from "@prisma/client";
-import type { BankRekeningPtEntity } from "../../domain/entities/BankRekeningPt.js";
+import type {
+  BankRekeningPt as PrismaBankRekeningPt,
+  Perumahan,
+} from "@prisma/client";
+
+type BankRekeningPtWithRelation = PrismaBankRekeningPt & {
+  perumahan?: Perumahan;
+};
 
 export class BankRekeningPtMapper {
-  static toDomain(
-    prismaBankRekeningPt: PrismaBankRekeningPt,
-  ): BankRekeningPtEntity {
+  static toDomain(prismaBankRekeningPt: BankRekeningPtWithRelation) {
     return {
       id: prismaBankRekeningPt.id,
       perumahanId: prismaBankRekeningPt.perumahanId,
+      perumahan: prismaBankRekeningPt.perumahan?.nama ?? "",
       namaBank: prismaBankRekeningPt.namaBank,
       noRekening: prismaBankRekeningPt.noRekening,
       atasNama: prismaBankRekeningPt.atasNama,
@@ -3682,36 +4269,48 @@ export class CustomerMapper {
 }
 </file>
 
-<file path="src/presentation/routes/index.ts">
+<file path="src/presentation/controllers/dashboardController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
+
+export class DashboardController {
+  constructor(
+    private readonly getDashboardSummaryUseCase: GetDashboardSummaryUseCase,
+  ) {}
+
+  getSummary = async (_req: Request, res: Response): Promise<void> => {
+    const result = await this.getDashboardSummaryUseCase.execute();
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Berhasil mengambil data dashboard",
+      result,
+    );
+  };
+}
+</file>
+
+<file path="src/presentation/routes/dashboardRoutes.ts">
 import { Router } from "express";
-import { checkHealth } from "../controllers/healthController.js";
-import { createAuthRoutes } from "./authRoutes.js";
-import { createUserRoutes } from "./userRoutes.js";
-import { createOcrRoutes } from "./ocrRoutes.js";
-import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
-import { createCustomerRoutes } from "./customerRoutes.js";
-import { container } from "../../infrastructure/di/container.js";
-import { createPerumahanRoutes } from "./perumahanRoutes.js";
-export const createMainRouter = (deps: typeof container): Router => {
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import type { DashboardController } from "../controllers/dashboardController.js";
+
+export const createDashboardRoutes = (
+  controller: DashboardController,
+): Router => {
   const router = Router();
 
-  router.get("/health", checkHealth);
-  router.use("/auth", createAuthRoutes(deps.authController));
-  router.use("/users", createUserRoutes(deps.userController));
-  router.use("/ocr", createOcrRoutes(deps.ocrController));
-
-  router.use(
-    "/bank-rekening",
-    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  router.use(authenticate);
+  router.get(
+    "/summary",
+    requireRole(["ADMIN", "MARKETING"]),
+    controller.getSummary,
   );
 
-  router.use("/customers", createCustomerRoutes(deps.customerController));
-  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
   return router;
 };
-
-const router = createMainRouter(container);
-export default router;
 </file>
 
 <file path="src/tests/factories/bankRekeningPtFactory.ts">
@@ -3875,48 +4474,59 @@ export const generateAccountSchema = {
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
 enum Role {
   ADMIN      @map("admin")
   MARKETING  @map("marketing")
   CUSTOMER   @map("customer")
 }
+
 enum UnitStatus {
   AVAILABLE  @map("Available")
   BOOKING    @map("Booking")
   TERJUAL    @map("Terjual")
+  HOLD       @map("Hold")
 }
+
 enum PaymentStatus {
   BELUM_BAYAR @map("Belum Bayar")
   LUNAS       @map("Lunas")
 }
+
 enum PaymentMethod {
   CASH_KERAS    @map("CASH KERAS")
   CASH_BERTAHAP @map("CASH BERTAHAP")
   KPR           @map("KPR")
 }
+
 enum ProgressStatus {
   MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
   DISETUJUI           @map("Disetujui")
   REVISI              @map("Revisi")
 }
+
 enum PenjualanStatus {
   BOOKED    @map("Booked")
   PROSES    @map("Proses")
   LUNAS     @map("Lunas")
   BATAL     @map("Batal")
 }
+
 enum AgentStatus {
   AKTIF      @map("Aktif")
   NONAKTIF   @map("Nonaktif")
 }
+
 enum SP3R {
   BANK  @map("BANK")
   CASH  @map("Cash")
 }
+
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @db.VarChar(100)
@@ -3925,43 +4535,52 @@ model User {
   role      Role
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
   customers Customer[]
+
   @@map("users")
 }
+
 model Customer {
-  id                 Int         @id @default(autoincrement())
-  userId             Int?        @map("user_id")
-  nikKtp             String      @unique @map("nik_ktp") @db.VarChar(20)
-  nama               String      @db.VarChar(150)
-  noHp               String      @map("no_hp") @db.VarChar(20)
-  alamatKtp          String      @map("alamat_ktp") @db.Text
-  alamatTinggal      String?     @map("alamat_tinggal") @db.Text
-  email              String?     @db.VarChar(100)
-  pekerjaan          String?     @db.VarChar(100)
-  perusahaan         String?     @db.VarChar(150)
-  bank               String?     @db.VarChar(100)
-  alamatKoresponden  String?     @map("alamat_korespondensi") @db.Text
-  fileKtp            String?     @map("file_ktp") @db.VarChar(255)
-  fileKk             String?     @map("file_kk") @db.VarChar(255)
-  fileNpwp           String?     @map("file_npwp") @db.VarChar(255)
-  createdAt          DateTime    @default(now()) @map("created_at")
-  updatedAt          DateTime    @updatedAt @map("updated_at")
-  user               User?       @relation(fields: [userId], references: [id])
-  penjualan          Penjualan[]
-  tagihan            Tagihan[]
+  id                Int         @id @default(autoincrement())
+  userId            Int?        @map("user_id")
+  nikKtp            String      @unique @map("nik_ktp") @db.VarChar(20)
+  nama              String      @db.VarChar(150)
+  noHp              String      @map("no_hp") @db.VarChar(20)
+  alamatKtp         String      @map("alamat_ktp") @db.Text
+  alamatTinggal     String?     @map("alamat_tinggal") @db.Text
+  email             String?     @db.VarChar(100)
+  pekerjaan         String?     @db.VarChar(100)
+  perusahaan        String?     @db.VarChar(150)
+  bank              String?     @db.VarChar(100)
+  alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
+  fileKtp           String?     @map("file_ktp") @db.VarChar(255)
+  fileKk            String?     @map("file_kk") @db.VarChar(255)
+  fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  user              User?       @relation(fields: [userId], references: [id])
+  penjualan         Penjualan[]
+  tagihan           Tagihan[]
+
   @@map("customers")
 }
+
 model Perumahan {
   id             Int              @id @default(autoincrement())
   nama           String           @unique @db.VarChar(150)
   logo           String           @unique @db.VarChar(150)
-  alamat           String           @unique @db.VarChar(150)
+  alamat         String           @unique @db.VarChar(150)
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
+
   kavlings       Kavling[]
   bankRekeningPt BankRekeningPt[]
+
   @@map("perumahan")
 }
+
 model BankRekeningPt {
   id          Int         @id @default(autoincrement())
   perumahanId Int         @map("perumahan_id")
@@ -3969,20 +4588,27 @@ model BankRekeningPt {
   noRekening  String      @map("no_rekening") @db.VarChar(50)
   atasNama    String      @map("atas_nama") @db.VarChar(150)
   createdAt   DateTime    @default(now()) @map("created_at")
+
   perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
   penjualan   Penjualan[]
+  kavlings    Kavling[]
+
   @@map("bank_rekening_pt")
 }
+
 model Notaris {
   id                 Int                  @id @default(autoincrement())
   nama               String               @db.VarChar(150)
   biayaAjb           Decimal              @map("biaya_ajb") @db.Decimal(15, 2)
   createdAt          DateTime             @default(now()) @map("created_at")
   updatedAt          DateTime             @updatedAt @map("updated_at")
+
   pics               PicNotaris[]
   detailKavlingPajak DetailKavlingPajak[]
+
   @@map("notaris")
 }
+
 model PicNotaris {
   id        Int      @id @default(autoincrement())
   notarisId Int      @map("notaris_id")
@@ -3991,25 +4617,31 @@ model PicNotaris {
   alamat    String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
   notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
+
   @@map("pic_notaris")
 }
+
 model Agent {
-  id         Int         @id @default(autoincrement())
-  nik        String      @unique @db.VarChar(20)
-  kodeSales  String?     @unique @map("kode_sales") @db.VarChar(20)
-  nama       String      @db.VarChar(150)
-  alamat     String?     @db.Text
-  noHp       String      @map("no_hp") @db.VarChar(20)
-  email      String?     @db.VarChar(100)
-  status     AgentStatus @default(AKTIF)
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
-  pics       PicAgent[]
-  fees       FeeAgent[]
-  penjualan  Penjualan[]
+  id        Int         @id @default(autoincrement())
+  nik       String      @unique @db.VarChar(20)
+  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
+  nama      String      @db.VarChar(150)
+  alamat    String?     @db.Text
+  noHp      String      @map("no_hp") @db.VarChar(20)
+  email     String?     @db.VarChar(100)
+  status    AgentStatus @default(AKTIF)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  pics      PicAgent[]
+  fees      FeeAgent[]
+  penjualan Penjualan[]
+
   @@map("agents")
 }
+
 model PicAgent {
   id        Int      @id @default(autoincrement())
   agentId   Int      @map("agent_id")
@@ -4018,27 +4650,37 @@ model PicAgent {
   alamat    String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
   @@map("pic_agents")
 }
+
 model Kavling {
   id                  Int              @id @default(autoincrement())
   perumahanId         Int              @map("perumahan_id")
   blok                String           @db.VarChar(10)
   nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
-  tipe                String           @db.VarChar(50)
+  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
+  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
+  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
   hargaJual           Decimal          @map("harga_jual") @db.Decimal(15, 2)
   status              UnitStatus       @default(AVAILABLE)
+  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
   filePbg             String?          @map("file_pbg") @db.VarChar(255)
   fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
   fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
   createdAt           DateTime         @default(now()) @map("created_at")
   updatedAt           DateTime         @updatedAt @map("updated_at")
+
   perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
   penjualan           Penjualan[]
   progressProyek      ProgressProyek[]
+
   @@map("kavling")
 }
+
 model Penjualan {
   id                Int                 @id @default(autoincrement())
   noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
@@ -4051,97 +4693,109 @@ model Penjualan {
   hargaJual         Decimal             @map("harga_jual") @db.Decimal(15, 2)
   dp                Decimal?            @db.Decimal(15, 2)
   diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
-  paketPromosi      String?             @map("paket_promosi") @db.VarChar(150)
+  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
   bank              String?             @db.VarChar(100)
   nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
   bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
   status            PenjualanStatus     @default(BOOKED)
   alasanBatal       String?             @map("alasan_batal") @db.Text
   fileSpr           String?             @map("file_spr") @db.VarChar(255)
+  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
+  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
+
   customer          Customer            @relation(fields: [customerId], references: [id])
   kavling           Kavling             @relation(fields: [kavlingId], references: [id])
   agent             Agent?              @relation(fields: [agentId], references: [id])
   rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
   tagihan           Tagihan[]
   detailKavlingPajak DetailKavlingPajak?
+
   @@map("penjualan")
 }
+
 model DetailKavlingPajak {
-  id                      Int        @id @default(autoincrement())
-  penjualanId             Int        @unique @map("penjualan_id")
-  notarisId               Int?       @map("notaris_id")
-  lantai                  String?    @db.VarChar(10)
-  luasBangunan            String?    @map("luas_bangunan") @db.VarChar(20)
-  lokasiStrategis         String?    @map("lokasi_strategis") @db.VarChar(50)
-  tanggalAkadPpjb         DateTime?  @map("tanggal_akad_ppjb") @db.Date
-  akadPpjb                String?    @map("akad_ppjb") @db.VarChar(100)
-  tanggalAkadAjbPpat      DateTime?  @map("tanggal_akad_ajb_ppat") @db.Date
-  tanggalPembayaranPph    DateTime?  @map("tanggal_pembayaran_pph") @db.Date
-  tanggalPembayaranBphtb  DateTime?  @map("tanggal_pembayaran_bphtb") @db.Date
-  pembiayaan              String?    @db.VarChar(100)
-  sp3r                    SP3R?    @default(BANK) 
-  lebihTanah              Decimal?   @map("lebih_tanah") @db.Decimal(15, 2)
-  biayaStrategis          Decimal?   @map("biaya_strategis") @db.Decimal(15, 2)
-  nrBiayaKprAsuransi      Decimal?   @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
-  nrDiskonAngsuran        Decimal?   @map("nr_diskon_angsuran") @db.Decimal(15, 2)
-  nrDiskonCash            Decimal?   @map("nr_diskon_cash") @db.Decimal(15, 2)
-  nrBiayaBbn              Decimal?   @map("nr_biaya_bbn") @db.Decimal(15, 2)
-  nrBiayaNotarisAjb       Decimal?   @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
-  nrBiayaAppraisal        Decimal?   @map("nr_biaya_appraisal") @db.Decimal(15, 2)
-  nrBiayaBphtb            Decimal?   @map("nr_biaya_bphtb") @db.Decimal(15, 2)
-  nrLainLain              Decimal?   @map("nr_lain_lain") @db.Decimal(15, 2)
-  nrTotalSubsidi          Decimal?   @map("nr_total_subsidi") @db.Decimal(15, 2) 
-  nrNilaiPenyerahan       Decimal?   @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
-  nrPpn                   Decimal?   @map("nr_ppn") @db.Decimal(15, 2)
-  nrBphtb                 Decimal?   @map("nr_bphtb") @db.Decimal(15, 2)
-  nrPph                   Decimal?   @map("nr_pph") @db.Decimal(15, 2)
-  pjBiayaKpr              Decimal?   @map("pj_biaya_kpr") @db.Decimal(15, 2)
-  pjBiayaAsuransi         Decimal?   @map("pj_biaya_asuransi") @db.Decimal(15, 2)
-  pjDiskonAngsuran        Decimal?   @map("pj_diskon_angsuran") @db.Decimal(15, 2)
-  pjBiayaBbn              Decimal?   @map("pj_biaya_bbn") @db.Decimal(15, 2)
-  pjBiayaAjb              Decimal?   @map("pj_biaya_ajb") @db.Decimal(15, 2)
-  pjBiayaAppraisal        Decimal?   @map("pj_biaya_appraisal") @db.Decimal(15, 2)
-  pjBphtb                 Decimal?   @map("pj_bphtb") @db.Decimal(15, 2)
-  pjLainLain              Decimal?   @map("pj_lain_lain") @db.Decimal(15, 2)
-  pjTotalSubsidi          Decimal?   @map("pj_total_subsidi") @db.Decimal(15, 2) 
-  pjNilaiPenyerahan       Decimal?   @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
-  pjPpn                   Decimal?   @map("pj_ppn") @db.Decimal(15, 2)
-  pjBphtbPajak            Decimal?   @map("pj_bphtb_pajak") @db.Decimal(15, 2)
-  pjPph                   Decimal?   @map("pj_pph") @db.Decimal(15, 2)
-  pjTotalBphtbPph         Decimal?   @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbNjopTanahPerMeter    Decimal?   @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
-  ajbNjopTanah            Decimal?   @map("ajb_njop_tanah") @db.Decimal(15, 2)
-  ajbNjopBangunanPerMeter Decimal?   @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
-  ajbNjopBangunan         Decimal?   @map("ajb_njop_bangunan") @db.Decimal(15, 2)
-  ajbNjopTotal            Decimal?   @map("ajb_njop_total") @db.Decimal(15, 2) 
-  ajbPpn                  Decimal?   @map("ajb_ppn") @db.Decimal(15, 2)
-  ajbBphtb                Decimal?   @map("ajb_bphtb") @db.Decimal(15, 2)
-  ajbPph                  Decimal?   @map("ajb_pph") @db.Decimal(15, 2)
-  ajbTotalBphtbPph        Decimal?   @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbSelisihPajakPbb      Decimal?   @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
-  ajbUping                Decimal?   @map("ajb_uping") @db.Decimal(15, 2)
-  penjualan               Penjualan  @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  notaris                 Notaris?   @relation(fields: [notarisId], references: [id], onDelete: SetNull)
+  id                      Int       @id @default(autoincrement())
+  penjualanId             Int       @unique @map("penjualan_id")
+  notarisId               Int?      @map("notaris_id")
+  lantai                  String?   @db.VarChar(10)
+  luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
+  lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
+  tanggalAkadPpjb         DateTime? @map("tanggal_akad_ppjb") @db.Date
+  akadPpjb                String?   @map("akad_ppjb") @db.VarChar(100)
+  tanggalAkadAjbPpat      DateTime? @map("tanggal_akad_ajb_ppat") @db.Date
+  tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
+  tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
+  pembiayaan              String?   @db.VarChar(100)
+  sp3r                    SP3R?     @default(BANK) 
+  lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
+  biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
+  nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
+  nrDiskonAngsuran        Decimal?  @map("nr_diskon_angsuran") @db.Decimal(15, 2)
+  nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
+  nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
+  nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
+  nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
+  nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
+  nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
+  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
+  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
+  nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
+  nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
+  nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
+  pjBiayaKpr              Decimal?  @map("pj_biaya_kpr") @db.Decimal(15, 2)
+  pjBiayaAsuransi         Decimal?  @map("pj_biaya_asuransi") @db.Decimal(15, 2)
+  pjDiskonAngsuran        Decimal?  @map("pj_diskon_angsuran") @db.Decimal(15, 2)
+  pjBiayaBbn              Decimal?  @map("pj_biaya_bbn") @db.Decimal(15, 2)
+  pjBiayaAjb              Decimal?  @map("pj_biaya_ajb") @db.Decimal(15, 2)
+  pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
+  pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
+  pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
+  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
+  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
+  pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
+  pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
+  pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
+  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
+  ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
+  ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
+  ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
+  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
+  ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
+  ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
+  ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
+  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
+  ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
+
+  penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
+
   @@map("detail_kavling_pajak")
 }
+
 model Tagihan {
-  id          Int           @id @default(autoincrement())
-  noTagihan   String        @unique @map("no_tagihan") @db.VarChar(50)
-  customerId  Int           @map("customer_id")
-  penjualanId Int           @map("penjualan_id")
-  keterangan  String        @db.VarChar(255)
-  nominal     Decimal       @db.Decimal(15, 2)
-  jatuhTempo  DateTime      @map("jatuh_tempo") @db.Date
-  status      PaymentStatus @default(BELUM_BAYAR)
-  fileBukti   String?       @map("file_bukti") @db.VarChar(255)
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
-  customer    Customer      @relation(fields: [customerId], references: [id])
-  penjualan   Penjualan     @relation(fields: [penjualanId], references: [id])
+  id                 Int           @id @default(autoincrement())
+  noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
+  customerId         Int           @map("customer_id")
+  penjualanId        Int           @map("penjualan_id")
+  pembayaran         String        @db.VarChar(255)
+  nominal            Decimal       @db.Decimal(15, 2)
+  jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
+  status             PaymentStatus @default(BELUM_BAYAR)
+  fileBukti          String?       @map("file_bukti") @db.VarChar(255)
+  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
+
   @@map("tagihan")
 }
+
 model FeeAgent {
   id               Int       @id @default(autoincrement())
   agentId          Int       @map("agent_id")
@@ -4156,9 +4810,12 @@ model FeeAgent {
   marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
+
   agent            Agent     @relation(fields: [agentId], references: [id])
+
   @@map("fee_agent")
 }
+
 model Spk {
   id               Int      @id @default(autoincrement())
   noSpk            String   @unique @map("no_spk") @db.VarChar(100)
@@ -4178,8 +4835,10 @@ model Spk {
   fileSpk          String?  @map("file_spk") @db.VarChar(255)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
+
   @@map("spk")
 }
+
 model ProgressProyek {
   id               Int            @id @default(autoincrement())
   kavlingId        Int            @map("kavling_id")
@@ -4193,9 +4852,245 @@ model ProgressProyek {
   status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
+
   kavling          Kavling        @relation(fields: [kavlingId], references: [id])
+
   @@map("progress_proyek")
 }
+</file>
+
+<file path="src/infrastructure/di/container.ts">
+import { UserRepository } from "../../domain/repositories/userRepo.js";
+import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
+import { CustomerRepository } from "../../domain/repositories/customerRepo.js";
+
+import { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
+import { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
+import { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
+import { AuthController } from "../../presentation/controllers/authController.js";
+import { prisma } from "../../infrastructure/database/prisma.js";
+import type { PrismaClient } from "@prisma/client/extension";
+
+import { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersUseCase.js";
+import { UserController } from "../../presentation/controllers/userController.js";
+import { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
+import { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
+
+import {
+  CreateAgentUseCase,
+  UpdateAgentUseCase,
+  GetAgentByIdUseCase,
+  GetAgentsPaginatedUseCase,
+  DeleteAgentUseCase,
+} from "../../application/usecases/agent/AgentUseCases.js";
+
+import { GoogleVisionService } from "../external/GoogleVisionService.js";
+import { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
+import { OcrController } from "../../presentation/controllers/ocrController.js";
+
+import {
+  CreateBankRekeningPtUseCase,
+  UpdateBankRekeningPtUseCase,
+  GetBankRekeningPtByIdUseCase,
+  GetBankRekeningPtPaginatedUseCase,
+  DeleteBankRekeningPtUseCase,
+} from "../../application/usecases/bankRekeningPt/BankRekeningPtUseCases.js";
+import { BankRekeningPtController } from "../../presentation/controllers/bankRekeningPtController.js";
+
+import { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
+import { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
+import { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
+import { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
+import { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
+import { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
+import { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
+import { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
+import { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
+import { CustomerController } from "../../presentation/controllers/customerController.js";
+import { PerumahanRepository } from "../../domain/repositories/perumahanRepo.js";
+import {
+  CreatePerumahanUseCase,
+  UpdatePerumahanUseCase,
+  GetPerumahanByIdUseCase,
+  GetPerumahanPaginatedUseCase,
+  DeletePerumahanUseCase,
+} from "../../application/usecases/perumahan/PerumahanUseCases.js";
+import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
+import { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
+import { DashboardController } from "../../presentation/controllers/dashboardController.js";
+import { CloudinaryService } from "../external/CloudinaryService.js";
+
+import { AgentRepository } from "../../domain/repositories/agentRepo.js";
+import { AgentController } from "../../presentation/controllers/agentController.js";
+
+export const createContainer = (dbClient: PrismaClient) => {
+  const googleVisionService = new GoogleVisionService();
+  const cloudinaryService = new CloudinaryService();
+
+  const userRepo = new UserRepository(dbClient);
+  const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
+  const customerRepo = new CustomerRepository(dbClient);
+
+  const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
+
+  const registerUseCase = new RegisterUserUseCase(userRepo);
+  const loginUseCase = new LoginUserUseCase(userRepo);
+  const getProfileUseCase = new GetProfileUseCase(userRepo);
+
+  const getAllUsersUseCase = new GetAllUsersUseCase(userRepo);
+  const updateUserUseCase = new UpdateUserUseCase(userRepo);
+  const getUsersPaginatedUseCase = new GetUsersPaginatedUseCase(userRepo);
+
+  const createBankUseCase = new CreateBankRekeningPtUseCase(bankRekeningPtRepo);
+  const updateBankUseCase = new UpdateBankRekeningPtUseCase(bankRekeningPtRepo);
+  const getBankByIdUseCase = new GetBankRekeningPtByIdUseCase(
+    bankRekeningPtRepo,
+  );
+  const getBanksPaginatedUseCase = new GetBankRekeningPtPaginatedUseCase(
+    bankRekeningPtRepo,
+  );
+  const deleteBankUseCase = new DeleteBankRekeningPtUseCase(bankRekeningPtRepo);
+
+  const exportCustomersUseCase = new ExportCustomersUseCase(dbClient);
+  const exportCustomersPdfUseCase = new ExportCustomersPdfUseCase(dbClient);
+  const createCustomerUseCase = new CreateCustomerUseCase(customerRepo);
+  const updateCustomerUseCase = new UpdateCustomerUseCase(customerRepo);
+  const uploadCustomerDocumentUseCase = new UploadCustomerDocumentUseCase(
+    customerRepo,
+    cloudinaryService,
+  );
+  const getCustomerByIdUseCase = new GetCustomerByIdUseCase(customerRepo);
+  const getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
+    customerRepo,
+  );
+  const deleteCustomerUseCase = new DeleteCustomerUseCase(customerRepo);
+  const generateCustomerAccountUseCase = new GenerateCustomerAccountUseCase(
+    customerRepo,
+    userRepo,
+  );
+
+  const perumahanRepo = new PerumahanRepository(dbClient);
+
+  const agentRepo = new AgentRepository(dbClient);
+
+  const createAgentUseCase = new CreateAgentUseCase(agentRepo);
+  const updateAgentUseCase = new UpdateAgentUseCase(agentRepo);
+  const getAgentByIdUseCase = new GetAgentByIdUseCase(agentRepo);
+  const getAgentsPaginatedUseCase = new GetAgentsPaginatedUseCase(agentRepo);
+  const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
+
+  const agentController = new AgentController(
+    createAgentUseCase,
+    updateAgentUseCase,
+    getAgentByIdUseCase,
+    getAgentsPaginatedUseCase,
+    deleteAgentUseCase,
+  );
+  const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
+  const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
+  const getPerumahanByIdUseCase = new GetPerumahanByIdUseCase(perumahanRepo);
+  const getPerumahanPaginatedUseCase = new GetPerumahanPaginatedUseCase(
+    perumahanRepo,
+  );
+  const deletePerumahanUseCase = new DeletePerumahanUseCase(perumahanRepo);
+
+  const perumahanController = new PerumahanController(
+    createPerumahanUseCase,
+    updatePerumahanUseCase,
+    getPerumahanByIdUseCase,
+    getPerumahanPaginatedUseCase,
+    deletePerumahanUseCase,
+  );
+
+  const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
+  const dashboardController = new DashboardController(
+    getDashboardSummaryUseCase,
+  );
+
+  const ocrController = new OcrController(extractKtpDataUseCase);
+  const authController = new AuthController(
+    registerUseCase,
+    loginUseCase,
+    getProfileUseCase,
+  );
+  const userController = new UserController(
+    getAllUsersUseCase,
+    updateUserUseCase,
+    getUsersPaginatedUseCase,
+  );
+
+  const bankRekeningPtController = new BankRekeningPtController(
+    createBankUseCase,
+    updateBankUseCase,
+    getBankByIdUseCase,
+    getBanksPaginatedUseCase,
+    deleteBankUseCase,
+  );
+  const customerController = new CustomerController(
+    createCustomerUseCase,
+    updateCustomerUseCase,
+    getCustomerByIdUseCase,
+    getCustomersPaginatedUseCase,
+    deleteCustomerUseCase,
+    uploadCustomerDocumentUseCase,
+    generateCustomerAccountUseCase,
+    exportCustomersUseCase,
+    exportCustomersPdfUseCase,
+  );
+
+  return {
+    authController,
+    userRepo,
+    bankRekeningPtRepo,
+    customerRepo,
+    userController,
+    ocrController,
+    bankRekeningPtController,
+    customerController,
+    perumahanRepo,
+    perumahanController,
+    dashboardController,
+    agentController,
+  };
+};
+
+export const container = createContainer(prisma as any);
+</file>
+
+<file path="src/presentation/routes/index.ts">
+import { Router } from "express";
+import { checkHealth } from "../controllers/healthController.js";
+import { createAuthRoutes } from "./authRoutes.js";
+import { createUserRoutes } from "./userRoutes.js";
+import { createOcrRoutes } from "./ocrRoutes.js";
+import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
+import { createCustomerRoutes } from "./customerRoutes.js";
+import { container } from "../../infrastructure/di/container.js";
+import { createPerumahanRoutes } from "./perumahanRoutes.js";
+import { createDashboardRoutes } from "./dashboardRoutes.js";
+import { createAgentRoutes } from "./agentRoutes.js";
+export const createMainRouter = (deps: typeof container): Router => {
+  const router = Router();
+
+  router.get("/health", checkHealth);
+  router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/users", createUserRoutes(deps.userController));
+  router.use("/ocr", createOcrRoutes(deps.ocrController));
+
+  router.use(
+    "/bank-rekening",
+    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  );
+
+  router.use("/customers", createCustomerRoutes(deps.customerController));
+  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
+  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/agents", createAgentRoutes(deps.agentController));
+  return router;
+};
+
+const router = createMainRouter(container);
+export default router;
 </file>
 
 </files>

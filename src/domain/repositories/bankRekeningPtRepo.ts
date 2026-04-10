@@ -33,7 +33,10 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
   }
 
   async findById(id: number): Promise<BankRekeningPt | null> {
-    return await this.db.bankRekeningPt.findUnique({ where: { id } });
+    return await this.db.bankRekeningPt.findUnique({
+      where: { id },
+      include: { perumahan: true },
+    });
   }
 
   async update(
@@ -103,6 +106,7 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: orderByClause,
+      include: { perumahan: true },
     });
 
     let hasNextPage = false;

@@ -17,6 +17,7 @@ export interface UpdateBankRekeningPtDTO {
 export interface BankRekeningPtResponseDTO {
   id: number;
   perumahanId: number;
+  perumahan?: string;
   namaBank: string;
   noRekening: string;
   atasNama: string;

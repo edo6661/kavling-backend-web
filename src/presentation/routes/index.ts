@@ -7,6 +7,8 @@ import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
 import { createCustomerRoutes } from "./customerRoutes.js";
 import { container } from "../../infrastructure/di/container.js";
 import { createPerumahanRoutes } from "./perumahanRoutes.js";
+import { createDashboardRoutes } from "./dashboardRoutes.js";
+import { createAgentRoutes } from "./agentRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -22,6 +24,8 @@ export const createMainRouter = (deps: typeof container): Router => {
 
   router.use("/customers", createCustomerRoutes(deps.customerController));
   router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
+  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/agents", createAgentRoutes(deps.agentController));
   return router;
 };
 
