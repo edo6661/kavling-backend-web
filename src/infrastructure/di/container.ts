@@ -99,6 +99,11 @@ import {
 import { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
 import { TagihanController } from "../../presentation/controllers/tagihanController.js";
 
+import { PenjualanRepository } from "../../domain/repositories/penjualanRepo.js";
+import { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
+import { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
+import { PenjualanController } from "../../presentation/controllers/penjualanController.js";
+
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -283,6 +288,15 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteTagihanUseCase,
     uploadBuktiTagihanUseCase,
   );
+  const penjualanRepo = new PenjualanRepository(dbClient);
+  const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
+  const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
+    penjualanRepo,
+  );
+  const penjualanController = new PenjualanController(
+    createPenjualanUseCase,
+    getPenjualanPaginatedUseCase,
+  );
   return {
     authController,
     userRepo,
@@ -300,6 +314,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     kavlingController,
     customerKavlingController,
     tagihanController,
+    penjualanController,
   };
 };
 

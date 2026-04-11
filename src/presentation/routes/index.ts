@@ -13,6 +13,7 @@ import { createNotarisRoutes } from "./notarisRoutes.js";
 import { createKavlingRoutes } from "./kavlingRoutes.js";
 import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
 import { createTagihanRoutes } from "./tagihanRoutes.js";
+import { createPenjualanRoutes } from "./penjualanRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -37,6 +38,7 @@ export const createMainRouter = (deps: typeof container): Router => {
     createCustomerKavlingRoutes(deps.customerKavlingController),
   );
   router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
+  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
   return router;
 };
 
