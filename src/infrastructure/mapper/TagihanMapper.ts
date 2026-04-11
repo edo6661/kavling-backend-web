@@ -1,0 +1,38 @@
+import type { Prisma } from "@prisma/client";
+import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
+
+type TagihanWithRelations = Prisma.TagihanGetPayload<{
+  include: {
+    customer: { select: { nama: true } };
+    penjualan: {
+      include: {
+        kavling: {
+          include: { perumahan: { select: { nama: true } } };
+        };
+      };
+    };
+  };
+}>;
+
+export class TagihanMapper {
+  static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
+    return {
+      id: prismaTagihan.id,
+      noTagihan: prismaTagihan.noTagihan,
+      customerId: prismaTagihan.customerId,
+      namaCustomer: prismaTagihan.customer.nama,
+      penjualanId: prismaTagihan.penjualanId,
+      perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
+      blok: prismaTagihan.penjualan.kavling.blok,
+      nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
+      pembayaran: prismaTagihan.pembayaran,
+      nominal: Number(prismaTagihan.nominal),
+      jatuhTempo: prismaTagihan.jatuhTempo,
+      status: prismaTagihan.status,
+      fileBukti: prismaTagihan.fileBukti,
+      reminderBerikutnya: prismaTagihan.reminderBerikutnya,
+      createdAt: prismaTagihan.createdAt,
+      updatedAt: prismaTagihan.updatedAt,
+    };
+  }
+}

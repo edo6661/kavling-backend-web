@@ -88,6 +88,17 @@ import {
 } from "../../application/usecases/customerKavling/CustomerKavlingUseCases.js";
 import { CustomerKavlingController } from "../../presentation/controllers/customerKavlingController.js";
 
+import { TagihanRepository } from "../../domain/repositories/tagihanRepo.js";
+import {
+  CreateTagihanUseCase,
+  UpdateTagihanUseCase,
+  GetTagihanByIdUseCase,
+  GetTagihansPaginatedUseCase,
+  DeleteTagihanUseCase,
+} from "../../application/usecases/tagihan/TagihanUseCases.js";
+import { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+import { TagihanController } from "../../presentation/controllers/tagihanController.js";
+
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -251,7 +262,27 @@ export const createContainer = (dbClient: PrismaClient) => {
     exportCustomersUseCase,
     exportCustomersPdfUseCase,
   );
+  const tagihanRepo = new TagihanRepository(dbClient);
+  const createTagihanUseCase = new CreateTagihanUseCase(tagihanRepo);
+  const updateTagihanUseCase = new UpdateTagihanUseCase(tagihanRepo);
+  const getTagihanByIdUseCase = new GetTagihanByIdUseCase(tagihanRepo);
+  const getTagihansPaginatedUseCase = new GetTagihansPaginatedUseCase(
+    tagihanRepo,
+  );
+  const deleteTagihanUseCase = new DeleteTagihanUseCase(tagihanRepo);
+  const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
+    tagihanRepo,
+    cloudinaryService,
+  );
 
+  const tagihanController = new TagihanController(
+    createTagihanUseCase,
+    updateTagihanUseCase,
+    getTagihanByIdUseCase,
+    getTagihansPaginatedUseCase,
+    deleteTagihanUseCase,
+    uploadBuktiTagihanUseCase,
+  );
   return {
     authController,
     userRepo,
@@ -268,6 +299,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     notarisController,
     kavlingController,
     customerKavlingController,
+    tagihanController,
   };
 };
 
