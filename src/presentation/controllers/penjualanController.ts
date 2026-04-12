@@ -4,15 +4,20 @@ import { sendResponse } from "../../utils/response.js";
 import type { TypedRequest } from "../../types/request.js";
 
 import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
-import type { createPenjualanSchema } from "../../validations/penjualanSchema.js";
+import type {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+} from "../../validations/penjualanSchema.js";
 import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
 import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
 import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
+import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
 
 export class PenjualanController {
   constructor(
     private readonly createUseCase: CreatePenjualanUseCase,
     private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
+    private readonly cancelUseCase: CancelPenjualanUseCase,
   ) {}
 
   create = async (
@@ -45,5 +50,19 @@ export class PenjualanController {
       "Data penjualan berhasil diambil",
       result,
     );
+  };
+  cancel = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof cancelPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { alasanBatal } = req.body;
+
+    const result = await this.cancelUseCase.execute(id, alasanBatal);
+    sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
   };
 }

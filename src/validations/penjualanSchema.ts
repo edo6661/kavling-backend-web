@@ -45,3 +45,14 @@ export const createPenjualanSchema = {
 export const getPenjualanPaginatedSchema = {
   query: cursorPaginationQuerySchema,
 };
+
+export const cancelPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z
+      .string()
+      .min(5, "Alasan pembatalan wajib diisi (min. 5 karakter)"),
+  }),
+};

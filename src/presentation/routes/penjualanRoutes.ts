@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
+  cancelPenjualanSchema,
   createPenjualanSchema,
   getPenjualanPaginatedSchema,
 } from "../../validations/penjualanSchema.js";
@@ -27,6 +28,11 @@ export const createPenjualanRoutes = (
     validate(createPenjualanSchema),
     controller.create,
   );
-
+  router.patch(
+    "/:id/cancel",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(cancelPenjualanSchema),
+    controller.cancel,
+  );
   return router;
 };

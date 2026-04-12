@@ -111,6 +111,7 @@ import {
 } from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
 import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
 import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
+import { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -289,9 +290,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
     penjualanRepo,
   );
+  const cancelPenjualanUseCase = new CancelPenjualanUseCase(dbClient); // <-- Tambahkan ini
   const penjualanController = new PenjualanController(
     createPenjualanUseCase,
     getPenjualanPaginatedUseCase,
+    cancelPenjualanUseCase,
   );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,
