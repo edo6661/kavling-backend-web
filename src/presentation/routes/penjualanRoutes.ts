@@ -7,6 +7,7 @@ import {
   getPenjualanPaginatedSchema,
 } from "../../validations/penjualanSchema.js";
 import type { PenjualanController } from "../controllers/penjualanController.js";
+import { upload } from "../../middlewares/upload.js";
 
 export const createPenjualanRoutes = (
   controller: PenjualanController,
@@ -33,6 +34,12 @@ export const createPenjualanRoutes = (
     requireRole(["ADMIN", "MARKETING"]),
     validate(cancelPenjualanSchema),
     controller.cancel,
+  );
+  router.patch(
+    "/:id/upload/:type",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("fileBukti"),
+    controller.uploadBukti,
   );
   return router;
 };

@@ -56,3 +56,15 @@ export const cancelPenjualanSchema = {
       .min(5, "Alasan pembatalan wajib diisi (min. 5 karakter)"),
   }),
 };
+
+export const uploadBuktiPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+    type: z.string().min(1, "Type wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z
+      .string()
+      .min(5, "Alasan pembatalan wajib diisi (min. 5 karakter)"),
+  }),
+};

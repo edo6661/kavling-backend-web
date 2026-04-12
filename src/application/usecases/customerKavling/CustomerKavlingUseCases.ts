@@ -35,6 +35,7 @@ export class GetCustomerKavlingsPaginatedUseCase {
       where,
       orderBy: [{ id: "desc" }],
       include: {
+        customer: { select: { nama: true } },
         kavling: { include: { perumahan: true } },
         detailKavlingPajak: { include: { notaris: true } },
       },
@@ -48,6 +49,8 @@ export class GetCustomerKavlingsPaginatedUseCase {
 
     const mappedItems = items.map((p) => ({
       id: p.id.toString(),
+      customerId: p.customerId,
+      namaCustomer: p.customer?.nama || "-",
       perumahan: p.kavling.perumahan?.nama || "",
       status: p.kavling.status,
       blok: p.kavling.blok,

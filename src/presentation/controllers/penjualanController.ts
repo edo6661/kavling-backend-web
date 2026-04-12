@@ -7,17 +7,20 @@ import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/pe
 import type {
   cancelPenjualanSchema,
   createPenjualanSchema,
+  uploadBuktiPenjualanSchema,
 } from "../../validations/penjualanSchema.js";
 import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
 import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
 import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
 import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
 
 export class PenjualanController {
   constructor(
     private readonly createUseCase: CreatePenjualanUseCase,
     private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
     private readonly cancelUseCase: CancelPenjualanUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
   ) {}
 
   create = async (
@@ -64,5 +67,39 @@ export class PenjualanController {
 
     const result = await this.cancelUseCase.execute(id, alasanBatal);
     sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
+  };
+  uploadBukti = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof uploadBuktiPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id, type } = req.params;
+    if (!["booking", "dp"].includes(type)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe upload tidak valid.");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File dokumen wajib diunggah.",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      id,
+      type as "booking" | "dp",
+      req.file.buffer,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Bukti ${type} berhasil diunggah`,
+      result,
+    );
   };
 }

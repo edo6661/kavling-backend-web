@@ -247,6 +247,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         customer: true,
         kavling: { include: { perumahan: true } },
         agent: true,
+        tagihan: true,
       },
     });
 
@@ -256,35 +257,51 @@ export class PenjualanRepository implements IPenjualanRepository {
       items.pop();
     }
 
-    const mappedItems = items.map((item) => ({
-      id: item.noTransaksi,
-      tanggal: item.tanggal.toISOString(),
-      nama: item.customer.nama,
-      alamat: item.customer.alamatKtp,
-      noTelepon: item.customer.noHp,
-      noIdentitas: item.customer.nikKtp,
-      perusahaan: item.customer.perusahaan ?? "",
-      alamatKoresponden: item.customer.alamatKoresponden ?? "",
-      perumahan: item.kavling.perumahan.nama,
-      blok: item.kavling.blok,
-      tipe: item.kavling.namaTipe,
-      luasBangunan: Number(item.kavling.luasBangunan),
-      luasTanah: Number(item.kavling.luasTanah),
-      nomorUnit: item.kavling.nomorUnit,
-      hargaJual: Number(item.hargaJual),
-      dp: Number(item.dp ?? 0),
-      diskonPenjualan: Number(item.diskonPenjualan ?? 0),
-      hargaPromosi: Number(item.hargaPromosi ?? 0),
-      bank: item.bank ?? "",
-      caraPembayaran: item.caraPembayaran,
-      nilaiPengajuanKpr: Number(item.nilaiPengajuanKpr ?? 0),
-      bookingFee: Number(item.bookingFee ?? 0),
-      status: item.status,
-      agent: item.agent?.nama ?? "",
-      fileBuktiBooking: item.fileBuktiBooking ?? "",
-      fileBuktiDp: item.fileBuktiDp ?? "",
-      fileSpr: item.fileSpr ?? null,
-    }));
+    const mappedItems = items.map((item) => {
+      const bfTagihan = item.tagihan?.find((t) =>
+        t.pembayaran.toLowerCase().includes("booking"),
+      );
+      const dpTagihan = item.tagihan?.find(
+        (t) =>
+          t.pembayaran.toLowerCase().includes("dp") ??
+          t.pembayaran.toLowerCase().includes("down"),
+      );
+
+      let currentStatus = item.status;
+      if (item.status === "BOOKED" && bfTagihan?.status === "LUNAS") {
+        currentStatus = "PROSES";
+      }
+
+      return {
+        id: item.noTransaksi,
+        tanggal: item.tanggal.toISOString(),
+        nama: item.customer.nama,
+        alamat: item.customer.alamatKtp,
+        noTelepon: item.customer.noHp,
+        noIdentitas: item.customer.nikKtp,
+        perusahaan: item.customer.perusahaan ?? "",
+        alamatKoresponden: item.customer.alamatKoresponden ?? "",
+        perumahan: item.kavling.perumahan.nama,
+        blok: item.kavling.blok,
+        tipe: item.kavling.namaTipe,
+        luasBangunan: Number(item.kavling.luasBangunan),
+        luasTanah: Number(item.kavling.luasTanah),
+        nomorUnit: item.kavling.nomorUnit,
+        hargaJual: Number(item.hargaJual),
+        dp: Number(item.dp ?? 0),
+        diskonPenjualan: Number(item.diskonPenjualan ?? 0),
+        hargaPromosi: Number(item.hargaPromosi ?? 0),
+        bank: item.bank ?? "",
+        caraPembayaran: item.caraPembayaran,
+        nilaiPengajuanKpr: Number(item.nilaiPengajuanKpr ?? 0),
+        bookingFee: Number(item.bookingFee ?? 0),
+        status: currentStatus,
+        agent: item.agent?.nama ?? "",
+        fileBuktiBooking: item.fileBuktiBooking ?? bfTagihan?.fileBukti ?? "",
+        fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
+        fileSpr: item.fileSpr ?? null,
+      };
+    });
 
     return {
       items: mappedItems,

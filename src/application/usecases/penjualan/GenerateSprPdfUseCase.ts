@@ -86,7 +86,7 @@ export class GenerateSprPdfUseCase {
         );
         drawField("No. Identitas", customer.nikKtp);
         drawField("Perusahaan", customer.perusahaan ?? "-");
-        drawField("Alamat Koresponden", customer.alamatKoresponden ?? "-", 15);
+        drawField("Alamat", customer.alamatKtp ?? "-", 15);
 
         checkY(20);
         doc
