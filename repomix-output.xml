@@ -1,4 +1,4 @@
-kode frontend:
+kode backend:
 
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -636,6 +636,69 @@ export class UpdateCustomerKavlingUseCase {
 }
 </file>
 
+<file path="src/application/usecases/feeAgent/FeeAgentUseCases.ts">
+import type { IFeeAgentRepository } from "../../../domain/repositories/IFeeAgentRepo.js";
+import type {
+  UpdateFeeAgentDTO,
+  FeeAgentFilterDTO,
+} from "../../../domain/dtos/FeeAgentDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class GetFeeAgentsPaginatedUseCase {
+  constructor(private readonly repo: IFeeAgentRepository) {}
+  async execute(limit: number, cursor?: number, filters?: FeeAgentFilterDTO) {
+    return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  }
+}
+
+export class UpdateFeeAgentUseCase {
+  constructor(private readonly repo: IFeeAgentRepository) {}
+  async execute(id: number, data: UpdateFeeAgentDTO) {
+    return await this.repo.update(id, data);
+  }
+}
+
+export class UploadBuktiFeeUseCase {
+  constructor(
+    private readonly repo: IFeeAgentRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    id: number,
+    fileBuffer: Buffer,
+    type: "bookingBukti" | "closingBukti" | "marketingBukti",
+  ) {
+    const existing = await this.repo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Data Fee Agent tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing[type]) {
+      await this.cloudinaryService.deleteImageByUrl(existing[type]);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      `bumantara/fee/${type}`,
+    );
+
+    const updateData = { [type]: imageUrl };
+    return await this.repo.update(id, updateData);
+  }
+}
+</file>
+
 <file path="src/application/usecases/kavling/KavlingUseCases.ts">
 import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
 import type {
@@ -781,6 +844,301 @@ export class CreatePenjualanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
+import PDFDocument from "pdfkit";
+import type { Prisma } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+
+export class GenerateSprPdfUseCase {
+  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
+
+  async execute(penjualanId: number): Promise<Buffer> {
+    const penjualan = await this.penjualanRepo.findById(penjualanId);
+
+    if (!penjualan) {
+      throw new NotFoundError("Data Penjualan tidak ditemukan");
+    }
+
+    // Karena return type findById sudah jelas (PenjualanWithCompleteRelations),
+    // TypeScript sekarang tahu bentuk exact dari objek di bawah ini.
+    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
+
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: "A4", margin: 50 });
+        const buffers: Buffer[] = [];
+
+        doc.on("data", (buffer) => buffers.push(buffer));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+        let y = 40;
+        const startX = 50;
+        const contentWidth = 495;
+        const pageBottomLimit = 780;
+
+        const checkY = (neededHeight: number) => {
+          if (y + neededHeight > pageBottomLimit) {
+            doc.addPage();
+            y = 50;
+          }
+        };
+
+        // --- HEADER ---
+        checkY(130);
+        doc
+          .fontSize(22)
+          .font("Helvetica-Bold")
+          .text(kavling.perumahan.nama.toUpperCase(), startX, y);
+        doc.fontSize(16).text("BUMANTARA", startX, y + 24);
+
+        y += 70;
+
+        doc.fontSize(14).text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
+          width: contentWidth,
+          align: "center",
+          underline: true,
+        });
+        y += 30;
+
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text("Yang bertanda tangan di bawah ini :", startX, y);
+        y += 20;
+
+        const drawField = (label: string, value: string, extraMargin = 8) => {
+          const labelWidth = 130;
+          const textHeight =
+            doc.heightOfString(value, {
+              width: contentWidth - labelWidth - 10,
+            }) || 12;
+          checkY(textHeight + extraMargin);
+
+          doc.font("Helvetica").text(label, startX, y);
+          doc.text(":", startX + labelWidth, y);
+          doc.font("Helvetica-Bold").text(value, startX + labelWidth + 10, y, {
+            width: contentWidth - labelWidth - 10,
+            lineBreak: true,
+          });
+          y += textHeight + extraMargin;
+        };
+
+        // --- CUSTOMER INFO ---
+        drawField("Nama", customer.nama);
+        drawField("Alamat", customer.alamatKtp);
+        drawField(
+          "No. Telepon / HP",
+          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
+        );
+        drawField("No. Identitas", customer.nikKtp);
+        drawField("Perusahaan", customer.perusahaan ?? "-");
+        drawField("Alamat Koresponden", customer.alamatKoresponden ?? "-", 15);
+
+        checkY(20);
+        doc
+          .font("Helvetica")
+          .text(
+            "Telah menyetujui untuk memesan / membeli unit rumah dan atau kavling sebagai berikut:",
+            startX,
+            y,
+          );
+        y += 20;
+
+        const formatRp = (num: number | Prisma.Decimal) => {
+          const val =
+            typeof num === "object" && "toNumber" in num
+              ? num.toNumber()
+              : Number(num);
+          return `Rp. ${val.toLocaleString("id-ID")}`;
+        };
+
+        // --- UNIT INFO ---
+        drawField("Perumahan", kavling.perumahan.nama);
+        drawField(
+          "Blok/Type",
+          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
+        );
+        drawField("Harga Jual", formatRp(penjualan.hargaJual));
+
+        if (
+          penjualan.diskonPenjualan &&
+          Number(penjualan.diskonPenjualan) > 0
+        ) {
+          drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
+        }
+
+        drawField(
+          "Cara Pembayaran",
+          penjualan.caraPembayaran.replace(/_/g, " "),
+        );
+
+        if (penjualan.bank) drawField("Bank KPR", penjualan.bank);
+        if (
+          penjualan.nilaiPengajuanKpr &&
+          Number(penjualan.nilaiPengajuanKpr) > 0
+        ) {
+          drawField(
+            "Nilai Pengajuan KPR",
+            formatRp(penjualan.nilaiPengajuanKpr),
+            15,
+          );
+        }
+
+        // --- TABLE PEMBAYARAN (DARI TAGIHAN) ---
+        const colNo = startX;
+        const colKet = startX + 35;
+        const colTempo = startX + 230;
+        const colNilai = startX + 360;
+        const rowHeight = 20;
+
+        checkY(rowHeight);
+        doc
+          .rect(startX, y, contentWidth, rowHeight)
+          .fillAndStroke("#f0f0f0", "#000");
+        doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
+        doc.text("NO", colNo + 5, y + 6);
+        doc.text("KETERANGAN", colKet + 5, y + 6);
+        doc.text("JATUH TEMPO", colTempo + 5, y + 6);
+        doc.text("NILAI", colNilai + 5, y + 6);
+        y += rowHeight;
+
+        let totalNilai = 0;
+        doc.font("Helvetica").fontSize(9);
+
+        if (tagihan && tagihan.length > 0) {
+          tagihan.forEach((p, idx) => {
+            checkY(rowHeight);
+
+            // Karena kita pakai TS Type dari Prisma, p.jatuhTempo pasti valid Date object
+            const dateStr = p.jatuhTempo
+              .toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+              .replace(/\//g, "-");
+
+            doc.rect(startX, y, contentWidth, rowHeight).stroke();
+            doc.text(`${idx + 1}.`, colNo + 5, y + 6);
+            doc.text(p.pembayaran, colKet + 5, y + 6);
+            doc.text(dateStr, colTempo + 5, y + 6);
+            doc.text(formatRp(p.nominal), colNilai + 5, y + 6);
+
+            doc
+              .moveTo(colKet, y)
+              .lineTo(colKet, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colTempo, y)
+              .lineTo(colTempo, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colNilai, y)
+              .lineTo(colNilai, y + rowHeight)
+              .stroke();
+
+            totalNilai +=
+              typeof p.nominal === "object" && "toNumber" in p.nominal
+                ? p.nominal.toNumber()
+                : Number(p.nominal);
+
+            y += rowHeight;
+          });
+        }
+
+        // Row Total
+        checkY(rowHeight);
+        doc.rect(startX, y, contentWidth, rowHeight).stroke();
+        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 6);
+        doc.text(formatRp(totalNilai), colNilai + 5, y + 6);
+        doc
+          .moveTo(colKet, y)
+          .lineTo(colKet, y + rowHeight)
+          .stroke();
+        doc
+          .moveTo(colNilai, y)
+          .lineTo(colNilai, y + rowHeight)
+          .stroke();
+        y += 35;
+
+        // --- SIGNATURE AREA ---
+        checkY(130);
+        const today = new Date()
+          .toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .replace(/\//g, "-");
+        doc
+          .font("Helvetica")
+          .fontSize(10)
+          .text(`Tanggal: ${today}`, startX, y, {
+            width: contentWidth,
+            align: "right",
+          });
+        y += 20;
+
+        const w = contentWidth / 4;
+        const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
+
+        sigData.forEach((title, i) => {
+          doc.text(title, startX + w * i, y, { width: w, align: "center" });
+        });
+
+        y += 60;
+        const lineW = w - 20;
+
+        sigData.forEach((_, i) => {
+          const cx = startX + w * i + w / 2;
+          doc
+            .moveTo(cx - lineW / 2, y)
+            .lineTo(cx + lineW / 2, y)
+            .stroke();
+        });
+
+        y += 30;
+
+        // --- TERMS & BANK INFO ---
+        checkY(100);
+        doc.fontSize(8).font("Helvetica");
+        const termLines = [
+          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
+          "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
+          "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
+        ];
+
+        termLines.forEach((text) => {
+          doc.text(text, startX, y, { width: contentWidth, align: "justify" });
+          y += 12;
+        });
+
+        y += 5;
+
+        if (rekeningTujuan) {
+          doc.rect(startX, y, 280, 45).stroke();
+          doc
+            .font("Helvetica-Bold")
+            .text(
+              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
+              startX + 5,
+              y + 10,
+            );
+          doc
+            .font("Helvetica")
+            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
+        }
+
+        doc.end();
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+}
+</file>
+
 <file path="src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts">
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
 import type { PenjualanFilterDTO } from "../../../domain/dtos/PenjualanDTO.js";
@@ -918,52 +1276,6 @@ export class DeleteTagihanUseCase {
   constructor(private readonly repo: ITagihanRepository) {}
   async execute(id: number): Promise<void> {
     await this.repo.delete(id);
-  }
-}
-</file>
-
-<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
-import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-export class UploadBuktiTagihanUseCase {
-  constructor(
-    private readonly repo: ITagihanRepository,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
-
-  async execute(id: number, fileBuffer: Buffer): Promise<TagihanResponseDTO> {
-    const existing = await this.repo.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Tagihan tidak ditemukan");
-    }
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing.fileBukti) {
-      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
-    }
-
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      "bumantara/tagihan",
-    );
-
-    const updateData = {
-      fileBukti: imageUrl,
-      status: "LUNAS" as const,
-    };
-
-    return await this.repo.update(id, updateData);
   }
 }
 </file>
@@ -1238,6 +1550,53 @@ export interface CreateDetailKavlingPajakDTO {
 export type UpdateDetailKavlingPajakDTO = Partial<
   Omit<CreateDetailKavlingPajakDTO, "penjualanId">
 >;
+</file>
+
+<file path="src/domain/dtos/FeeAgentDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreateFeeAgentDTO {
+  agentId: number;
+  penjualanId: number;
+}
+
+export interface UpdateFeeAgentDTO {
+  bookingNominal?: number | undefined;
+  bookingTanggal?: string | Date | undefined;
+  closingNominal?: number | undefined;
+  closingTanggal?: string | Date | undefined;
+  marketingNominal?: number | undefined;
+  marketingTanggal?: string | Date | undefined;
+  bookingBukti?: string | null | undefined;
+  closingBukti?: string | null | undefined;
+  marketingBukti?: string | null | undefined;
+}
+
+export interface FeeAgentResponseDTO {
+  id: number;
+  agentId: number;
+  namaAgent: string;
+  penjualanId: number;
+  noTransaksi: string;
+  namaCustomer: string;
+  kavling: string;
+  bookingNominal: number | null;
+  bookingTanggal: Date | null;
+  bookingBukti: string | null;
+  closingNominal: number | null;
+  closingTanggal: Date | null;
+  closingBukti: string | null;
+  marketingNominal: number | null;
+  marketingTanggal: Date | null;
+  marketingBukti: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FeeAgentFilterDTO extends BaseFilterDTO {
+  agentId?: number;
+  penjualanId?: number;
+}
 </file>
 
 <file path="src/domain/dtos/KavlingDTO.ts">
@@ -1572,6 +1931,25 @@ export interface DetailKavlingPajakEntity {
 }
 </file>
 
+<file path="src/domain/entities/FeeAgent.ts">
+export interface FeeAgentEntity {
+  id: number;
+  agentId: number;
+  penjualanId: number;
+  bookingNominal: number | null;
+  bookingTanggal: Date | null;
+  bookingBukti: string | null;
+  closingNominal: number | null;
+  closingTanggal: Date | null;
+  closingBukti: string | null;
+  marketingNominal: number | null;
+  marketingTanggal: Date | null;
+  marketingBukti: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
 <file path="src/domain/entities/Kavling.ts">
 import type { UnitStatus } from "@prisma/client";
 
@@ -1881,6 +2259,163 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
 }
 </file>
 
+<file path="src/domain/repositories/feeAgentRepo.ts">
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { IFeeAgentRepository } from "./IFeeAgentRepo.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { FeeAgentMapper } from "../../infrastructure/mapper/FeeAgentMapper.js";
+import type {
+  CreateFeeAgentDTO,
+  UpdateFeeAgentDTO,
+  FeeAgentFilterDTO,
+  FeeAgentResponseDTO,
+} from "../dtos/FeeAgentDTO.js";
+
+const includeRelations = {
+  agent: { select: { nama: true } },
+  penjualan: {
+    include: {
+      customer: { select: { nama: true } },
+      kavling: {
+        include: { perumahan: { select: { nama: true } } },
+      },
+    },
+  },
+} satisfies Prisma.FeeAgentInclude;
+
+export class FeeAgentRepository implements IFeeAgentRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO> {
+    const existing = await this.findByPenjualanId(data.penjualanId);
+    if (existing) {
+      throw new ConflictError("Data Fee Agent untuk Penjualan ini sudah ada.");
+    }
+
+    const result = await this.db.feeAgent.create({
+      data: {
+        agentId: data.agentId,
+        penjualanId: data.penjualanId,
+      },
+      include: includeRelations,
+    });
+
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async findById(id: number): Promise<FeeAgentResponseDTO | null> {
+    const result = await this.db.feeAgent.findUnique({
+      where: { id },
+      include: includeRelations,
+    });
+    if (!result) return null;
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async findByPenjualanId(
+    penjualanId: number,
+  ): Promise<FeeAgentResponseDTO | null> {
+    const result = await this.db.feeAgent.findUnique({
+      where: { penjualanId },
+      include: includeRelations,
+    });
+    if (!result) return null;
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async update(
+    id: number,
+    data: UpdateFeeAgentDTO,
+  ): Promise<FeeAgentResponseDTO> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Data Fee Agent tidak ditemukan");
+
+    const updateData: Prisma.FeeAgentUpdateInput = {};
+
+    if (data.bookingNominal !== undefined)
+      updateData.bookingNominal = data.bookingNominal;
+    if (data.bookingTanggal !== undefined) {
+      updateData.bookingTanggal = data.bookingTanggal
+        ? new Date(data.bookingTanggal)
+        : null;
+    }
+    if (data.bookingBukti !== undefined)
+      updateData.bookingBukti = data.bookingBukti;
+
+    if (data.closingNominal !== undefined)
+      updateData.closingNominal = data.closingNominal;
+    if (data.closingTanggal !== undefined) {
+      updateData.closingTanggal = data.closingTanggal
+        ? new Date(data.closingTanggal)
+        : null;
+    }
+    if (data.closingBukti !== undefined)
+      updateData.closingBukti = data.closingBukti;
+
+    if (data.marketingNominal !== undefined)
+      updateData.marketingNominal = data.marketingNominal;
+    if (data.marketingTanggal !== undefined) {
+      updateData.marketingTanggal = data.marketingTanggal
+        ? new Date(data.marketingTanggal)
+        : null;
+    }
+    if (data.marketingBukti !== undefined)
+      updateData.marketingBukti = data.marketingBukti;
+
+    const result = await this.db.feeAgent.update({
+      where: { id },
+      data: updateData,
+      include: includeRelations,
+    });
+
+    return FeeAgentMapper.toDomain(result as any);
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: FeeAgentFilterDTO,
+  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>> {
+    const where: Prisma.FeeAgentWhereInput = {};
+
+    if (filters?.agentId) where.agentId = filters.agentId;
+    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
+
+    if (filters?.search) {
+      where.OR = [
+        { agent: { nama: { contains: filters.search } } },
+        { penjualan: { noTransaksi: { contains: filters.search } } },
+        { penjualan: { customer: { nama: { contains: filters.search } } } },
+      ];
+    }
+
+    const items = await this.db.feeAgent.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      include: includeRelations,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => FeeAgentMapper.toDomain(item as any)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+</file>
+
 <file path="src/domain/repositories/IAgentRepo.ts">
 import type { AgentEntity } from "../entities/Agent.js";
 import type {
@@ -1968,6 +2503,28 @@ export interface IDetailKavlingPajakRepository {
 }
 </file>
 
+<file path="src/domain/repositories/IFeeAgentRepo.ts">
+import type { CursorPaginatedData } from "../../types/response.js";
+import type {
+  CreateFeeAgentDTO,
+  UpdateFeeAgentDTO,
+  FeeAgentFilterDTO,
+  FeeAgentResponseDTO,
+} from "../dtos/FeeAgentDTO.js";
+
+export interface IFeeAgentRepository {
+  create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO>;
+  update(id: number, data: UpdateFeeAgentDTO): Promise<FeeAgentResponseDTO>;
+  findById(id: number): Promise<FeeAgentResponseDTO | null>;
+  findByPenjualanId(penjualanId: number): Promise<FeeAgentResponseDTO | null>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: FeeAgentFilterDTO,
+  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>>;
+}
+</file>
+
 <file path="src/domain/repositories/IKavlingRepo.ts">
 import type { KavlingEntity } from "../entities/Kavling.js";
 import type {
@@ -2009,38 +2566,6 @@ export interface INotarisRepository {
     cursor?: number,
     filters?: NotarisFilterDTO,
   ): Promise<CursorPaginatedData<NotarisEntity>>;
-}
-</file>
-
-<file path="src/domain/repositories/IPenjualanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../dtos/PenjualanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: { select: { id: true; nama: true } };
-    kavling: {
-      select: {
-        id: true;
-        blok: true;
-        nomorUnit: true;
-        perumahan: { select: { nama: true } };
-      };
-    };
-  };
-}>;
-export interface IPenjualanRepository {
-  createWithTransaction(
-    data: CreatePenjualanDTO,
-  ): Promise<PenjualanWithRelations>;
-  findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<any>>;
 }
 </file>
 
@@ -2265,260 +2790,6 @@ export class KavlingRepository implements IKavlingRepository {
       }
       throw error;
     }
-  }
-}
-</file>
-
-<file path="src/domain/repositories/penjualanRepo.ts">
-import type { Prisma, PrismaClient } from "@prisma/client";
-import type { IPenjualanRepository } from "./IPenjualanRepo.js";
-import { ConflictError } from "../errors/ConflictError.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../dtos/PenjualanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-
-export class PenjualanRepository implements IPenjualanRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async createWithTransaction(data: CreatePenjualanDTO) {
-    return await this.db.$transaction(async (tx) => {
-      let customer = await tx.customer.findUnique({
-        where: { nikKtp: data.noIdentitas },
-      });
-
-      if (!customer) {
-        customer = await tx.customer.create({
-          data: {
-            nikKtp: data.noIdentitas,
-            nama: data.nama,
-            noHp: data.noTelepon,
-            alamatKtp: data.alamat,
-            perusahaan: data.perusahaan ?? null,
-            alamatKoresponden: data.alamatKoresponden ?? null,
-          },
-        });
-      } else {
-        customer = await tx.customer.update({
-          where: { id: customer.id },
-          data: {
-            noHp: data.noTelepon,
-            alamatKtp: data.alamat,
-            perusahaan: data.perusahaan ?? null,
-            alamatKoresponden: data.alamatKoresponden ?? null,
-          },
-        });
-      }
-
-      const perumahan = await tx.perumahan.findFirst({
-        where: { nama: data.perumahan },
-      });
-
-      if (!perumahan) {
-        throw new NotFoundError(
-          `Perumahan '${data.perumahan}' tidak ditemukan di sistem.`,
-        );
-      }
-
-      let kavling = await tx.kavling.findFirst({
-        where: {
-          perumahanId: perumahan.id,
-          blok: data.blok,
-          nomorUnit: data.nomorUnit,
-        },
-      });
-
-      if (kavling) {
-        if (kavling.status !== "AVAILABLE") {
-          throw new ConflictError(
-            `Gagal! Kavling Blok ${data.blok} - ${data.nomorUnit} sudah terisi atau berstatus ${kavling.status}.`,
-          );
-        }
-
-        kavling = await tx.kavling.update({
-          where: { id: kavling.id },
-          data: {
-            status: "BOOKING",
-            namaTipe: data.tipe,
-            luasBangunan: data.luasBangunan,
-            luasTanah: data.luasTanah,
-            hargaJual: data.hargaJual,
-          },
-        });
-      } else {
-        kavling = await tx.kavling.create({
-          data: {
-            perumahanId: perumahan.id,
-            blok: data.blok,
-            nomorUnit: data.nomorUnit,
-            namaTipe: data.tipe,
-            luasBangunan: data.luasBangunan,
-            luasTanah: data.luasTanah,
-            hargaJual: data.hargaJual,
-            status: "BOOKING",
-          },
-        });
-      }
-
-      let agent = await tx.agent.findFirst({
-        where: { nama: data.agent },
-      });
-
-      if (!agent) {
-        const dummyNik = `MKT-${Date.now().toString().slice(-10)}`;
-        agent = await tx.agent.create({
-          data: {
-            nik: dummyNik,
-            nama: data.agent,
-            noHp: "-",
-            status: "AKTIF",
-          },
-        });
-      }
-
-      const countHariIni = await tx.penjualan.count({
-        where: {
-          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-        },
-      });
-
-      const noTransaksi = `TRX-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, "0")}-${String(countHariIni + 1).padStart(3, "0")}`;
-
-      const penjualan = await tx.penjualan.create({
-        data: {
-          noTransaksi,
-          tanggal: new Date(data.tanggal),
-          customerId: customer.id,
-          kavlingId: kavling.id,
-          agentId: agent.id,
-          caraPembayaran: data.caraPembayaran,
-          hargaJual: data.hargaJual,
-          dp: data.dp ?? null,
-          diskonPenjualan: data.diskonPenjualan ?? null,
-          hargaPromosi: data.hargaPromosi ?? null,
-          bank: data.bank ?? null,
-          nilaiPengajuanKpr: data.nilaiPengajuanKpr ?? null,
-          bookingFee: data.bookingFee ?? null,
-          status: "BOOKED",
-        },
-        include: {
-          customer: { select: { id: true, nama: true } },
-          kavling: {
-            select: {
-              id: true,
-              blok: true,
-              nomorUnit: true,
-              perumahan: { select: { nama: true } },
-            },
-          },
-        },
-      });
-
-      if (data.bookingFee && data.bookingFee > 0) {
-        await tx.tagihan.create({
-          data: {
-            noTagihan: `INV-BF-${noTransaksi}`,
-            customerId: customer.id,
-            penjualanId: penjualan.id,
-            pembayaran: "Booking Fee",
-            nominal: data.bookingFee,
-            jatuhTempo: new Date(data.tanggal),
-            status: "BELUM_BAYAR",
-          },
-        });
-      }
-
-      if (data.dp && data.dp > 0) {
-        const dpDueDate = new Date(data.tanggal);
-        dpDueDate.setDate(dpDueDate.getDate() + 14);
-
-        await tx.tagihan.create({
-          data: {
-            noTagihan: `INV-DP-${noTransaksi}`,
-            customerId: customer.id,
-            penjualanId: penjualan.id,
-            pembayaran: "Down Payment (DP)",
-            nominal: data.dp,
-            jatuhTempo: dpDueDate,
-            status: "BELUM_BAYAR",
-          },
-        });
-      }
-
-      return penjualan;
-    });
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<any>> {
-    const where: Prisma.PenjualanWhereInput = {};
-
-    if (filters?.search) {
-      where.OR = [
-        { noTransaksi: { contains: filters.search } },
-        { customer: { nama: { contains: filters.search } } },
-      ];
-    }
-
-    const items = await this.db.penjualan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ createdAt: "desc" }],
-      include: {
-        customer: true,
-        kavling: { include: { perumahan: true } },
-        agent: true,
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    const mappedItems = items.map((item) => ({
-      id: item.noTransaksi,
-      tanggal: item.tanggal.toISOString(),
-      nama: item.customer.nama,
-      alamat: item.customer.alamatKtp,
-      noTelepon: item.customer.noHp,
-      noIdentitas: item.customer.nikKtp,
-      perusahaan: item.customer.perusahaan ?? "",
-      alamatKoresponden: item.customer.alamatKoresponden ?? "",
-      perumahan: item.kavling.perumahan.nama,
-      blok: item.kavling.blok,
-      tipe: item.kavling.namaTipe,
-      luasBangunan: Number(item.kavling.luasBangunan),
-      luasTanah: Number(item.kavling.luasTanah),
-      nomorUnit: item.kavling.nomorUnit,
-      hargaJual: Number(item.hargaJual),
-      dp: Number(item.dp ?? 0),
-      diskonPenjualan: Number(item.diskonPenjualan ?? 0),
-      hargaPromosi: Number(item.hargaPromosi ?? 0),
-      bank: item.bank ?? "",
-      caraPembayaran: item.caraPembayaran,
-      nilaiPengajuanKpr: Number(item.nilaiPengajuanKpr ?? 0),
-      bookingFee: Number(item.bookingFee ?? 0),
-      status: item.status,
-      agent: item.agent?.nama ?? "",
-      fileBuktiBooking: item.fileBuktiBooking ?? "",
-      fileBuktiDp: item.fileBuktiDp ?? "",
-    }));
-
-    return {
-      items: mappedItems,
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
   }
 }
 </file>
@@ -3112,6 +3383,60 @@ export class DetailKavlingPajakMapper {
       ajbTotalBphtbPph: toNumber(prismaDetail.ajbTotalBphtbPph),
       ajbSelisihPajakPbb: toNumber(prismaDetail.ajbSelisihPajakPbb),
       ajbUping: toNumber(prismaDetail.ajbUping),
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/FeeAgentMapper.ts">
+import type {
+  FeeAgent,
+  Agent,
+  Penjualan,
+  Customer,
+  Kavling,
+  Perumahan,
+} from "@prisma/client";
+import type { FeeAgentResponseDTO } from "../../domain/dtos/FeeAgentDTO.js";
+
+// Kita buat tipe eksplisit untuk menghindari Unsafe member access
+export type FeeAgentWithRelations = FeeAgent & {
+  agent: Pick<Agent, "nama">;
+  penjualan: Penjualan & {
+    customer: Pick<Customer, "nama">;
+    kavling: Kavling & {
+      perumahan: Pick<Perumahan, "nama">;
+    };
+  };
+};
+
+export class FeeAgentMapper {
+  static toDomain(prismaFee: FeeAgentWithRelations): FeeAgentResponseDTO {
+    return {
+      id: prismaFee.id,
+      agentId: prismaFee.agentId,
+      namaAgent: prismaFee.agent.nama,
+      penjualanId: prismaFee.penjualanId,
+      noTransaksi: prismaFee.penjualan.noTransaksi,
+      namaCustomer: prismaFee.penjualan.customer.nama,
+      kavling: `${prismaFee.penjualan.kavling.perumahan.nama} Blok ${prismaFee.penjualan.kavling.blok}-${prismaFee.penjualan.kavling.nomorUnit}`,
+      bookingNominal: prismaFee.bookingNominal
+        ? Number(prismaFee.bookingNominal)
+        : null,
+      bookingTanggal: prismaFee.bookingTanggal,
+      bookingBukti: prismaFee.bookingBukti,
+      closingNominal: prismaFee.closingNominal
+        ? Number(prismaFee.closingNominal)
+        : null,
+      closingTanggal: prismaFee.closingTanggal,
+      closingBukti: prismaFee.closingBukti,
+      marketingNominal: prismaFee.marketingNominal
+        ? Number(prismaFee.marketingNominal)
+        : null,
+      marketingTanggal: prismaFee.marketingTanggal,
+      marketingBukti: prismaFee.marketingBukti,
+      createdAt: prismaFee.createdAt,
+      updatedAt: prismaFee.updatedAt,
     };
   }
 }
@@ -3902,6 +4227,98 @@ export class CustomerKavlingController {
       res,
       StatusCodes.OK,
       "Kavling Customer berhasil diperbarui",
+      result,
+    );
+  };
+}
+</file>
+
+<file path="src/presentation/controllers/feeAgentController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type {
+  GetFeeAgentsPaginatedUseCase,
+  UpdateFeeAgentUseCase,
+  UploadBuktiFeeUseCase,
+} from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
+import type { updateFeeAgentSchema } from "../../validations/feeAgentSchema.js";
+import { getFeeAgentsPaginatedSchema } from "../../validations/feeAgentSchema.js";
+import type { FeeAgentFilterDTO } from "../../domain/dtos/FeeAgentDTO.js";
+
+export class FeeAgentController {
+  constructor(
+    private readonly getPaginatedUseCase: GetFeeAgentsPaginatedUseCase,
+    private readonly updateUseCase: UpdateFeeAgentUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiFeeUseCase,
+  ) {}
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getFeeAgentsPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as FeeAgentFilterDTO,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data fee agent berhasil diambil",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateFeeAgentSchema.body,
+      any,
+      typeof updateFeeAgentSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(id, req.body);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data fee agent berhasil diperbarui",
+      result,
+    );
+  };
+
+  uploadBukti = async (
+    req: Request<{ id: string; type: string }>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const type = req.params.type;
+
+    if (!["bookingBukti", "closingBukti", "marketingBukti"].includes(type)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe bukti tidak valid");
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      id,
+      req.file.buffer,
+      type as "bookingBukti" | "closingBukti" | "marketingBukti",
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti fee agent berhasil diunggah",
       result,
     );
   };
@@ -4723,6 +5140,49 @@ export const createCustomerRoutes = (
 };
 </file>
 
+<file path="src/presentation/routes/feeAgentRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  getFeeAgentsPaginatedSchema,
+  updateFeeAgentSchema,
+} from "../../validations/feeAgentSchema.js";
+import type { FeeAgentController } from "../controllers/feeAgentController.js";
+
+export const createFeeAgentRoutes = (
+  controller: FeeAgentController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.get(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getFeeAgentsPaginatedSchema),
+    controller.getPaginated,
+  );
+
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate(updateFeeAgentSchema),
+    controller.update,
+  );
+
+  router.patch(
+    "/:id/upload/:type",
+    requireRole(["ADMIN"]),
+    upload.single("file"),
+    controller.uploadBukti,
+  );
+
+  return router;
+};
+</file>
+
 <file path="src/presentation/routes/kavlingRoutes.ts">
 import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
@@ -5404,6 +5864,35 @@ export const emptyAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   }, schema);
 </file>
 
+<file path="src/validations/feeAgentSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const getFeeAgentsPaginatedSchema = {
+  query: cursorPaginationQuerySchema.extend({
+    agentId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
+    penjualanId: emptyAsUndefined(
+      z.coerce.number().int().positive().optional(),
+    ),
+  }),
+};
+
+export const updateFeeAgentSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    bookingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    bookingTanggal: emptyAsUndefined(z.string().optional()),
+    closingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    closingTanggal: emptyAsUndefined(z.string().optional()),
+    marketingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    marketingTanggal: emptyAsUndefined(z.string().optional()),
+  }),
+};
+</file>
+
 <file path="src/validations/kavlingSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -5558,53 +6047,6 @@ export const cursorPaginationQuerySchema = baseFilterSchema.extend({
 });
 
 export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
-</file>
-
-<file path="src/validations/penjualanSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import type { PaymentMethod } from "@prisma/client";
-
-export const createPenjualanSchema = {
-  body: z.object({
-    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
-    nama: z.string().min(3, "Nama wajib diisi"),
-    noTelepon: z.string().min(9, "No Telepon wajib diisi"),
-    alamat: z.string().min(5, "Alamat wajib diisi"),
-    perusahaan: emptyAsUndefined(z.string().optional()),
-    alamatKoresponden: emptyAsUndefined(z.string().optional()),
-
-    perumahan: z.string().min(1, "Perumahan wajib diisi"),
-    blok: z.string().min(1, "Blok wajib diisi"),
-    nomorUnit: z.string().min(1, "Nomor unit wajib diisi"),
-    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
-    luasBangunan: z.coerce.number().min(0),
-    luasTanah: z.coerce.number().min(0),
-
-    tanggal: z.string().datetime().or(z.string().min(1)),
-    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
-    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    caraPembayaran: z.string().transform((val) => {
-      const formatted = val.toUpperCase().replace(/\s+/g, "_");
-      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
-        return formatted as PaymentMethod;
-      }
-      throw new Error("Cara pembayaran tidak valid");
-    }),
-    bank: emptyAsUndefined(z.string().optional()),
-    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
-
-    agent: z.string().min(1, "Agent wajib diisi"),
-  }),
-};
-
-export const getPenjualanPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
 </file>
 
 <file path="src/validations/perumahanSchema.ts">
@@ -6047,6 +6489,79 @@ export class ExtractKtpDataUseCase {
     }
 
     return this.googleVisionService.extractKtpData(fotoKtpBuffer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
+import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
+
+export class UploadBuktiTagihanUseCase {
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+
+    private readonly penjualanRepo: IPenjualanRepository,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
+
+  async execute(id: number, fileBuffer: Buffer): Promise<TagihanResponseDTO> {
+    const existing = await this.repo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Tagihan tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing.fileBukti) {
+      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      "bumantara/tagihan",
+    );
+
+    const updateData = {
+      fileBukti: imageUrl,
+      status: "LUNAS" as const,
+    };
+
+    const updatedTagihan = await this.repo.update(id, updateData);
+
+    if (existing.pembayaran.toLowerCase().includes("booking")) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          existing.penjualanId,
+        );
+
+        const pdfUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        await this.penjualanRepo.update(existing.penjualanId, {
+          fileSpr: pdfUrl,
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR:", error);
+      }
+    }
+
+    return updatedTagihan;
   }
 }
 </file>
@@ -6573,6 +7088,85 @@ export class CustomerRepository implements ICustomerRepository {
 }
 </file>
 
+<file path="src/domain/repositories/IPenjualanRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../dtos/PenjualanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    kavling: {
+      include: { perumahan: true };
+    };
+    rekeningTujuan: true;
+    tagihan: true;
+    agent: true;
+  };
+}>;
+
+export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: { select: { id: true; nama: true } };
+    kavling: {
+      select: {
+        id: true;
+        blok: true;
+        nomorUnit: true;
+        perumahan: { select: { nama: true } };
+      };
+    };
+  };
+}>;
+
+export interface PenjualanPaginatedItem {
+  id: string;
+  tanggal: string;
+  nama: string;
+  alamat: string;
+  noTelepon: string;
+  noIdentitas: string;
+  perumahan: string;
+  blok: string;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  hargaJual: number;
+  dp: number;
+  diskonPenjualan: number;
+  hargaPromosi: number;
+  bank: string;
+  caraPembayaran: string;
+  nilaiPengajuanKpr: number;
+  bookingFee: number;
+  status: string;
+  agent: string;
+  fileBuktiBooking: string;
+  fileBuktiDp: string;
+  fileSpr: string | null;
+}
+
+export interface IPenjualanRepository {
+  createWithTransaction(
+    data: CreatePenjualanDTO,
+  ): Promise<PenjualanWithRelations>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PenjualanFilterDTO,
+  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
+  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
+  update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations>;
+}
+</file>
+
 <file path="src/domain/repositories/notarisRepo.ts">
 import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
@@ -6721,6 +7315,303 @@ export class NotarisRepository implements INotarisRepository {
       }
       throw error;
     }
+  }
+}
+</file>
+
+<file path="src/domain/repositories/penjualanRepo.ts">
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type {
+  IPenjualanRepository,
+  PenjualanWithCompleteRelations,
+} from "./IPenjualanRepo.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../dtos/PenjualanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export class PenjualanRepository implements IPenjualanRepository {
+  constructor(private readonly db: PrismaClient) {}
+  async update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations> {
+    return await this.db.penjualan.update({
+      where: { id },
+      data,
+      include: {
+        customer: true,
+        kavling: {
+          include: { perumahan: true },
+        },
+        rekeningTujuan: true,
+        tagihan: true,
+        agent: true,
+      },
+    });
+  }
+
+  async createWithTransaction(data: CreatePenjualanDTO) {
+    return await this.db.$transaction(async (tx) => {
+      let customer = await tx.customer.findUnique({
+        where: { nikKtp: data.noIdentitas },
+      });
+
+      if (!customer) {
+        customer = await tx.customer.create({
+          data: {
+            nikKtp: data.noIdentitas,
+            nama: data.nama,
+            noHp: data.noTelepon,
+            alamatKtp: data.alamat,
+            perusahaan: data.perusahaan ?? null,
+            alamatKoresponden: data.alamatKoresponden ?? null,
+          },
+        });
+      } else {
+        customer = await tx.customer.update({
+          where: { id: customer.id },
+          data: {
+            noHp: data.noTelepon,
+            alamatKtp: data.alamat,
+            perusahaan: data.perusahaan ?? null,
+            alamatKoresponden: data.alamatKoresponden ?? null,
+          },
+        });
+      }
+
+      const perumahan = await tx.perumahan.findFirst({
+        where: { nama: data.perumahan },
+      });
+
+      if (!perumahan) {
+        throw new NotFoundError(
+          `Perumahan '${data.perumahan}' tidak ditemukan di sistem.`,
+        );
+      }
+
+      let kavling = await tx.kavling.findFirst({
+        where: {
+          perumahanId: perumahan.id,
+          blok: data.blok,
+          nomorUnit: data.nomorUnit,
+        },
+      });
+
+      if (kavling) {
+        if (kavling.status !== "AVAILABLE") {
+          throw new ConflictError(
+            `Gagal! Kavling Blok ${data.blok} - ${data.nomorUnit} sudah terisi atau berstatus ${kavling.status}.`,
+          );
+        }
+
+        kavling = await tx.kavling.update({
+          where: { id: kavling.id },
+          data: {
+            status: "BOOKING",
+            namaTipe: data.tipe,
+            luasBangunan: data.luasBangunan,
+            luasTanah: data.luasTanah,
+            hargaJual: data.hargaJual,
+          },
+        });
+      } else {
+        kavling = await tx.kavling.create({
+          data: {
+            perumahanId: perumahan.id,
+            blok: data.blok,
+            nomorUnit: data.nomorUnit,
+            namaTipe: data.tipe,
+            luasBangunan: data.luasBangunan,
+            luasTanah: data.luasTanah,
+            hargaJual: data.hargaJual,
+            status: "BOOKING",
+          },
+        });
+      }
+
+      let agent = await tx.agent.findFirst({
+        where: { nama: data.agent },
+      });
+
+      if (!agent) {
+        const dummyNik = `MKT-${Date.now().toString().slice(-10)}`;
+        agent = await tx.agent.create({
+          data: {
+            nik: dummyNik,
+            nama: data.agent,
+            noHp: "-",
+            status: "AKTIF",
+          },
+        });
+      }
+
+      const countHariIni = await tx.penjualan.count({
+        where: {
+          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+        },
+      });
+
+      const noTransaksi = `TRX-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, "0")}-${String(countHariIni + 1).padStart(3, "0")}`;
+
+      const penjualan = await tx.penjualan.create({
+        data: {
+          noTransaksi,
+          tanggal: new Date(data.tanggal),
+          customerId: customer.id,
+          kavlingId: kavling.id,
+          agentId: agent.id,
+          caraPembayaran: data.caraPembayaran,
+          hargaJual: data.hargaJual,
+          dp: data.dp ?? null,
+          diskonPenjualan: data.diskonPenjualan ?? null,
+          hargaPromosi: data.hargaPromosi ?? null,
+          bank: data.bank ?? null,
+          nilaiPengajuanKpr: data.nilaiPengajuanKpr ?? null,
+          bookingFee: data.bookingFee ?? null,
+          status: "BOOKED",
+        },
+        include: {
+          customer: { select: { id: true, nama: true } },
+          kavling: {
+            select: {
+              id: true,
+              blok: true,
+              nomorUnit: true,
+              perumahan: { select: { nama: true } },
+            },
+          },
+        },
+      });
+
+      if (agent) {
+        await tx.feeAgent.create({
+          data: {
+            agentId: agent.id,
+            penjualanId: penjualan.id,
+          },
+        });
+      }
+
+      if (data.bookingFee && data.bookingFee > 0) {
+        await tx.tagihan.create({
+          data: {
+            noTagihan: `INV-BF-${noTransaksi}`,
+            customerId: customer.id,
+            penjualanId: penjualan.id,
+            pembayaran: "Booking Fee",
+            nominal: data.bookingFee,
+            jatuhTempo: new Date(data.tanggal),
+            status: "BELUM_BAYAR",
+          },
+        });
+      }
+
+      if (data.dp && data.dp > 0) {
+        const dpDueDate = new Date(data.tanggal);
+        dpDueDate.setDate(dpDueDate.getDate() + 14);
+
+        await tx.tagihan.create({
+          data: {
+            noTagihan: `INV-DP-${noTransaksi}`,
+            customerId: customer.id,
+            penjualanId: penjualan.id,
+            pembayaran: "Down Payment (DP)",
+            nominal: data.dp,
+            jatuhTempo: dpDueDate,
+            status: "BELUM_BAYAR",
+          },
+        });
+      }
+
+      return penjualan;
+    });
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PenjualanFilterDTO,
+  ): Promise<CursorPaginatedData<any>> {
+    const where: Prisma.PenjualanWhereInput = {};
+
+    if (filters?.search) {
+      where.OR = [
+        { noTransaksi: { contains: filters.search } },
+        { customer: { nama: { contains: filters.search } } },
+      ];
+    }
+
+    const items = await this.db.penjualan.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      include: {
+        customer: true,
+        kavling: { include: { perumahan: true } },
+        agent: true,
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const mappedItems = items.map((item) => ({
+      id: item.noTransaksi,
+      tanggal: item.tanggal.toISOString(),
+      nama: item.customer.nama,
+      alamat: item.customer.alamatKtp,
+      noTelepon: item.customer.noHp,
+      noIdentitas: item.customer.nikKtp,
+      perusahaan: item.customer.perusahaan ?? "",
+      alamatKoresponden: item.customer.alamatKoresponden ?? "",
+      perumahan: item.kavling.perumahan.nama,
+      blok: item.kavling.blok,
+      tipe: item.kavling.namaTipe,
+      luasBangunan: Number(item.kavling.luasBangunan),
+      luasTanah: Number(item.kavling.luasTanah),
+      nomorUnit: item.kavling.nomorUnit,
+      hargaJual: Number(item.hargaJual),
+      dp: Number(item.dp ?? 0),
+      diskonPenjualan: Number(item.diskonPenjualan ?? 0),
+      hargaPromosi: Number(item.hargaPromosi ?? 0),
+      bank: item.bank ?? "",
+      caraPembayaran: item.caraPembayaran,
+      nilaiPengajuanKpr: Number(item.nilaiPengajuanKpr ?? 0),
+      bookingFee: Number(item.bookingFee ?? 0),
+      status: item.status,
+      agent: item.agent?.nama ?? "",
+      fileBuktiBooking: item.fileBuktiBooking ?? "",
+      fileBuktiDp: item.fileBuktiDp ?? "",
+      fileSpr: item.fileSpr ?? null,
+    }));
+
+    return {
+      items: mappedItems,
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+  async findById(id: number) {
+    return await this.db.penjualan.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        kavling: { include: { perumahan: true } },
+        rekeningTujuan: true,
+        tagihan: { orderBy: { jatuhTempo: "asc" } },
+        agent: true,
+      },
+    });
   }
 }
 </file>
@@ -6975,6 +7866,56 @@ export const CustomerFactory = {
 export * from "./userFactory.js";
 export * from "./customerFactory.js";
 export * from "./bankRekeningPtFactory.js";
+</file>
+
+<file path="src/validations/penjualanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import type { PaymentMethod } from "@prisma/client";
+
+export const createPenjualanSchema = {
+  body: z.object({
+    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
+    nama: z.string().min(3, "Nama wajib diisi"),
+    noTelepon: z.string().min(9, "No Telepon wajib diisi"),
+    alamat: z.string().min(5, "Alamat wajib diisi"),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+
+    perumahan: z.string().min(1, "Perumahan wajib diisi"),
+    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
+    nomorUnit: z
+      .string()
+      .min(1, "Nomor unit wajib diisi")
+      .max(10, "No Unit Max 10 Karakter"),
+    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
+    luasBangunan: z.coerce.number().min(0),
+    luasTanah: z.coerce.number().min(0),
+
+    tanggal: z.string().datetime().or(z.string().min(1)),
+    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
+    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    caraPembayaran: z.string().transform((val) => {
+      const formatted = val.toUpperCase().replace(/\s+/g, "_");
+      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
+        return formatted as PaymentMethod;
+      }
+      throw new Error("Cara pembayaran tidak valid");
+    }),
+    bank: emptyAsUndefined(z.string().optional()),
+    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
+
+    agent: z.string().min(1, "Agent wajib diisi"),
+  }),
+};
+
+export const getPenjualanPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
 </file>
 
 <file path="src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts">
@@ -7896,13 +8837,14 @@ model Penjualan {
   fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
-
   customer          Customer            @relation(fields: [customerId], references: [id])
   kavling           Kavling             @relation(fields: [kavlingId], references: [id])
   agent             Agent?              @relation(fields: [agentId], references: [id])
   rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
   tagihan           Tagihan[]
   detailKavlingPajak DetailKavlingPajak?
+  feeAgent          FeeAgent?
+
 
   @@map("penjualan")
 }
@@ -7991,6 +8933,7 @@ model Tagihan {
 model FeeAgent {
   id               Int       @id @default(autoincrement())
   agentId          Int       @map("agent_id")
+  penjualanId      Int       @unique @map("penjualan_id")
   bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
   bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
   bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
@@ -8003,6 +8946,7 @@ model FeeAgent {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
+  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
   agent            Agent     @relation(fields: [agentId], references: [id])
 
   @@map("fee_agent")
@@ -8157,7 +9101,14 @@ import { PenjualanRepository } from "../../domain/repositories/penjualanRepo.js"
 import { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
 import { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
 import { PenjualanController } from "../../presentation/controllers/penjualanController.js";
-
+import { FeeAgentRepository } from "../../domain/repositories/feeAgentRepo.js";
+import {
+  GetFeeAgentsPaginatedUseCase,
+  UpdateFeeAgentUseCase,
+  UploadBuktiFeeUseCase,
+} from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
+import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
+import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -8329,9 +9280,22 @@ export const createContainer = (dbClient: PrismaClient) => {
     tagihanRepo,
   );
   const deleteTagihanUseCase = new DeleteTagihanUseCase(tagihanRepo);
+
+  const penjualanRepo = new PenjualanRepository(dbClient);
+  const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);
+  const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
+  const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
+    penjualanRepo,
+  );
+  const penjualanController = new PenjualanController(
+    createPenjualanUseCase,
+    getPenjualanPaginatedUseCase,
+  );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,
     cloudinaryService,
+    penjualanRepo,
+    generateSprPdfUseCase,
   );
 
   const tagihanController = new TagihanController(
@@ -8342,14 +9306,20 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteTagihanUseCase,
     uploadBuktiTagihanUseCase,
   );
-  const penjualanRepo = new PenjualanRepository(dbClient);
-  const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
-  const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
-    penjualanRepo,
+  const feeAgentRepo = new FeeAgentRepository(dbClient);
+  const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
+    feeAgentRepo,
   );
-  const penjualanController = new PenjualanController(
-    createPenjualanUseCase,
-    getPenjualanPaginatedUseCase,
+  const updateFeeAgentUseCase = new UpdateFeeAgentUseCase(feeAgentRepo);
+  const uploadBuktiFeeUseCase = new UploadBuktiFeeUseCase(
+    feeAgentRepo,
+    cloudinaryService,
+  );
+
+  const feeAgentController = new FeeAgentController(
+    getFeeAgentsPaginatedUseCase,
+    updateFeeAgentUseCase,
+    uploadBuktiFeeUseCase,
   );
   return {
     authController,
@@ -8369,6 +9339,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerKavlingController,
     tagihanController,
     penjualanController,
+    feeAgentController,
   };
 };
 
@@ -8392,6 +9363,7 @@ import { createKavlingRoutes } from "./kavlingRoutes.js";
 import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
 import { createTagihanRoutes } from "./tagihanRoutes.js";
 import { createPenjualanRoutes } from "./penjualanRoutes.js";
+import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -8417,6 +9389,7 @@ export const createMainRouter = (deps: typeof container): Router => {
   );
   router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
   router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
   return router;
 };
 

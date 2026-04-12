@@ -126,7 +126,11 @@ export class GenerateSprPdfUseCase {
           penjualan.caraPembayaran.replace(/_/g, " "),
         );
 
-        if (penjualan.bank) drawField("Bank KPR", penjualan.bank);
+        if (penjualan.bank) {
+          const bankLabel =
+            penjualan.caraPembayaran === "KPR" ? "Bank KPR" : "Bank";
+          drawField(bankLabel, penjualan.bank);
+        }
         if (
           penjualan.nilaiPengajuanKpr &&
           Number(penjualan.nilaiPengajuanKpr) > 0
