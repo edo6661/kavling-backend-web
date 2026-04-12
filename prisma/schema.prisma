@@ -231,13 +231,14 @@ model Penjualan {
   fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
-
   customer          Customer            @relation(fields: [customerId], references: [id])
   kavling           Kavling             @relation(fields: [kavlingId], references: [id])
   agent             Agent?              @relation(fields: [agentId], references: [id])
   rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
   tagihan           Tagihan[]
   detailKavlingPajak DetailKavlingPajak?
+  feeAgent          FeeAgent?
+
 
   @@map("penjualan")
 }
@@ -326,6 +327,7 @@ model Tagihan {
 model FeeAgent {
   id               Int       @id @default(autoincrement())
   agentId          Int       @map("agent_id")
+  penjualanId      Int       @unique @map("penjualan_id")
   bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
   bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
   bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
@@ -338,6 +340,7 @@ model FeeAgent {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
+  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
   agent            Agent     @relation(fields: [agentId], references: [id])
 
   @@map("fee_agent")

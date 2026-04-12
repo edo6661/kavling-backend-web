@@ -14,6 +14,7 @@ import { createKavlingRoutes } from "./kavlingRoutes.js";
 import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
 import { createTagihanRoutes } from "./tagihanRoutes.js";
 import { createPenjualanRoutes } from "./penjualanRoutes.js";
+import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -39,6 +40,7 @@ export const createMainRouter = (deps: typeof container): Router => {
   );
   router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
   router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
   return router;
 };
 

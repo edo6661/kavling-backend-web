@@ -1,5 +1,8 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import type { IPenjualanRepository } from "./IPenjualanRepo.js";
+import type {
+  IPenjualanRepository,
+  PenjualanWithCompleteRelations,
+} from "./IPenjualanRepo.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import type {
@@ -10,6 +13,24 @@ import type { CursorPaginatedData } from "../../types/response.js";
 
 export class PenjualanRepository implements IPenjualanRepository {
   constructor(private readonly db: PrismaClient) {}
+  async update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations> {
+    return await this.db.penjualan.update({
+      where: { id },
+      data,
+      include: {
+        customer: true,
+        kavling: {
+          include: { perumahan: true },
+        },
+        rekeningTujuan: true,
+        tagihan: true,
+        agent: true,
+      },
+    });
+  }
 
   async createWithTransaction(data: CreatePenjualanDTO) {
     return await this.db.$transaction(async (tx) => {
@@ -144,6 +165,15 @@ export class PenjualanRepository implements IPenjualanRepository {
         },
       });
 
+      if (agent) {
+        await tx.feeAgent.create({
+          data: {
+            agentId: agent.id,
+            penjualanId: penjualan.id,
+          },
+        });
+      }
+
       if (data.bookingFee && data.bookingFee > 0) {
         await tx.tagihan.create({
           data: {
@@ -238,6 +268,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       agent: item.agent?.nama ?? "",
       fileBuktiBooking: item.fileBuktiBooking ?? "",
       fileBuktiDp: item.fileBuktiDp ?? "",
+      fileSpr: item.fileSpr ?? null,
     }));
 
     return {
@@ -247,5 +278,17 @@ export class PenjualanRepository implements IPenjualanRepository {
         hasNextPage,
       },
     };
+  }
+  async findById(id: number) {
+    return await this.db.penjualan.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        kavling: { include: { perumahan: true } },
+        rekeningTujuan: true,
+        tagihan: { orderBy: { jatuhTempo: "asc" } },
+        agent: true,
+      },
+    });
   }
 }

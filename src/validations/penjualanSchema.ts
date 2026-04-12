@@ -13,8 +13,11 @@ export const createPenjualanSchema = {
     alamatKoresponden: emptyAsUndefined(z.string().optional()),
 
     perumahan: z.string().min(1, "Perumahan wajib diisi"),
-    blok: z.string().min(1, "Blok wajib diisi"),
-    nomorUnit: z.string().min(1, "Nomor unit wajib diisi"),
+    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
+    nomorUnit: z
+      .string()
+      .min(1, "Nomor unit wajib diisi")
+      .max(10, "No Unit Max 10 Karakter"),
     tipe: z.string().min(1, "Tipe kavling wajib diisi"),
     luasBangunan: z.coerce.number().min(0),
     luasTanah: z.coerce.number().min(0),

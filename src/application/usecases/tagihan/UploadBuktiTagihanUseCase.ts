@@ -5,10 +5,16 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
+
 export class UploadBuktiTagihanUseCase {
   constructor(
     private readonly repo: ITagihanRepository,
     private readonly cloudinaryService: CloudinaryService,
+
+    private readonly penjualanRepo: IPenjualanRepository,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
   ) {}
 
   async execute(id: number, fileBuffer: Buffer): Promise<TagihanResponseDTO> {
@@ -38,6 +44,27 @@ export class UploadBuktiTagihanUseCase {
       status: "LUNAS" as const,
     };
 
-    return await this.repo.update(id, updateData);
+    const updatedTagihan = await this.repo.update(id, updateData);
+
+    if (existing.pembayaran.toLowerCase().includes("booking")) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          existing.penjualanId,
+        );
+
+        const pdfUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        await this.penjualanRepo.update(existing.penjualanId, {
+          fileSpr: pdfUrl,
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR:", error);
+      }
+    }
+
+    return updatedTagihan;
   }
 }

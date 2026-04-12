@@ -4,6 +4,19 @@ import type {
   PenjualanFilterDTO,
 } from "../dtos/PenjualanDTO.js";
 import type { CursorPaginatedData } from "../../types/response.js";
+
+export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    kavling: {
+      include: { perumahan: true };
+    };
+    rekeningTujuan: true;
+    tagihan: true;
+    agent: true;
+  };
+}>;
+
 export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
   include: {
     customer: { select: { id: true; nama: true } };
@@ -17,6 +30,35 @@ export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
     };
   };
 }>;
+
+export interface PenjualanPaginatedItem {
+  id: string;
+  tanggal: string;
+  nama: string;
+  alamat: string;
+  noTelepon: string;
+  noIdentitas: string;
+  perumahan: string;
+  blok: string;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  hargaJual: number;
+  dp: number;
+  diskonPenjualan: number;
+  hargaPromosi: number;
+  bank: string;
+  caraPembayaran: string;
+  nilaiPengajuanKpr: number;
+  bookingFee: number;
+  status: string;
+  agent: string;
+  fileBuktiBooking: string;
+  fileBuktiDp: string;
+  fileSpr: string | null;
+}
+
 export interface IPenjualanRepository {
   createWithTransaction(
     data: CreatePenjualanDTO,
@@ -25,5 +67,10 @@ export interface IPenjualanRepository {
     limit: number,
     cursor?: number,
     filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<any>>;
+  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
+  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
+  update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations>;
 }

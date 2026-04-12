@@ -103,7 +103,14 @@ import { PenjualanRepository } from "../../domain/repositories/penjualanRepo.js"
 import { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
 import { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
 import { PenjualanController } from "../../presentation/controllers/penjualanController.js";
-
+import { FeeAgentRepository } from "../../domain/repositories/feeAgentRepo.js";
+import {
+  GetFeeAgentsPaginatedUseCase,
+  UpdateFeeAgentUseCase,
+  UploadBuktiFeeUseCase,
+} from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
+import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
+import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -275,9 +282,22 @@ export const createContainer = (dbClient: PrismaClient) => {
     tagihanRepo,
   );
   const deleteTagihanUseCase = new DeleteTagihanUseCase(tagihanRepo);
+
+  const penjualanRepo = new PenjualanRepository(dbClient);
+  const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);
+  const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
+  const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
+    penjualanRepo,
+  );
+  const penjualanController = new PenjualanController(
+    createPenjualanUseCase,
+    getPenjualanPaginatedUseCase,
+  );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,
     cloudinaryService,
+    penjualanRepo,
+    generateSprPdfUseCase,
   );
 
   const tagihanController = new TagihanController(
@@ -288,14 +308,20 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteTagihanUseCase,
     uploadBuktiTagihanUseCase,
   );
-  const penjualanRepo = new PenjualanRepository(dbClient);
-  const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
-  const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
-    penjualanRepo,
+  const feeAgentRepo = new FeeAgentRepository(dbClient);
+  const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
+    feeAgentRepo,
   );
-  const penjualanController = new PenjualanController(
-    createPenjualanUseCase,
-    getPenjualanPaginatedUseCase,
+  const updateFeeAgentUseCase = new UpdateFeeAgentUseCase(feeAgentRepo);
+  const uploadBuktiFeeUseCase = new UploadBuktiFeeUseCase(
+    feeAgentRepo,
+    cloudinaryService,
+  );
+
+  const feeAgentController = new FeeAgentController(
+    getFeeAgentsPaginatedUseCase,
+    updateFeeAgentUseCase,
+    uploadBuktiFeeUseCase,
   );
   return {
     authController,
@@ -315,6 +341,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerKavlingController,
     tagihanController,
     penjualanController,
+    feeAgentController,
   };
 };
 
