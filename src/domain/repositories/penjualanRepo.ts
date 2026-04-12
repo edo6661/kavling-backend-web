@@ -127,13 +127,28 @@ export class PenjualanRepository implements IPenjualanRepository {
         });
       }
 
-      const countHariIni = await tx.penjualan.count({
+      const yearMonth = `${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, "0")}`;
+      const prefix = `TRX-${yearMonth}-`;
+
+      const lastPenjualan = await tx.penjualan.findFirst({
         where: {
-          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+          noTransaksi: { startsWith: prefix },
+        },
+        orderBy: {
+          noTransaksi: "desc",
         },
       });
 
-      const noTransaksi = `TRX-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, "0")}-${String(countHariIni + 1).padStart(3, "0")}`;
+      let nextSequence = 1;
+      if (lastPenjualan) {
+        const lastSequence = parseInt(
+          lastPenjualan.noTransaksi.split("-")[2] ?? "0",
+          10,
+        );
+        nextSequence = lastSequence + 1;
+      }
+
+      const noTransaksi = `${prefix}${String(nextSequence).padStart(3, "0")}`;
 
       const penjualan = await tx.penjualan.create({
         data: {

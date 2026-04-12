@@ -135,14 +135,14 @@ export class GenerateSprPdfUseCase {
           penjualan.nilaiPengajuanKpr &&
           Number(penjualan.nilaiPengajuanKpr) > 0
         ) {
-          drawField(
-            "Nilai Pengajuan KPR",
-            formatRp(penjualan.nilaiPengajuanKpr),
-            15,
-          );
+          const labelPengajuan =
+            penjualan.caraPembayaran === "KPR"
+              ? "Nilai Pengajuan KPR"
+              : "Nilai Pengajuan (Plafon)";
+
+          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
         }
 
-        // --- TABLE PEMBAYARAN (DARI TAGIHAN) ---
         const colNo = startX;
         const colKet = startX + 35;
         const colTempo = startX + 230;

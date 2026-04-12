@@ -65,6 +65,7 @@ src/application/usecases/feeAgent/FeeAgentUseCases.ts
 src/application/usecases/kavling/KavlingUseCases.ts
 src/application/usecases/notaris/NotarisUseCases.ts
 src/application/usecases/ocr/ExtractKtpDataUseCase.ts
+src/application/usecases/penjualan/CancelPenjualanUseCase.ts
 src/application/usecases/penjualan/CreatePenjualanUseCase.ts
 src/application/usecases/penjualan/GenerateSprPdfUseCase.ts
 src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts
@@ -1008,6 +1009,52 @@ export class DeleteNotarisUseCase {
   constructor(private readonly repo: INotarisRepository) {}
   async execute(id: number): Promise<void> {
     await this.repo.delete(id);
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/CancelPenjualanUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class CancelPenjualanUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(noTransaksi: string, alasanBatal: string) {
+    return await this.db.$transaction(async (tx) => {
+      const penjualan = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: { kavling: true },
+      });
+
+      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
+
+      if (penjualan.status !== "BOOKED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Hanya penjualan berstatus BOOKED yang dapat dibatalkan.",
+        );
+      }
+
+      // 1. Update Penjualan jadi BATAL
+      const updatedPenjualan = await tx.penjualan.update({
+        where: { id: penjualan.id },
+        data: {
+          status: "BATAL",
+          alasanBatal: alasanBatal,
+        },
+      });
+
+      // 2. Kembalikan Kavling jadi AVAILABLE
+      await tx.kavling.update({
+        where: { id: penjualan.kavlingId },
+        data: { status: "AVAILABLE" },
+      });
+
+      return updatedPenjualan;
+    });
   }
 }
 </file>
@@ -4475,58 +4522,6 @@ export class OcrController {
 }
 </file>
 
-<file path="src/presentation/controllers/penjualanController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
-import type { createPenjualanSchema } from "../../validations/penjualanSchema.js";
-import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
-import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
-import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
-
-export class PenjualanController {
-  constructor(
-    private readonly createUseCase: CreatePenjualanUseCase,
-    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createPenjualanSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createUseCase.execute(req.body);
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
-      result,
-    );
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getPenjualanPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as PenjualanFilterDTO,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data penjualan berhasil diambil",
-      result,
-    );
-  };
-}
-</file>
-
 <file path="src/presentation/controllers/perumahanController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -5220,41 +5215,6 @@ export const createOcrRoutes = (controller: OcrController): Router => {
     upload.single("foto_ktp"),
     validate(ocrExtractSchema),
     controller.extractKtpData,
-  );
-
-  return router;
-};
-</file>
-
-<file path="src/presentation/routes/penjualanRoutes.ts">
-import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import {
-  createPenjualanSchema,
-  getPenjualanPaginatedSchema,
-} from "../../validations/penjualanSchema.js";
-import type { PenjualanController } from "../controllers/penjualanController.js";
-
-export const createPenjualanRoutes = (
-  controller: PenjualanController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.get(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(getPenjualanPaginatedSchema),
-    controller.getPaginated,
-  );
-
-  router.post(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(createPenjualanSchema),
-    controller.create,
   );
 
   return router;
@@ -6540,14 +6500,14 @@ export class GenerateSprPdfUseCase {
           penjualan.nilaiPengajuanKpr &&
           Number(penjualan.nilaiPengajuanKpr) > 0
         ) {
-          drawField(
-            "Nilai Pengajuan KPR",
-            formatRp(penjualan.nilaiPengajuanKpr),
-            15,
-          );
+          const labelPengajuan =
+            penjualan.caraPembayaran === "KPR"
+              ? "Nilai Pengajuan KPR"
+              : "Nilai Pengajuan (Plafon)";
+
+          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
         }
 
-        // --- TABLE PEMBAYARAN (DARI TAGIHAN) ---
         const colNo = startX;
         const colKet = startX + 35;
         const colTempo = startX + 230;
@@ -7657,13 +7617,28 @@ export class PenjualanRepository implements IPenjualanRepository {
         });
       }
 
-      const countHariIni = await tx.penjualan.count({
+      const yearMonth = `${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, "0")}`;
+      const prefix = `TRX-${yearMonth}-`;
+
+      const lastPenjualan = await tx.penjualan.findFirst({
         where: {
-          createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+          noTransaksi: { startsWith: prefix },
+        },
+        orderBy: {
+          noTransaksi: "desc",
         },
       });
 
-      const noTransaksi = `TRX-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, "0")}-${String(countHariIni + 1).padStart(3, "0")}`;
+      let nextSequence = 1;
+      if (lastPenjualan) {
+        const lastSequence = parseInt(
+          lastPenjualan.noTransaksi.split("-")[2] ?? "0",
+          10,
+        );
+        nextSequence = lastSequence + 1;
+      }
+
+      const noTransaksi = `${prefix}${String(nextSequence).padStart(3, "0")}`;
 
       const penjualan = await tx.penjualan.create({
         data: {
@@ -8012,6 +7987,118 @@ export class NotarisMapper {
 }
 </file>
 
+<file path="src/presentation/controllers/penjualanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
+import type {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+} from "../../validations/penjualanSchema.js";
+import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
+import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
+import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
+import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+
+export class PenjualanController {
+  constructor(
+    private readonly createUseCase: CreatePenjualanUseCase,
+    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
+    private readonly cancelUseCase: CancelPenjualanUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createPenjualanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
+      result,
+    );
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getPenjualanPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as PenjualanFilterDTO,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data penjualan berhasil diambil",
+      result,
+    );
+  };
+  cancel = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof cancelPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { alasanBatal } = req.body;
+
+    const result = await this.cancelUseCase.execute(id, alasanBatal);
+    sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
+  };
+}
+</file>
+
+<file path="src/presentation/routes/penjualanRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+  getPenjualanPaginatedSchema,
+} from "../../validations/penjualanSchema.js";
+import type { PenjualanController } from "../controllers/penjualanController.js";
+
+export const createPenjualanRoutes = (
+  controller: PenjualanController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.get(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getPenjualanPaginatedSchema),
+    controller.getPaginated,
+  );
+
+  router.post(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(createPenjualanSchema),
+    controller.create,
+  );
+  router.patch(
+    "/:id/cancel",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(cancelPenjualanSchema),
+    controller.cancel,
+  );
+  return router;
+};
+</file>
+
 <file path="src/tests/factories/bankRekeningPtFactory.ts">
 import type { Prisma } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
@@ -8074,56 +8161,6 @@ export const CustomerFactory = {
 export * from "./userFactory.js";
 export * from "./customerFactory.js";
 export * from "./bankRekeningPtFactory.js";
-</file>
-
-<file path="src/validations/penjualanSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import type { PaymentMethod } from "@prisma/client";
-
-export const createPenjualanSchema = {
-  body: z.object({
-    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
-    nama: z.string().min(3, "Nama wajib diisi"),
-    noTelepon: z.string().min(9, "No Telepon wajib diisi"),
-    alamat: z.string().min(5, "Alamat wajib diisi"),
-    perusahaan: emptyAsUndefined(z.string().optional()),
-    alamatKoresponden: emptyAsUndefined(z.string().optional()),
-
-    perumahan: z.string().min(1, "Perumahan wajib diisi"),
-    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
-    nomorUnit: z
-      .string()
-      .min(1, "Nomor unit wajib diisi")
-      .max(10, "No Unit Max 10 Karakter"),
-    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
-    luasBangunan: z.coerce.number().min(0),
-    luasTanah: z.coerce.number().min(0),
-
-    tanggal: z.string().datetime().or(z.string().min(1)),
-    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
-    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    caraPembayaran: z.string().transform((val) => {
-      const formatted = val.toUpperCase().replace(/\s+/g, "_");
-      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
-        return formatted as PaymentMethod;
-      }
-      throw new Error("Cara pembayaran tidak valid");
-    }),
-    bank: emptyAsUndefined(z.string().optional()),
-    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
-
-    agent: z.string().min(1, "Agent wajib diisi"),
-  }),
-};
-
-export const getPenjualanPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
 </file>
 
 <file path="src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts">
@@ -8811,6 +8848,67 @@ export const generateAccountSchema = {
 };
 </file>
 
+<file path="src/validations/penjualanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import type { PaymentMethod } from "@prisma/client";
+
+export const createPenjualanSchema = {
+  body: z.object({
+    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
+    nama: z.string().min(3, "Nama wajib diisi"),
+    noTelepon: z.string().min(9, "No Telepon wajib diisi"),
+    alamat: z.string().min(5, "Alamat wajib diisi"),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+
+    perumahan: z.string().min(1, "Perumahan wajib diisi"),
+    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
+    nomorUnit: z
+      .string()
+      .min(1, "Nomor unit wajib diisi")
+      .max(10, "No Unit Max 10 Karakter"),
+    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
+    luasBangunan: z.coerce.number().min(0),
+    luasTanah: z.coerce.number().min(0),
+
+    tanggal: z.string().datetime().or(z.string().min(1)),
+    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
+    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    caraPembayaran: z.string().transform((val) => {
+      const formatted = val.toUpperCase().replace(/\s+/g, "_");
+      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
+        return formatted as PaymentMethod;
+      }
+      throw new Error("Cara pembayaran tidak valid");
+    }),
+    bank: emptyAsUndefined(z.string().optional()),
+    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
+
+    agent: z.string().min(1, "Agent wajib diisi"),
+  }),
+};
+
+export const getPenjualanPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+
+export const cancelPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z
+      .string()
+      .min(5, "Alasan pembatalan wajib diisi (min. 5 karakter)"),
+  }),
+};
+</file>
+
 <file path="prisma/schema.prisma">
 generator client {
   provider = "prisma-client-js"
@@ -9203,6 +9301,57 @@ model ProgressProyek {
 }
 </file>
 
+<file path="src/presentation/routes/index.ts">
+import { Router } from "express";
+import { checkHealth } from "../controllers/healthController.js";
+import { createAuthRoutes } from "./authRoutes.js";
+import { createUserRoutes } from "./userRoutes.js";
+import { createOcrRoutes } from "./ocrRoutes.js";
+import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
+import { createCustomerRoutes } from "./customerRoutes.js";
+import { container } from "../../infrastructure/di/container.js";
+import { createPerumahanRoutes } from "./perumahanRoutes.js";
+import { createDashboardRoutes } from "./dashboardRoutes.js";
+import { createAgentRoutes } from "./agentRoutes.js";
+import { createNotarisRoutes } from "./notarisRoutes.js";
+import { createKavlingRoutes } from "./kavlingRoutes.js";
+import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
+import { createTagihanRoutes } from "./tagihanRoutes.js";
+import { createPenjualanRoutes } from "./penjualanRoutes.js";
+import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
+export const createMainRouter = (deps: typeof container): Router => {
+  const router = Router();
+
+  router.get("/health", checkHealth);
+  router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/users", createUserRoutes(deps.userController));
+  router.use("/ocr", createOcrRoutes(deps.ocrController));
+
+  router.use(
+    "/bank-rekening",
+    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  );
+
+  router.use("/customers", createCustomerRoutes(deps.customerController));
+  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
+  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/agents", createAgentRoutes(deps.agentController));
+  router.use("/notaris", createNotarisRoutes(deps.notarisController));
+  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
+  router.use(
+    "/customer-kavling",
+    createCustomerKavlingRoutes(deps.customerKavlingController),
+  );
+  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
+  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
+  return router;
+};
+
+const router = createMainRouter(container);
+export default router;
+</file>
+
 <file path="src/infrastructure/di/container.ts">
 import { UserRepository } from "../../domain/repositories/userRepo.js";
 import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
@@ -9317,6 +9466,7 @@ import {
 } from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
 import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
 import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
+import { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -9495,9 +9645,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
     penjualanRepo,
   );
+  const cancelPenjualanUseCase = new CancelPenjualanUseCase(dbClient); // <-- Tambahkan ini
   const penjualanController = new PenjualanController(
     createPenjualanUseCase,
     getPenjualanPaginatedUseCase,
+    cancelPenjualanUseCase,
   );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,
@@ -9552,57 +9704,6 @@ export const createContainer = (dbClient: PrismaClient) => {
 };
 
 export const container = createContainer(prisma as any);
-</file>
-
-<file path="src/presentation/routes/index.ts">
-import { Router } from "express";
-import { checkHealth } from "../controllers/healthController.js";
-import { createAuthRoutes } from "./authRoutes.js";
-import { createUserRoutes } from "./userRoutes.js";
-import { createOcrRoutes } from "./ocrRoutes.js";
-import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
-import { createCustomerRoutes } from "./customerRoutes.js";
-import { container } from "../../infrastructure/di/container.js";
-import { createPerumahanRoutes } from "./perumahanRoutes.js";
-import { createDashboardRoutes } from "./dashboardRoutes.js";
-import { createAgentRoutes } from "./agentRoutes.js";
-import { createNotarisRoutes } from "./notarisRoutes.js";
-import { createKavlingRoutes } from "./kavlingRoutes.js";
-import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
-import { createTagihanRoutes } from "./tagihanRoutes.js";
-import { createPenjualanRoutes } from "./penjualanRoutes.js";
-import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
-export const createMainRouter = (deps: typeof container): Router => {
-  const router = Router();
-
-  router.get("/health", checkHealth);
-  router.use("/auth", createAuthRoutes(deps.authController));
-  router.use("/users", createUserRoutes(deps.userController));
-  router.use("/ocr", createOcrRoutes(deps.ocrController));
-
-  router.use(
-    "/bank-rekening",
-    createBankRekeningPtRoutes(deps.bankRekeningPtController),
-  );
-
-  router.use("/customers", createCustomerRoutes(deps.customerController));
-  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
-  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
-  router.use("/agents", createAgentRoutes(deps.agentController));
-  router.use("/notaris", createNotarisRoutes(deps.notarisController));
-  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
-  router.use(
-    "/customer-kavling",
-    createCustomerKavlingRoutes(deps.customerKavlingController),
-  );
-  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
-  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
-  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
-  return router;
-};
-
-const router = createMainRouter(container);
-export default router;
 </file>
 
 </files>
