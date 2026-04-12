@@ -97,7 +97,13 @@ export class TagihanRepository implements ITagihanRepository {
     cursor?: number,
     filters?: TagihanFilterDTO,
   ): Promise<CursorPaginatedData<TagihanResponseDTO>> {
-    const where: Prisma.TagihanWhereInput = {};
+    const where: Prisma.TagihanWhereInput = {
+      penjualan: {
+        status: {
+          not: "BATAL",
+        },
+      },
+    };
 
     if (filters?.customerId) where.customerId = filters.customerId;
     if (filters?.penjualanId) where.penjualanId = filters.penjualanId;

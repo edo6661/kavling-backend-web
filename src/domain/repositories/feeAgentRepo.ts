@@ -116,7 +116,13 @@ export class FeeAgentRepository implements IFeeAgentRepository {
     cursor?: number,
     filters?: FeeAgentFilterDTO,
   ): Promise<CursorPaginatedData<FeeAgentResponseDTO>> {
-    const where: Prisma.FeeAgentWhereInput = {};
+    const where: Prisma.FeeAgentWhereInput = {
+      penjualan: {
+        status: {
+          not: "BATAL",
+        },
+      },
+    };
 
     if (filters?.agentId) where.agentId = filters.agentId;
     if (filters?.penjualanId) where.penjualanId = filters.penjualanId;

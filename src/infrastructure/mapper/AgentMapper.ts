@@ -48,23 +48,25 @@ export class AgentMapper {
       })),
 
       penjualan: prismaAgent.penjualan
-        ? prismaAgent.penjualan.map((p) => ({
-            id: p.id,
-            noTransaksi: p.noTransaksi,
-            tanggal: p.tanggal,
-            hargaJual: Number(p.hargaJual),
-            status: p.status,
-            customer: p.customer ? { nama: p.customer.nama } : null,
-            kavling: p.kavling
-              ? {
-                  blok: p.kavling.blok,
-                  nomorUnit: p.kavling.nomorUnit,
-                  perumahan: p.kavling.perumahan
-                    ? { nama: p.kavling.perumahan.nama }
-                    : null,
-                }
-              : null,
-          }))
+        ? prismaAgent.penjualan
+            .filter((p) => p.status !== "BATAL")
+            .map((p) => ({
+              id: p.id,
+              noTransaksi: p.noTransaksi,
+              tanggal: p.tanggal,
+              hargaJual: Number(p.hargaJual),
+              status: p.status,
+              customer: p.customer ? { nama: p.customer.nama } : null,
+              kavling: p.kavling
+                ? {
+                    blok: p.kavling.blok,
+                    nomorUnit: p.kavling.nomorUnit,
+                    perumahan: p.kavling.perumahan
+                      ? { nama: p.kavling.perumahan.nama }
+                      : null,
+                  }
+                : null,
+            }))
         : [],
     };
   }

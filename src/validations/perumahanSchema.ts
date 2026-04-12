@@ -6,7 +6,7 @@ export const createPerumahanSchema = {
   body: z.object({
     nama: z.string().min(3, "Nama perumahan minimal 3 karakter"),
     logo: z.string().min(1, "Logo wajib diisi"),
-    alamat: z.string().min(5, "Alamat wajib diisi"),
+    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
   }),
 };
 

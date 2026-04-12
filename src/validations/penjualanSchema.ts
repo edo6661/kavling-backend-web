@@ -6,9 +6,9 @@ import type { PaymentMethod } from "@prisma/client";
 export const createPenjualanSchema = {
   body: z.object({
     noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
-    nama: z.string().min(3, "Nama wajib diisi"),
-    noTelepon: z.string().min(9, "No Telepon wajib diisi"),
-    alamat: z.string().min(5, "Alamat wajib diisi"),
+    nama: z.string().min(3, "Nama minimal 3 karakter"),
+    noTelepon: z.string().min(9, "No Telepon minimal 9 karakter"),
+    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
     perusahaan: emptyAsUndefined(z.string().optional()),
     alamatKoresponden: emptyAsUndefined(z.string().optional()),
 
@@ -51,9 +51,7 @@ export const cancelPenjualanSchema = {
     id: z.string().min(1, "No Transaksi wajib diisi"),
   }),
   body: z.object({
-    alasanBatal: z
-      .string()
-      .min(5, "Alasan pembatalan wajib diisi (min. 5 karakter)"),
+    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
   }),
 };
 
@@ -63,8 +61,6 @@ export const uploadBuktiPenjualanSchema = {
     type: z.string().min(1, "Type wajib diisi"),
   }),
   body: z.object({
-    alasanBatal: z
-      .string()
-      .min(5, "Alasan pembatalan wajib diisi (min. 5 karakter)"),
+    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
   }),
 };

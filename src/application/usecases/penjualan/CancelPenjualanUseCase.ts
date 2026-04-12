@@ -15,13 +15,12 @@ export class CancelPenjualanUseCase {
 
       if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
 
-      if (penjualan.status !== "BOOKED") {
+      if (penjualan.status !== "BOOKED" && penjualan.status !== "PROSES") {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Hanya penjualan berstatus BOOKED yang dapat dibatalkan.",
+          "Hanya penjualan berstatus BOOKED atau PROSES yang dapat dibatalkan.",
         );
       }
-
       // 1. Update Penjualan jadi BATAL
       const updatedPenjualan = await tx.penjualan.update({
         where: { id: penjualan.id },

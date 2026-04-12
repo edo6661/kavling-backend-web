@@ -481,160 +481,6 @@ export class UpdateCustomerUseCase {
 }
 </file>
 
-<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
-import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
-import type {
-  UpdateCustomerKavlingDTO,
-  CustomerKavlingFilterDTO,
-} from "../../../domain/dtos/CustomerKavlingDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
-import type {
-  CreateDetailKavlingPajakDTO,
-  UpdateDetailKavlingPajakDTO,
-} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
-
-export class GetCustomerKavlingsPaginatedUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(
-    limit: number,
-    cursor?: number,
-    filters?: CustomerKavlingFilterDTO,
-  ): Promise<CursorPaginatedData<any>> {
-    const where: Prisma.PenjualanWhereInput = {
-      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
-    };
-
-    if (filters?.search) {
-      where.customer = { nama: { contains: filters.search } };
-    }
-
-    const items = await this.db.penjualan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ id: "desc" }],
-      include: {
-        kavling: { include: { perumahan: true } },
-        detailKavlingPajak: { include: { notaris: true } },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    const mappedItems = items.map((p) => ({
-      id: p.id.toString(),
-      perumahan: p.kavling.perumahan?.nama || "",
-      status: p.kavling.status,
-      blok: p.kavling.blok,
-      unit: p.kavling.nomorUnit,
-      tipe: p.kavling.namaTipe,
-      luasBangunan: Number(p.kavling.luasBangunan),
-      luasTanah: Number(p.kavling.luasTanah),
-      harga: Number(p.kavling.hargaJual),
-      totalHargaJual: Number(p.hargaJual),
-      pembiayaan: p.caraPembayaran,
-      ...p.detailKavlingPajak,
-      notarisId: p.detailKavlingPajak?.notarisId ?? "",
-    }));
-
-    return {
-      items: mappedItems,
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-}
-
-export class UpdateCustomerKavlingUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly kavlingRepo: IKavlingRepository,
-    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
-  ) {}
-
-  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
-    const penjualan = await this.db.penjualan.findUnique({
-      where: { id: penjualanId },
-      include: { kavling: true },
-    });
-
-    if (!penjualan) {
-      throw new NotFoundError("Data Penjualan tidak ditemukan");
-    }
-
-    const {
-      statusKavling,
-      namaTipe,
-      luasBangunan,
-      luasTanah,
-      hargaJualKavling,
-      ...detailPajakData
-    } = data;
-
-    if (
-      statusKavling !== undefined ||
-      namaTipe !== undefined ||
-      luasBangunan !== undefined ||
-      luasTanah !== undefined ||
-      hargaJualKavling !== undefined
-    ) {
-      await this.kavlingRepo.update(penjualan.kavlingId, {
-        status: statusKavling,
-        namaTipe: namaTipe,
-        luasBangunan: luasBangunan,
-        luasTanah: luasTanah,
-        hargaJual: hargaJualKavling,
-      });
-    }
-
-    const createDataPayload: Record<string, unknown> = { penjualanId };
-    const updateDataPayload: Record<string, unknown> = {};
-
-    if (luasBangunan !== undefined) {
-      createDataPayload.luasBangunan = luasBangunan.toString();
-      updateDataPayload.luasBangunan = luasBangunan.toString();
-    }
-
-    for (const [key, value] of Object.entries(detailPajakData)) {
-      if (value !== undefined) {
-        createDataPayload[key] = value;
-        updateDataPayload[key] = value;
-      }
-    }
-
-    const existingDetail =
-      await this.detailPajakRepo.findByPenjualanId(penjualanId);
-
-    if (existingDetail) {
-      await this.detailPajakRepo.update(
-        penjualanId,
-        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
-      );
-    } else {
-      await this.detailPajakRepo.create(
-        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
-      );
-    }
-
-    return {
-      success: true,
-      message: "Data Kavling Customer berhasil diperbarui",
-    };
-  }
-}
-</file>
-
 <file path="src/application/usecases/feeAgent/FeeAgentUseCases.ts">
 import type { IFeeAgentRepository } from "../../../domain/repositories/IFeeAgentRepo.js";
 import type {
@@ -898,6 +744,82 @@ export class GetPenjualanPaginatedUseCase {
 
   async execute(limit: number, cursor?: number, filters?: PenjualanFilterDTO) {
     return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+export class UploadBuktiPenjualanUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
+  async execute(id: string, type: "booking" | "dp", fileBuffer: Buffer) {
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { noTransaksi: id },
+      include: { tagihan: true },
+    });
+    if (!penjualan)
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Data Penjualan tidak ditemukan",
+      );
+    const folderPath = `bumantara/penjualan/${type}`;
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      folderPath,
+    );
+    const updateData: Record<string, string> = {};
+
+    if (type === "booking") {
+      updateData.fileBuktiBooking = imageUrl;
+      updateData.status = "PROSES";
+    }
+
+    if (type === "dp") {
+      updateData.fileBuktiDp = imageUrl;
+    }
+    if (type === "booking") {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          penjualan.id,
+        );
+        const sprUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+        updateData.fileSpr = sprUrl;
+      } catch (error) {
+        console.error("Gagal auto-generate SPR:", error);
+      }
+    }
+    const updatedPenjualan = await this.db.penjualan.update({
+      where: { id: penjualan.id },
+      data: updateData,
+    });
+    const keyword = type === "booking" ? "booking" : "dp";
+    const tagihanTerkait = penjualan.tagihan.find((t) =>
+      t.pembayaran.toLowerCase().includes(keyword),
+    );
+    if (tagihanTerkait) {
+      await this.db.tagihan.update({
+        where: { id: tagihanTerkait.id },
+        data: { status: "LUNAS", fileBukti: imageUrl },
+      });
+    }
+    return updatedPenjualan;
   }
 }
 </file>
@@ -6131,6 +6053,163 @@ export class UploadCustomerDocumentUseCase {
 }
 </file>
 
+<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
+import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
+import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
+import type {
+  UpdateCustomerKavlingDTO,
+  CustomerKavlingFilterDTO,
+} from "../../../domain/dtos/CustomerKavlingDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { CursorPaginatedData } from "../../../types/response.js";
+import type {
+  CreateDetailKavlingPajakDTO,
+  UpdateDetailKavlingPajakDTO,
+} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
+
+export class GetCustomerKavlingsPaginatedUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerKavlingFilterDTO,
+  ): Promise<CursorPaginatedData<any>> {
+    const where: Prisma.PenjualanWhereInput = {
+      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
+    };
+
+    if (filters?.search) {
+      where.customer = { nama: { contains: filters.search } };
+    }
+
+    const items = await this.db.penjualan.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ id: "desc" }],
+      include: {
+        customer: { select: { nama: true } },
+        kavling: { include: { perumahan: true } },
+        detailKavlingPajak: { include: { notaris: true } },
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const mappedItems = items.map((p) => ({
+      id: p.id.toString(),
+      customerId: p.customerId,
+      namaCustomer: p.customer?.nama || "-",
+      perumahan: p.kavling.perumahan?.nama || "",
+      status: p.kavling.status,
+      blok: p.kavling.blok,
+      unit: p.kavling.nomorUnit,
+      tipe: p.kavling.namaTipe,
+      luasBangunan: Number(p.kavling.luasBangunan),
+      luasTanah: Number(p.kavling.luasTanah),
+      harga: Number(p.kavling.hargaJual),
+      totalHargaJual: Number(p.hargaJual),
+      pembiayaan: p.caraPembayaran,
+      ...p.detailKavlingPajak,
+      notarisId: p.detailKavlingPajak?.notarisId ?? "",
+    }));
+
+    return {
+      items: mappedItems,
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+
+export class UpdateCustomerKavlingUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly kavlingRepo: IKavlingRepository,
+    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
+  ) {}
+
+  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { id: penjualanId },
+      include: { kavling: true },
+    });
+
+    if (!penjualan) {
+      throw new NotFoundError("Data Penjualan tidak ditemukan");
+    }
+
+    const {
+      statusKavling,
+      namaTipe,
+      luasBangunan,
+      luasTanah,
+      hargaJualKavling,
+      ...detailPajakData
+    } = data;
+
+    if (
+      statusKavling !== undefined ||
+      namaTipe !== undefined ||
+      luasBangunan !== undefined ||
+      luasTanah !== undefined ||
+      hargaJualKavling !== undefined
+    ) {
+      await this.kavlingRepo.update(penjualan.kavlingId, {
+        status: statusKavling,
+        namaTipe: namaTipe,
+        luasBangunan: luasBangunan,
+        luasTanah: luasTanah,
+        hargaJual: hargaJualKavling,
+      });
+    }
+
+    const createDataPayload: Record<string, unknown> = { penjualanId };
+    const updateDataPayload: Record<string, unknown> = {};
+
+    if (luasBangunan !== undefined) {
+      createDataPayload.luasBangunan = luasBangunan.toString();
+      updateDataPayload.luasBangunan = luasBangunan.toString();
+    }
+
+    for (const [key, value] of Object.entries(detailPajakData)) {
+      if (value !== undefined) {
+        createDataPayload[key] = value;
+        updateDataPayload[key] = value;
+      }
+    }
+
+    const existingDetail =
+      await this.detailPajakRepo.findByPenjualanId(penjualanId);
+
+    if (existingDetail) {
+      await this.detailPajakRepo.update(
+        penjualanId,
+        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
+      );
+    } else {
+      await this.detailPajakRepo.create(
+        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
+      );
+    }
+
+    return {
+      success: true,
+      message: "Data Kavling Customer berhasil diperbarui",
+    };
+  }
+}
+</file>
+
 <file path="src/application/usecases/ocr/ExtractKtpDataUseCase.ts">
 import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
 import { AppError } from "../../../domain/errors/AppError.js";
@@ -7170,118 +7249,6 @@ export class NotarisMapper {
 }
 </file>
 
-<file path="src/presentation/controllers/penjualanController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
-import type {
-  cancelPenjualanSchema,
-  createPenjualanSchema,
-} from "../../validations/penjualanSchema.js";
-import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
-import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
-import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
-import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
-
-export class PenjualanController {
-  constructor(
-    private readonly createUseCase: CreatePenjualanUseCase,
-    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
-    private readonly cancelUseCase: CancelPenjualanUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createPenjualanSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createUseCase.execute(req.body);
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
-      result,
-    );
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getPenjualanPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as PenjualanFilterDTO,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data penjualan berhasil diambil",
-      result,
-    );
-  };
-  cancel = async (
-    req: TypedRequest<
-      typeof cancelPenjualanSchema.body,
-      any,
-      typeof cancelPenjualanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id } = req.params;
-    const { alasanBatal } = req.body;
-
-    const result = await this.cancelUseCase.execute(id, alasanBatal);
-    sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
-  };
-}
-</file>
-
-<file path="src/presentation/routes/penjualanRoutes.ts">
-import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import {
-  cancelPenjualanSchema,
-  createPenjualanSchema,
-  getPenjualanPaginatedSchema,
-} from "../../validations/penjualanSchema.js";
-import type { PenjualanController } from "../controllers/penjualanController.js";
-
-export const createPenjualanRoutes = (
-  controller: PenjualanController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.get(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(getPenjualanPaginatedSchema),
-    controller.getPaginated,
-  );
-
-  router.post(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(createPenjualanSchema),
-    controller.create,
-  );
-  router.patch(
-    "/:id/cancel",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(cancelPenjualanSchema),
-    controller.cancel,
-  );
-  return router;
-};
-</file>
-
 <file path="src/tests/factories/bankRekeningPtFactory.ts">
 import type { Prisma } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
@@ -7501,305 +7468,6 @@ export class GetDashboardSummaryUseCase {
       topAgents,
       documentAlerts,
     };
-  }
-}
-</file>
-
-<file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
-import PDFDocument from "pdfkit";
-import type { Prisma } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-
-export class GenerateSprPdfUseCase {
-  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
-
-  async execute(penjualanId: number): Promise<Buffer> {
-    const penjualan = await this.penjualanRepo.findById(penjualanId);
-
-    if (!penjualan) {
-      throw new NotFoundError("Data Penjualan tidak ditemukan");
-    }
-
-    // Karena return type findById sudah jelas (PenjualanWithCompleteRelations),
-    // TypeScript sekarang tahu bentuk exact dari objek di bawah ini.
-    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
-
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({ size: "A4", margin: 50 });
-        const buffers: Buffer[] = [];
-
-        doc.on("data", (buffer) => buffers.push(buffer));
-        doc.on("end", () => resolve(Buffer.concat(buffers)));
-
-        let y = 40;
-        const startX = 50;
-        const contentWidth = 495;
-        const pageBottomLimit = 780;
-
-        const checkY = (neededHeight: number) => {
-          if (y + neededHeight > pageBottomLimit) {
-            doc.addPage();
-            y = 50;
-          }
-        };
-
-        // --- HEADER ---
-        checkY(130);
-        doc
-          .fontSize(22)
-          .font("Helvetica-Bold")
-          .text(kavling.perumahan.nama.toUpperCase(), startX, y);
-        doc.fontSize(16).text("BUMANTARA", startX, y + 24);
-
-        y += 70;
-
-        doc.fontSize(14).text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
-          width: contentWidth,
-          align: "center",
-          underline: true,
-        });
-        y += 30;
-
-        doc
-          .fontSize(10)
-          .font("Helvetica")
-          .text("Yang bertanda tangan di bawah ini :", startX, y);
-        y += 20;
-
-        const drawField = (label: string, value: string, extraMargin = 8) => {
-          const labelWidth = 130;
-          const textHeight =
-            doc.heightOfString(value, {
-              width: contentWidth - labelWidth - 10,
-            }) || 12;
-          checkY(textHeight + extraMargin);
-
-          doc.font("Helvetica").text(label, startX, y);
-          doc.text(":", startX + labelWidth, y);
-          doc.font("Helvetica-Bold").text(value, startX + labelWidth + 10, y, {
-            width: contentWidth - labelWidth - 10,
-            lineBreak: true,
-          });
-          y += textHeight + extraMargin;
-        };
-
-        // --- CUSTOMER INFO ---
-        drawField("Nama", customer.nama);
-        drawField("Alamat", customer.alamatKtp);
-        drawField(
-          "No. Telepon / HP",
-          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
-        );
-        drawField("No. Identitas", customer.nikKtp);
-        drawField("Perusahaan", customer.perusahaan ?? "-");
-        drawField("Alamat Koresponden", customer.alamatKoresponden ?? "-", 15);
-
-        checkY(20);
-        doc
-          .font("Helvetica")
-          .text(
-            "Telah menyetujui untuk memesan / membeli unit rumah dan atau kavling sebagai berikut:",
-            startX,
-            y,
-          );
-        y += 20;
-
-        const formatRp = (num: number | Prisma.Decimal) => {
-          const val =
-            typeof num === "object" && "toNumber" in num
-              ? num.toNumber()
-              : Number(num);
-          return `Rp. ${val.toLocaleString("id-ID")}`;
-        };
-
-        // --- UNIT INFO ---
-        drawField("Perumahan", kavling.perumahan.nama);
-        drawField(
-          "Blok/Type",
-          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
-        );
-        drawField("Harga Jual", formatRp(penjualan.hargaJual));
-
-        if (
-          penjualan.diskonPenjualan &&
-          Number(penjualan.diskonPenjualan) > 0
-        ) {
-          drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
-        }
-
-        drawField(
-          "Cara Pembayaran",
-          penjualan.caraPembayaran.replace(/_/g, " "),
-        );
-
-        if (penjualan.bank) {
-          const bankLabel =
-            penjualan.caraPembayaran === "KPR" ? "Bank KPR" : "Bank";
-          drawField(bankLabel, penjualan.bank);
-        }
-        if (
-          penjualan.nilaiPengajuanKpr &&
-          Number(penjualan.nilaiPengajuanKpr) > 0
-        ) {
-          const labelPengajuan =
-            penjualan.caraPembayaran === "KPR"
-              ? "Nilai Pengajuan KPR"
-              : "Nilai Pengajuan (Plafon)";
-
-          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
-        }
-
-        const colNo = startX;
-        const colKet = startX + 35;
-        const colTempo = startX + 230;
-        const colNilai = startX + 360;
-        const rowHeight = 20;
-
-        checkY(rowHeight);
-        doc
-          .rect(startX, y, contentWidth, rowHeight)
-          .fillAndStroke("#f0f0f0", "#000");
-        doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
-        doc.text("NO", colNo + 5, y + 6);
-        doc.text("KETERANGAN", colKet + 5, y + 6);
-        doc.text("JATUH TEMPO", colTempo + 5, y + 6);
-        doc.text("NILAI", colNilai + 5, y + 6);
-        y += rowHeight;
-
-        let totalNilai = 0;
-        doc.font("Helvetica").fontSize(9);
-
-        if (tagihan && tagihan.length > 0) {
-          tagihan.forEach((p, idx) => {
-            checkY(rowHeight);
-
-            // Karena kita pakai TS Type dari Prisma, p.jatuhTempo pasti valid Date object
-            const dateStr = p.jatuhTempo
-              .toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
-              .replace(/\//g, "-");
-
-            doc.rect(startX, y, contentWidth, rowHeight).stroke();
-            doc.text(`${idx + 1}.`, colNo + 5, y + 6);
-            doc.text(p.pembayaran, colKet + 5, y + 6);
-            doc.text(dateStr, colTempo + 5, y + 6);
-            doc.text(formatRp(p.nominal), colNilai + 5, y + 6);
-
-            doc
-              .moveTo(colKet, y)
-              .lineTo(colKet, y + rowHeight)
-              .stroke();
-            doc
-              .moveTo(colTempo, y)
-              .lineTo(colTempo, y + rowHeight)
-              .stroke();
-            doc
-              .moveTo(colNilai, y)
-              .lineTo(colNilai, y + rowHeight)
-              .stroke();
-
-            totalNilai +=
-              typeof p.nominal === "object" && "toNumber" in p.nominal
-                ? p.nominal.toNumber()
-                : Number(p.nominal);
-
-            y += rowHeight;
-          });
-        }
-
-        // Row Total
-        checkY(rowHeight);
-        doc.rect(startX, y, contentWidth, rowHeight).stroke();
-        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 6);
-        doc.text(formatRp(totalNilai), colNilai + 5, y + 6);
-        doc
-          .moveTo(colKet, y)
-          .lineTo(colKet, y + rowHeight)
-          .stroke();
-        doc
-          .moveTo(colNilai, y)
-          .lineTo(colNilai, y + rowHeight)
-          .stroke();
-        y += 35;
-
-        // --- SIGNATURE AREA ---
-        checkY(130);
-        const today = new Date()
-          .toLocaleDateString("id-ID", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .replace(/\//g, "-");
-        doc
-          .font("Helvetica")
-          .fontSize(10)
-          .text(`Tanggal: ${today}`, startX, y, {
-            width: contentWidth,
-            align: "right",
-          });
-        y += 20;
-
-        const w = contentWidth / 4;
-        const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
-
-        sigData.forEach((title, i) => {
-          doc.text(title, startX + w * i, y, { width: w, align: "center" });
-        });
-
-        y += 60;
-        const lineW = w - 20;
-
-        sigData.forEach((_, i) => {
-          const cx = startX + w * i + w / 2;
-          doc
-            .moveTo(cx - lineW / 2, y)
-            .lineTo(cx + lineW / 2, y)
-            .stroke();
-        });
-
-        y += 30;
-
-        // --- TERMS & BANK INFO ---
-        checkY(100);
-        doc.fontSize(8).font("Helvetica");
-        const termLines = [
-          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
-          "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
-          "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
-        ];
-
-        termLines.forEach((text) => {
-          doc.text(text, startX, y, { width: contentWidth, align: "justify" });
-          y += 12;
-        });
-
-        y += 5;
-
-        if (rekeningTujuan) {
-          doc.rect(startX, y, 280, 45).stroke();
-          doc
-            .font("Helvetica-Bold")
-            .text(
-              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
-              startX + 5,
-              y + 10,
-            );
-          doc
-            .font("Helvetica")
-            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
-        }
-
-        doc.end();
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
   }
 }
 </file>
@@ -8076,6 +7744,715 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
 }
 </file>
 
+<file path="src/infrastructure/external/CloudinaryService.ts">
+import { v2 as cloudinary } from "cloudinary";
+import { env } from "../../config/env";
+import { AppError } from "../../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import sharp from "sharp";
+
+export class CloudinaryService {
+  constructor() {
+    cloudinary.config({
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
+    });
+  }
+
+  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "auto",
+        },
+        (error, result) => {
+          if (error)
+            return reject(
+              new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Gagal upload"),
+            );
+          resolve(result!.secure_url);
+        },
+      );
+      uploadStream.end(buffer);
+    });
+  }
+
+  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    const compressedBuffer = await sharp(buffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary Upload Error:", error);
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mengunggah gambar ke penyimpanan cloud.",
+              ),
+            );
+          }
+          if (!result) {
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mendapatkan respon dari penyimpanan cloud.",
+              ),
+            );
+          }
+          resolve(result.secure_url);
+        },
+      );
+
+      uploadStream.end(compressedBuffer);
+    });
+  }
+  async deleteImageByUrl(imageUrl: string): Promise<void> {
+    try {
+      const urlParts = imageUrl.split("/");
+      const filenameWithExt = urlParts.pop();
+      const folder = urlParts.pop();
+
+      if (!filenameWithExt || !folder) return;
+
+      const filename = filenameWithExt.split(".")[0];
+      const publicId = `${folder}/${filename}`;
+
+      await cloudinary.uploader.destroy(publicId);
+      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
+    } catch (error) {
+      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
+    }
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/BankRekeningPtMapper.ts">
+import type {
+  BankRekeningPt as PrismaBankRekeningPt,
+  Perumahan,
+} from "@prisma/client";
+
+type BankRekeningPtWithRelation = PrismaBankRekeningPt & {
+  perumahan?: Perumahan;
+};
+
+export class BankRekeningPtMapper {
+  static toDomain(prismaBankRekeningPt: BankRekeningPtWithRelation) {
+    return {
+      id: prismaBankRekeningPt.id,
+      perumahanId: prismaBankRekeningPt.perumahanId,
+      perumahan: prismaBankRekeningPt.perumahan?.nama ?? "",
+      namaBank: prismaBankRekeningPt.namaBank,
+      noRekening: prismaBankRekeningPt.noRekening,
+      atasNama: prismaBankRekeningPt.atasNama,
+      createdAt: prismaBankRekeningPt.createdAt,
+    };
+  }
+}
+</file>
+
+<file path="src/presentation/controllers/dashboardController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
+
+export class DashboardController {
+  constructor(
+    private readonly getDashboardSummaryUseCase: GetDashboardSummaryUseCase,
+  ) {}
+
+  getSummary = async (_req: Request, res: Response): Promise<void> => {
+    const result = await this.getDashboardSummaryUseCase.execute();
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Berhasil mengambil data dashboard",
+      result,
+    );
+  };
+}
+</file>
+
+<file path="src/presentation/controllers/penjualanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
+import type {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+  uploadBuktiPenjualanSchema,
+} from "../../validations/penjualanSchema.js";
+import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
+import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
+import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
+import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
+
+export class PenjualanController {
+  constructor(
+    private readonly createUseCase: CreatePenjualanUseCase,
+    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
+    private readonly cancelUseCase: CancelPenjualanUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createPenjualanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
+      result,
+    );
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getPenjualanPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as PenjualanFilterDTO,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data penjualan berhasil diambil",
+      result,
+    );
+  };
+  cancel = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof cancelPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { alasanBatal } = req.body;
+
+    const result = await this.cancelUseCase.execute(id, alasanBatal);
+    sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
+  };
+  uploadBukti = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof uploadBuktiPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id, type } = req.params;
+    if (!["booking", "dp"].includes(type)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe upload tidak valid.");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File dokumen wajib diunggah.",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      id,
+      type as "booking" | "dp",
+      req.file.buffer,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Bukti ${type} berhasil diunggah`,
+      result,
+    );
+  };
+}
+</file>
+
+<file path="src/presentation/routes/dashboardRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import type { DashboardController } from "../controllers/dashboardController.js";
+
+export const createDashboardRoutes = (
+  controller: DashboardController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+  router.get(
+    "/summary",
+    requireRole(["ADMIN", "MARKETING"]),
+    controller.getSummary,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/penjualanRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+  getPenjualanPaginatedSchema,
+} from "../../validations/penjualanSchema.js";
+import type { PenjualanController } from "../controllers/penjualanController.js";
+import { upload } from "../../middlewares/upload.js";
+
+export const createPenjualanRoutes = (
+  controller: PenjualanController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.get(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getPenjualanPaginatedSchema),
+    controller.getPaginated,
+  );
+
+  router.post(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(createPenjualanSchema),
+    controller.create,
+  );
+  router.patch(
+    "/:id/cancel",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(cancelPenjualanSchema),
+    controller.cancel,
+  );
+  router.patch(
+    "/:id/upload/:type",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("fileBukti"),
+    controller.uploadBukti,
+  );
+  return router;
+};
+</file>
+
+<file path="src/validations/bankRekeningPtSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createBankRekeningPtSchema = {
+  body: z.object({
+    perumahanId: z
+      .number({ error: "Perumahan ID wajib diisi" })
+      .int()
+      .positive(),
+    namaBank: z.string().min(2, "Nama bank minimal 2 karakter"),
+    noRekening: z.string().min(5, "Nomor rekening minimal 5 karakter"),
+    atasNama: z.string().min(3, "Atas nama minimal 3 karakter"),
+  }),
+};
+
+export const updateBankRekeningPtSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    perumahanId: emptyAsUndefined(
+      z.coerce.number().int().positive().optional(),
+    ),
+    namaBank: emptyAsUndefined(z.string().min(2).optional()),
+    noRekening: emptyAsUndefined(z.string().min(5).optional()),
+    atasNama: emptyAsUndefined(z.string().min(3).optional()),
+  }),
+};
+
+export const getBankRekeningPtPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+</file>
+
+<file path="src/validations/customerSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createCustomerSchema = {
+  body: z.object({
+    nikKtp: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nama: z.string().min(3, "Nama minimal 3 karakter"),
+    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    pekerjaan: emptyAsUndefined(z.string().optional()),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    bank: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+    alamatKtp: z.string().min(5, "Alamat KTP minimal 5 karakter"),
+    alamatTinggal: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const updateCustomerSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    userId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
+    nikKtp: emptyAsUndefined(
+      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
+    ),
+    nama: emptyAsUndefined(z.string().min(3).optional()),
+    noHp: emptyAsUndefined(z.string().min(9).optional()),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    pekerjaan: emptyAsUndefined(z.string().optional()),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    bank: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+    alamatKtp: emptyAsUndefined(z.string().min(5).optional()),
+    alamatTinggal: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const getCustomersPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+
+export const generateAccountSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Customer harus berupa angka"),
+  }),
+  body: z.object({
+    password: z
+      .string()
+      .min(6, "Password minimal 6 karakter untuk akun Customer"),
+  }),
+};
+</file>
+
+<file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
+import PDFDocument from "pdfkit";
+import type { Prisma } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+
+export class GenerateSprPdfUseCase {
+  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
+
+  async execute(penjualanId: number): Promise<Buffer> {
+    const penjualan = await this.penjualanRepo.findById(penjualanId);
+
+    if (!penjualan) {
+      throw new NotFoundError("Data Penjualan tidak ditemukan");
+    }
+
+    // Karena return type findById sudah jelas (PenjualanWithCompleteRelations),
+    // TypeScript sekarang tahu bentuk exact dari objek di bawah ini.
+    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
+
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: "A4", margin: 50 });
+        const buffers: Buffer[] = [];
+
+        doc.on("data", (buffer) => buffers.push(buffer));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+        let y = 40;
+        const startX = 50;
+        const contentWidth = 495;
+        const pageBottomLimit = 780;
+
+        const checkY = (neededHeight: number) => {
+          if (y + neededHeight > pageBottomLimit) {
+            doc.addPage();
+            y = 50;
+          }
+        };
+
+        // --- HEADER ---
+        checkY(130);
+        doc
+          .fontSize(22)
+          .font("Helvetica-Bold")
+          .text(kavling.perumahan.nama.toUpperCase(), startX, y);
+        doc.fontSize(16).text("BUMANTARA", startX, y + 24);
+
+        y += 70;
+
+        doc.fontSize(14).text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
+          width: contentWidth,
+          align: "center",
+          underline: true,
+        });
+        y += 30;
+
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text("Yang bertanda tangan di bawah ini :", startX, y);
+        y += 20;
+
+        const drawField = (label: string, value: string, extraMargin = 8) => {
+          const labelWidth = 130;
+          const textHeight =
+            doc.heightOfString(value, {
+              width: contentWidth - labelWidth - 10,
+            }) || 12;
+          checkY(textHeight + extraMargin);
+
+          doc.font("Helvetica").text(label, startX, y);
+          doc.text(":", startX + labelWidth, y);
+          doc.font("Helvetica-Bold").text(value, startX + labelWidth + 10, y, {
+            width: contentWidth - labelWidth - 10,
+            lineBreak: true,
+          });
+          y += textHeight + extraMargin;
+        };
+
+        // --- CUSTOMER INFO ---
+        drawField("Nama", customer.nama);
+        drawField("Alamat", customer.alamatKtp);
+        drawField(
+          "No. Telepon / HP",
+          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
+        );
+        drawField("No. Identitas", customer.nikKtp);
+        drawField("Perusahaan", customer.perusahaan ?? "-");
+        drawField("Alamat", customer.alamatKtp ?? "-", 15);
+
+        checkY(20);
+        doc
+          .font("Helvetica")
+          .text(
+            "Telah menyetujui untuk memesan / membeli unit rumah dan atau kavling sebagai berikut:",
+            startX,
+            y,
+          );
+        y += 20;
+
+        const formatRp = (num: number | Prisma.Decimal) => {
+          const val =
+            typeof num === "object" && "toNumber" in num
+              ? num.toNumber()
+              : Number(num);
+          return `Rp. ${val.toLocaleString("id-ID")}`;
+        };
+
+        // --- UNIT INFO ---
+        drawField("Perumahan", kavling.perumahan.nama);
+        drawField(
+          "Blok/Type",
+          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
+        );
+        drawField("Harga Jual", formatRp(penjualan.hargaJual));
+
+        if (
+          penjualan.diskonPenjualan &&
+          Number(penjualan.diskonPenjualan) > 0
+        ) {
+          drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
+        }
+
+        drawField(
+          "Cara Pembayaran",
+          penjualan.caraPembayaran.replace(/_/g, " "),
+        );
+
+        if (penjualan.bank) {
+          const bankLabel =
+            penjualan.caraPembayaran === "KPR" ? "Bank KPR" : "Bank";
+          drawField(bankLabel, penjualan.bank);
+        }
+        if (
+          penjualan.nilaiPengajuanKpr &&
+          Number(penjualan.nilaiPengajuanKpr) > 0
+        ) {
+          const labelPengajuan =
+            penjualan.caraPembayaran === "KPR"
+              ? "Nilai Pengajuan KPR"
+              : "Nilai Pengajuan (Plafon)";
+
+          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
+        }
+
+        const colNo = startX;
+        const colKet = startX + 35;
+        const colTempo = startX + 230;
+        const colNilai = startX + 360;
+        const rowHeight = 20;
+
+        checkY(rowHeight);
+        doc
+          .rect(startX, y, contentWidth, rowHeight)
+          .fillAndStroke("#f0f0f0", "#000");
+        doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
+        doc.text("NO", colNo + 5, y + 6);
+        doc.text("KETERANGAN", colKet + 5, y + 6);
+        doc.text("JATUH TEMPO", colTempo + 5, y + 6);
+        doc.text("NILAI", colNilai + 5, y + 6);
+        y += rowHeight;
+
+        let totalNilai = 0;
+        doc.font("Helvetica").fontSize(9);
+
+        if (tagihan && tagihan.length > 0) {
+          tagihan.forEach((p, idx) => {
+            checkY(rowHeight);
+
+            // Karena kita pakai TS Type dari Prisma, p.jatuhTempo pasti valid Date object
+            const dateStr = p.jatuhTempo
+              .toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+              .replace(/\//g, "-");
+
+            doc.rect(startX, y, contentWidth, rowHeight).stroke();
+            doc.text(`${idx + 1}.`, colNo + 5, y + 6);
+            doc.text(p.pembayaran, colKet + 5, y + 6);
+            doc.text(dateStr, colTempo + 5, y + 6);
+            doc.text(formatRp(p.nominal), colNilai + 5, y + 6);
+
+            doc
+              .moveTo(colKet, y)
+              .lineTo(colKet, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colTempo, y)
+              .lineTo(colTempo, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colNilai, y)
+              .lineTo(colNilai, y + rowHeight)
+              .stroke();
+
+            totalNilai +=
+              typeof p.nominal === "object" && "toNumber" in p.nominal
+                ? p.nominal.toNumber()
+                : Number(p.nominal);
+
+            y += rowHeight;
+          });
+        }
+
+        // Row Total
+        checkY(rowHeight);
+        doc.rect(startX, y, contentWidth, rowHeight).stroke();
+        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 6);
+        doc.text(formatRp(totalNilai), colNilai + 5, y + 6);
+        doc
+          .moveTo(colKet, y)
+          .lineTo(colKet, y + rowHeight)
+          .stroke();
+        doc
+          .moveTo(colNilai, y)
+          .lineTo(colNilai, y + rowHeight)
+          .stroke();
+        y += 35;
+
+        // --- SIGNATURE AREA ---
+        checkY(130);
+        const today = new Date()
+          .toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .replace(/\//g, "-");
+        doc
+          .font("Helvetica")
+          .fontSize(10)
+          .text(`Tanggal: ${today}`, startX, y, {
+            width: contentWidth,
+            align: "right",
+          });
+        y += 20;
+
+        const w = contentWidth / 4;
+        const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
+
+        sigData.forEach((title, i) => {
+          doc.text(title, startX + w * i, y, { width: w, align: "center" });
+        });
+
+        y += 60;
+        const lineW = w - 20;
+
+        sigData.forEach((_, i) => {
+          const cx = startX + w * i + w / 2;
+          doc
+            .moveTo(cx - lineW / 2, y)
+            .lineTo(cx + lineW / 2, y)
+            .stroke();
+        });
+
+        y += 30;
+
+        // --- TERMS & BANK INFO ---
+        checkY(100);
+        doc.fontSize(8).font("Helvetica");
+        const termLines = [
+          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
+          "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
+          "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
+        ];
+
+        termLines.forEach((text) => {
+          doc.text(text, startX, y, { width: contentWidth, align: "justify" });
+          y += 12;
+        });
+
+        y += 5;
+
+        if (rekeningTujuan) {
+          doc.rect(startX, y, 280, 45).stroke();
+          doc
+            .font("Helvetica-Bold")
+            .text(
+              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
+              startX + 5,
+              y + 10,
+            );
+          doc
+            .font("Helvetica")
+            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
+        }
+
+        doc.end();
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+}
+</file>
+
 <file path="src/domain/repositories/penjualanRepo.ts">
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
@@ -8326,6 +8703,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         customer: true,
         kavling: { include: { perumahan: true } },
         agent: true,
+        tagihan: true,
       },
     });
 
@@ -8335,35 +8713,51 @@ export class PenjualanRepository implements IPenjualanRepository {
       items.pop();
     }
 
-    const mappedItems = items.map((item) => ({
-      id: item.noTransaksi,
-      tanggal: item.tanggal.toISOString(),
-      nama: item.customer.nama,
-      alamat: item.customer.alamatKtp,
-      noTelepon: item.customer.noHp,
-      noIdentitas: item.customer.nikKtp,
-      perusahaan: item.customer.perusahaan ?? "",
-      alamatKoresponden: item.customer.alamatKoresponden ?? "",
-      perumahan: item.kavling.perumahan.nama,
-      blok: item.kavling.blok,
-      tipe: item.kavling.namaTipe,
-      luasBangunan: Number(item.kavling.luasBangunan),
-      luasTanah: Number(item.kavling.luasTanah),
-      nomorUnit: item.kavling.nomorUnit,
-      hargaJual: Number(item.hargaJual),
-      dp: Number(item.dp ?? 0),
-      diskonPenjualan: Number(item.diskonPenjualan ?? 0),
-      hargaPromosi: Number(item.hargaPromosi ?? 0),
-      bank: item.bank ?? "",
-      caraPembayaran: item.caraPembayaran,
-      nilaiPengajuanKpr: Number(item.nilaiPengajuanKpr ?? 0),
-      bookingFee: Number(item.bookingFee ?? 0),
-      status: item.status,
-      agent: item.agent?.nama ?? "",
-      fileBuktiBooking: item.fileBuktiBooking ?? "",
-      fileBuktiDp: item.fileBuktiDp ?? "",
-      fileSpr: item.fileSpr ?? null,
-    }));
+    const mappedItems = items.map((item) => {
+      const bfTagihan = item.tagihan?.find((t) =>
+        t.pembayaran.toLowerCase().includes("booking"),
+      );
+      const dpTagihan = item.tagihan?.find(
+        (t) =>
+          t.pembayaran.toLowerCase().includes("dp") ??
+          t.pembayaran.toLowerCase().includes("down"),
+      );
+
+      let currentStatus = item.status;
+      if (item.status === "BOOKED" && bfTagihan?.status === "LUNAS") {
+        currentStatus = "PROSES";
+      }
+
+      return {
+        id: item.noTransaksi,
+        tanggal: item.tanggal.toISOString(),
+        nama: item.customer.nama,
+        alamat: item.customer.alamatKtp,
+        noTelepon: item.customer.noHp,
+        noIdentitas: item.customer.nikKtp,
+        perusahaan: item.customer.perusahaan ?? "",
+        alamatKoresponden: item.customer.alamatKoresponden ?? "",
+        perumahan: item.kavling.perumahan.nama,
+        blok: item.kavling.blok,
+        tipe: item.kavling.namaTipe,
+        luasBangunan: Number(item.kavling.luasBangunan),
+        luasTanah: Number(item.kavling.luasTanah),
+        nomorUnit: item.kavling.nomorUnit,
+        hargaJual: Number(item.hargaJual),
+        dp: Number(item.dp ?? 0),
+        diskonPenjualan: Number(item.diskonPenjualan ?? 0),
+        hargaPromosi: Number(item.hargaPromosi ?? 0),
+        bank: item.bank ?? "",
+        caraPembayaran: item.caraPembayaran,
+        nilaiPengajuanKpr: Number(item.nilaiPengajuanKpr ?? 0),
+        bookingFee: Number(item.bookingFee ?? 0),
+        status: currentStatus,
+        agent: item.agent?.nama ?? "",
+        fileBuktiBooking: item.fileBuktiBooking ?? bfTagihan?.fileBukti ?? "",
+        fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
+        fileSpr: item.fileSpr ?? null,
+      };
+    });
 
     return {
       items: mappedItems,
@@ -8386,260 +8780,6 @@ export class PenjualanRepository implements IPenjualanRepository {
     });
   }
 }
-</file>
-
-<file path="src/infrastructure/external/CloudinaryService.ts">
-import { v2 as cloudinary } from "cloudinary";
-import { env } from "../../config/env";
-import { AppError } from "../../domain/errors/AppError";
-import { StatusCodes } from "http-status-codes";
-import sharp from "sharp";
-
-export class CloudinaryService {
-  constructor() {
-    cloudinary.config({
-      cloud_name: env.CLOUDINARY_CLOUD_NAME,
-      api_key: env.CLOUDINARY_API_KEY,
-      api_secret: env.CLOUDINARY_API_SECRET,
-    });
-  }
-
-  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "auto",
-        },
-        (error, result) => {
-          if (error)
-            return reject(
-              new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Gagal upload"),
-            );
-          resolve(result!.secure_url);
-        },
-      );
-      uploadStream.end(buffer);
-    });
-  }
-
-  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
-    const compressedBuffer = await sharp(buffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error) {
-            console.error("Cloudinary Upload Error:", error);
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mengunggah gambar ke penyimpanan cloud.",
-              ),
-            );
-          }
-          if (!result) {
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mendapatkan respon dari penyimpanan cloud.",
-              ),
-            );
-          }
-          resolve(result.secure_url);
-        },
-      );
-
-      uploadStream.end(compressedBuffer);
-    });
-  }
-  async deleteImageByUrl(imageUrl: string): Promise<void> {
-    try {
-      const urlParts = imageUrl.split("/");
-      const filenameWithExt = urlParts.pop();
-      const folder = urlParts.pop();
-
-      if (!filenameWithExt || !folder) return;
-
-      const filename = filenameWithExt.split(".")[0];
-      const publicId = `${folder}/${filename}`;
-
-      await cloudinary.uploader.destroy(publicId);
-      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
-    } catch (error) {
-      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
-    }
-  }
-}
-</file>
-
-<file path="src/infrastructure/mapper/BankRekeningPtMapper.ts">
-import type {
-  BankRekeningPt as PrismaBankRekeningPt,
-  Perumahan,
-} from "@prisma/client";
-
-type BankRekeningPtWithRelation = PrismaBankRekeningPt & {
-  perumahan?: Perumahan;
-};
-
-export class BankRekeningPtMapper {
-  static toDomain(prismaBankRekeningPt: BankRekeningPtWithRelation) {
-    return {
-      id: prismaBankRekeningPt.id,
-      perumahanId: prismaBankRekeningPt.perumahanId,
-      perumahan: prismaBankRekeningPt.perumahan?.nama ?? "",
-      namaBank: prismaBankRekeningPt.namaBank,
-      noRekening: prismaBankRekeningPt.noRekening,
-      atasNama: prismaBankRekeningPt.atasNama,
-      createdAt: prismaBankRekeningPt.createdAt,
-    };
-  }
-}
-</file>
-
-<file path="src/presentation/controllers/dashboardController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
-
-export class DashboardController {
-  constructor(
-    private readonly getDashboardSummaryUseCase: GetDashboardSummaryUseCase,
-  ) {}
-
-  getSummary = async (_req: Request, res: Response): Promise<void> => {
-    const result = await this.getDashboardSummaryUseCase.execute();
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Berhasil mengambil data dashboard",
-      result,
-    );
-  };
-}
-</file>
-
-<file path="src/presentation/routes/dashboardRoutes.ts">
-import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
-import type { DashboardController } from "../controllers/dashboardController.js";
-
-export const createDashboardRoutes = (
-  controller: DashboardController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-  router.get(
-    "/summary",
-    requireRole(["ADMIN", "MARKETING"]),
-    controller.getSummary,
-  );
-
-  return router;
-};
-</file>
-
-<file path="src/validations/bankRekeningPtSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-
-export const createBankRekeningPtSchema = {
-  body: z.object({
-    perumahanId: z
-      .number({ error: "Perumahan ID wajib diisi" })
-      .int()
-      .positive(),
-    namaBank: z.string().min(2, "Nama bank minimal 2 karakter"),
-    noRekening: z.string().min(5, "Nomor rekening minimal 5 karakter"),
-    atasNama: z.string().min(3, "Atas nama minimal 3 karakter"),
-  }),
-};
-
-export const updateBankRekeningPtSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
-  body: z.object({
-    perumahanId: emptyAsUndefined(
-      z.coerce.number().int().positive().optional(),
-    ),
-    namaBank: emptyAsUndefined(z.string().min(2).optional()),
-    noRekening: emptyAsUndefined(z.string().min(5).optional()),
-    atasNama: emptyAsUndefined(z.string().min(3).optional()),
-  }),
-};
-
-export const getBankRekeningPtPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
-</file>
-
-<file path="src/validations/customerSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-
-export const createCustomerSchema = {
-  body: z.object({
-    nikKtp: z.string().length(16, "NIK harus tepat 16 karakter"),
-    nama: z.string().min(3, "Nama minimal 3 karakter"),
-    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
-    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
-    pekerjaan: emptyAsUndefined(z.string().optional()),
-    perusahaan: emptyAsUndefined(z.string().optional()),
-    bank: emptyAsUndefined(z.string().optional()),
-    alamatKoresponden: emptyAsUndefined(z.string().optional()),
-    alamatKtp: z.string().min(5, "Alamat KTP minimal 5 karakter"),
-    alamatTinggal: emptyAsUndefined(z.string().optional()),
-  }),
-};
-
-export const updateCustomerSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
-  body: z.object({
-    userId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
-    nikKtp: emptyAsUndefined(
-      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
-    ),
-    nama: emptyAsUndefined(z.string().min(3).optional()),
-    noHp: emptyAsUndefined(z.string().min(9).optional()),
-    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
-    pekerjaan: emptyAsUndefined(z.string().optional()),
-    perusahaan: emptyAsUndefined(z.string().optional()),
-    bank: emptyAsUndefined(z.string().optional()),
-    alamatKoresponden: emptyAsUndefined(z.string().optional()),
-    alamatKtp: emptyAsUndefined(z.string().min(5).optional()),
-    alamatTinggal: emptyAsUndefined(z.string().optional()),
-  }),
-};
-
-export const getCustomersPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
-
-export const generateAccountSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID Customer harus berupa angka"),
-  }),
-  body: z.object({
-    password: z
-      .string()
-      .min(6, "Password minimal 6 karakter untuk akun Customer"),
-  }),
-};
 </file>
 
 <file path="src/validations/penjualanSchema.ts">
@@ -8694,6 +8834,18 @@ export const getPenjualanPaginatedSchema = {
 export const cancelPenjualanSchema = {
   params: z.object({
     id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z
+      .string()
+      .min(5, "Alasan pembatalan wajib diisi (min. 5 karakter)"),
+  }),
+};
+
+export const uploadBuktiPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+    type: z.string().min(1, "Type wajib diisi"),
   }),
   body: z.object({
     alasanBatal: z
@@ -9261,6 +9413,7 @@ import {
 import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
 import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
 import { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+import { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -9439,11 +9592,17 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
     penjualanRepo,
   );
-  const cancelPenjualanUseCase = new CancelPenjualanUseCase(dbClient); // <-- Tambahkan ini
+  const cancelPenjualanUseCase = new CancelPenjualanUseCase(dbClient);
+  const uploadBuktiPenjualanUseCase = new UploadBuktiPenjualanUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
   const penjualanController = new PenjualanController(
     createPenjualanUseCase,
     getPenjualanPaginatedUseCase,
     cancelPenjualanUseCase,
+    uploadBuktiPenjualanUseCase,
   );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,

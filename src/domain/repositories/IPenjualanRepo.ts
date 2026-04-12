@@ -40,6 +40,7 @@ export interface PenjualanPaginatedItem {
   noIdentitas: string;
   perumahan: string;
   blok: string;
+  alasanBatal: string | null;
   nomorUnit: string;
   tipe: string;
   luasBangunan: number;

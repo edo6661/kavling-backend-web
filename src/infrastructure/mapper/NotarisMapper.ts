@@ -37,12 +37,14 @@ export class NotarisMapper {
         updatedAt: pic.updatedAt,
       })),
       ajbDitangani: prismaNotaris.detailKavlingPajak
-        ? prismaNotaris.detailKavlingPajak.map((detail) => ({
-            id: detail.penjualan.noTransaksi,
-            customer: detail.penjualan.customer.nama,
-            kavling: `${detail.penjualan.kavling.perumahan.nama} (${detail.penjualan.kavling.blok}-${detail.penjualan.kavling.nomorUnit})`,
-            biayaAjbTransaksi: Number(detail.pjBiayaAjb),
-          }))
+        ? prismaNotaris.detailKavlingPajak
+            .filter((detail) => detail.penjualan.status !== "BATAL")
+            .map((detail) => ({
+              id: detail.penjualan.noTransaksi,
+              customer: detail.penjualan.customer.nama,
+              kavling: `${detail.penjualan.kavling.perumahan.nama} (${detail.penjualan.kavling.blok}-${detail.penjualan.kavling.nomorUnit})`,
+              biayaAjbTransaksi: Number(detail.pjBiayaAjb),
+            }))
         : [],
     };
   }
