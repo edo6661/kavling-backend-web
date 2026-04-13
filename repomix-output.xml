@@ -1,3 +1,137 @@
+kode frontend:
+
+<file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
+import { StatusCodes } from "http-status-codes";
+import { AppError } from "../../../domain/errors/AppError.js";
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+export class VerifyDocumentUseCase {
+  constructor(private readonly db: PrismaClient) {}
+  async execute(documentNumber: string) {
+    if (!documentNumber) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
+    }
+    if (documentNumber.startsWith("INV-")) {
+      const tagihan = await this.db.tagihan.findUnique({
+        where: { noTagihan: documentNumber },
+        include: {
+          customer: { select: { nama: true } },
+          penjualan: {
+            include: {
+              kavling: {
+                include: { perumahan: { select: { nama: true } } },
+              },
+            },
+          },
+        },
+      });
+      if (!tagihan)
+        throw new NotFoundError("Dokumen Invoice/Kwitansi tidak ditemukan");
+      return {
+        type: "INVOICE",
+        data: {
+          noDokumen: tagihan.noTagihan,
+          pembayaran: tagihan.pembayaran,
+          nominal: Number(tagihan.nominal),
+          jatuhTempo: tagihan.jatuhTempo,
+          status: tagihan.status,
+          tanggalDibuat: tagihan.createdAt,
+          customer: {
+            nama: tagihan.customer.nama,
+          },
+          kavling: `${tagihan.penjualan.kavling.perumahan.nama} Blok ${tagihan.penjualan.kavling.blok}-${tagihan.penjualan.kavling.nomorUnit}`,
+        },
+      };
+    } else if (documentNumber.startsWith("TRX-")) {
+      const penjualan = await this.db.penjualan.findUnique({
+        where: { noTransaksi: documentNumber },
+        include: {
+          customer: { select: { nama: true } },
+          kavling: {
+            include: { perumahan: { select: { nama: true } } },
+          },
+        },
+      });
+      if (!penjualan)
+        throw new NotFoundError(
+          "Dokumen Surat Pesanan Rumah (SPR) tidak ditemukan",
+        );
+      return {
+        type: "SPR",
+        data: {
+          noDokumen: penjualan.noTransaksi,
+          tanggalTransaksi: penjualan.tanggal,
+          status: penjualan.status,
+          hargaJual: Number(penjualan.hargaJual),
+          caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
+          customer: {
+            nama: penjualan.customer.nama,
+          },
+          kavling: {
+            perumahan: penjualan.kavling.perumahan.nama,
+            blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
+            tipe: penjualan.kavling.namaTipe,
+          },
+        },
+      };
+    }
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Format nomor dokumen tidak dikenali",
+    );
+  }
+}
+</file>
+
+<file path="src/presentation/controllers/verifyController.ts">
+import type { Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { VerifyDocumentUseCase } from "../../application/usecases/verify/VerifyDocumentUseCase.js";
+import { z } from "zod";
+import type { TypedRequest } from "../../types/request.js";
+export const verifySchema = {
+  params: z.object({
+    id: z.string().min(1, "ID Dokumen wajib diisi"),
+  }),
+};
+
+export class VerifyController {
+  constructor(private readonly verifyDocumentUseCase: VerifyDocumentUseCase) {}
+
+  verify = async (
+    req: TypedRequest<any, any, typeof verifySchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const documentNumber = req.params.id;
+
+    const result = await this.verifyDocumentUseCase.execute(documentNumber);
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data dokumen berhasil diverifikasi",
+      result,
+    );
+  };
+}
+</file>
+
+<file path="src/presentation/routes/verifyRoutes.ts">
+import { Router } from "express";
+import {
+  verifySchema,
+  type VerifyController,
+} from "../controllers/verifyController.js";
+import { validate } from "../../middlewares/validate.js";
+export const createVerifyRoutes = (controller: VerifyController): Router => {
+  const router = Router();
+
+  router.get("/:id", validate(verifySchema), controller.verify);
+
+  return router;
+};
+</file>
 
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -4954,6 +5088,7 @@ export const updateUserSchema = {
     "pdfkit": "^0.18.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
+    "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
@@ -4969,6 +5104,7 @@ export const updateUserSchema = {
     "@types/node": "^25.3.0",
     "@types/pdfkit": "^0.17.5",
     "@types/pg": "^8.16.0",
+    "@types/qrcode": "^1.5.6",
     "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
@@ -7429,172 +7565,6 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
 }
 </file>
 
-<file path="src/domain/repositories/kavlingRepo.ts">
-import { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IKavlingRepository } from "./IKavlingRepo.js";
-import type { KavlingEntity } from "../entities/Kavling.js";
-import type {
-  CreateKavlingDTO,
-  UpdateKavlingDTO,
-  KavlingFilterDTO,
-} from "../dtos/KavlingDTO.js";
-import type { OffsetPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-import { KavlingMapper } from "../../infrastructure/mapper/KavlingMapper.js";
-
-export class KavlingRepository implements IKavlingRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreateKavlingDTO): Promise<KavlingEntity> {
-    try {
-      const createData: Prisma.KavlingUncheckedCreateInput = {
-        perumahanId: data.perumahanId,
-        blok: data.blok,
-        nomorUnit: data.nomorUnit,
-        namaTipe: data.namaTipe,
-        luasBangunan: data.luasBangunan,
-        luasTanah: data.luasTanah,
-        hargaJual: data.hargaJual,
-        rekeningTujuanId: data.rekeningTujuanId ?? null,
-        filePbg: data.filePbg ?? null,
-        fileSertifikatTanah: data.fileSertifikatTanah ?? null,
-        fileNopPbb: data.fileNopPbb ?? null,
-      };
-
-      if (data.status !== undefined) {
-        createData.status = data.status;
-      }
-
-      const result = await this.db.kavling.create({
-        data: createData,
-        include: { perumahan: true, rekeningTujuan: true },
-      });
-
-      return KavlingMapper.toDomain(result);
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  }
-
-  async findById(id: number): Promise<KavlingEntity | null> {
-    const result = await this.db.kavling.findUnique({
-      where: { id },
-      include: { perumahan: true, rekeningTujuan: true },
-    });
-    if (!result) return null;
-    return KavlingMapper.toDomain(result);
-  }
-
-  async update(id: number, data: UpdateKavlingDTO): Promise<KavlingEntity> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
-
-    const updateData: Prisma.KavlingUncheckedUpdateInput = {};
-    if (data.perumahanId !== undefined)
-      updateData.perumahanId = data.perumahanId;
-    if (data.blok !== undefined) updateData.blok = data.blok;
-    if (data.nomorUnit !== undefined) updateData.nomorUnit = data.nomorUnit;
-    if (data.namaTipe !== undefined) updateData.namaTipe = data.namaTipe;
-    if (data.luasBangunan !== undefined)
-      updateData.luasBangunan = data.luasBangunan;
-    if (data.luasTanah !== undefined) updateData.luasTanah = data.luasTanah;
-    if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
-    if (data.status !== undefined) updateData.status = data.status;
-
-    if (data.rekeningTujuanId !== undefined)
-      updateData.rekeningTujuanId = data.rekeningTujuanId ?? null;
-    if (data.filePbg !== undefined) updateData.filePbg = data.filePbg ?? null;
-    if (data.fileSertifikatTanah !== undefined)
-      updateData.fileSertifikatTanah = data.fileSertifikatTanah ?? null;
-    if (data.fileNopPbb !== undefined)
-      updateData.fileNopPbb = data.fileNopPbb ?? null;
-
-    const result = await this.db.kavling.update({
-      where: { id },
-      data: updateData,
-      include: { perumahan: true, rekeningTujuan: true },
-    });
-
-    return KavlingMapper.toDomain(result);
-  }
-
-  async findWithCursorPagination(
-    page: number,
-    limit: number,
-    filters?: KavlingFilterDTO,
-  ): Promise<OffsetPaginatedData<KavlingEntity>> {
-    const where: Prisma.KavlingWhereInput = {};
-
-    if (filters?.perumahanId) where.perumahanId = filters.perumahanId;
-    if (filters?.status) where.status = filters.status;
-
-    if (filters?.search) {
-      where.OR = [
-        { blok: { contains: filters.search } },
-        { nomorUnit: { contains: filters.search } },
-        { namaTipe: { contains: filters.search } },
-      ];
-    }
-
-    const skip = (page - 1) * limit;
-
-    const [items, totalItems] = await this.db.$transaction([
-      this.db.kavling.findMany({
-        take: limit,
-        skip,
-        where,
-        orderBy: [{ id: "desc" }],
-        include: {
-          perumahan: true,
-          rekeningTujuan: true,
-          penjualan: {
-            where: { status: { not: "BATAL" } },
-            include: { customer: { select: { nama: true, noHp: true } } },
-            take: 1,
-          },
-        },
-      }),
-      this.db.kavling.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(totalItems / limit);
-
-    return {
-      items: items.map((item) => KavlingMapper.toDomain(item)),
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    };
-  }
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
-
-    try {
-      await this.db.kavling.delete({ where: { id } });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2003"
-      ) {
-        throw new ConflictError(
-          "Kavling tidak dapat dihapus karena sudah ada riwayat transaksi atau progress pembangunan.",
-        );
-      }
-      throw error;
-    }
-  }
-}
-</file>
-
 <file path="src/infrastructure/mapper/BankRekeningPtMapper.ts">
 import type {
   BankRekeningPt as PrismaBankRekeningPt,
@@ -7811,40 +7781,6 @@ export const generateAccountSchema = {
 };
 </file>
 
-<file path="src/validations/paginationSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-
-const baseFilterSchema = z.object({
-  search: emptyAsUndefined(z.string().optional()),
-  startDate: emptyAsUndefined(z.string().datetime().optional()),
-  endDate: emptyAsUndefined(z.string().datetime().optional()),
-  orderBy: emptyAsUndefined(
-    z
-      .string()
-      .regex(
-        /^[a-zA-Z0-9_]+:(asc|desc)$/,
-        "Format harus field:asc atau field:desc",
-      )
-      .optional(),
-  ),
-});
-
-export const cursorPaginationQuerySchema = baseFilterSchema.extend({
-  limit: z.coerce.number().min(1).max(500).default(20),
-  cursor: emptyAsUndefined(z.string().optional()),
-});
-
-export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
-
-export const offsetPaginationQuerySchema = baseFilterSchema.extend({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(500).default(10),
-});
-
-export type OffsetPaginationQuery = z.infer<typeof offsetPaginationQuerySchema>;
-</file>
-
 <file path="src/domain/repositories/IPenjualanRepo.ts">
 import type { Prisma } from "@prisma/client";
 import type {
@@ -7923,6 +7859,178 @@ export interface IPenjualanRepository {
     id: number,
     data: Partial<Prisma.PenjualanUpdateInput>,
   ): Promise<PenjualanWithCompleteRelations>;
+}
+</file>
+
+<file path="src/domain/repositories/kavlingRepo.ts">
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IKavlingRepository } from "./IKavlingRepo.js";
+import type { KavlingEntity } from "../entities/Kavling.js";
+import type {
+  CreateKavlingDTO,
+  UpdateKavlingDTO,
+  KavlingFilterDTO,
+} from "../dtos/KavlingDTO.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { KavlingMapper } from "../../infrastructure/mapper/KavlingMapper.js";
+export class KavlingRepository implements IKavlingRepository {
+  constructor(private readonly db: PrismaClient) {}
+  async create(data: CreateKavlingDTO): Promise<KavlingEntity> {
+    try {
+      const createData: Prisma.KavlingUncheckedCreateInput = {
+        perumahanId: data.perumahanId,
+        blok: data.blok,
+        nomorUnit: data.nomorUnit,
+        namaTipe: data.namaTipe,
+        luasBangunan: data.luasBangunan,
+        luasTanah: data.luasTanah,
+        hargaJual: data.hargaJual,
+        rekeningTujuanId: data.rekeningTujuanId ?? null,
+        filePbg: data.filePbg ?? null,
+        fileSertifikatTanah: data.fileSertifikatTanah ?? null,
+        fileNopPbb: data.fileNopPbb ?? null,
+      };
+      if (data.status !== undefined) {
+        createData.status = data.status;
+      }
+      const result = await this.db.kavling.create({
+        data: createData,
+        include: { perumahan: true, rekeningTujuan: true },
+      });
+      return KavlingMapper.toDomain(result);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+  async findById(id: number): Promise<KavlingEntity | null> {
+    const result = await this.db.kavling.findUnique({
+      where: { id },
+      include: { perumahan: true, rekeningTujuan: true },
+    });
+    if (!result) return null;
+    return KavlingMapper.toDomain(result);
+  }
+  async update(id: number, data: UpdateKavlingDTO): Promise<KavlingEntity> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
+    const updateData: Prisma.KavlingUncheckedUpdateInput = {};
+    if (data.perumahanId !== undefined)
+      updateData.perumahanId = data.perumahanId;
+    if (data.blok !== undefined) updateData.blok = data.blok;
+    if (data.nomorUnit !== undefined) updateData.nomorUnit = data.nomorUnit;
+    if (data.namaTipe !== undefined) updateData.namaTipe = data.namaTipe;
+    if (data.luasBangunan !== undefined)
+      updateData.luasBangunan = data.luasBangunan;
+    if (data.luasTanah !== undefined) updateData.luasTanah = data.luasTanah;
+    if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.rekeningTujuanId !== undefined)
+      updateData.rekeningTujuanId = data.rekeningTujuanId ?? null;
+    if (data.filePbg !== undefined) updateData.filePbg = data.filePbg ?? null;
+    if (data.fileSertifikatTanah !== undefined)
+      updateData.fileSertifikatTanah = data.fileSertifikatTanah ?? null;
+    if (data.fileNopPbb !== undefined)
+      updateData.fileNopPbb = data.fileNopPbb ?? null;
+    const result = await this.db.kavling.update({
+      where: { id },
+      data: updateData,
+      include: { perumahan: true, rekeningTujuan: true },
+    });
+    return KavlingMapper.toDomain(result);
+  }
+  async findWithCursorPagination(
+    page: number,
+    limit: number,
+    filters?: KavlingFilterDTO,
+  ): Promise<OffsetPaginatedData<KavlingEntity>> {
+    const where: Prisma.KavlingWhereInput = {};
+    if (filters?.perumahanId) where.perumahanId = filters.perumahanId;
+    if (filters?.status) where.status = filters.status;
+    if (filters?.search) {
+      where.OR = [
+        { blok: { contains: filters.search } },
+        { nomorUnit: { contains: filters.search } },
+        { namaTipe: { contains: filters.search } },
+      ];
+    }
+    let orderByClause: Prisma.KavlingOrderByWithRelationInput[] = [
+      { id: "desc" },
+    ];
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["blok", "hargaJual", "luasBangunan", "luasTanah"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+    const skip = (page - 1) * limit;
+    const summaryWhere: Prisma.KavlingWhereInput | undefined =
+      filters?.perumahanId ? { perumahanId: filters.perumahanId } : undefined;
+    const [items, totalItems, summaryData] = await Promise.all([
+      this.db.kavling.findMany({
+        take: limit,
+        skip,
+        where,
+        orderBy: orderByClause,
+        include: {
+          perumahan: true,
+          rekeningTujuan: true,
+          penjualan: {
+            where: { status: { not: "BATAL" } },
+            include: { customer: { select: { nama: true, noHp: true } } },
+            take: 1,
+          },
+        },
+      }),
+      this.db.kavling.count({ where }),
+      this.db.kavling.groupBy({
+        by: ["status"],
+        _count: { id: true },
+        ...(summaryWhere && { where: summaryWhere }),
+      }),
+    ]);
+    const totalPages = Math.ceil(totalItems / limit);
+    const summary = summaryData.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count.id;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    return {
+      items: items.map((item) => KavlingMapper.toDomain(item)),
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        summary,
+      },
+    };
+  }
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
+    try {
+      await this.db.kavling.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ConflictError(
+          "Kavling tidak dapat dihapus karena sudah ada riwayat transaksi atau progress pembangunan.",
+        );
+      }
+      throw error;
+    }
+  }
 }
 </file>
 
@@ -8211,6 +8319,45 @@ export const createPenjualanRoutes = (
 };
 </file>
 
+<file path="src/validations/paginationSchema.ts">
+// src/validations/paginationSchema.ts
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+
+const baseFilterSchema = z.object({
+  search: emptyAsUndefined(z.string().optional()),
+  startDate: emptyAsUndefined(z.string().datetime().optional()),
+  endDate: emptyAsUndefined(z.string().datetime().optional()),
+  orderBy: emptyAsUndefined(
+    z
+      .string()
+      .regex(
+        /^[a-zA-Z0-9_]+:(asc|desc)$/,
+        "Format harus field:asc atau field:desc",
+      )
+      .transform((val) => {
+        const parts = val.split(":");
+        return { field: parts[0], direction: parts[1] as "asc" | "desc" };
+      })
+      .optional(),
+  ),
+});
+
+export const cursorPaginationQuerySchema = baseFilterSchema.extend({
+  limit: z.coerce.number().min(1).max(500).default(20),
+  cursor: emptyAsUndefined(z.string().optional()),
+});
+
+export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
+
+export const offsetPaginationQuerySchema = baseFilterSchema.extend({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(500).default(10),
+});
+
+export type OffsetPaginationQuery = z.infer<typeof offsetPaginationQuerySchema>;
+</file>
+
 <file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
 import type { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
@@ -8381,7 +8528,7 @@ import PDFDocument from "pdfkit";
 import type { Prisma } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-
+import QRCode from "qrcode";
 export class GenerateSprPdfUseCase {
   constructor(private readonly penjualanRepo: IPenjualanRepository) {}
 
@@ -8396,12 +8543,29 @@ export class GenerateSprPdfUseCase {
 
     // --- 1. PRE-FETCH DATA TANDA TANGAN (ASINKRON) ---
     const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ttdData = penjualan.ttdData as Record<
       string,
       { nama: string; tanggal: string; url: string }
     > | null;
     const sigBuffers: Record<string, Buffer> = {};
+
+    const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
+    let qrCodeBuffer: Buffer | null = null;
+
+    try {
+      const qrDataUri = await QRCode.toDataURL(verifyUrl, {
+        margin: 1,
+        width: 80,
+      });
+
+      const base64Data = qrDataUri.split(",")[1];
+
+      if (base64Data) {
+        qrCodeBuffer = Buffer.from(base64Data, "base64");
+      }
+    } catch (err) {
+      console.error("Gagal generate QR Code", err);
+    }
 
     if (ttdData) {
       await Promise.all(
@@ -8734,6 +8898,7 @@ export class GenerateSprPdfUseCase {
         y += 5;
 
         if (rekeningTujuan) {
+          // Render kotak Bank
           doc.rect(startX, y, 280, 45).stroke();
           doc
             .font("Helvetica-Bold")
@@ -8745,6 +8910,25 @@ export class GenerateSprPdfUseCase {
           doc
             .font("Helvetica")
             .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
+        }
+
+        // [TAMBAHKAN KODE INI] Render QR Code di sebelah kanan kotak Bank
+        if (qrCodeBuffer) {
+          const qrX = startX + 350; // Posisi X agak ke kanan
+          const qrY = y - 10; // Sesuaikan sedikit agar sejajar
+
+          // Gambar kotak pembungkus QR
+          doc.rect(qrX - 5, qrY - 5, 80, 95).stroke("#e2e8f0");
+
+          // Masukkan gambar QR
+          doc.image(qrCodeBuffer, qrX, qrY, { width: 70, height: 70 });
+
+          // Tambahkan teks validasi di bawah QR
+          doc.fontSize(6).font("Helvetica-Bold").fillColor("#64748b");
+          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 75, {
+            width: 80,
+            align: "center",
+          });
         }
 
         doc.end();
@@ -9596,10 +9780,13 @@ import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
 import { createTagihanRoutes } from "./tagihanRoutes.js";
 import { createPenjualanRoutes } from "./penjualanRoutes.js";
 import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
+import { createVerifyRoutes } from "./verifyRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
   router.get("/health", checkHealth);
+  router.use("/verify", createVerifyRoutes(deps.verifyController));
+
   router.use("/auth", createAuthRoutes(deps.authController));
   router.use("/users", createUserRoutes(deps.userController));
   router.use("/ocr", createOcrRoutes(deps.ocrController));
@@ -9746,6 +9933,8 @@ import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/Gene
 import { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
 import { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
 import { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
+import { VerifyDocumentUseCase } from "../../application/usecases/verify/VerifyDocumentUseCase.js";
+import { VerifyController } from "../../presentation/controllers/verifyController.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -9972,6 +10161,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     updateFeeAgentUseCase,
     uploadBuktiFeeUseCase,
   );
+  const verifyDocumentUseCase = new VerifyDocumentUseCase(dbClient);
+  const verifyController = new VerifyController(verifyDocumentUseCase);
   return {
     authController,
     userRepo,
@@ -9991,6 +10182,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     tagihanController,
     penjualanController,
     feeAgentController,
+    verifyController,
   };
 };
 

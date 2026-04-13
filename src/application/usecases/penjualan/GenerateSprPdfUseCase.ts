@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import type { Prisma } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-
+import QRCode from "qrcode";
 export class GenerateSprPdfUseCase {
   constructor(private readonly penjualanRepo: IPenjualanRepository) {}
 
@@ -17,12 +17,29 @@ export class GenerateSprPdfUseCase {
 
     // --- 1. PRE-FETCH DATA TANDA TANGAN (ASINKRON) ---
     const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ttdData = penjualan.ttdData as Record<
       string,
       { nama: string; tanggal: string; url: string }
     > | null;
     const sigBuffers: Record<string, Buffer> = {};
+
+    const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
+    let qrCodeBuffer: Buffer | null = null;
+
+    try {
+      const qrDataUri = await QRCode.toDataURL(verifyUrl, {
+        margin: 1,
+        width: 80,
+      });
+
+      const base64Data = qrDataUri.split(",")[1];
+
+      if (base64Data) {
+        qrCodeBuffer = Buffer.from(base64Data, "base64");
+      }
+    } catch (err) {
+      console.error("Gagal generate QR Code", err);
+    }
 
     if (ttdData) {
       await Promise.all(
@@ -355,6 +372,7 @@ export class GenerateSprPdfUseCase {
         y += 5;
 
         if (rekeningTujuan) {
+          // Render kotak Bank
           doc.rect(startX, y, 280, 45).stroke();
           doc
             .font("Helvetica-Bold")
@@ -366,6 +384,25 @@ export class GenerateSprPdfUseCase {
           doc
             .font("Helvetica")
             .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
+        }
+
+        // [TAMBAHKAN KODE INI] Render QR Code di sebelah kanan kotak Bank
+        if (qrCodeBuffer) {
+          const qrX = startX + 350; // Posisi X agak ke kanan
+          const qrY = y - 10; // Sesuaikan sedikit agar sejajar
+
+          // Gambar kotak pembungkus QR
+          doc.rect(qrX - 5, qrY - 5, 80, 95).stroke("#e2e8f0");
+
+          // Masukkan gambar QR
+          doc.image(qrCodeBuffer, qrX, qrY, { width: 70, height: 70 });
+
+          // Tambahkan teks validasi di bawah QR
+          doc.fontSize(6).font("Helvetica-Bold").fillColor("#64748b");
+          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 75, {
+            width: 80,
+            align: "center",
+          });
         }
 
         doc.end();

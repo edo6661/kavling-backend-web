@@ -15,10 +15,13 @@ import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
 import { createTagihanRoutes } from "./tagihanRoutes.js";
 import { createPenjualanRoutes } from "./penjualanRoutes.js";
 import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
+import { createVerifyRoutes } from "./verifyRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
   router.get("/health", checkHealth);
+  router.use("/verify", createVerifyRoutes(deps.verifyController));
+
   router.use("/auth", createAuthRoutes(deps.authController));
   router.use("/users", createUserRoutes(deps.userController));
   router.use("/ocr", createOcrRoutes(deps.ocrController));
