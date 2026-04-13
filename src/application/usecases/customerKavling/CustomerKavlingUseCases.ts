@@ -47,23 +47,32 @@ export class GetCustomerKavlingsPaginatedUseCase {
       items.pop();
     }
 
-    const mappedItems = items.map((p) => ({
-      id: p.id.toString(),
-      customerId: p.customerId,
-      namaCustomer: p.customer?.nama || "-",
-      perumahan: p.kavling.perumahan?.nama || "",
-      status: p.kavling.status,
-      blok: p.kavling.blok,
-      unit: p.kavling.nomorUnit,
-      tipe: p.kavling.namaTipe,
-      luasBangunan: Number(p.kavling.luasBangunan),
-      luasTanah: Number(p.kavling.luasTanah),
-      harga: Number(p.kavling.hargaJual),
-      totalHargaJual: Number(p.hargaJual),
-      pembiayaan: p.caraPembayaran,
-      ...p.detailKavlingPajak,
-      notarisId: p.detailKavlingPajak?.notarisId ?? "",
-    }));
+    const mappedItems = items.map((p) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id: detailId, ...restDetailPajak } = p.detailKavlingPajak ?? {};
+
+      return {
+        id: p.id.toString(), // ID Penjualan tetap aman
+        customerId: p.customerId,
+        namaCustomer: p.customer?.nama || "-",
+        perumahan: p.kavling.perumahan?.nama || "",
+
+        status: p.status,
+
+        blok: p.kavling.blok,
+        unit: p.kavling.nomorUnit,
+        tipe: p.kavling.namaTipe,
+        luasBangunan: Number(p.kavling.luasBangunan),
+        luasTanah: Number(p.kavling.luasTanah),
+        harga: Number(p.kavling.hargaJual),
+        totalHargaJual: Number(p.hargaJual),
+        pembiayaan: p.caraPembayaran,
+
+        ...restDetailPajak,
+
+        notarisId: p.detailKavlingPajak?.notarisId ?? "",
+      };
+    });
 
     return {
       items: mappedItems,

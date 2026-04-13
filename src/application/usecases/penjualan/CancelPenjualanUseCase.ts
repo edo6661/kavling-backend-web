@@ -1,8 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
 export class CancelPenjualanUseCase {
   constructor(private readonly db: PrismaClient) {}
 
@@ -15,13 +12,6 @@ export class CancelPenjualanUseCase {
 
       if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
 
-      if (penjualan.status !== "BOOKED" && penjualan.status !== "PROSES") {
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Hanya penjualan berstatus BOOKED atau PROSES yang dapat dibatalkan.",
-        );
-      }
-      // 1. Update Penjualan jadi BATAL
       const updatedPenjualan = await tx.penjualan.update({
         where: { id: penjualan.id },
         data: {
@@ -30,10 +20,16 @@ export class CancelPenjualanUseCase {
         },
       });
 
-      // 2. Kembalikan Kavling jadi AVAILABLE
       await tx.kavling.update({
         where: { id: penjualan.kavlingId },
         data: { status: "AVAILABLE" },
+      });
+
+      await tx.tagihan.deleteMany({
+        where: {
+          penjualanId: penjualan.id,
+          status: "BELUM_BAYAR",
+        },
       });
 
       return updatedPenjualan;
