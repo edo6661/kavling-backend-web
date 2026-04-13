@@ -11,10 +11,8 @@ import type { OffsetPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { KavlingMapper } from "../../infrastructure/mapper/KavlingMapper.js";
-
 export class KavlingRepository implements IKavlingRepository {
   constructor(private readonly db: PrismaClient) {}
-
   async create(data: CreateKavlingDTO): Promise<KavlingEntity> {
     try {
       const createData: Prisma.KavlingUncheckedCreateInput = {
@@ -30,23 +28,19 @@ export class KavlingRepository implements IKavlingRepository {
         fileSertifikatTanah: data.fileSertifikatTanah ?? null,
         fileNopPbb: data.fileNopPbb ?? null,
       };
-
       if (data.status !== undefined) {
         createData.status = data.status;
       }
-
       const result = await this.db.kavling.create({
         data: createData,
         include: { perumahan: true, rekeningTujuan: true },
       });
-
       return KavlingMapper.toDomain(result);
     } catch (error) {
       console.error(error);
       throw error;
     }
   }
-
   async findById(id: number): Promise<KavlingEntity | null> {
     const result = await this.db.kavling.findUnique({
       where: { id },
@@ -55,11 +49,9 @@ export class KavlingRepository implements IKavlingRepository {
     if (!result) return null;
     return KavlingMapper.toDomain(result);
   }
-
   async update(id: number, data: UpdateKavlingDTO): Promise<KavlingEntity> {
     const existing = await this.findById(id);
     if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
-
     const updateData: Prisma.KavlingUncheckedUpdateInput = {};
     if (data.perumahanId !== undefined)
       updateData.perumahanId = data.perumahanId;
@@ -71,7 +63,6 @@ export class KavlingRepository implements IKavlingRepository {
     if (data.luasTanah !== undefined) updateData.luasTanah = data.luasTanah;
     if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
     if (data.status !== undefined) updateData.status = data.status;
-
     if (data.rekeningTujuanId !== undefined)
       updateData.rekeningTujuanId = data.rekeningTujuanId ?? null;
     if (data.filePbg !== undefined) updateData.filePbg = data.filePbg ?? null;
@@ -79,26 +70,21 @@ export class KavlingRepository implements IKavlingRepository {
       updateData.fileSertifikatTanah = data.fileSertifikatTanah ?? null;
     if (data.fileNopPbb !== undefined)
       updateData.fileNopPbb = data.fileNopPbb ?? null;
-
     const result = await this.db.kavling.update({
       where: { id },
       data: updateData,
       include: { perumahan: true, rekeningTujuan: true },
     });
-
     return KavlingMapper.toDomain(result);
   }
-
   async findWithCursorPagination(
     page: number,
     limit: number,
     filters?: KavlingFilterDTO,
   ): Promise<OffsetPaginatedData<KavlingEntity>> {
     const where: Prisma.KavlingWhereInput = {};
-
     if (filters?.perumahanId) where.perumahanId = filters.perumahanId;
     if (filters?.status) where.status = filters.status;
-
     if (filters?.search) {
       where.OR = [
         { blok: { contains: filters.search } },
@@ -106,15 +92,25 @@ export class KavlingRepository implements IKavlingRepository {
         { namaTipe: { contains: filters.search } },
       ];
     }
-
+    let orderByClause: Prisma.KavlingOrderByWithRelationInput[] = [
+      { id: "desc" },
+    ];
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["blok", "hargaJual", "luasBangunan", "luasTanah"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
     const skip = (page - 1) * limit;
-
-    const [items, totalItems] = await this.db.$transaction([
+    const summaryWhere: Prisma.KavlingWhereInput | undefined =
+      filters?.perumahanId ? { perumahanId: filters.perumahanId } : undefined;
+    const [items, totalItems, summaryData] = await Promise.all([
       this.db.kavling.findMany({
         take: limit,
         skip,
         where,
-        orderBy: [{ id: "desc" }],
+        orderBy: orderByClause,
         include: {
           perumahan: true,
           rekeningTujuan: true,
@@ -126,10 +122,20 @@ export class KavlingRepository implements IKavlingRepository {
         },
       }),
       this.db.kavling.count({ where }),
+      this.db.kavling.groupBy({
+        by: ["status"],
+        _count: { id: true },
+        ...(summaryWhere && { where: summaryWhere }),
+      }),
     ]);
-
     const totalPages = Math.ceil(totalItems / limit);
-
+    const summary = summaryData.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count.id;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
     return {
       items: items.map((item) => KavlingMapper.toDomain(item)),
       meta: {
@@ -139,13 +145,13 @@ export class KavlingRepository implements IKavlingRepository {
         totalPages,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
+        summary,
       },
     };
   }
   async delete(id: number): Promise<void> {
     const existing = await this.findById(id);
     if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
-
     try {
       await this.db.kavling.delete({ where: { id } });
     } catch (error) {

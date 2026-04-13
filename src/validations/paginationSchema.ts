@@ -1,3 +1,4 @@
+// src/validations/paginationSchema.ts
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 
@@ -12,6 +13,10 @@ const baseFilterSchema = z.object({
         /^[a-zA-Z0-9_]+:(asc|desc)$/,
         "Format harus field:asc atau field:desc",
       )
+      .transform((val) => {
+        const parts = val.split(":");
+        return { field: parts[0], direction: parts[1] as "asc" | "desc" };
+      })
       .optional(),
   ),
 });
