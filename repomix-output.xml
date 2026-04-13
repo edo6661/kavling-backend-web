@@ -1,4 +1,211 @@
-kode backend:
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: src/**/*, package.json, vite.config.ts, tsconfig.json, prisma/schema.prisma
+- Files matching these patterns are excluded: **/*.test.ts
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+package.json
+prisma/schema.prisma
+src/app.ts
+src/application/usecases/agent/AgentUseCases.ts
+src/application/usecases/auth/GetProfileUseCase.ts
+src/application/usecases/auth/LoginUserUseCase.ts
+src/application/usecases/auth/RegisterUserUseCase.ts
+src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.ts
+src/application/usecases/customer/CreateCustomerUseCase.ts
+src/application/usecases/customer/DeleteCustomerUseCase.ts
+src/application/usecases/customer/ExportCustomersPdfUseCase.ts
+src/application/usecases/customer/ExportCustomersUseCase.ts
+src/application/usecases/customer/GenerateCustomerAccountUseCase.ts
+src/application/usecases/customer/GetCustomerByIdUseCase.ts
+src/application/usecases/customer/GetCustomersPaginatedUseCase.ts
+src/application/usecases/customer/UpdateCustomerUseCase.ts
+src/application/usecases/customer/UploadCustomerDocumentUseCase.ts
+src/application/usecases/customerKavling/CustomerKavlingUseCases.ts
+src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts
+src/application/usecases/feeAgent/FeeAgentUseCases.ts
+src/application/usecases/kavling/KavlingUseCases.ts
+src/application/usecases/notaris/NotarisUseCases.ts
+src/application/usecases/ocr/ExtractKtpDataUseCase.ts
+src/application/usecases/penjualan/CancelPenjualanUseCase.ts
+src/application/usecases/penjualan/CreatePenjualanUseCase.ts
+src/application/usecases/penjualan/GenerateSprPdfUseCase.ts
+src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts
+src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts
+src/application/usecases/perumahan/PerumahanUseCases.ts
+src/application/usecases/tagihan/TagihanUseCases.ts
+src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts
+src/application/usecases/user/GetAllUsersUseCase.ts
+src/application/usecases/user/GetUsersPaginatedUseCase.ts
+src/application/usecases/user/UpdateUserUseCase.ts
+src/config/env.ts
+src/domain/dtos/AgentDTO.ts
+src/domain/dtos/BankRekeningPtDTO.ts
+src/domain/dtos/BaseFilterDTO.ts
+src/domain/dtos/CustomerDTO.ts
+src/domain/dtos/CustomerKavlingDTO.ts
+src/domain/dtos/DashboardDTO.ts
+src/domain/dtos/DetailKavlingPajakDTO.ts
+src/domain/dtos/FeeAgentDTO.ts
+src/domain/dtos/KavlingDTO.ts
+src/domain/dtos/NotarisDTO.ts
+src/domain/dtos/PenjualanDTO.ts
+src/domain/dtos/PerumahanDTO.ts
+src/domain/dtos/TagihanDTO.ts
+src/domain/dtos/UserDTO.ts
+src/domain/entities/Agent.ts
+src/domain/entities/BankRekeningPt.ts
+src/domain/entities/Customer.ts
+src/domain/entities/DetailKavlingPajak.ts
+src/domain/entities/FeeAgent.ts
+src/domain/entities/Kavling.ts
+src/domain/entities/Notaris.ts
+src/domain/entities/Perumahan.ts
+src/domain/entities/User.ts
+src/domain/errors/AppError.ts
+src/domain/errors/ConflictError.ts
+src/domain/errors/NotFoundError.ts
+src/domain/repositories/agentRepo.ts
+src/domain/repositories/bankRekeningPtRepo.ts
+src/domain/repositories/customerRepo.ts
+src/domain/repositories/detailKavlingPajakRepo.ts
+src/domain/repositories/feeAgentRepo.ts
+src/domain/repositories/IAgentRepo.ts
+src/domain/repositories/IBankRekeningPtRepo.ts
+src/domain/repositories/ICustomerRepo.ts
+src/domain/repositories/IDetailKavlingPajakRepo.ts
+src/domain/repositories/IFeeAgentRepo.ts
+src/domain/repositories/IKavlingRepo.ts
+src/domain/repositories/INotarisRepo.ts
+src/domain/repositories/IPenjualanRepo.ts
+src/domain/repositories/IPerumahanRepo.ts
+src/domain/repositories/ITagihanRepo.ts
+src/domain/repositories/IUserRepo.ts
+src/domain/repositories/kavlingRepo.ts
+src/domain/repositories/notarisRepo.ts
+src/domain/repositories/penjualanRepo.ts
+src/domain/repositories/perumahanRepo.ts
+src/domain/repositories/tagihanRepo.ts
+src/domain/repositories/userRepo.ts
+src/infrastructure/database/prisma.ts
+src/infrastructure/di/container.ts
+src/infrastructure/external/CloudinaryService.ts
+src/infrastructure/external/GoogleVisionService.ts
+src/infrastructure/mapper/AgentMapper.ts
+src/infrastructure/mapper/BankRekeningPtMapper.ts
+src/infrastructure/mapper/CustomerMapper.ts
+src/infrastructure/mapper/DetailKavlingPajakMapper.ts
+src/infrastructure/mapper/FeeAgentMapper.ts
+src/infrastructure/mapper/KavlingMapper.ts
+src/infrastructure/mapper/NotarisMapper.ts
+src/infrastructure/mapper/PerumahanMapper.ts
+src/infrastructure/mapper/TagihanMapper.ts
+src/infrastructure/mapper/UserMapper.ts
+src/middlewares/authMiddleware.ts
+src/middlewares/errorHandler.ts
+src/middlewares/upload.ts
+src/middlewares/validate.ts
+src/presentation/controllers/agentController.ts
+src/presentation/controllers/authController.ts
+src/presentation/controllers/bankRekeningPtController.ts
+src/presentation/controllers/customerController.ts
+src/presentation/controllers/customerKavlingController.ts
+src/presentation/controllers/dashboardController.ts
+src/presentation/controllers/feeAgentController.ts
+src/presentation/controllers/healthController.ts
+src/presentation/controllers/kavlingController.ts
+src/presentation/controllers/notarisController.ts
+src/presentation/controllers/ocrController.ts
+src/presentation/controllers/penjualanController.ts
+src/presentation/controllers/perumahanController.ts
+src/presentation/controllers/tagihanController.ts
+src/presentation/controllers/userController.ts
+src/presentation/routes/agentRoutes.ts
+src/presentation/routes/authRoutes.ts
+src/presentation/routes/bankRekeningPtRoutes.ts
+src/presentation/routes/customerKavlingRoutes.ts
+src/presentation/routes/customerRoutes.ts
+src/presentation/routes/dashboardRoutes.ts
+src/presentation/routes/feeAgentRoutes.ts
+src/presentation/routes/index.ts
+src/presentation/routes/kavlingRoutes.ts
+src/presentation/routes/notarisRoutes.ts
+src/presentation/routes/ocrRoutes.ts
+src/presentation/routes/penjualanRoutes.ts
+src/presentation/routes/perumahanRoutes.ts
+src/presentation/routes/tagihanRoutes.ts
+src/presentation/routes/userRoutes.ts
+src/server.ts
+src/tests/factories/bankRekeningPtFactory.ts
+src/tests/factories/customerFactory.ts
+src/tests/factories/index.ts
+src/tests/factories/userFactory.ts
+src/tests/setup.ts
+src/types/express.d.ts
+src/types/request.ts
+src/types/response.ts
+src/utils/hashing.ts
+src/utils/logger.ts
+src/utils/response.ts
+src/validations/agentSchema.ts
+src/validations/authSchema.ts
+src/validations/bankRekeningPtSchema.ts
+src/validations/customerKavlingSchema.ts
+src/validations/customerSchema.ts
+src/validations/emptySchema.ts
+src/validations/feeAgentSchema.ts
+src/validations/kavlingSchema.ts
+src/validations/notarisSchema.ts
+src/validations/ocrSchema.ts
+src/validations/paginationSchema.ts
+src/validations/penjualanSchema.ts
+src/validations/perumahanSchema.ts
+src/validations/tagihanSchema.ts
+src/validations/userSchema.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
 import type {
@@ -2224,7 +2431,15 @@ export class KavlingRepository implements IKavlingRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: [{ id: "desc" }],
-      include: { perumahan: true, rekeningTujuan: true },
+      include: {
+        perumahan: true,
+        rekeningTujuan: true,
+        penjualan: {
+          where: { status: { not: "BATAL" } },
+          include: { customer: { select: { nama: true, noHp: true } } },
+          take: 1,
+        },
+      },
     });
 
     let hasNextPage = false;
@@ -5602,163 +5817,6 @@ export class UploadCustomerDocumentUseCase {
 }
 </file>
 
-<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
-import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
-import type {
-  UpdateCustomerKavlingDTO,
-  CustomerKavlingFilterDTO,
-} from "../../../domain/dtos/CustomerKavlingDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
-import type {
-  CreateDetailKavlingPajakDTO,
-  UpdateDetailKavlingPajakDTO,
-} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
-
-export class GetCustomerKavlingsPaginatedUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(
-    limit: number,
-    cursor?: number,
-    filters?: CustomerKavlingFilterDTO,
-  ): Promise<CursorPaginatedData<any>> {
-    const where: Prisma.PenjualanWhereInput = {
-      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
-    };
-
-    if (filters?.search) {
-      where.customer = { nama: { contains: filters.search } };
-    }
-
-    const items = await this.db.penjualan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ id: "desc" }],
-      include: {
-        customer: { select: { nama: true } },
-        kavling: { include: { perumahan: true } },
-        detailKavlingPajak: { include: { notaris: true } },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    const mappedItems = items.map((p) => ({
-      id: p.id.toString(),
-      customerId: p.customerId,
-      namaCustomer: p.customer?.nama || "-",
-      perumahan: p.kavling.perumahan?.nama || "",
-      status: p.kavling.status,
-      blok: p.kavling.blok,
-      unit: p.kavling.nomorUnit,
-      tipe: p.kavling.namaTipe,
-      luasBangunan: Number(p.kavling.luasBangunan),
-      luasTanah: Number(p.kavling.luasTanah),
-      harga: Number(p.kavling.hargaJual),
-      totalHargaJual: Number(p.hargaJual),
-      pembiayaan: p.caraPembayaran,
-      ...p.detailKavlingPajak,
-      notarisId: p.detailKavlingPajak?.notarisId ?? "",
-    }));
-
-    return {
-      items: mappedItems,
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-}
-
-export class UpdateCustomerKavlingUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly kavlingRepo: IKavlingRepository,
-    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
-  ) {}
-
-  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
-    const penjualan = await this.db.penjualan.findUnique({
-      where: { id: penjualanId },
-      include: { kavling: true },
-    });
-
-    if (!penjualan) {
-      throw new NotFoundError("Data Penjualan tidak ditemukan");
-    }
-
-    const {
-      statusKavling,
-      namaTipe,
-      luasBangunan,
-      luasTanah,
-      hargaJualKavling,
-      ...detailPajakData
-    } = data;
-
-    if (
-      statusKavling !== undefined ||
-      namaTipe !== undefined ||
-      luasBangunan !== undefined ||
-      luasTanah !== undefined ||
-      hargaJualKavling !== undefined
-    ) {
-      await this.kavlingRepo.update(penjualan.kavlingId, {
-        status: statusKavling,
-        namaTipe: namaTipe,
-        luasBangunan: luasBangunan,
-        luasTanah: luasTanah,
-        hargaJual: hargaJualKavling,
-      });
-    }
-
-    const createDataPayload: Record<string, unknown> = { penjualanId };
-    const updateDataPayload: Record<string, unknown> = {};
-
-    if (luasBangunan !== undefined) {
-      createDataPayload.luasBangunan = luasBangunan.toString();
-      updateDataPayload.luasBangunan = luasBangunan.toString();
-    }
-
-    for (const [key, value] of Object.entries(detailPajakData)) {
-      if (value !== undefined) {
-        createDataPayload[key] = value;
-        updateDataPayload[key] = value;
-      }
-    }
-
-    const existingDetail =
-      await this.detailPajakRepo.findByPenjualanId(penjualanId);
-
-    if (existingDetail) {
-      await this.detailPajakRepo.update(
-        penjualanId,
-        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
-      );
-    } else {
-      await this.detailPajakRepo.create(
-        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
-      );
-    }
-
-    return {
-      success: true,
-      message: "Data Kavling Customer berhasil diperbarui",
-    };
-  }
-}
-</file>
-
 <file path="src/application/usecases/ocr/ExtractKtpDataUseCase.ts">
 import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
 import { AppError } from "../../../domain/errors/AppError.js";
@@ -5780,51 +5838,6 @@ export class ExtractKtpDataUseCase {
     }
 
     return this.googleVisionService.extractKtpData(fotoKtpBuffer);
-  }
-}
-</file>
-
-<file path="src/application/usecases/penjualan/CancelPenjualanUseCase.ts">
-import type { PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-export class CancelPenjualanUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(noTransaksi: string, alasanBatal: string) {
-    return await this.db.$transaction(async (tx) => {
-      const penjualan = await tx.penjualan.findUnique({
-        where: { noTransaksi },
-        include: { kavling: true },
-      });
-
-      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
-
-      if (penjualan.status !== "BOOKED" && penjualan.status !== "PROSES") {
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Hanya penjualan berstatus BOOKED atau PROSES yang dapat dibatalkan.",
-        );
-      }
-      // 1. Update Penjualan jadi BATAL
-      const updatedPenjualan = await tx.penjualan.update({
-        where: { id: penjualan.id },
-        data: {
-          status: "BATAL",
-          alasanBatal: alasanBatal,
-        },
-      });
-
-      // 2. Kembalikan Kavling jadi AVAILABLE
-      await tx.kavling.update({
-        where: { id: penjualan.kavlingId },
-        data: { status: "AVAILABLE" },
-      });
-
-      return updatedPenjualan;
-    });
   }
 }
 </file>
@@ -7195,6 +7208,171 @@ export const getPerumahanPaginatedSchema = {
 };
 </file>
 
+<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
+import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
+import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
+import type {
+  UpdateCustomerKavlingDTO,
+  CustomerKavlingFilterDTO,
+} from "../../../domain/dtos/CustomerKavlingDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { CursorPaginatedData } from "../../../types/response.js";
+import type {
+  CreateDetailKavlingPajakDTO,
+  UpdateDetailKavlingPajakDTO,
+} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
+
+export class GetCustomerKavlingsPaginatedUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerKavlingFilterDTO,
+  ): Promise<CursorPaginatedData<any>> {
+    const where: Prisma.PenjualanWhereInput = {
+      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
+    };
+
+    if (filters?.search) {
+      where.customer = { nama: { contains: filters.search } };
+    }
+
+    const items = await this.db.penjualan.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ id: "desc" }],
+      include: {
+        customer: { select: { nama: true } },
+        kavling: { include: { perumahan: true } },
+        detailKavlingPajak: { include: { notaris: true } },
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const mappedItems = items.map((p) => {
+      const { id: _, ...restDetailPajak } = p.detailKavlingPajak ?? {};
+
+      return {
+        id: p.id.toString(),
+        customerId: p.customerId,
+        namaCustomer: p.customer?.nama || "-",
+        perumahan: p.kavling.perumahan?.nama || "",
+
+        status: p.status,
+
+        blok: p.kavling.blok,
+        unit: p.kavling.nomorUnit,
+        tipe: p.kavling.namaTipe,
+        luasBangunan: Number(p.kavling.luasBangunan),
+        luasTanah: Number(p.kavling.luasTanah),
+        harga: Number(p.kavling.hargaJual),
+        totalHargaJual: Number(p.hargaJual),
+        pembiayaan: p.caraPembayaran,
+
+        ...restDetailPajak,
+
+        notarisId: p.detailKavlingPajak?.notarisId ?? "",
+      };
+    });
+
+    return {
+      items: mappedItems,
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+
+export class UpdateCustomerKavlingUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly kavlingRepo: IKavlingRepository,
+    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
+  ) {}
+
+  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { id: penjualanId },
+      include: { kavling: true },
+    });
+
+    if (!penjualan) {
+      throw new NotFoundError("Data Penjualan tidak ditemukan");
+    }
+
+    const {
+      statusKavling,
+      namaTipe,
+      luasBangunan,
+      luasTanah,
+      hargaJualKavling,
+      ...detailPajakData
+    } = data;
+
+    if (
+      statusKavling !== undefined ||
+      namaTipe !== undefined ||
+      luasBangunan !== undefined ||
+      luasTanah !== undefined ||
+      hargaJualKavling !== undefined
+    ) {
+      await this.kavlingRepo.update(penjualan.kavlingId, {
+        status: statusKavling,
+        namaTipe: namaTipe,
+        luasBangunan: luasBangunan,
+        luasTanah: luasTanah,
+        hargaJual: hargaJualKavling,
+      });
+    }
+
+    const createDataPayload: Record<string, unknown> = { penjualanId };
+    const updateDataPayload: Record<string, unknown> = {};
+
+    if (luasBangunan !== undefined) {
+      createDataPayload.luasBangunan = luasBangunan.toString();
+      updateDataPayload.luasBangunan = luasBangunan.toString();
+    }
+
+    for (const [key, value] of Object.entries(detailPajakData)) {
+      if (value !== undefined) {
+        createDataPayload[key] = value;
+        updateDataPayload[key] = value;
+      }
+    }
+
+    const existingDetail =
+      await this.detailPajakRepo.findByPenjualanId(penjualanId);
+
+    if (existingDetail) {
+      await this.detailPajakRepo.update(
+        penjualanId,
+        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
+      );
+    } else {
+      await this.detailPajakRepo.create(
+        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
+      );
+    }
+
+    return {
+      success: true,
+      message: "Data Kavling Customer berhasil diperbarui",
+    };
+  }
+}
+</file>
+
 <file path="src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type {
@@ -7350,6 +7528,47 @@ export class GetDashboardSummaryUseCase {
       topAgents,
       documentAlerts,
     };
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/CancelPenjualanUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+export class CancelPenjualanUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(noTransaksi: string, alasanBatal: string) {
+    return await this.db.$transaction(async (tx) => {
+      const penjualan = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: { kavling: true },
+      });
+
+      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
+
+      const updatedPenjualan = await tx.penjualan.update({
+        where: { id: penjualan.id },
+        data: {
+          status: "BATAL",
+          alasanBatal: alasanBatal,
+        },
+      });
+
+      await tx.kavling.update({
+        where: { id: penjualan.kavlingId },
+        data: { status: "AVAILABLE" },
+      });
+
+      await tx.tagihan.deleteMany({
+        where: {
+          penjualanId: penjualan.id,
+          status: "BELUM_BAYAR",
+        },
+      });
+
+      return updatedPenjualan;
+    });
   }
 }
 </file>
@@ -9127,10 +9346,26 @@ export class PenjualanRepository implements IPenjualanRepository {
       );
       const dpTagihan = item.tagihan?.find(
         (t) =>
-          t.pembayaran.toLowerCase().includes("dp") ??
+          t.pembayaran.toLowerCase().includes("dp") ||
           t.pembayaran.toLowerCase().includes("down"),
       );
 
+      const daftarCicilan =
+        item.tagihan?.filter(
+          (t) =>
+            !t.pembayaran.toLowerCase().includes("booking") &&
+            !t.pembayaran.toLowerCase().includes("dp") &&
+            !t.pembayaran.toLowerCase().includes("down"),
+        ) || [];
+
+      const cicilanTerbayar = daftarCicilan.filter(
+        (t) => t.status === "LUNAS",
+      ).length;
+      const totalCicilan = daftarCicilan.length;
+      const progressCicilan =
+        totalCicilan > 0
+          ? `${cicilanTerbayar} / ${totalCicilan} Kali`
+          : "Belum Ada Cicilan";
       let currentStatus = item.status;
       if (item.status === "BOOKED" && bfTagihan?.status === "LUNAS") {
         currentStatus = "PROSES";
@@ -9165,6 +9400,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         fileBuktiBooking: item.fileBuktiBooking ?? bfTagihan?.fileBukti ?? "",
         fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
         fileSpr: item.fileSpr ?? null,
+        progressCicilan,
       };
     });
 

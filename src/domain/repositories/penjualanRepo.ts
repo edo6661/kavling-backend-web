@@ -263,10 +263,26 @@ export class PenjualanRepository implements IPenjualanRepository {
       );
       const dpTagihan = item.tagihan?.find(
         (t) =>
-          t.pembayaran.toLowerCase().includes("dp") ??
+          t.pembayaran.toLowerCase().includes("dp") ||
           t.pembayaran.toLowerCase().includes("down"),
       );
 
+      const daftarCicilan =
+        item.tagihan?.filter(
+          (t) =>
+            !t.pembayaran.toLowerCase().includes("booking") &&
+            !t.pembayaran.toLowerCase().includes("dp") &&
+            !t.pembayaran.toLowerCase().includes("down"),
+        ) || [];
+
+      const cicilanTerbayar = daftarCicilan.filter(
+        (t) => t.status === "LUNAS",
+      ).length;
+      const totalCicilan = daftarCicilan.length;
+      const progressCicilan =
+        totalCicilan > 0
+          ? `${cicilanTerbayar} / ${totalCicilan} Kali`
+          : "Belum Ada Cicilan";
       let currentStatus = item.status;
       if (item.status === "BOOKED" && bfTagihan?.status === "LUNAS") {
         currentStatus = "PROSES";
@@ -301,6 +317,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         fileBuktiBooking: item.fileBuktiBooking ?? bfTagihan?.fileBukti ?? "",
         fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
         fileSpr: item.fileSpr ?? null,
+        progressCicilan,
       };
     });
 

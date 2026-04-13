@@ -112,7 +112,15 @@ export class KavlingRepository implements IKavlingRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: [{ id: "desc" }],
-      include: { perumahan: true, rekeningTujuan: true },
+      include: {
+        perumahan: true,
+        rekeningTujuan: true,
+        penjualan: {
+          where: { status: { not: "BATAL" } },
+          include: { customer: { select: { nama: true, noHp: true } } },
+          take: 1,
+        },
+      },
     });
 
     let hasNextPage = false;

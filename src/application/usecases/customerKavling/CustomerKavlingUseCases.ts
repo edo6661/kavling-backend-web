@@ -48,11 +48,10 @@ export class GetCustomerKavlingsPaginatedUseCase {
     }
 
     const mappedItems = items.map((p) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id: detailId, ...restDetailPajak } = p.detailKavlingPajak ?? {};
+      const { id: _, ...restDetailPajak } = p.detailKavlingPajak ?? {};
 
       return {
-        id: p.id.toString(), // ID Penjualan tetap aman
+        id: p.id.toString(),
         customerId: p.customerId,
         namaCustomer: p.customer?.nama || "-",
         perumahan: p.kavling.perumahan?.nama || "",
