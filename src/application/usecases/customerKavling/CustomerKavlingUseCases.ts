@@ -57,7 +57,7 @@ export class GetCustomerKavlingsPaginatedUseCase {
         perumahan: p.kavling.perumahan?.nama || "",
 
         status: p.status,
-
+        statusKavling: p.kavling.status,
         blok: p.kavling.blok,
         unit: p.kavling.nomorUnit,
         tipe: p.kavling.namaTipe,

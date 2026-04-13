@@ -703,6 +703,73 @@ export class GetPenjualanPaginatedUseCase {
 }
 </file>
 
+<file path="src/application/usecases/penjualan/SaveSignatureUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+
+export class SaveSignatureUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
+
+  async execute(
+    noTransaksi: string,
+    signatureBase64: string,
+    nama: string,
+    peran: string,
+    tanggal: string,
+  ) {
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { noTransaksi },
+    });
+
+    if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
+
+    const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      buffer,
+      `bumantara/signatures/${penjualan.noTransaksi}`,
+    );
+
+    const existingTtd = (penjualan.ttdData as any) ?? {};
+    const updatedTtd = {
+      ...existingTtd,
+      [peran]: { nama, tanggal, url: imageUrl },
+    };
+
+    await this.db.penjualan.update({
+      where: { id: penjualan.id },
+      data: { ttdData: updatedTtd },
+    });
+
+    try {
+      const pdfBuffer = await this.generateSprPdfUseCase.execute(penjualan.id);
+      const sprUrl = await this.cloudinaryService.uploadFile(
+        pdfBuffer,
+        "bumantara/spr",
+      );
+
+      const result = await this.db.penjualan.update({
+        where: { id: penjualan.id },
+        data: { fileSpr: sprUrl },
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Gagal re-generate SPR dengan TTD:", error);
+
+      return penjualan;
+    }
+  }
+}
+</file>
+
 <file path="src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -7493,178 +7560,6 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
 }
 </file>
 
-<file path="src/domain/repositories/IPenjualanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../dtos/PenjualanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-
-export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: true;
-    kavling: {
-      include: { perumahan: true };
-    };
-    rekeningTujuan: true;
-    tagihan: true;
-    agent: true;
-  };
-}>;
-
-export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: { select: { id: true; nama: true } };
-    kavling: {
-      select: {
-        id: true;
-        blok: true;
-        nomorUnit: true;
-        perumahan: { select: { nama: true } };
-      };
-    };
-  };
-}>;
-
-export interface PenjualanPaginatedItem {
-  id: string;
-  tanggal: string;
-  nama: string;
-  alamat: string;
-  noTelepon: string;
-  noIdentitas: string;
-  perumahan: string;
-  blok: string;
-  alasanBatal: string | null;
-  nomorUnit: string;
-  tipe: string;
-  luasBangunan: number;
-  luasTanah: number;
-  hargaJual: number;
-  dp: number;
-  diskonPenjualan: number;
-  hargaPromosi: number;
-  bank: string;
-  caraPembayaran: string;
-  nilaiPengajuanKpr: number;
-  bookingFee: number;
-  status: string;
-  agent: string;
-  fileBuktiBooking: string;
-  fileBuktiDp: string;
-  fileSpr: string | null;
-}
-
-export interface IPenjualanRepository {
-  createWithTransaction(
-    data: CreatePenjualanDTO,
-  ): Promise<PenjualanWithRelations>;
-  findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
-  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
-  update(
-    id: number,
-    data: Partial<Prisma.PenjualanUpdateInput>,
-  ): Promise<PenjualanWithCompleteRelations>;
-}
-</file>
-
-<file path="src/infrastructure/external/CloudinaryService.ts">
-import { v2 as cloudinary } from "cloudinary";
-import { env } from "../../config/env";
-import { AppError } from "../../domain/errors/AppError";
-import { StatusCodes } from "http-status-codes";
-import sharp from "sharp";
-
-export class CloudinaryService {
-  constructor() {
-    cloudinary.config({
-      cloud_name: env.CLOUDINARY_CLOUD_NAME,
-      api_key: env.CLOUDINARY_API_KEY,
-      api_secret: env.CLOUDINARY_API_SECRET,
-    });
-  }
-
-  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "auto",
-        },
-        (error, result) => {
-          if (error)
-            return reject(
-              new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Gagal upload"),
-            );
-          resolve(result!.secure_url);
-        },
-      );
-      uploadStream.end(buffer);
-    });
-  }
-
-  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
-    const compressedBuffer = await sharp(buffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error) {
-            console.error("Cloudinary Upload Error:", error);
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mengunggah gambar ke penyimpanan cloud.",
-              ),
-            );
-          }
-          if (!result) {
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mendapatkan respon dari penyimpanan cloud.",
-              ),
-            );
-          }
-          resolve(result.secure_url);
-        },
-      );
-
-      uploadStream.end(compressedBuffer);
-    });
-  }
-  async deleteImageByUrl(imageUrl: string): Promise<void> {
-    try {
-      const urlParts = imageUrl.split("/");
-      const filenameWithExt = urlParts.pop();
-      const folder = urlParts.pop();
-
-      if (!filenameWithExt || !folder) return;
-
-      const filename = filenameWithExt.split(".")[0];
-      const publicId = `${folder}/${filename}`;
-
-      await cloudinary.uploader.destroy(publicId);
-      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
-    } catch (error) {
-      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
-    }
-  }
-}
-</file>
-
 <file path="src/infrastructure/mapper/BankRekeningPtMapper.ts">
 import type {
   BankRekeningPt as PrismaBankRekeningPt,
@@ -7767,114 +7662,6 @@ export class DashboardController {
 }
 </file>
 
-<file path="src/presentation/controllers/penjualanController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
-import type {
-  cancelPenjualanSchema,
-  createPenjualanSchema,
-  uploadBuktiPenjualanSchema,
-} from "../../validations/penjualanSchema.js";
-import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
-import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
-import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
-import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
-import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
-
-export class PenjualanController {
-  constructor(
-    private readonly createUseCase: CreatePenjualanUseCase,
-    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
-    private readonly cancelUseCase: CancelPenjualanUseCase,
-    private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createPenjualanSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createUseCase.execute(req.body);
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
-      result,
-    );
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getPenjualanPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as PenjualanFilterDTO,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data penjualan berhasil diambil",
-      result,
-    );
-  };
-  cancel = async (
-    req: TypedRequest<
-      typeof cancelPenjualanSchema.body,
-      any,
-      typeof cancelPenjualanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id } = req.params;
-    const { alasanBatal } = req.body;
-
-    const result = await this.cancelUseCase.execute(id, alasanBatal);
-    sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
-  };
-  uploadBukti = async (
-    req: TypedRequest<
-      typeof cancelPenjualanSchema.body,
-      any,
-      typeof uploadBuktiPenjualanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id, type } = req.params;
-    if (!["booking", "dp"].includes(type)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe upload tidak valid.");
-      return;
-    }
-    if (!req.file?.buffer) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "File dokumen wajib diunggah.",
-      );
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(
-      id,
-      type as "booking" | "dp",
-      req.file.buffer,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      `Bukti ${type} berhasil diunggah`,
-      result,
-    );
-  };
-}
-</file>
-
 <file path="src/presentation/routes/dashboardRoutes.ts">
 import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
@@ -7892,54 +7679,6 @@ export const createDashboardRoutes = (
     controller.getSummary,
   );
 
-  return router;
-};
-</file>
-
-<file path="src/presentation/routes/penjualanRoutes.ts">
-import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import {
-  cancelPenjualanSchema,
-  createPenjualanSchema,
-  getPenjualanPaginatedSchema,
-} from "../../validations/penjualanSchema.js";
-import type { PenjualanController } from "../controllers/penjualanController.js";
-import { upload } from "../../middlewares/upload.js";
-
-export const createPenjualanRoutes = (
-  controller: PenjualanController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.get(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(getPenjualanPaginatedSchema),
-    controller.getPaginated,
-  );
-
-  router.post(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(createPenjualanSchema),
-    controller.create,
-  );
-  router.patch(
-    "/:id/cancel",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(cancelPenjualanSchema),
-    controller.cancel,
-  );
-  router.patch(
-    "/:id/upload/:type",
-    requireRole(["ADMIN", "MARKETING"]),
-    upload.single("fileBukti"),
-    controller.uploadBukti,
-  );
   return router;
 };
 </file>
@@ -8202,6 +7941,372 @@ export class UpdateCustomerKavlingUseCase {
 }
 </file>
 
+<file path="src/domain/repositories/IPenjualanRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../dtos/PenjualanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    kavling: {
+      include: { perumahan: true };
+    };
+    rekeningTujuan: true;
+    tagihan: true;
+    agent: true;
+  };
+}>;
+
+export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: { select: { id: true; nama: true } };
+    kavling: {
+      select: {
+        id: true;
+        blok: true;
+        nomorUnit: true;
+        perumahan: { select: { nama: true } };
+      };
+    };
+  };
+}>;
+
+export interface PenjualanPaginatedItem {
+  id: string;
+  tanggal: string;
+  nama: string;
+  alamat: string;
+  noTelepon: string;
+  noIdentitas: string;
+  perumahan: string;
+  blok: string;
+  alasanBatal: string | null;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  hargaJual: number;
+  dp: number;
+  diskonPenjualan: number;
+  hargaPromosi: number;
+  bank: string;
+  caraPembayaran: string;
+  nilaiPengajuanKpr: number;
+  bookingFee: number;
+  status: string;
+  agent: string;
+  fileBuktiBooking: string;
+  fileBuktiDp: string;
+  fileSpr: string | null;
+  ttdData?: any;
+}
+
+export interface IPenjualanRepository {
+  createWithTransaction(
+    data: CreatePenjualanDTO,
+  ): Promise<PenjualanWithRelations>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PenjualanFilterDTO,
+  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
+  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
+  update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations>;
+}
+</file>
+
+<file path="src/infrastructure/external/CloudinaryService.ts">
+import { v2 as cloudinary } from "cloudinary";
+import { env } from "../../config/env";
+import { AppError } from "../../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import sharp from "sharp";
+
+export class CloudinaryService {
+  constructor() {
+    cloudinary.config({
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
+    });
+  }
+
+  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "auto",
+        },
+        (error, result) => {
+          if (error)
+            return reject(
+              new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Gagal upload"),
+            );
+          resolve(result!.secure_url);
+        },
+      );
+      uploadStream.end(buffer);
+    });
+  }
+
+  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    const compressedBuffer = await sharp(buffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary Upload Error:", error);
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mengunggah gambar ke penyimpanan cloud.",
+              ),
+            );
+          }
+          if (!result) {
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mendapatkan respon dari penyimpanan cloud.",
+              ),
+            );
+          }
+          resolve(result.secure_url);
+        },
+      );
+
+      uploadStream.end(compressedBuffer);
+    });
+  }
+  async deleteImageByUrl(imageUrl: string): Promise<void> {
+    try {
+      const urlParts = imageUrl.split("/");
+      const filenameWithExt = urlParts.pop();
+      const folder = urlParts.pop();
+
+      if (!filenameWithExt || !folder) return;
+
+      const filename = filenameWithExt.split(".")[0];
+      const publicId = `${folder}/${filename}`;
+
+      await cloudinary.uploader.destroy(publicId);
+      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
+    } catch (error) {
+      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
+    }
+  }
+}
+</file>
+
+<file path="src/presentation/controllers/penjualanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
+import type {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+  uploadBuktiPenjualanSchema,
+  uploadSignatureSchema,
+} from "../../validations/penjualanSchema.js";
+import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
+import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
+import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
+import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
+import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
+
+export class PenjualanController {
+  constructor(
+    private readonly createUseCase: CreatePenjualanUseCase,
+    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
+    private readonly cancelUseCase: CancelPenjualanUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
+    private readonly saveSignatureUseCase: SaveSignatureUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createPenjualanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
+      result,
+    );
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getPenjualanPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as PenjualanFilterDTO,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data penjualan berhasil diambil",
+      result,
+    );
+  };
+  cancel = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof cancelPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { alasanBatal } = req.body;
+
+    const result = await this.cancelUseCase.execute(id, alasanBatal);
+    sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
+  };
+  uploadBukti = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof uploadBuktiPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id, type } = req.params;
+    if (!["booking", "dp"].includes(type)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe upload tidak valid.");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File dokumen wajib diunggah.",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      id,
+      type as "booking" | "dp",
+      req.file.buffer,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Bukti ${type} berhasil diunggah`,
+      result,
+    );
+  };
+  uploadSignature = async (
+    req: TypedRequest<
+      typeof uploadSignatureSchema.body,
+      any,
+      typeof uploadSignatureSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { signatureBase64, nama, peran, tanggal } = req.body;
+
+    const result = await this.saveSignatureUseCase.execute(
+      id,
+      signatureBase64,
+      nama,
+      peran,
+      tanggal,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Tanda tangan digital untuk ${peran} berhasil disimpan`,
+      result,
+    );
+  };
+}
+</file>
+
+<file path="src/presentation/routes/penjualanRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+  getPenjualanPaginatedSchema,
+  uploadSignatureSchema,
+} from "../../validations/penjualanSchema.js";
+import type { PenjualanController } from "../controllers/penjualanController.js";
+import { upload } from "../../middlewares/upload.js";
+
+export const createPenjualanRoutes = (
+  controller: PenjualanController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.get(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getPenjualanPaginatedSchema),
+    controller.getPaginated,
+  );
+
+  router.post(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(createPenjualanSchema),
+    controller.create,
+  );
+  router.patch(
+    "/:id/cancel",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(cancelPenjualanSchema),
+    controller.cancel,
+  );
+  router.patch(
+    "/:id/upload/:type",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("fileBukti"),
+    controller.uploadBukti,
+  );
+  router.post(
+    "/:id/signature",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(uploadSignatureSchema),
+    controller.uploadSignature,
+  );
+  return router;
+};
+</file>
+
 <file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
 import PDFDocument from "pdfkit";
 import type { Prisma } from "@prisma/client";
@@ -8218,10 +8323,34 @@ export class GenerateSprPdfUseCase {
       throw new NotFoundError("Data Penjualan tidak ditemukan");
     }
 
-    // Karena return type findById sudah jelas (PenjualanWithCompleteRelations),
-    // TypeScript sekarang tahu bentuk exact dari objek di bawah ini.
     const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
 
+    // --- 1. PRE-FETCH DATA TANDA TANGAN (ASINKRON) ---
+    const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ttdData = penjualan.ttdData as Record<
+      string,
+      { nama: string; tanggal: string; url: string }
+    > | null;
+    const sigBuffers: Record<string, Buffer> = {};
+
+    if (ttdData) {
+      await Promise.all(
+        sigData.map(async (role) => {
+          if (ttdData[role]?.url) {
+            try {
+              const response = await fetch(ttdData[role].url);
+              const arrayBuffer = await response.arrayBuffer();
+              sigBuffers[role] = Buffer.from(arrayBuffer);
+            } catch (e) {
+              console.error(`Gagal download TTD ${role} dari Cloudinary`, e);
+            }
+          }
+        }),
+      );
+    }
+
+    // --- 2. PEMBUATAN DOKUMEN PDF (SINKRON) ---
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ size: "A4", margin: 50 });
@@ -8368,11 +8497,22 @@ export class GenerateSprPdfUseCase {
         let totalNilai = 0;
         doc.font("Helvetica").fontSize(9);
 
-        if (tagihan && tagihan.length > 0) {
-          tagihan.forEach((p, idx) => {
+        // 1. Filter tagihan: Hanya ambil Booking Fee dan DP
+        const tagihanAwal =
+          tagihan?.filter((t) => {
+            const namaPembayaran = t.pembayaran.toLowerCase();
+            return (
+              namaPembayaran.includes("booking") ||
+              namaPembayaran.includes("dp") ||
+              namaPembayaran.includes("down")
+            );
+          }) || [];
+
+        // 2. Render hanya tagihan yang sudah difilter
+        if (tagihanAwal.length > 0) {
+          tagihanAwal.forEach((p, idx) => {
             checkY(rowHeight);
 
-            // Karena kita pakai TS Type dari Prisma, p.jatuhTempo pasti valid Date object
             const dateStr = p.jatuhTempo
               .toLocaleDateString("id-ID", {
                 day: "2-digit",
@@ -8436,22 +8576,68 @@ export class GenerateSprPdfUseCase {
         doc
           .font("Helvetica")
           .fontSize(10)
-          .text(`Tanggal: ${today}`, startX, y, {
+          .text(`Dibuat Tanggal: ${today}`, startX, y, {
             width: contentWidth,
             align: "right",
           });
         y += 20;
 
         const w = contentWidth / 4;
-        const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
 
+        // Render Tanda Tangan & Nama
         sigData.forEach((title, i) => {
-          doc.text(title, startX + w * i, y, { width: w, align: "center" });
+          const currentX = startX + w * i;
+          // Cetak Title (Pemesan, Marketing, dll)
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .text(title, currentX, y, { width: w, align: "center" });
+
+          if (ttdData?.[title]) {
+            const ttd = ttdData[title];
+
+            // Cetak gambar TTD
+            if (sigBuffers[title]) {
+              try {
+                // PERBAIKAN: y + 15 agar gambar turun dan tidak menabrak teks judul
+                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 15, {
+                  width: 50,
+                  height: 35,
+                });
+              } catch (imgErr) {
+                console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
+              }
+            }
+
+            // Cetak Tanggal TTD
+            if (ttd.tanggal) {
+              const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+              // PERBAIKAN: y + 52 agar berada pas di bawah gambar tanda tangan
+              doc
+                .fontSize(7)
+                .font("Helvetica")
+                .text(tglStr, currentX, y + 52, { width: w, align: "center" });
+            }
+
+            // Cetak Nama (di bawah garis)
+            // PERBAIKAN: y + 70 agar berada tepat di bawah garis hitam
+            doc
+              .fontSize(8)
+              .font("Helvetica-Bold")
+              .text(ttd.nama, currentX, y + 70, { width: w, align: "center" });
+            doc.fontSize(10).font("Helvetica"); // Reset
+          }
         });
 
-        y += 60;
+        // PERBAIKAN: Jarak garis diturunkan ke y + 65 agar tidak menabrak tanggal
+        y += 65;
         const lineW = w - 20;
 
+        // Render Garis TTD
         sigData.forEach((_, i) => {
           const cx = startX + w * i + w / 2;
           doc
@@ -8733,6 +8919,7 @@ model Penjualan {
   fileSpr           String?             @map("file_spr") @db.VarChar(255)
   fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
   fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
+  ttdData           Json?               @map("ttd_data")
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
   customer          Customer            @relation(fields: [customerId], references: [id])
@@ -8958,6 +9145,18 @@ export const uploadBuktiPenjualanSchema = {
   }),
   body: z.object({
     alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
+  }),
+};
+
+export const uploadSignatureSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    signatureBase64: z.string().min(1, "Data signature wajib diisi"),
+    nama: z.string().min(1, "Nama wajib diisi"),
+    peran: z.string().min(1, "Peran wajib diisi"),
+    tanggal: z.string().min(1, "Tanggal wajib diisi"),
   }),
 };
 </file>
@@ -9282,6 +9481,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         fileBuktiBooking: item.fileBuktiBooking ?? bfTagihan?.fileBukti ?? "",
         fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
         fileSpr: item.fileSpr ?? null,
+        ttdData: item.ttdData ?? null,
         progressCicilan,
       };
     });
@@ -9476,6 +9676,7 @@ import { FeeAgentController } from "../../presentation/controllers/feeAgentContr
 import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
 import { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
 import { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
+import { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -9660,11 +9861,17 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
     generateSprPdfUseCase,
   );
+  const saveSignatureUseCase = new SaveSignatureUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
   const penjualanController = new PenjualanController(
     createPenjualanUseCase,
     getPenjualanPaginatedUseCase,
     cancelPenjualanUseCase,
     uploadBuktiPenjualanUseCase,
+    saveSignatureUseCase,
   );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,
