@@ -19,6 +19,9 @@ export interface KavlingEntity {
   filePbg: string | null;
   fileSertifikatTanah: string | null;
   fileNopPbb: string | null;
+  penjualan?:
+    | { customer?: { nama: string; noHp: string } | null }[]
+    | undefined;
   createdAt: Date;
   updatedAt: Date;
 }

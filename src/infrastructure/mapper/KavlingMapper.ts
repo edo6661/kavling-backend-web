@@ -6,7 +6,14 @@ type KavlingWithRelations = Prisma.KavlingGetPayload<{
     perumahan: true;
     rekeningTujuan: true;
   };
-}>;
+}> & {
+  penjualan?: {
+    customer: {
+      nama: string;
+      noHp: string;
+    } | null;
+  }[];
+};
 
 export class KavlingMapper {
   static toDomain(prismaKavling: KavlingWithRelations): KavlingEntity {
@@ -37,6 +44,15 @@ export class KavlingMapper {
       filePbg: prismaKavling.filePbg,
       fileSertifikatTanah: prismaKavling.fileSertifikatTanah,
       fileNopPbb: prismaKavling.fileNopPbb,
+
+      penjualan: prismaKavling.penjualan
+        ? prismaKavling.penjualan.map((p) => ({
+            customer: p.customer
+              ? { nama: p.customer.nama, noHp: p.customer.noHp }
+              : null,
+          }))
+        : undefined,
+
       createdAt: prismaKavling.createdAt,
       updatedAt: prismaKavling.updatedAt,
     };
