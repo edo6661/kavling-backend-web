@@ -17,7 +17,7 @@ const baseFilterSchema = z.object({
 });
 
 export const cursorPaginationQuerySchema = baseFilterSchema.extend({
-  limit: z.coerce.number().min(1).max(100).default(20),
+  limit: z.coerce.number().min(1).max(500).default(20),
   cursor: emptyAsUndefined(z.string().optional()),
 });
 
