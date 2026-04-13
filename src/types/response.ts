@@ -14,3 +14,18 @@ export interface ApiResponse<T = null> {
   data: T | null;
   error?: unknown;
 }
+
+export interface OffsetPaginationMeta {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  summary?: Record<string, any>;
+}
+
+export interface OffsetPaginatedData<T> {
+  items: T[];
+  meta: OffsetPaginationMeta;
+}

@@ -22,3 +22,10 @@ export const cursorPaginationQuerySchema = baseFilterSchema.extend({
 });
 
 export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
+
+export const offsetPaginationQuerySchema = baseFilterSchema.extend({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(500).default(10),
+});
+
+export type OffsetPaginationQuery = z.infer<typeof offsetPaginationQuerySchema>;

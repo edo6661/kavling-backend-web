@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 import { UnitStatus } from "@prisma/client";
 
 export const createKavlingSchema = {
@@ -74,7 +74,7 @@ export const updateKavlingSchema = {
 };
 
 export const getKavlingPaginatedSchema = {
-  query: cursorPaginationQuerySchema.extend({
+  query: offsetPaginationQuerySchema.extend({
     perumahanId: emptyAsUndefined(
       z.coerce.number().int().positive().optional(),
     ),

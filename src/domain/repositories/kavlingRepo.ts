@@ -7,7 +7,7 @@ import type {
   UpdateKavlingDTO,
   KavlingFilterDTO,
 } from "../dtos/KavlingDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { KavlingMapper } from "../../infrastructure/mapper/KavlingMapper.js";
@@ -90,10 +90,10 @@ export class KavlingRepository implements IKavlingRepository {
   }
 
   async findWithCursorPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: KavlingFilterDTO,
-  ): Promise<CursorPaginatedData<KavlingEntity>> {
+  ): Promise<OffsetPaginatedData<KavlingEntity>> {
     const where: Prisma.KavlingWhereInput = {};
 
     if (filters?.perumahanId) where.perumahanId = filters.perumahanId;
@@ -107,37 +107,41 @@ export class KavlingRepository implements IKavlingRepository {
       ];
     }
 
-    const items = await this.db.kavling.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ id: "desc" }],
-      include: {
-        perumahan: true,
-        rekeningTujuan: true,
-        penjualan: {
-          where: { status: { not: "BATAL" } },
-          include: { customer: { select: { nama: true, noHp: true } } },
-          take: 1,
-        },
-      },
-    });
+    const skip = (page - 1) * limit;
 
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
+    const [items, totalItems] = await this.db.$transaction([
+      this.db.kavling.findMany({
+        take: limit,
+        skip,
+        where,
+        orderBy: [{ id: "desc" }],
+        include: {
+          perumahan: true,
+          rekeningTujuan: true,
+          penjualan: {
+            where: { status: { not: "BATAL" } },
+            include: { customer: { select: { nama: true, noHp: true } } },
+            take: 1,
+          },
+        },
+      }),
+      this.db.kavling.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
 
     return {
       items: items.map((item) => KavlingMapper.toDomain(item)),
       meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
     };
   }
-
   async delete(id: number): Promise<void> {
     const existing = await this.findById(id);
     if (!existing) throw new NotFoundError("Kavling tidak ditemukan");

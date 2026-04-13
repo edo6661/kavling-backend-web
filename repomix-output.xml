@@ -1,257 +1,4 @@
-This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
-
-<file_summary>
-This section contains a summary of this file.
-
-<purpose>
-This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
-It is designed to be easily consumable by AI systems for analysis, code review,
-or other automated processes.
-</purpose>
-
-<file_format>
-The content is organized as follows:
-1. This summary section
-2. Repository information
-3. Directory structure
-4. Repository files (if enabled)
-5. Multiple file entries, each consisting of:
-  - File path as an attribute
-  - Full contents of the file
-</file_format>
-
-<usage_guidelines>
-- This file should be treated as read-only. Any changes should be made to the
-  original repository files, not this packed version.
-- When processing this file, use the file path to distinguish
-  between different files in the repository.
-- Be aware that this file may contain sensitive information. Handle it with
-  the same level of security as you would the original repository.
-</usage_guidelines>
-
-<notes>
-- Some files may have been excluded based on .gitignore rules and Repomix's configuration
-- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: src/**/*, package.json, vite.config.ts, tsconfig.json, prisma/schema.prisma
-- Files matching these patterns are excluded: **/*.test.ts
-- Files matching patterns in .gitignore are excluded
-- Files matching default ignore patterns are excluded
-- Files are sorted by Git change count (files with more changes are at the bottom)
-</notes>
-
-</file_summary>
-
-<directory_structure>
-package.json
-prisma/schema.prisma
-src/app.ts
-src/application/usecases/agent/AgentUseCases.ts
-src/application/usecases/auth/GetProfileUseCase.ts
-src/application/usecases/auth/LoginUserUseCase.ts
-src/application/usecases/auth/RegisterUserUseCase.ts
-src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.ts
-src/application/usecases/customer/CreateCustomerUseCase.ts
-src/application/usecases/customer/DeleteCustomerUseCase.ts
-src/application/usecases/customer/ExportCustomersPdfUseCase.ts
-src/application/usecases/customer/ExportCustomersUseCase.ts
-src/application/usecases/customer/GenerateCustomerAccountUseCase.ts
-src/application/usecases/customer/GetCustomerByIdUseCase.ts
-src/application/usecases/customer/GetCustomersPaginatedUseCase.ts
-src/application/usecases/customer/UpdateCustomerUseCase.ts
-src/application/usecases/customer/UploadCustomerDocumentUseCase.ts
-src/application/usecases/customerKavling/CustomerKavlingUseCases.ts
-src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts
-src/application/usecases/feeAgent/FeeAgentUseCases.ts
-src/application/usecases/kavling/KavlingUseCases.ts
-src/application/usecases/kavling/UploadKavlingDocumentUseCase.ts
-src/application/usecases/notaris/NotarisUseCases.ts
-src/application/usecases/ocr/ExtractKtpDataUseCase.ts
-src/application/usecases/penjualan/CancelPenjualanUseCase.ts
-src/application/usecases/penjualan/CreatePenjualanUseCase.ts
-src/application/usecases/penjualan/GenerateSprPdfUseCase.ts
-src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts
-src/application/usecases/penjualan/SaveSignatureUseCase.ts
-src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts
-src/application/usecases/perumahan/PerumahanUseCases.ts
-src/application/usecases/tagihan/TagihanUseCases.ts
-src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts
-src/application/usecases/user/GetAllUsersUseCase.ts
-src/application/usecases/user/GetUsersPaginatedUseCase.ts
-src/application/usecases/user/UpdateUserUseCase.ts
-src/config/env.ts
-src/domain/dtos/AgentDTO.ts
-src/domain/dtos/BankRekeningPtDTO.ts
-src/domain/dtos/BaseFilterDTO.ts
-src/domain/dtos/CustomerDTO.ts
-src/domain/dtos/CustomerKavlingDTO.ts
-src/domain/dtos/DashboardDTO.ts
-src/domain/dtos/DetailKavlingPajakDTO.ts
-src/domain/dtos/FeeAgentDTO.ts
-src/domain/dtos/KavlingDTO.ts
-src/domain/dtos/NotarisDTO.ts
-src/domain/dtos/PenjualanDTO.ts
-src/domain/dtos/PerumahanDTO.ts
-src/domain/dtos/TagihanDTO.ts
-src/domain/dtos/UserDTO.ts
-src/domain/entities/Agent.ts
-src/domain/entities/BankRekeningPt.ts
-src/domain/entities/Customer.ts
-src/domain/entities/DetailKavlingPajak.ts
-src/domain/entities/FeeAgent.ts
-src/domain/entities/Kavling.ts
-src/domain/entities/Notaris.ts
-src/domain/entities/Perumahan.ts
-src/domain/entities/User.ts
-src/domain/errors/AppError.ts
-src/domain/errors/ConflictError.ts
-src/domain/errors/NotFoundError.ts
-src/domain/repositories/agentRepo.ts
-src/domain/repositories/bankRekeningPtRepo.ts
-src/domain/repositories/customerRepo.ts
-src/domain/repositories/detailKavlingPajakRepo.ts
-src/domain/repositories/feeAgentRepo.ts
-src/domain/repositories/IAgentRepo.ts
-src/domain/repositories/IBankRekeningPtRepo.ts
-src/domain/repositories/ICustomerRepo.ts
-src/domain/repositories/IDetailKavlingPajakRepo.ts
-src/domain/repositories/IFeeAgentRepo.ts
-src/domain/repositories/IKavlingRepo.ts
-src/domain/repositories/INotarisRepo.ts
-src/domain/repositories/IPenjualanRepo.ts
-src/domain/repositories/IPerumahanRepo.ts
-src/domain/repositories/ITagihanRepo.ts
-src/domain/repositories/IUserRepo.ts
-src/domain/repositories/kavlingRepo.ts
-src/domain/repositories/notarisRepo.ts
-src/domain/repositories/penjualanRepo.ts
-src/domain/repositories/perumahanRepo.ts
-src/domain/repositories/tagihanRepo.ts
-src/domain/repositories/userRepo.ts
-src/infrastructure/database/prisma.ts
-src/infrastructure/di/container.ts
-src/infrastructure/external/CloudinaryService.ts
-src/infrastructure/external/GoogleVisionService.ts
-src/infrastructure/mapper/AgentMapper.ts
-src/infrastructure/mapper/BankRekeningPtMapper.ts
-src/infrastructure/mapper/CustomerMapper.ts
-src/infrastructure/mapper/DetailKavlingPajakMapper.ts
-src/infrastructure/mapper/FeeAgentMapper.ts
-src/infrastructure/mapper/KavlingMapper.ts
-src/infrastructure/mapper/NotarisMapper.ts
-src/infrastructure/mapper/PerumahanMapper.ts
-src/infrastructure/mapper/TagihanMapper.ts
-src/infrastructure/mapper/UserMapper.ts
-src/middlewares/authMiddleware.ts
-src/middlewares/errorHandler.ts
-src/middlewares/upload.ts
-src/middlewares/validate.ts
-src/presentation/controllers/agentController.ts
-src/presentation/controllers/authController.ts
-src/presentation/controllers/bankRekeningPtController.ts
-src/presentation/controllers/customerController.ts
-src/presentation/controllers/customerKavlingController.ts
-src/presentation/controllers/dashboardController.ts
-src/presentation/controllers/feeAgentController.ts
-src/presentation/controllers/healthController.ts
-src/presentation/controllers/kavlingController.ts
-src/presentation/controllers/notarisController.ts
-src/presentation/controllers/ocrController.ts
-src/presentation/controllers/penjualanController.ts
-src/presentation/controllers/perumahanController.ts
-src/presentation/controllers/tagihanController.ts
-src/presentation/controllers/userController.ts
-src/presentation/routes/agentRoutes.ts
-src/presentation/routes/authRoutes.ts
-src/presentation/routes/bankRekeningPtRoutes.ts
-src/presentation/routes/customerKavlingRoutes.ts
-src/presentation/routes/customerRoutes.ts
-src/presentation/routes/dashboardRoutes.ts
-src/presentation/routes/feeAgentRoutes.ts
-src/presentation/routes/index.ts
-src/presentation/routes/kavlingRoutes.ts
-src/presentation/routes/notarisRoutes.ts
-src/presentation/routes/ocrRoutes.ts
-src/presentation/routes/penjualanRoutes.ts
-src/presentation/routes/perumahanRoutes.ts
-src/presentation/routes/tagihanRoutes.ts
-src/presentation/routes/userRoutes.ts
-src/server.ts
-src/tests/factories/bankRekeningPtFactory.ts
-src/tests/factories/customerFactory.ts
-src/tests/factories/index.ts
-src/tests/factories/userFactory.ts
-src/tests/setup.ts
-src/types/express.d.ts
-src/types/request.ts
-src/types/response.ts
-src/utils/hashing.ts
-src/utils/logger.ts
-src/utils/response.ts
-src/validations/agentSchema.ts
-src/validations/authSchema.ts
-src/validations/bankRekeningPtSchema.ts
-src/validations/customerKavlingSchema.ts
-src/validations/customerSchema.ts
-src/validations/emptySchema.ts
-src/validations/feeAgentSchema.ts
-src/validations/kavlingSchema.ts
-src/validations/notarisSchema.ts
-src/validations/ocrSchema.ts
-src/validations/paginationSchema.ts
-src/validations/penjualanSchema.ts
-src/validations/perumahanSchema.ts
-src/validations/tagihanSchema.ts
-src/validations/userSchema.ts
-tsconfig.json
-</directory_structure>
-
-<files>
-This section contains the contents of the repository's files.
-
-<file path="src/application/usecases/kavling/UploadKavlingDocumentUseCase.ts">
-import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-export class UploadKavlingDocumentUseCase {
-  constructor(
-    private readonly repo: IKavlingRepository,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
-
-  async execute(
-    id: number,
-    fileBuffer: Buffer,
-    docType: "filePbg" | "fileSertifikatTanah" | "fileNopPbb",
-  ) {
-    const existing = await this.repo.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Kavling tidak ditemukan");
-    }
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing[docType]) {
-      await this.cloudinaryService.deleteImageByUrl(existing[docType]);
-    }
-
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      `bumantara/kavling/${docType}`,
-    );
-
-    const updateData = { [docType]: imageUrl };
-    return await this.repo.update(id, updateData);
-  }
-}
-</file>
+kode backend:
 
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -850,6 +597,51 @@ export class DeleteKavlingUseCase {
   constructor(private readonly repo: IKavlingRepository) {}
   async execute(id: number): Promise<void> {
     await this.repo.delete(id);
+  }
+}
+</file>
+
+<file path="src/application/usecases/kavling/UploadKavlingDocumentUseCase.ts">
+import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class UploadKavlingDocumentUseCase {
+  constructor(
+    private readonly repo: IKavlingRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    id: number,
+    fileBuffer: Buffer,
+    docType: "filePbg" | "fileSertifikatTanah" | "fileNopPbb",
+  ) {
+    const existing = await this.repo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Kavling tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing[docType]) {
+      await this.cloudinaryService.deleteImageByUrl(existing[docType]);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      `bumantara/kavling/${docType}`,
+    );
+
+    const updateData = { [docType]: imageUrl };
+    return await this.repo.update(id, updateData);
   }
 }
 </file>
@@ -5278,33 +5070,6 @@ export const ocrExtractSchema = {
 };
 </file>
 
-<file path="src/validations/paginationSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-
-const baseFilterSchema = z.object({
-  search: emptyAsUndefined(z.string().optional()),
-  startDate: emptyAsUndefined(z.string().datetime().optional()),
-  endDate: emptyAsUndefined(z.string().datetime().optional()),
-  orderBy: emptyAsUndefined(
-    z
-      .string()
-      .regex(
-        /^[a-zA-Z0-9_]+:(asc|desc)$/,
-        "Format harus field:asc atau field:desc",
-      )
-      .optional(),
-  ),
-});
-
-export const cursorPaginationQuerySchema = baseFilterSchema.extend({
-  limit: z.coerce.number().min(1).max(100).default(20),
-  cursor: emptyAsUndefined(z.string().optional()),
-});
-
-export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
-</file>
-
 <file path="src/validations/tagihanSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -7310,6 +7075,33 @@ export const CustomerFactory = {
 export * from "./userFactory.js";
 export * from "./customerFactory.js";
 export * from "./bankRekeningPtFactory.js";
+</file>
+
+<file path="src/validations/paginationSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+
+const baseFilterSchema = z.object({
+  search: emptyAsUndefined(z.string().optional()),
+  startDate: emptyAsUndefined(z.string().datetime().optional()),
+  endDate: emptyAsUndefined(z.string().datetime().optional()),
+  orderBy: emptyAsUndefined(
+    z
+      .string()
+      .regex(
+        /^[a-zA-Z0-9_]+:(asc|desc)$/,
+        "Format harus field:asc atau field:desc",
+      )
+      .optional(),
+  ),
+});
+
+export const cursorPaginationQuerySchema = baseFilterSchema.extend({
+  limit: z.coerce.number().min(1).max(500).default(20),
+  cursor: emptyAsUndefined(z.string().optional()),
+});
+
+export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
 </file>
 
 <file path="src/validations/perumahanSchema.ts">

@@ -4,7 +4,7 @@ import type {
   UpdateKavlingDTO,
   KavlingFilterDTO,
 } from "../dtos/KavlingDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
 export interface IKavlingRepository {
   create(data: CreateKavlingDTO): Promise<KavlingEntity>;
@@ -12,8 +12,8 @@ export interface IKavlingRepository {
   update(id: number, data: UpdateKavlingDTO): Promise<KavlingEntity>;
   delete(id: number): Promise<void>;
   findWithCursorPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: KavlingFilterDTO,
-  ): Promise<CursorPaginatedData<KavlingEntity>>;
+  ): Promise<OffsetPaginatedData<KavlingEntity>>;
 }

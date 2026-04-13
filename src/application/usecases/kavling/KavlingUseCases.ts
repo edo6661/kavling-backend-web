@@ -5,7 +5,7 @@ import type {
   KavlingFilterDTO,
   KavlingResponseDTO,
 } from "../../../domain/dtos/KavlingDTO.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
+import type { OffsetPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 
 export class CreateKavlingUseCase {
@@ -37,11 +37,11 @@ export class GetKavlingByIdUseCase {
 export class GetKavlingsPaginatedUseCase {
   constructor(private readonly repo: IKavlingRepository) {}
   async execute(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: KavlingFilterDTO,
-  ): Promise<CursorPaginatedData<KavlingResponseDTO>> {
-    return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  ): Promise<OffsetPaginatedData<KavlingResponseDTO>> {
+    return await this.repo.findWithCursorPagination(page, limit, filters);
   }
 }
 
