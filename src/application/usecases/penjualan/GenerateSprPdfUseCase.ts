@@ -13,10 +13,34 @@ export class GenerateSprPdfUseCase {
       throw new NotFoundError("Data Penjualan tidak ditemukan");
     }
 
-    // Karena return type findById sudah jelas (PenjualanWithCompleteRelations),
-    // TypeScript sekarang tahu bentuk exact dari objek di bawah ini.
     const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
 
+    // --- 1. PRE-FETCH DATA TANDA TANGAN (ASINKRON) ---
+    const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ttdData = penjualan.ttdData as Record<
+      string,
+      { nama: string; tanggal: string; url: string }
+    > | null;
+    const sigBuffers: Record<string, Buffer> = {};
+
+    if (ttdData) {
+      await Promise.all(
+        sigData.map(async (role) => {
+          if (ttdData[role]?.url) {
+            try {
+              const response = await fetch(ttdData[role].url);
+              const arrayBuffer = await response.arrayBuffer();
+              sigBuffers[role] = Buffer.from(arrayBuffer);
+            } catch (e) {
+              console.error(`Gagal download TTD ${role} dari Cloudinary`, e);
+            }
+          }
+        }),
+      );
+    }
+
+    // --- 2. PEMBUATAN DOKUMEN PDF (SINKRON) ---
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ size: "A4", margin: 50 });
@@ -163,11 +187,22 @@ export class GenerateSprPdfUseCase {
         let totalNilai = 0;
         doc.font("Helvetica").fontSize(9);
 
-        if (tagihan && tagihan.length > 0) {
-          tagihan.forEach((p, idx) => {
+        // 1. Filter tagihan: Hanya ambil Booking Fee dan DP
+        const tagihanAwal =
+          tagihan?.filter((t) => {
+            const namaPembayaran = t.pembayaran.toLowerCase();
+            return (
+              namaPembayaran.includes("booking") ||
+              namaPembayaran.includes("dp") ||
+              namaPembayaran.includes("down")
+            );
+          }) || [];
+
+        // 2. Render hanya tagihan yang sudah difilter
+        if (tagihanAwal.length > 0) {
+          tagihanAwal.forEach((p, idx) => {
             checkY(rowHeight);
 
-            // Karena kita pakai TS Type dari Prisma, p.jatuhTempo pasti valid Date object
             const dateStr = p.jatuhTempo
               .toLocaleDateString("id-ID", {
                 day: "2-digit",
@@ -231,22 +266,68 @@ export class GenerateSprPdfUseCase {
         doc
           .font("Helvetica")
           .fontSize(10)
-          .text(`Tanggal: ${today}`, startX, y, {
+          .text(`Dibuat Tanggal: ${today}`, startX, y, {
             width: contentWidth,
             align: "right",
           });
         y += 20;
 
         const w = contentWidth / 4;
-        const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
 
+        // Render Tanda Tangan & Nama
         sigData.forEach((title, i) => {
-          doc.text(title, startX + w * i, y, { width: w, align: "center" });
+          const currentX = startX + w * i;
+          // Cetak Title (Pemesan, Marketing, dll)
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .text(title, currentX, y, { width: w, align: "center" });
+
+          if (ttdData?.[title]) {
+            const ttd = ttdData[title];
+
+            // Cetak gambar TTD
+            if (sigBuffers[title]) {
+              try {
+                // PERBAIKAN: y + 15 agar gambar turun dan tidak menabrak teks judul
+                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 15, {
+                  width: 50,
+                  height: 35,
+                });
+              } catch (imgErr) {
+                console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
+              }
+            }
+
+            // Cetak Tanggal TTD
+            if (ttd.tanggal) {
+              const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+              // PERBAIKAN: y + 52 agar berada pas di bawah gambar tanda tangan
+              doc
+                .fontSize(7)
+                .font("Helvetica")
+                .text(tglStr, currentX, y + 52, { width: w, align: "center" });
+            }
+
+            // Cetak Nama (di bawah garis)
+            // PERBAIKAN: y + 70 agar berada tepat di bawah garis hitam
+            doc
+              .fontSize(8)
+              .font("Helvetica-Bold")
+              .text(ttd.nama, currentX, y + 70, { width: w, align: "center" });
+            doc.fontSize(10).font("Helvetica"); // Reset
+          }
         });
 
-        y += 60;
+        // PERBAIKAN: Jarak garis diturunkan ke y + 65 agar tidak menabrak tanggal
+        y += 65;
         const lineW = w - 20;
 
+        // Render Garis TTD
         sigData.forEach((_, i) => {
           const cx = startX + w * i + w / 2;
           doc

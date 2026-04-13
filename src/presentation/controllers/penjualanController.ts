@@ -8,12 +8,14 @@ import type {
   cancelPenjualanSchema,
   createPenjualanSchema,
   uploadBuktiPenjualanSchema,
+  uploadSignatureSchema,
 } from "../../validations/penjualanSchema.js";
 import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
 import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
 import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
 import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
 import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
+import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
 
 export class PenjualanController {
   constructor(
@@ -21,6 +23,7 @@ export class PenjualanController {
     private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
     private readonly cancelUseCase: CancelPenjualanUseCase,
     private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
+    private readonly saveSignatureUseCase: SaveSignatureUseCase,
   ) {}
 
   create = async (
@@ -99,6 +102,32 @@ export class PenjualanController {
       res,
       StatusCodes.OK,
       `Bukti ${type} berhasil diunggah`,
+      result,
+    );
+  };
+  uploadSignature = async (
+    req: TypedRequest<
+      typeof uploadSignatureSchema.body,
+      any,
+      typeof uploadSignatureSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { signatureBase64, nama, peran, tanggal } = req.body;
+
+    const result = await this.saveSignatureUseCase.execute(
+      id,
+      signatureBase64,
+      nama,
+      peran,
+      tanggal,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Tanda tangan digital untuk ${peran} berhasil disimpan`,
       result,
     );
   };

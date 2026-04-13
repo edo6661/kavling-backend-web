@@ -35,6 +35,7 @@ export class CloudinaryService {
   async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
     const compressedBuffer = await sharp(buffer)
       .resize({ width: 800, withoutEnlargement: true })
+      .flatten({ background: "#ffffff" })
       .jpeg({ quality: 80 })
       .toBuffer();
 

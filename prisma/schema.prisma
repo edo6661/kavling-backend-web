@@ -229,6 +229,7 @@ model Penjualan {
   fileSpr           String?             @map("file_spr") @db.VarChar(255)
   fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
   fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
+  ttdData           Json?               @map("ttd_data")
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
   customer          Customer            @relation(fields: [customerId], references: [id])

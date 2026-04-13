@@ -5,6 +5,7 @@ import {
   cancelPenjualanSchema,
   createPenjualanSchema,
   getPenjualanPaginatedSchema,
+  uploadSignatureSchema,
 } from "../../validations/penjualanSchema.js";
 import type { PenjualanController } from "../controllers/penjualanController.js";
 import { upload } from "../../middlewares/upload.js";
@@ -40,6 +41,12 @@ export const createPenjualanRoutes = (
     requireRole(["ADMIN", "MARKETING"]),
     upload.single("fileBukti"),
     controller.uploadBukti,
+  );
+  router.post(
+    "/:id/signature",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(uploadSignatureSchema),
+    controller.uploadSignature,
   );
   return router;
 };

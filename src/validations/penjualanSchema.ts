@@ -64,3 +64,15 @@ export const uploadBuktiPenjualanSchema = {
     alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
   }),
 };
+
+export const uploadSignatureSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    signatureBase64: z.string().min(1, "Data signature wajib diisi"),
+    nama: z.string().min(1, "Nama wajib diisi"),
+    peran: z.string().min(1, "Peran wajib diisi"),
+    tanggal: z.string().min(1, "Tanggal wajib diisi"),
+  }),
+};

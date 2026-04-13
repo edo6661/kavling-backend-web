@@ -317,6 +317,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         fileBuktiBooking: item.fileBuktiBooking ?? bfTagihan?.fileBukti ?? "",
         fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
         fileSpr: item.fileSpr ?? null,
+        ttdData: item.ttdData ?? null,
         progressCicilan,
       };
     });

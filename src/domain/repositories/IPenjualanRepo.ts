@@ -58,6 +58,7 @@ export interface PenjualanPaginatedItem {
   fileBuktiBooking: string;
   fileBuktiDp: string;
   fileSpr: string | null;
+  ttdData?: any;
 }
 
 export interface IPenjualanRepository {
