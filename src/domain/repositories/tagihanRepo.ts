@@ -16,8 +16,12 @@ const tagihanIncludeRelations = {
   penjualan: {
     include: {
       kavling: {
-        include: { perumahan: { select: { nama: true } } },
+        include: {
+          perumahan: { select: { nama: true } },
+          rekeningTujuan: true,
+        },
       },
+      rekeningTujuan: true,
     },
   },
 } satisfies Prisma.TagihanInclude;

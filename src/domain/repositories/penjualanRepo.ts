@@ -22,9 +22,8 @@ export class PenjualanRepository implements IPenjualanRepository {
       data,
       include: {
         customer: true,
-        kavling: {
-          include: { perumahan: true },
-        },
+        kavling: { include: { perumahan: true, rekeningTujuan: true } },
+
         rekeningTujuan: true,
         tagihan: true,
         agent: true,
@@ -343,7 +342,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       where: { id },
       include: {
         customer: true,
-        kavling: { include: { perumahan: true } },
+        kavling: { include: { perumahan: true, rekeningTujuan: true } },
         rekeningTujuan: true,
         tagihan: { orderBy: { jatuhTempo: "asc" } },
         agent: true,

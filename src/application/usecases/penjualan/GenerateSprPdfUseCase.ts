@@ -91,26 +91,30 @@ export class GenerateSprPdfUseCase {
         };
 
         // --- HEADER ---
-        checkY(130);
+        checkY(150);
         doc
-          .fontSize(22)
+          .fontSize(24)
           .font("Helvetica-Bold")
+          .fillColor("#0f172a")
           .text(kavling.perumahan.nama.toUpperCase(), startX, y);
 
         if (logoBuffer) {
-          doc.image(logoBuffer, startX, y + 24, { height: 30 });
+          doc.image(logoBuffer, startX, y + 28, { height: 60 });
         } else {
-          doc.fontSize(16).text("BUMANTARA", startX, y + 24);
+          doc.fontSize(16).text("BUMANTARA", startX, y + 28);
         }
 
-        y += 70;
+        y += 105;
 
-        doc.fontSize(14).text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
-          width: contentWidth,
-          align: "center",
-          underline: true,
-        });
-        y += 30;
+        doc
+          .fontSize(14)
+          .fillColor("#000000")
+          .text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
+            width: contentWidth,
+            align: "center",
+            underline: true,
+          });
+        y += 35;
 
         doc
           .fontSize(10)
@@ -389,7 +393,6 @@ export class GenerateSprPdfUseCase {
         y += 5;
 
         if (rekeningTujuan) {
-          // Render kotak Bank
           doc.rect(startX, y, 280, 45).stroke();
           doc
             .font("Helvetica-Bold")

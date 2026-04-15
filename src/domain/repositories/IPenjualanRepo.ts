@@ -9,7 +9,7 @@ export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
   include: {
     customer: true;
     kavling: {
-      include: { perumahan: true };
+      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
     };
     rekeningTujuan: true;
     tagihan: true;

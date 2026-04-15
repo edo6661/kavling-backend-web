@@ -1,5 +1,216 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
 
-kode backend:
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: src/**/*, package.json, vite.config.ts, tsconfig.json, prisma/schema.prisma
+- Files matching these patterns are excluded: **/*.test.ts
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+package.json
+prisma/schema.prisma
+src/app.ts
+src/application/usecases/agent/AgentUseCases.ts
+src/application/usecases/auth/GetProfileUseCase.ts
+src/application/usecases/auth/LoginUserUseCase.ts
+src/application/usecases/auth/RegisterUserUseCase.ts
+src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.ts
+src/application/usecases/customer/CreateCustomerUseCase.ts
+src/application/usecases/customer/DeleteCustomerUseCase.ts
+src/application/usecases/customer/ExportCustomersPdfUseCase.ts
+src/application/usecases/customer/ExportCustomersUseCase.ts
+src/application/usecases/customer/GenerateCustomerAccountUseCase.ts
+src/application/usecases/customer/GetCustomerByIdUseCase.ts
+src/application/usecases/customer/GetCustomersPaginatedUseCase.ts
+src/application/usecases/customer/UpdateCustomerUseCase.ts
+src/application/usecases/customer/UploadCustomerDocumentUseCase.ts
+src/application/usecases/customerKavling/CustomerKavlingUseCases.ts
+src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts
+src/application/usecases/feeAgent/FeeAgentUseCases.ts
+src/application/usecases/kavling/KavlingUseCases.ts
+src/application/usecases/kavling/UploadKavlingDocumentUseCase.ts
+src/application/usecases/notaris/NotarisUseCases.ts
+src/application/usecases/ocr/ExtractKtpDataUseCase.ts
+src/application/usecases/penjualan/CancelPenjualanUseCase.ts
+src/application/usecases/penjualan/CreatePenjualanUseCase.ts
+src/application/usecases/penjualan/GenerateSprPdfUseCase.ts
+src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts
+src/application/usecases/penjualan/SaveSignatureUseCase.ts
+src/application/usecases/penjualan/UpdatePenjualanUseCase.ts
+src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts
+src/application/usecases/perumahan/PerumahanUseCases.ts
+src/application/usecases/tagihan/TagihanUseCases.ts
+src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts
+src/application/usecases/user/GetAllUsersUseCase.ts
+src/application/usecases/user/GetUsersPaginatedUseCase.ts
+src/application/usecases/user/UpdateUserUseCase.ts
+src/application/usecases/verify/VerifyDocumentUseCase.ts
+src/config/env.ts
+src/domain/dtos/AgentDTO.ts
+src/domain/dtos/BankRekeningPtDTO.ts
+src/domain/dtos/BaseFilterDTO.ts
+src/domain/dtos/CustomerDTO.ts
+src/domain/dtos/CustomerKavlingDTO.ts
+src/domain/dtos/DashboardDTO.ts
+src/domain/dtos/DetailKavlingPajakDTO.ts
+src/domain/dtos/FeeAgentDTO.ts
+src/domain/dtos/KavlingDTO.ts
+src/domain/dtos/NotarisDTO.ts
+src/domain/dtos/PenjualanDTO.ts
+src/domain/dtos/PerumahanDTO.ts
+src/domain/dtos/TagihanDTO.ts
+src/domain/dtos/UserDTO.ts
+src/domain/entities/Agent.ts
+src/domain/entities/BankRekeningPt.ts
+src/domain/entities/Customer.ts
+src/domain/entities/DetailKavlingPajak.ts
+src/domain/entities/FeeAgent.ts
+src/domain/entities/Kavling.ts
+src/domain/entities/Notaris.ts
+src/domain/entities/Perumahan.ts
+src/domain/entities/User.ts
+src/domain/errors/AppError.ts
+src/domain/errors/ConflictError.ts
+src/domain/errors/NotFoundError.ts
+src/domain/repositories/agentRepo.ts
+src/domain/repositories/bankRekeningPtRepo.ts
+src/domain/repositories/customerRepo.ts
+src/domain/repositories/detailKavlingPajakRepo.ts
+src/domain/repositories/feeAgentRepo.ts
+src/domain/repositories/IAgentRepo.ts
+src/domain/repositories/IBankRekeningPtRepo.ts
+src/domain/repositories/ICustomerRepo.ts
+src/domain/repositories/IDetailKavlingPajakRepo.ts
+src/domain/repositories/IFeeAgentRepo.ts
+src/domain/repositories/IKavlingRepo.ts
+src/domain/repositories/INotarisRepo.ts
+src/domain/repositories/IPenjualanRepo.ts
+src/domain/repositories/IPerumahanRepo.ts
+src/domain/repositories/ITagihanRepo.ts
+src/domain/repositories/IUserRepo.ts
+src/domain/repositories/kavlingRepo.ts
+src/domain/repositories/notarisRepo.ts
+src/domain/repositories/penjualanRepo.ts
+src/domain/repositories/perumahanRepo.ts
+src/domain/repositories/tagihanRepo.ts
+src/domain/repositories/userRepo.ts
+src/infrastructure/database/prisma.ts
+src/infrastructure/di/container.ts
+src/infrastructure/external/CloudinaryService.ts
+src/infrastructure/external/GoogleVisionService.ts
+src/infrastructure/mapper/AgentMapper.ts
+src/infrastructure/mapper/BankRekeningPtMapper.ts
+src/infrastructure/mapper/CustomerMapper.ts
+src/infrastructure/mapper/DetailKavlingPajakMapper.ts
+src/infrastructure/mapper/FeeAgentMapper.ts
+src/infrastructure/mapper/KavlingMapper.ts
+src/infrastructure/mapper/NotarisMapper.ts
+src/infrastructure/mapper/PerumahanMapper.ts
+src/infrastructure/mapper/TagihanMapper.ts
+src/infrastructure/mapper/UserMapper.ts
+src/middlewares/authMiddleware.ts
+src/middlewares/errorHandler.ts
+src/middlewares/upload.ts
+src/middlewares/validate.ts
+src/presentation/controllers/agentController.ts
+src/presentation/controllers/authController.ts
+src/presentation/controllers/bankRekeningPtController.ts
+src/presentation/controllers/customerController.ts
+src/presentation/controllers/customerKavlingController.ts
+src/presentation/controllers/dashboardController.ts
+src/presentation/controllers/feeAgentController.ts
+src/presentation/controllers/healthController.ts
+src/presentation/controllers/kavlingController.ts
+src/presentation/controllers/notarisController.ts
+src/presentation/controllers/ocrController.ts
+src/presentation/controllers/penjualanController.ts
+src/presentation/controllers/perumahanController.ts
+src/presentation/controllers/tagihanController.ts
+src/presentation/controllers/userController.ts
+src/presentation/controllers/verifyController.ts
+src/presentation/routes/agentRoutes.ts
+src/presentation/routes/authRoutes.ts
+src/presentation/routes/bankRekeningPtRoutes.ts
+src/presentation/routes/customerKavlingRoutes.ts
+src/presentation/routes/customerRoutes.ts
+src/presentation/routes/dashboardRoutes.ts
+src/presentation/routes/feeAgentRoutes.ts
+src/presentation/routes/index.ts
+src/presentation/routes/kavlingRoutes.ts
+src/presentation/routes/notarisRoutes.ts
+src/presentation/routes/ocrRoutes.ts
+src/presentation/routes/penjualanRoutes.ts
+src/presentation/routes/perumahanRoutes.ts
+src/presentation/routes/tagihanRoutes.ts
+src/presentation/routes/userRoutes.ts
+src/presentation/routes/verifyRoutes.ts
+src/server.ts
+src/tests/factories/bankRekeningPtFactory.ts
+src/tests/factories/customerFactory.ts
+src/tests/factories/index.ts
+src/tests/factories/userFactory.ts
+src/tests/setup.ts
+src/types/express.d.ts
+src/types/request.ts
+src/types/response.ts
+src/utils/hashing.ts
+src/utils/logger.ts
+src/utils/response.ts
+src/validations/agentSchema.ts
+src/validations/authSchema.ts
+src/validations/bankRekeningPtSchema.ts
+src/validations/customerKavlingSchema.ts
+src/validations/customerSchema.ts
+src/validations/emptySchema.ts
+src/validations/feeAgentSchema.ts
+src/validations/kavlingSchema.ts
+src/validations/notarisSchema.ts
+src/validations/ocrSchema.ts
+src/validations/paginationSchema.ts
+src/validations/penjualanSchema.ts
+src/validations/perumahanSchema.ts
+src/validations/tagihanSchema.ts
+src/validations/userSchema.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
 
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -1249,69 +1460,6 @@ export interface BaseFilterDTO {
 }
 </file>
 
-<file path="src/domain/dtos/CustomerKavlingDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { SP3R, UnitStatus } from "@prisma/client";
-export interface UpdateCustomerKavlingDTO {
-  statusKavling?: UnitStatus | undefined;
-  namaTipe?: string | undefined;
-  luasBangunan?: number | undefined;
-  luasTanah?: number | undefined;
-  hargaJualKavling?: number | undefined;
-  notarisId?: number | null | undefined;
-  lantai?: string | undefined;
-  lokasiStrategis?: string | undefined;
-  tanggalAkadPpjb?: string | Date | undefined;
-  akadPpjb?: string | undefined;
-  tanggalAkadAjbPpat?: string | Date | undefined;
-  tanggalPembayaranPph?: string | Date | undefined;
-  tanggalPembayaranBphtb?: string | Date | undefined;
-  pembiayaan?: string | undefined;
-  sp3r?: SP3R | undefined;
-  lebihTanah?: number | undefined;
-  biayaStrategis?: number | undefined;
-  nrBiayaKprAsuransi?: number | undefined;
-  nrDiskonAngsuran?: number | undefined;
-  nrDiskonCash?: number | undefined;
-  nrBiayaBbn?: number | undefined;
-  nrBiayaNotarisAjb?: number | undefined;
-  nrBiayaAppraisal?: number | undefined;
-  nrBiayaBphtb?: number | undefined;
-  nrLainLain?: number | undefined;
-  nrTotalSubsidi?: number | undefined;
-  nrNilaiPenyerahan?: number | undefined;
-  nrPpn?: number | undefined;
-  nrBphtb?: number | undefined;
-  nrPph?: number | undefined;
-  pjBiayaKpr?: number | undefined;
-  pjBiayaAsuransi?: number | undefined;
-  pjDiskonAngsuran?: number | undefined;
-  pjBiayaBbn?: number | undefined;
-  pjBiayaAjb?: number | undefined;
-  pjBiayaAppraisal?: number | undefined;
-  pjBphtb?: number | undefined;
-  pjLainLain?: number | undefined;
-  pjTotalSubsidi?: number | undefined;
-  pjNilaiPenyerahan?: number | undefined;
-  pjPpn?: number | undefined;
-  pjBphtbPajak?: number | undefined;
-  pjPph?: number | undefined;
-  pjTotalBphtbPph?: number | undefined;
-  ajbNjopTanahPerMeter?: number | undefined;
-  ajbNjopTanah?: number | undefined;
-  ajbNjopBangunanPerMeter?: number | undefined;
-  ajbNjopBangunan?: number | undefined;
-  ajbNjopTotal?: number | undefined;
-  ajbPpn?: number | undefined;
-  ajbBphtb?: number | undefined;
-  ajbPph?: number | undefined;
-  ajbTotalBphtbPph?: number | undefined;
-  ajbSelisihPajakPbb?: number | undefined;
-  ajbUping?: number | undefined;
-}
-export type CustomerKavlingFilterDTO = BaseFilterDTO;
-</file>
-
 <file path="src/domain/dtos/DetailKavlingPajakDTO.ts">
 import type { SP3R } from "@prisma/client";
 
@@ -1548,54 +1696,6 @@ export interface PerumahanResponseDTO {
 }
 
 export type PerumahanFilterDTO = BaseFilterDTO;
-</file>
-
-<file path="src/domain/dtos/TagihanDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { PaymentStatus } from "@prisma/client";
-
-export interface CreateTagihanDTO {
-  customerId: number;
-  penjualanId: number;
-  pembayaran: string;
-  nominal: number;
-  jatuhTempo: string | Date;
-  reminderBerikutnya?: string | Date | null | undefined;
-}
-
-export interface UpdateTagihanDTO {
-  pembayaran?: string | undefined;
-  nominal?: number | undefined;
-  jatuhTempo?: string | Date | undefined;
-  status?: PaymentStatus | undefined;
-  reminderBerikutnya?: string | Date | null | undefined;
-  fileBukti?: string | null | undefined;
-}
-
-export interface TagihanResponseDTO {
-  id: number;
-  noTagihan: string;
-  customerId: number;
-  namaCustomer: string;
-  penjualanId: number;
-  perumahan: string;
-  blok: string;
-  nomorUnit: string;
-  pembayaran: string;
-  nominal: number;
-  jatuhTempo: Date;
-  status: PaymentStatus;
-  fileBukti: string | null;
-  reminderBerikutnya: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TagihanFilterDTO extends BaseFilterDTO {
-  customerId?: number;
-  penjualanId?: number;
-  status?: PaymentStatus;
-}
 </file>
 
 <file path="src/domain/dtos/UserDTO.ts">
@@ -2699,47 +2799,6 @@ export class PerumahanMapper {
       alamat: prismaPerumahan.alamat,
       createdAt: prismaPerumahan.createdAt,
       updatedAt: prismaPerumahan.updatedAt,
-    };
-  }
-}
-</file>
-
-<file path="src/infrastructure/mapper/TagihanMapper.ts">
-import type { Prisma } from "@prisma/client";
-import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
-
-type TagihanWithRelations = Prisma.TagihanGetPayload<{
-  include: {
-    customer: { select: { nama: true } };
-    penjualan: {
-      include: {
-        kavling: {
-          include: { perumahan: { select: { nama: true } } };
-        };
-      };
-    };
-  };
-}>;
-
-export class TagihanMapper {
-  static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
-    return {
-      id: prismaTagihan.id,
-      noTagihan: prismaTagihan.noTagihan,
-      customerId: prismaTagihan.customerId,
-      namaCustomer: prismaTagihan.customer.nama,
-      penjualanId: prismaTagihan.penjualanId,
-      perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
-      blok: prismaTagihan.penjualan.kavling.blok,
-      nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
-      pembayaran: prismaTagihan.pembayaran,
-      nominal: Number(prismaTagihan.nominal),
-      jatuhTempo: prismaTagihan.jatuhTempo,
-      status: prismaTagihan.status,
-      fileBukti: prismaTagihan.fileBukti,
-      reminderBerikutnya: prismaTagihan.reminderBerikutnya,
-      createdAt: prismaTagihan.createdAt,
-      updatedAt: prismaTagihan.updatedAt,
     };
   }
 }
@@ -4813,90 +4872,6 @@ export const loginSchema = {
 };
 </file>
 
-<file path="src/validations/customerKavlingSchema.ts">
-// src/validations/customerKavlingSchema.ts
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import { UnitStatus, SP3R } from "@prisma/client";
-
-export const getCustomerKavlingsPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
-
-export const updateCustomerKavlingSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
-  }),
-  body: z.object({
-    // Kavling Utama
-    statusKavling: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
-    namaTipe: emptyAsUndefined(z.string().optional()),
-    luasBangunan: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    luasTanah: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    hargaJualKavling: emptyAsUndefined(z.coerce.number().min(0).optional()),
-
-    // Detail Kavling Pajak - Data Utama
-    notarisId: emptyAsUndefined(z.coerce.number().optional()),
-    lantai: emptyAsUndefined(z.string().optional()),
-    lokasiStrategis: emptyAsUndefined(z.string().optional()),
-    tanggalAkadPpjb: emptyAsUndefined(z.string().optional()),
-    akadPpjb: emptyAsUndefined(z.string().optional()),
-    tanggalAkadAjbPpat: emptyAsUndefined(z.string().optional()),
-    tanggalPembayaranPph: emptyAsUndefined(z.string().optional()),
-    tanggalPembayaranBphtb: emptyAsUndefined(z.string().optional()),
-    pembiayaan: emptyAsUndefined(z.string().optional()),
-    sp3r: emptyAsUndefined(z.nativeEnum(SP3R).optional()),
-    lebihTanah: emptyAsUndefined(z.coerce.number().optional()),
-    biayaStrategis: emptyAsUndefined(z.coerce.number().optional()),
-
-    // Nilai Rumah
-    nrBiayaKprAsuransi: emptyAsUndefined(z.coerce.number().optional()),
-    nrDiskonAngsuran: emptyAsUndefined(z.coerce.number().optional()),
-    nrDiskonCash: emptyAsUndefined(z.coerce.number().optional()),
-    nrBiayaBbn: emptyAsUndefined(z.coerce.number().optional()),
-    nrBiayaNotarisAjb: emptyAsUndefined(z.coerce.number().optional()),
-    nrBiayaAppraisal: emptyAsUndefined(z.coerce.number().optional()),
-    nrBiayaBphtb: emptyAsUndefined(z.coerce.number().optional()),
-    nrLainLain: emptyAsUndefined(z.coerce.number().optional()),
-    nrTotalSubsidi: emptyAsUndefined(z.coerce.number().optional()),
-    nrNilaiPenyerahan: emptyAsUndefined(z.coerce.number().optional()),
-    nrPpn: emptyAsUndefined(z.coerce.number().optional()),
-    nrBphtb: emptyAsUndefined(z.coerce.number().optional()),
-    nrPph: emptyAsUndefined(z.coerce.number().optional()),
-
-    // Pajak
-    pjBiayaKpr: emptyAsUndefined(z.coerce.number().optional()),
-    pjBiayaAsuransi: emptyAsUndefined(z.coerce.number().optional()),
-    pjDiskonAngsuran: emptyAsUndefined(z.coerce.number().optional()),
-    pjBiayaBbn: emptyAsUndefined(z.coerce.number().optional()),
-    pjBiayaAjb: emptyAsUndefined(z.coerce.number().optional()),
-    pjBiayaAppraisal: emptyAsUndefined(z.coerce.number().optional()),
-    pjBphtb: emptyAsUndefined(z.coerce.number().optional()),
-    pjLainLain: emptyAsUndefined(z.coerce.number().optional()),
-    pjTotalSubsidi: emptyAsUndefined(z.coerce.number().optional()),
-    pjNilaiPenyerahan: emptyAsUndefined(z.coerce.number().optional()),
-    pjPpn: emptyAsUndefined(z.coerce.number().optional()),
-    pjBphtbPajak: emptyAsUndefined(z.coerce.number().optional()),
-    pjPph: emptyAsUndefined(z.coerce.number().optional()),
-    pjTotalBphtbPph: emptyAsUndefined(z.coerce.number().optional()),
-
-    // AJB
-    ajbNjopTanahPerMeter: emptyAsUndefined(z.coerce.number().optional()),
-    ajbNjopTanah: emptyAsUndefined(z.coerce.number().optional()),
-    ajbNjopBangunanPerMeter: emptyAsUndefined(z.coerce.number().optional()),
-    ajbNjopBangunan: emptyAsUndefined(z.coerce.number().optional()),
-    ajbNjopTotal: emptyAsUndefined(z.coerce.number().optional()),
-    ajbPpn: emptyAsUndefined(z.coerce.number().optional()),
-    ajbBphtb: emptyAsUndefined(z.coerce.number().optional()),
-    ajbPph: emptyAsUndefined(z.coerce.number().optional()),
-    ajbTotalBphtbPph: emptyAsUndefined(z.coerce.number().optional()),
-    ajbSelisihPajakPbb: emptyAsUndefined(z.coerce.number().optional()),
-    ajbUping: emptyAsUndefined(z.coerce.number().optional()),
-  }),
-};
-</file>
-
 <file path="src/validations/emptySchema.ts">
 import { z } from "zod";
 
@@ -5448,130 +5423,6 @@ export class UploadBuktiTagihanUseCase {
 }
 </file>
 
-<file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
-import { StatusCodes } from "http-status-codes";
-import { AppError } from "../../../domain/errors/AppError.js";
-import type { PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-
-export class VerifyDocumentUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(documentNumber: string) {
-    if (!documentNumber) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
-    }
-
-    // 1. JIKA DOKUMEN ADALAH TAGIHAN BIASA / INVOICE BF / INVOICE DP (INV-...)
-    if (documentNumber.startsWith("INV-")) {
-      return await this.handleTagihan(documentNumber);
-    }
-
-    // 2. JIKA DOKUMEN BERAWAL TRX- (PASTI SPR MURNI)
-    if (documentNumber.startsWith("TRX-")) {
-      const penjualan = await this.db.penjualan.findUnique({
-        where: { noTransaksi: documentNumber },
-        include: {
-          customer: { select: { nama: true, noHp: true, alamatKtp: true } },
-          kavling: {
-            include: { perumahan: { select: { nama: true } } },
-          },
-        },
-      });
-
-      if (!penjualan) throw new NotFoundError("Dokumen tidak ditemukan");
-
-      return {
-        type: "SPR",
-        data: {
-          noDokumen: penjualan.noTransaksi,
-          tanggalTransaksi: penjualan.tanggal,
-          status: penjualan.status,
-          hargaJual: Number(penjualan.hargaJual),
-          dp: Number(penjualan.dp ?? 0),
-          bookingFee: Number(penjualan.bookingFee ?? 0),
-          caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
-          bank: penjualan.bank ?? "",
-          customer: {
-            nama: penjualan.customer.nama,
-            noHp: penjualan.customer.noHp,
-            alamat: penjualan.customer.alamatKtp,
-          },
-          kavling: {
-            perumahan: penjualan.kavling.perumahan.nama,
-            blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
-            tipe: penjualan.kavling.namaTipe,
-          },
-        },
-      };
-    }
-
-    throw new AppError(
-      StatusCodes.BAD_REQUEST,
-      "Format nomor dokumen tidak dikenali",
-    );
-  }
-
-  // Helper function agar kode tidak duplikat
-  private async handleTagihan(noTagihan: string) {
-    const tagihan = await this.db.tagihan.findUnique({
-      where: { noTagihan },
-      include: {
-        customer: { select: { nama: true, noHp: true, alamatKtp: true } },
-        penjualan: {
-          include: {
-            kavling: {
-              include: { perumahan: { select: { nama: true } } },
-            },
-          },
-        },
-      },
-    });
-
-    if (!tagihan) throw new NotFoundError("Data tagihan tidak ditemukan");
-
-    const totalTerbayarAgg = await this.db.tagihan.aggregate({
-      where: { penjualanId: tagihan.penjualanId, status: "LUNAS" },
-      _sum: { nominal: true },
-    });
-
-    const totalTerbayar = Number(totalTerbayarAgg._sum.nominal ?? 0);
-    const hargaJual = Number(tagihan.penjualan.hargaJual);
-    const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
-    const documentType = tagihan.status === "LUNAS" ? "KWITANSI" : "INVOICE";
-
-    return {
-      type: documentType,
-      data: {
-        noDokumen: tagihan.noTagihan,
-        pembayaran: tagihan.pembayaran,
-        nominal: Number(tagihan.nominal),
-        jatuhTempo: tagihan.jatuhTempo,
-        status: tagihan.status,
-        tanggalDibuat: tagihan.createdAt,
-        customer: {
-          nama: tagihan.customer.nama,
-          noHp: tagihan.customer.noHp,
-          alamat: tagihan.customer.alamatKtp,
-        },
-        kavling: {
-          perumahan: tagihan.penjualan.kavling.perumahan.nama,
-          blok: tagihan.penjualan.kavling.blok,
-          nomorUnit: tagihan.penjualan.kavling.nomorUnit,
-          tipe: tagihan.penjualan.kavling.namaTipe,
-        },
-        transaksi: {
-          caraPembayaran: tagihan.penjualan.caraPembayaran.replace(/_/g, " "),
-          bank: tagihan.penjualan.bank ?? "",
-          hargaJual: hargaJual,
-          sisaBelumDibayar: sisaBelumDibayar,
-        },
-      },
-    };
-  }
-}
-</file>
-
 <file path="src/config/env.ts">
 import { z } from "zod";
 import dotenv from "dotenv";
@@ -5604,6 +5455,70 @@ if (!_env.success) {
 }
 
 export const env = _env.data;
+</file>
+
+<file path="src/domain/dtos/CustomerKavlingDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { SP3R, UnitStatus } from "@prisma/client";
+export interface UpdateCustomerKavlingDTO {
+  statusKavling?: UnitStatus | undefined;
+  namaTipe?: string | undefined;
+  luasBangunan?: number | undefined;
+  luasTanah?: number | undefined;
+  hargaJualKavling?: number | undefined;
+  rekeningTujuanId?: number | null | undefined;
+  notarisId?: number | null | undefined;
+  lantai?: string | undefined;
+  lokasiStrategis?: string | undefined;
+  tanggalAkadPpjb?: string | Date | undefined;
+  akadPpjb?: string | undefined;
+  tanggalAkadAjbPpat?: string | Date | undefined;
+  tanggalPembayaranPph?: string | Date | undefined;
+  tanggalPembayaranBphtb?: string | Date | undefined;
+  pembiayaan?: string | undefined;
+  sp3r?: SP3R | undefined;
+  lebihTanah?: number | undefined;
+  biayaStrategis?: number | undefined;
+  nrBiayaKprAsuransi?: number | undefined;
+  nrDiskonAngsuran?: number | undefined;
+  nrDiskonCash?: number | undefined;
+  nrBiayaBbn?: number | undefined;
+  nrBiayaNotarisAjb?: number | undefined;
+  nrBiayaAppraisal?: number | undefined;
+  nrBiayaBphtb?: number | undefined;
+  nrLainLain?: number | undefined;
+  nrTotalSubsidi?: number | undefined;
+  nrNilaiPenyerahan?: number | undefined;
+  nrPpn?: number | undefined;
+  nrBphtb?: number | undefined;
+  nrPph?: number | undefined;
+  pjBiayaKpr?: number | undefined;
+  pjBiayaAsuransi?: number | undefined;
+  pjDiskonAngsuran?: number | undefined;
+  pjBiayaBbn?: number | undefined;
+  pjBiayaAjb?: number | undefined;
+  pjBiayaAppraisal?: number | undefined;
+  pjBphtb?: number | undefined;
+  pjLainLain?: number | undefined;
+  pjTotalSubsidi?: number | undefined;
+  pjNilaiPenyerahan?: number | undefined;
+  pjPpn?: number | undefined;
+  pjBphtbPajak?: number | undefined;
+  pjPph?: number | undefined;
+  pjTotalBphtbPph?: number | undefined;
+  ajbNjopTanahPerMeter?: number | undefined;
+  ajbNjopTanah?: number | undefined;
+  ajbNjopBangunanPerMeter?: number | undefined;
+  ajbNjopBangunan?: number | undefined;
+  ajbNjopTotal?: number | undefined;
+  ajbPpn?: number | undefined;
+  ajbBphtb?: number | undefined;
+  ajbPph?: number | undefined;
+  ajbTotalBphtbPph?: number | undefined;
+  ajbSelisihPajakPbb?: number | undefined;
+  ajbUping?: number | undefined;
+}
+export type CustomerKavlingFilterDTO = BaseFilterDTO;
 </file>
 
 <file path="src/domain/dtos/NotarisDTO.ts">
@@ -5644,6 +5559,59 @@ export interface NotarisResponseDTO {
 }
 
 export type NotarisFilterDTO = BaseFilterDTO;
+</file>
+
+<file path="src/domain/dtos/TagihanDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { PaymentStatus } from "@prisma/client";
+
+export interface CreateTagihanDTO {
+  customerId: number;
+  penjualanId: number;
+  pembayaran: string;
+  nominal: number;
+  jatuhTempo: string | Date;
+  reminderBerikutnya?: string | Date | null | undefined;
+}
+
+export interface UpdateTagihanDTO {
+  pembayaran?: string | undefined;
+  nominal?: number | undefined;
+  jatuhTempo?: string | Date | undefined;
+  status?: PaymentStatus | undefined;
+  reminderBerikutnya?: string | Date | null | undefined;
+  fileBukti?: string | null | undefined;
+}
+
+export interface TagihanResponseDTO {
+  id: number;
+  noTagihan: string;
+  customerId: number;
+  namaCustomer: string;
+  penjualanId: number;
+  perumahan: string;
+  blok: string;
+  nomorUnit: string;
+  pembayaran: string;
+  nominal: number;
+  jatuhTempo: Date;
+  status: PaymentStatus;
+  fileBukti: string | null;
+  reminderBerikutnya: Date | null;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TagihanFilterDTO extends BaseFilterDTO {
+  customerId?: number;
+  penjualanId?: number;
+  status?: PaymentStatus;
+}
 </file>
 
 <file path="src/domain/entities/BankRekeningPt.ts">
@@ -6480,8 +6448,12 @@ const tagihanIncludeRelations = {
   penjualan: {
     include: {
       kavling: {
-        include: { perumahan: { select: { nama: true } } },
+        include: {
+          perumahan: { select: { nama: true } },
+          rekeningTujuan: true,
+        },
       },
+      rekeningTujuan: true,
     },
   },
 } satisfies Prisma.TagihanInclude;
@@ -6887,6 +6859,59 @@ export class KavlingMapper {
 }
 </file>
 
+<file path="src/infrastructure/mapper/TagihanMapper.ts">
+import type { Prisma } from "@prisma/client";
+import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
+
+type TagihanWithRelations = Prisma.TagihanGetPayload<{
+  include: {
+    customer: { select: { nama: true } };
+    penjualan: {
+      include: {
+        kavling: {
+          include: {
+            perumahan: { select: { nama: true } };
+            rekeningTujuan: true;
+          };
+        };
+        rekeningTujuan: true;
+      };
+    };
+  };
+}>;
+
+export class TagihanMapper {
+  static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
+    return {
+      id: prismaTagihan.id,
+      noTagihan: prismaTagihan.noTagihan,
+      customerId: prismaTagihan.customerId,
+      namaCustomer: prismaTagihan.customer.nama,
+      penjualanId: prismaTagihan.penjualanId,
+      perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
+      blok: prismaTagihan.penjualan.kavling.blok,
+      nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
+      pembayaran: prismaTagihan.pembayaran,
+      nominal: Number(prismaTagihan.nominal),
+      jatuhTempo: prismaTagihan.jatuhTempo,
+      status: prismaTagihan.status,
+      fileBukti: prismaTagihan.fileBukti,
+      reminderBerikutnya: prismaTagihan.reminderBerikutnya,
+      rekeningTujuan: prismaTagihan.penjualan.kavling.rekeningTujuan
+        ? {
+            namaBank: prismaTagihan.penjualan.kavling.rekeningTujuan.namaBank,
+            noRekening:
+              prismaTagihan.penjualan.kavling.rekeningTujuan.noRekening,
+            atasNama: prismaTagihan.penjualan.kavling.rekeningTujuan.atasNama,
+          }
+        : null,
+      createdAt: prismaTagihan.createdAt,
+      updatedAt: prismaTagihan.updatedAt,
+    };
+  }
+}
+</file>
+
 <file path="src/presentation/controllers/kavlingController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -7078,6 +7103,91 @@ export interface OffsetPaginatedData<T> {
   items: T[];
   meta: OffsetPaginationMeta;
 }
+</file>
+
+<file path="src/validations/customerKavlingSchema.ts">
+// src/validations/customerKavlingSchema.ts
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { UnitStatus, SP3R } from "@prisma/client";
+
+export const getCustomerKavlingsPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+
+export const updateCustomerKavlingSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
+  }),
+  body: z.object({
+    // Kavling Utama
+    statusKavling: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
+    namaTipe: emptyAsUndefined(z.string().optional()),
+    luasBangunan: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    luasTanah: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    hargaJualKavling: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    rekeningTujuanId: emptyAsUndefined(z.coerce.number().optional()),
+
+    // Detail Kavling Pajak - Data Utama
+    notarisId: emptyAsUndefined(z.coerce.number().optional()),
+    lantai: emptyAsUndefined(z.string().optional()),
+    lokasiStrategis: emptyAsUndefined(z.string().optional()),
+    tanggalAkadPpjb: emptyAsUndefined(z.string().optional()),
+    akadPpjb: emptyAsUndefined(z.string().optional()),
+    tanggalAkadAjbPpat: emptyAsUndefined(z.string().optional()),
+    tanggalPembayaranPph: emptyAsUndefined(z.string().optional()),
+    tanggalPembayaranBphtb: emptyAsUndefined(z.string().optional()),
+    pembiayaan: emptyAsUndefined(z.string().optional()),
+    sp3r: emptyAsUndefined(z.nativeEnum(SP3R).optional()),
+    lebihTanah: emptyAsUndefined(z.coerce.number().optional()),
+    biayaStrategis: emptyAsUndefined(z.coerce.number().optional()),
+
+    // Nilai Rumah
+    nrBiayaKprAsuransi: emptyAsUndefined(z.coerce.number().optional()),
+    nrDiskonAngsuran: emptyAsUndefined(z.coerce.number().optional()),
+    nrDiskonCash: emptyAsUndefined(z.coerce.number().optional()),
+    nrBiayaBbn: emptyAsUndefined(z.coerce.number().optional()),
+    nrBiayaNotarisAjb: emptyAsUndefined(z.coerce.number().optional()),
+    nrBiayaAppraisal: emptyAsUndefined(z.coerce.number().optional()),
+    nrBiayaBphtb: emptyAsUndefined(z.coerce.number().optional()),
+    nrLainLain: emptyAsUndefined(z.coerce.number().optional()),
+    nrTotalSubsidi: emptyAsUndefined(z.coerce.number().optional()),
+    nrNilaiPenyerahan: emptyAsUndefined(z.coerce.number().optional()),
+    nrPpn: emptyAsUndefined(z.coerce.number().optional()),
+    nrBphtb: emptyAsUndefined(z.coerce.number().optional()),
+    nrPph: emptyAsUndefined(z.coerce.number().optional()),
+
+    // Pajak
+    pjBiayaKpr: emptyAsUndefined(z.coerce.number().optional()),
+    pjBiayaAsuransi: emptyAsUndefined(z.coerce.number().optional()),
+    pjDiskonAngsuran: emptyAsUndefined(z.coerce.number().optional()),
+    pjBiayaBbn: emptyAsUndefined(z.coerce.number().optional()),
+    pjBiayaAjb: emptyAsUndefined(z.coerce.number().optional()),
+    pjBiayaAppraisal: emptyAsUndefined(z.coerce.number().optional()),
+    pjBphtb: emptyAsUndefined(z.coerce.number().optional()),
+    pjLainLain: emptyAsUndefined(z.coerce.number().optional()),
+    pjTotalSubsidi: emptyAsUndefined(z.coerce.number().optional()),
+    pjNilaiPenyerahan: emptyAsUndefined(z.coerce.number().optional()),
+    pjPpn: emptyAsUndefined(z.coerce.number().optional()),
+    pjBphtbPajak: emptyAsUndefined(z.coerce.number().optional()),
+    pjPph: emptyAsUndefined(z.coerce.number().optional()),
+    pjTotalBphtbPph: emptyAsUndefined(z.coerce.number().optional()),
+
+    // AJB
+    ajbNjopTanahPerMeter: emptyAsUndefined(z.coerce.number().optional()),
+    ajbNjopTanah: emptyAsUndefined(z.coerce.number().optional()),
+    ajbNjopBangunanPerMeter: emptyAsUndefined(z.coerce.number().optional()),
+    ajbNjopBangunan: emptyAsUndefined(z.coerce.number().optional()),
+    ajbNjopTotal: emptyAsUndefined(z.coerce.number().optional()),
+    ajbPpn: emptyAsUndefined(z.coerce.number().optional()),
+    ajbBphtb: emptyAsUndefined(z.coerce.number().optional()),
+    ajbPph: emptyAsUndefined(z.coerce.number().optional()),
+    ajbTotalBphtbPph: emptyAsUndefined(z.coerce.number().optional()),
+    ajbSelisihPajakPbb: emptyAsUndefined(z.coerce.number().optional()),
+    ajbUping: emptyAsUndefined(z.coerce.number().optional()),
+  }),
+};
 </file>
 
 <file path="src/validations/kavlingSchema.ts">
@@ -7470,6 +7580,139 @@ export class CancelPenjualanUseCase {
 
       return updatedPenjualan;
     });
+  }
+}
+</file>
+
+<file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
+import { StatusCodes } from "http-status-codes";
+import { AppError } from "../../../domain/errors/AppError.js";
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+
+export class VerifyDocumentUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(documentNumber: string) {
+    if (!documentNumber) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
+    }
+
+    if (documentNumber.startsWith("INV-")) {
+      return await this.handleTagihan(documentNumber);
+    }
+
+    if (documentNumber.startsWith("TRX-")) {
+      const penjualan = await this.db.penjualan.findUnique({
+        where: { noTransaksi: documentNumber },
+        include: {
+          customer: { select: { nama: true, noHp: true, alamatKtp: true } },
+          kavling: {
+            include: {
+              perumahan: { select: { nama: true, logo: true } },
+              rekeningTujuan: true,
+            },
+          },
+        },
+      });
+
+      if (!penjualan) throw new NotFoundError("Dokumen tidak ditemukan");
+
+      return {
+        type: "SPR",
+        data: {
+          noDokumen: penjualan.noTransaksi,
+          tanggalTransaksi: penjualan.tanggal,
+          status: penjualan.status,
+          hargaJual: Number(penjualan.hargaJual),
+          dp: Number(penjualan.dp ?? 0),
+          bookingFee: Number(penjualan.bookingFee ?? 0),
+          caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
+          bank: penjualan.bank ?? "",
+          customer: {
+            nama: penjualan.customer.nama,
+            noHp: penjualan.customer.noHp,
+            alamat: penjualan.customer.alamatKtp,
+          },
+          kavling: {
+            perumahan: penjualan.kavling.perumahan.nama,
+            logoPerumahan: penjualan.kavling.perumahan.logo,
+            blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
+            tipe: penjualan.kavling.namaTipe,
+            rekeningTujuan: penjualan.kavling.rekeningTujuan,
+          },
+        },
+      };
+    }
+
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Format nomor dokumen tidak dikenali",
+    );
+  }
+
+  private async handleTagihan(noTagihan: string) {
+    const tagihan = await this.db.tagihan.findUnique({
+      where: { noTagihan },
+      include: {
+        customer: { select: { nama: true, noHp: true, alamatKtp: true } },
+        penjualan: {
+          include: {
+            kavling: {
+              include: {
+                perumahan: { select: { nama: true, logo: true } },
+                rekeningTujuan: {
+                  select: { namaBank: true, noRekening: true, atasNama: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tagihan) throw new NotFoundError("Data tagihan tidak ditemukan");
+
+    const totalTerbayarAgg = await this.db.tagihan.aggregate({
+      where: { penjualanId: tagihan.penjualanId, status: "LUNAS" },
+      _sum: { nominal: true },
+    });
+
+    const totalTerbayar = Number(totalTerbayarAgg._sum.nominal ?? 0);
+    const hargaJual = Number(tagihan.penjualan.hargaJual);
+    const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
+    const documentType = tagihan.status === "LUNAS" ? "KWITANSI" : "INVOICE";
+
+    return {
+      type: documentType,
+      data: {
+        noDokumen: tagihan.noTagihan,
+        pembayaran: tagihan.pembayaran,
+        nominal: Number(tagihan.nominal),
+        jatuhTempo: tagihan.jatuhTempo,
+        status: tagihan.status,
+        tanggalDibuat: tagihan.createdAt,
+        customer: {
+          nama: tagihan.customer.nama,
+          noHp: tagihan.customer.noHp,
+          alamat: tagihan.customer.alamatKtp,
+        },
+        kavling: {
+          perumahan: tagihan.penjualan.kavling.perumahan.nama,
+          logoPerumahan: tagihan.penjualan.kavling.perumahan.logo,
+          blok: tagihan.penjualan.kavling.blok,
+          nomorUnit: tagihan.penjualan.kavling.nomorUnit,
+          tipe: tagihan.penjualan.kavling.namaTipe,
+          rekeningTujuan: tagihan.penjualan.kavling.rekeningTujuan,
+        },
+        transaksi: {
+          caraPembayaran: tagihan.penjualan.caraPembayaran.replace(/_/g, " "),
+          bank: tagihan.penjualan.bank ?? "",
+          hargaJual: hargaJual,
+          sisaBelumDibayar: sisaBelumDibayar,
+        },
+      },
+    };
   }
 }
 </file>
@@ -8266,253 +8509,6 @@ export const offsetPaginationQuerySchema = baseFilterSchema.extend({
 export type OffsetPaginationQuery = z.infer<typeof offsetPaginationQuerySchema>;
 </file>
 
-<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
-import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
-import type {
-  UpdateCustomerKavlingDTO,
-  CustomerKavlingFilterDTO,
-} from "../../../domain/dtos/CustomerKavlingDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
-import type {
-  CreateDetailKavlingPajakDTO,
-  UpdateDetailKavlingPajakDTO,
-} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
-
-export class GetCustomerKavlingsPaginatedUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(
-    limit: number,
-    cursor?: number,
-    filters?: CustomerKavlingFilterDTO,
-  ): Promise<CursorPaginatedData<any>> {
-    const where: Prisma.PenjualanWhereInput = {
-      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
-    };
-
-    if (filters?.search) {
-      where.customer = { nama: { contains: filters.search } };
-    }
-
-    const items = await this.db.penjualan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ id: "desc" }],
-      include: {
-        customer: { select: { nama: true } },
-        kavling: { include: { perumahan: true } },
-        detailKavlingPajak: { include: { notaris: true } },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    const mappedItems = items.map((p) => {
-      const { id: _, ...restDetailPajak } = p.detailKavlingPajak ?? {};
-
-      return {
-        id: p.id.toString(),
-        customerId: p.customerId,
-        namaCustomer: p.customer?.nama || "-",
-        perumahan: p.kavling.perumahan?.nama || "",
-
-        status: p.status,
-        statusKavling: p.kavling.status,
-        blok: p.kavling.blok,
-        unit: p.kavling.nomorUnit,
-        tipe: p.kavling.namaTipe,
-        luasBangunan: Number(p.kavling.luasBangunan),
-        luasTanah: Number(p.kavling.luasTanah),
-        harga: Number(p.kavling.hargaJual),
-        totalHargaJual: Number(p.hargaJual),
-        pembiayaan: p.caraPembayaran,
-
-        ...restDetailPajak,
-
-        notarisId: p.detailKavlingPajak?.notarisId ?? "",
-      };
-    });
-
-    return {
-      items: mappedItems,
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-}
-
-export class UpdateCustomerKavlingUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly kavlingRepo: IKavlingRepository,
-    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
-  ) {}
-
-  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
-    const penjualan = await this.db.penjualan.findUnique({
-      where: { id: penjualanId },
-      include: { kavling: true },
-    });
-
-    if (!penjualan) {
-      throw new NotFoundError("Data Penjualan tidak ditemukan");
-    }
-
-    const {
-      statusKavling,
-      namaTipe,
-      luasBangunan,
-      luasTanah,
-      hargaJualKavling,
-      ...detailPajakData
-    } = data;
-
-    if (
-      statusKavling !== undefined ||
-      namaTipe !== undefined ||
-      luasBangunan !== undefined ||
-      luasTanah !== undefined ||
-      hargaJualKavling !== undefined
-    ) {
-      await this.kavlingRepo.update(penjualan.kavlingId, {
-        status: statusKavling,
-        namaTipe: namaTipe,
-        luasBangunan: luasBangunan,
-        luasTanah: luasTanah,
-        hargaJual: hargaJualKavling,
-      });
-    }
-
-    const createDataPayload: Record<string, unknown> = { penjualanId };
-    const updateDataPayload: Record<string, unknown> = {};
-
-    if (luasBangunan !== undefined) {
-      createDataPayload.luasBangunan = luasBangunan.toString();
-      updateDataPayload.luasBangunan = luasBangunan.toString();
-    }
-
-    for (const [key, value] of Object.entries(detailPajakData)) {
-      if (value !== undefined) {
-        createDataPayload[key] = value;
-        updateDataPayload[key] = value;
-      }
-    }
-
-    const existingDetail =
-      await this.detailPajakRepo.findByPenjualanId(penjualanId);
-
-    if (existingDetail) {
-      await this.detailPajakRepo.update(
-        penjualanId,
-        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
-      );
-    } else {
-      await this.detailPajakRepo.create(
-        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
-      );
-    }
-
-    return {
-      success: true,
-      message: "Data Kavling Customer berhasil diperbarui",
-    };
-  }
-}
-</file>
-
-<file path="src/domain/repositories/IPenjualanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../dtos/PenjualanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-
-export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: true;
-    kavling: {
-      include: { perumahan: true };
-    };
-    rekeningTujuan: true;
-    tagihan: true;
-    agent: true;
-  };
-}>;
-
-export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: { select: { id: true; nama: true } };
-    kavling: {
-      select: {
-        id: true;
-        blok: true;
-        nomorUnit: true;
-        perumahan: { select: { nama: true } };
-      };
-    };
-  };
-}>;
-
-export interface PenjualanPaginatedItem {
-  id: string;
-  tanggal: string;
-  nama: string;
-  alamat: string;
-  noTelepon: string;
-  noIdentitas: string;
-  perumahan: string;
-  blok: string;
-  alasanBatal: string | null;
-  nomorUnit: string;
-  tipe: string;
-  luasBangunan: number;
-  luasTanah: number;
-  hargaJual: number;
-  dp: number;
-  diskonPenjualan: number;
-  hargaPromosi: number;
-  bank: string;
-  caraPembayaran: string;
-  nilaiPengajuanKpr: number;
-  bookingFee: number;
-  status: string;
-  agent: string;
-  fileBuktiBooking: string;
-  fileBuktiDp: string;
-  fileSpr: string | null;
-  ttdData?: any;
-  rekeningTujuanId?: number | null;
-}
-
-export interface IPenjualanRepository {
-  createWithTransaction(
-    data: CreatePenjualanDTO,
-  ): Promise<PenjualanWithRelations>;
-  findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
-  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
-  update(
-    id: number,
-    data: Partial<Prisma.PenjualanUpdateInput>,
-  ): Promise<PenjualanWithCompleteRelations>;
-}
-</file>
-
 <file path="src/presentation/controllers/penjualanController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -8742,420 +8738,258 @@ export const createPenjualanRoutes = (
 };
 </file>
 
-<file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
-import PDFDocument from "pdfkit";
+<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
 import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
+import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
+import type {
+  UpdateCustomerKavlingDTO,
+  CustomerKavlingFilterDTO,
+} from "../../../domain/dtos/CustomerKavlingDTO.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import QRCode from "qrcode";
-export class GenerateSprPdfUseCase {
-  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
+import type { CursorPaginatedData } from "../../../types/response.js";
+import type {
+  CreateDetailKavlingPajakDTO,
+  UpdateDetailKavlingPajakDTO,
+} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
 
-  async execute(penjualanId: number): Promise<Buffer> {
-    const penjualan = await this.penjualanRepo.findById(penjualanId);
+export class GetCustomerKavlingsPaginatedUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerKavlingFilterDTO,
+  ): Promise<CursorPaginatedData<any>> {
+    const where: Prisma.PenjualanWhereInput = {
+      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
+    };
+
+    if (filters?.search) {
+      where.customer = { nama: { contains: filters.search } };
+    }
+
+    const items = await this.db.penjualan.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ id: "desc" }],
+      include: {
+        customer: { select: { nama: true } },
+        kavling: { include: { perumahan: true } },
+        detailKavlingPajak: { include: { notaris: true } },
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const mappedItems = items.map((p) => {
+      const { id: _, ...restDetailPajak } = p.detailKavlingPajak ?? {};
+
+      return {
+        id: p.id.toString(),
+        customerId: p.customerId,
+        namaCustomer: p.customer?.nama || "-",
+        perumahan: p.kavling.perumahan?.nama || "",
+
+        status: p.status,
+        statusKavling: p.kavling.status,
+        blok: p.kavling.blok,
+        unit: p.kavling.nomorUnit,
+        tipe: p.kavling.namaTipe,
+        luasBangunan: Number(p.kavling.luasBangunan),
+        luasTanah: Number(p.kavling.luasTanah),
+        harga: Number(p.kavling.hargaJual),
+        totalHargaJual: Number(p.hargaJual),
+        pembiayaan: p.caraPembayaran,
+
+        ...restDetailPajak,
+
+        notarisId: p.detailKavlingPajak?.notarisId ?? "",
+      };
+    });
+
+    return {
+      items: mappedItems,
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+
+export class UpdateCustomerKavlingUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly kavlingRepo: IKavlingRepository,
+    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
+  ) {}
+
+  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { id: penjualanId },
+      include: { kavling: true },
+    });
 
     if (!penjualan) {
       throw new NotFoundError("Data Penjualan tidak ditemukan");
     }
 
-    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
+    const {
+      statusKavling,
+      namaTipe,
+      luasBangunan,
+      luasTanah,
+      hargaJualKavling,
+      rekeningTujuanId,
+      ...detailPajakData
+    } = data;
 
-    // --- 1. PRE-FETCH DATA TANDA TANGAN (ASINKRON) ---
-    const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
-    const ttdData = penjualan.ttdData as Record<
-      string,
-      { nama: string; tanggal: string; url: string }
-    > | null;
-    const sigBuffers: Record<string, Buffer> = {};
-
-    const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
-    let qrCodeBuffer: Buffer | null = null;
-
-    try {
-      const qrDataUri = await QRCode.toDataURL(verifyUrl, {
-        margin: 1,
-        width: 80,
+    if (
+      statusKavling !== undefined ||
+      namaTipe !== undefined ||
+      luasBangunan !== undefined ||
+      luasTanah !== undefined ||
+      hargaJualKavling !== undefined ||
+      rekeningTujuanId !== undefined
+    ) {
+      await this.kavlingRepo.update(penjualan.kavlingId, {
+        status: statusKavling,
+        namaTipe: namaTipe,
+        luasBangunan: luasBangunan,
+        luasTanah: luasTanah,
+        hargaJual: hargaJualKavling,
+        rekeningTujuanId: rekeningTujuanId ?? undefined,
       });
-
-      const base64Data = qrDataUri.split(",")[1];
-
-      if (base64Data) {
-        qrCodeBuffer = Buffer.from(base64Data, "base64");
-      }
-    } catch (err) {
-      console.error("Gagal generate QR Code", err);
     }
 
-    if (ttdData) {
-      await Promise.all(
-        sigData.map(async (role) => {
-          if (ttdData[role]?.url) {
-            try {
-              const response = await fetch(ttdData[role].url);
-              const arrayBuffer = await response.arrayBuffer();
-              sigBuffers[role] = Buffer.from(arrayBuffer);
-            } catch (e) {
-              console.error(`Gagal download TTD ${role} dari Cloudinary`, e);
-            }
-          }
-        }),
+    const createDataPayload: Record<string, unknown> = { penjualanId };
+    const updateDataPayload: Record<string, unknown> = {};
+
+    if (luasBangunan !== undefined) {
+      createDataPayload.luasBangunan = luasBangunan.toString();
+      updateDataPayload.luasBangunan = luasBangunan.toString();
+    }
+
+    for (const [key, value] of Object.entries(detailPajakData)) {
+      if (value !== undefined) {
+        createDataPayload[key] = value;
+        updateDataPayload[key] = value;
+      }
+    }
+
+    const existingDetail =
+      await this.detailPajakRepo.findByPenjualanId(penjualanId);
+
+    if (existingDetail) {
+      await this.detailPajakRepo.update(
+        penjualanId,
+        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
+      );
+    } else {
+      await this.detailPajakRepo.create(
+        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
       );
     }
 
-    // --- 2. PEMBUATAN DOKUMEN PDF (SINKRON) ---
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({ size: "A4", margin: 50 });
-        const buffers: Buffer[] = [];
-
-        doc.on("data", (buffer) => buffers.push(buffer));
-        doc.on("end", () => resolve(Buffer.concat(buffers)));
-
-        let y = 40;
-        const startX = 50;
-        const contentWidth = 495;
-        const pageBottomLimit = 780;
-
-        const checkY = (neededHeight: number) => {
-          if (y + neededHeight > pageBottomLimit) {
-            doc.addPage();
-            y = 50;
-          }
-        };
-
-        // --- HEADER ---
-        checkY(130);
-        doc
-          .fontSize(22)
-          .font("Helvetica-Bold")
-          .text(kavling.perumahan.nama.toUpperCase(), startX, y);
-        doc.fontSize(16).text("BUMANTARA", startX, y + 24);
-
-        y += 70;
-
-        doc.fontSize(14).text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
-          width: contentWidth,
-          align: "center",
-          underline: true,
-        });
-        y += 30;
-
-        doc
-          .fontSize(10)
-          .font("Helvetica")
-          .text("Yang bertanda tangan di bawah ini :", startX, y);
-        y += 20;
-
-        const drawField = (label: string, value: string, extraMargin = 8) => {
-          const labelWidth = 130;
-          const textHeight =
-            doc.heightOfString(value, {
-              width: contentWidth - labelWidth - 10,
-            }) || 12;
-          checkY(textHeight + extraMargin);
-
-          doc.font("Helvetica").text(label, startX, y);
-          doc.text(":", startX + labelWidth, y);
-          doc.font("Helvetica-Bold").text(value, startX + labelWidth + 10, y, {
-            width: contentWidth - labelWidth - 10,
-            lineBreak: true,
-          });
-          y += textHeight + extraMargin;
-        };
-
-        // --- CUSTOMER INFO ---
-        drawField("Nama", customer.nama);
-        drawField("Alamat", customer.alamatKtp);
-        drawField(
-          "No. Telepon / HP",
-          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
-        );
-        drawField("No. Identitas", customer.nikKtp);
-        drawField("Perusahaan", customer.perusahaan ?? "-");
-        drawField("Alamat", customer.alamatKtp ?? "-", 15);
-
-        checkY(20);
-        doc
-          .font("Helvetica")
-          .text(
-            "Telah menyetujui untuk memesan / membeli unit rumah dan atau kavling sebagai berikut:",
-            startX,
-            y,
-          );
-        y += 20;
-
-        const formatRp = (num: number | Prisma.Decimal) => {
-          const val =
-            typeof num === "object" && "toNumber" in num
-              ? num.toNumber()
-              : Number(num);
-          return `Rp. ${val.toLocaleString("id-ID")}`;
-        };
-
-        // --- UNIT INFO ---
-        drawField("Perumahan", kavling.perumahan.nama);
-        drawField(
-          "Blok/Type",
-          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
-        );
-        drawField("Harga Jual", formatRp(penjualan.hargaJual));
-
-        if (
-          penjualan.diskonPenjualan &&
-          Number(penjualan.diskonPenjualan) > 0
-        ) {
-          drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
-        }
-
-        drawField(
-          "Cara Pembayaran",
-          penjualan.caraPembayaran.replace(/_/g, " "),
-        );
-
-        if (penjualan.bank) {
-          const bankLabel =
-            penjualan.caraPembayaran === "KPR" ? "Bank KPR" : "Bank";
-          drawField(bankLabel, penjualan.bank);
-        }
-        if (
-          penjualan.nilaiPengajuanKpr &&
-          Number(penjualan.nilaiPengajuanKpr) > 0
-        ) {
-          const labelPengajuan =
-            penjualan.caraPembayaran === "KPR"
-              ? "Nilai Pengajuan KPR"
-              : "Nilai Pengajuan (Plafon)";
-
-          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
-        }
-
-        const colNo = startX;
-        const colKet = startX + 35;
-        const colTempo = startX + 230;
-        const colNilai = startX + 360;
-        const rowHeight = 20;
-
-        checkY(rowHeight);
-        doc
-          .rect(startX, y, contentWidth, rowHeight)
-          .fillAndStroke("#f0f0f0", "#000");
-        doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
-        doc.text("NO", colNo + 5, y + 6);
-        doc.text("KETERANGAN", colKet + 5, y + 6);
-        doc.text("JATUH TEMPO", colTempo + 5, y + 6);
-        doc.text("NILAI", colNilai + 5, y + 6);
-        y += rowHeight;
-
-        let totalNilai = 0;
-        doc.font("Helvetica").fontSize(9);
-
-        // 1. Filter tagihan: Hanya ambil Booking Fee dan DP
-        const tagihanAwal =
-          tagihan?.filter((t) => {
-            const namaPembayaran = t.pembayaran.toLowerCase();
-            return (
-              namaPembayaran.includes("booking") ||
-              namaPembayaran.includes("dp") ||
-              namaPembayaran.includes("down")
-            );
-          }) || [];
-
-        // 2. Render hanya tagihan yang sudah difilter
-        if (tagihanAwal.length > 0) {
-          tagihanAwal.forEach((p, idx) => {
-            checkY(rowHeight);
-
-            const dateStr = p.jatuhTempo
-              .toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
-              .replace(/\//g, "-");
-
-            doc.rect(startX, y, contentWidth, rowHeight).stroke();
-            doc.text(`${idx + 1}.`, colNo + 5, y + 6);
-            doc.text(p.pembayaran, colKet + 5, y + 6);
-            doc.text(dateStr, colTempo + 5, y + 6);
-            doc.text(formatRp(p.nominal), colNilai + 5, y + 6);
-
-            doc
-              .moveTo(colKet, y)
-              .lineTo(colKet, y + rowHeight)
-              .stroke();
-            doc
-              .moveTo(colTempo, y)
-              .lineTo(colTempo, y + rowHeight)
-              .stroke();
-            doc
-              .moveTo(colNilai, y)
-              .lineTo(colNilai, y + rowHeight)
-              .stroke();
-
-            totalNilai +=
-              typeof p.nominal === "object" && "toNumber" in p.nominal
-                ? p.nominal.toNumber()
-                : Number(p.nominal);
-
-            y += rowHeight;
-          });
-        }
-
-        // Row Total
-        checkY(rowHeight);
-        doc.rect(startX, y, contentWidth, rowHeight).stroke();
-        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 6);
-        doc.text(formatRp(totalNilai), colNilai + 5, y + 6);
-        doc
-          .moveTo(colKet, y)
-          .lineTo(colKet, y + rowHeight)
-          .stroke();
-        doc
-          .moveTo(colNilai, y)
-          .lineTo(colNilai, y + rowHeight)
-          .stroke();
-        y += 35;
-
-        // --- SIGNATURE AREA ---
-        checkY(130);
-        const today = new Date()
-          .toLocaleDateString("id-ID", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .replace(/\//g, "-");
-        doc
-          .font("Helvetica")
-          .fontSize(10)
-          .text(`Dibuat Tanggal: ${today}`, startX, y, {
-            width: contentWidth,
-            align: "right",
-          });
-        y += 20;
-
-        const w = contentWidth / 4;
-
-        // Render Tanda Tangan & Nama
-        sigData.forEach((title, i) => {
-          const currentX = startX + w * i;
-          // Cetak Title (Pemesan, Marketing, dll)
-          doc
-            .font("Helvetica")
-            .fontSize(10)
-            .text(title, currentX, y, { width: w, align: "center" });
-
-          if (ttdData?.[title]) {
-            const ttd = ttdData[title];
-
-            // Cetak gambar TTD
-            if (sigBuffers[title]) {
-              try {
-                // PERBAIKAN: y + 15 agar gambar turun dan tidak menabrak teks judul
-                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 15, {
-                  width: 50,
-                  height: 35,
-                });
-              } catch (imgErr) {
-                console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
-              }
-            }
-
-            // Cetak Tanggal TTD
-            if (ttd.tanggal) {
-              const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              });
-              // PERBAIKAN: y + 52 agar berada pas di bawah gambar tanda tangan
-              doc
-                .fontSize(7)
-                .font("Helvetica")
-                .text(tglStr, currentX, y + 52, { width: w, align: "center" });
-            }
-
-            // Cetak Nama (di bawah garis)
-            // PERBAIKAN: y + 70 agar berada tepat di bawah garis hitam
-            doc
-              .fontSize(8)
-              .font("Helvetica-Bold")
-              .text(ttd.nama, currentX, y + 70, { width: w, align: "center" });
-            doc.fontSize(10).font("Helvetica"); // Reset
-          }
-        });
-
-        // PERBAIKAN: Jarak garis diturunkan ke y + 65 agar tidak menabrak tanggal
-        y += 65;
-        const lineW = w - 20;
-
-        // Render Garis TTD
-        sigData.forEach((_, i) => {
-          const cx = startX + w * i + w / 2;
-          doc
-            .moveTo(cx - lineW / 2, y)
-            .lineTo(cx + lineW / 2, y)
-            .stroke();
-        });
-
-        y += 30;
-
-        // --- TERMS & BANK INFO ---
-        checkY(100);
-        doc.fontSize(8).font("Helvetica");
-        const termLines = [
-          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
-          "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
-          "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
-        ];
-
-        termLines.forEach((text) => {
-          doc.text(text, startX, y, { width: contentWidth, align: "justify" });
-          y += 12;
-        });
-
-        y += 5;
-
-        if (rekeningTujuan) {
-          // Render kotak Bank
-          doc.rect(startX, y, 280, 45).stroke();
-          doc
-            .font("Helvetica-Bold")
-            .text(
-              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
-              startX + 5,
-              y + 10,
-            );
-          doc
-            .font("Helvetica")
-            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
-        }
-
-        // [TAMBAHKAN KODE INI] Render QR Code di sebelah kanan kotak Bank
-        if (qrCodeBuffer) {
-          const qrX = startX + 350; // Posisi X agak ke kanan
-          const qrY = y - 10; // Sesuaikan sedikit agar sejajar
-
-          // Gambar kotak pembungkus QR
-          doc.rect(qrX - 5, qrY - 5, 80, 95).stroke("#e2e8f0");
-
-          // Masukkan gambar QR
-          doc.image(qrCodeBuffer, qrX, qrY, { width: 70, height: 70 });
-
-          // Tambahkan teks validasi di bawah QR
-          doc.fontSize(6).font("Helvetica-Bold").fillColor("#64748b");
-          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 75, {
-            width: 80,
-            align: "center",
-          });
-        }
-
-        doc.end();
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
+    return {
+      success: true,
+      message: "Data Kavling Customer berhasil diperbarui",
+    };
   }
+}
+</file>
+
+<file path="src/domain/repositories/IPenjualanRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../dtos/PenjualanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    kavling: {
+      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
+    };
+    rekeningTujuan: true;
+    tagihan: true;
+    agent: true;
+  };
+}>;
+
+export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: { select: { id: true; nama: true } };
+    kavling: {
+      select: {
+        id: true;
+        blok: true;
+        nomorUnit: true;
+        perumahan: { select: { nama: true } };
+      };
+    };
+  };
+}>;
+
+export interface PenjualanPaginatedItem {
+  id: string;
+  tanggal: string;
+  nama: string;
+  alamat: string;
+  noTelepon: string;
+  noIdentitas: string;
+  perumahan: string;
+  blok: string;
+  alasanBatal: string | null;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  hargaJual: number;
+  dp: number;
+  diskonPenjualan: number;
+  hargaPromosi: number;
+  bank: string;
+  caraPembayaran: string;
+  nilaiPengajuanKpr: number;
+  bookingFee: number;
+  status: string;
+  agent: string;
+  fileBuktiBooking: string;
+  fileBuktiDp: string;
+  fileSpr: string | null;
+  ttdData?: any;
+  rekeningTujuanId?: number | null;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
+}
+
+export interface IPenjualanRepository {
+  createWithTransaction(
+    data: CreatePenjualanDTO,
+  ): Promise<PenjualanWithRelations>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PenjualanFilterDTO,
+  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
+  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
+  update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations>;
 }
 </file>
 
@@ -9570,6 +9404,443 @@ model AuditLog {
 }
 </file>
 
+<file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
+import PDFDocument from "pdfkit";
+import type { Prisma } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import QRCode from "qrcode";
+export class GenerateSprPdfUseCase {
+  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
+
+  async execute(penjualanId: number): Promise<Buffer> {
+    const penjualan = await this.penjualanRepo.findById(penjualanId);
+
+    if (!penjualan) {
+      throw new NotFoundError("Data Penjualan tidak ditemukan");
+    }
+
+    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
+
+    // --- 1. PRE-FETCH DATA TANDA TANGAN (ASINKRON) ---
+    const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
+    const ttdData = penjualan.ttdData as Record<
+      string,
+      { nama: string; tanggal: string; url: string }
+    > | null;
+    const sigBuffers: Record<string, Buffer> = {};
+
+    const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
+    let qrCodeBuffer: Buffer | null = null;
+    let logoBuffer: Buffer | null = null; // Tambahkan variabel ini
+
+    // Ambil logo dari Cloudinary
+    if (kavling.perumahan.logo) {
+      try {
+        const response = await fetch(kavling.perumahan.logo);
+        const arrayBuffer = await response.arrayBuffer();
+        logoBuffer = Buffer.from(arrayBuffer);
+      } catch (err) {
+        console.error("Gagal download logo perumahan", err);
+      }
+    }
+
+    try {
+      const qrDataUri = await QRCode.toDataURL(verifyUrl, {
+        margin: 1,
+        width: 80,
+      });
+
+      const base64Data = qrDataUri.split(",")[1];
+
+      if (base64Data) {
+        qrCodeBuffer = Buffer.from(base64Data, "base64");
+      }
+    } catch (err) {
+      console.error("Gagal generate QR Code", err);
+    }
+
+    if (ttdData) {
+      await Promise.all(
+        sigData.map(async (role) => {
+          if (ttdData[role]?.url) {
+            try {
+              const response = await fetch(ttdData[role].url);
+              const arrayBuffer = await response.arrayBuffer();
+              sigBuffers[role] = Buffer.from(arrayBuffer);
+            } catch (e) {
+              console.error(`Gagal download TTD ${role} dari Cloudinary`, e);
+            }
+          }
+        }),
+      );
+    }
+
+    // --- 2. PEMBUATAN DOKUMEN PDF (SINKRON) ---
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: "A4", margin: 50 });
+        const buffers: Buffer[] = [];
+
+        doc.on("data", (buffer) => buffers.push(buffer));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+        let y = 40;
+        const startX = 50;
+        const contentWidth = 495;
+        const pageBottomLimit = 780;
+
+        const checkY = (neededHeight: number) => {
+          if (y + neededHeight > pageBottomLimit) {
+            doc.addPage();
+            y = 50;
+          }
+        };
+
+        // --- HEADER ---
+        checkY(150);
+        doc
+          .fontSize(24)
+          .font("Helvetica-Bold")
+          .fillColor("#0f172a")
+          .text(kavling.perumahan.nama.toUpperCase(), startX, y);
+
+        if (logoBuffer) {
+          doc.image(logoBuffer, startX, y + 28, { height: 60 });
+        } else {
+          doc.fontSize(16).text("BUMANTARA", startX, y + 28);
+        }
+
+        y += 105;
+
+        doc
+          .fontSize(14)
+          .fillColor("#000000")
+          .text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
+            width: contentWidth,
+            align: "center",
+            underline: true,
+          });
+        y += 35;
+
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text("Yang bertanda tangan di bawah ini :", startX, y);
+        y += 20;
+
+        const drawField = (label: string, value: string, extraMargin = 8) => {
+          const labelWidth = 130;
+          const textHeight =
+            doc.heightOfString(value, {
+              width: contentWidth - labelWidth - 10,
+            }) || 12;
+          checkY(textHeight + extraMargin);
+
+          doc.font("Helvetica").text(label, startX, y);
+          doc.text(":", startX + labelWidth, y);
+          doc.font("Helvetica-Bold").text(value, startX + labelWidth + 10, y, {
+            width: contentWidth - labelWidth - 10,
+            lineBreak: true,
+          });
+          y += textHeight + extraMargin;
+        };
+
+        // --- CUSTOMER INFO ---
+        drawField("Nama", customer.nama);
+        drawField("Alamat", customer.alamatKtp);
+        drawField(
+          "No. Telepon / HP",
+          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
+        );
+        drawField("No. Identitas", customer.nikKtp);
+        drawField("Perusahaan", customer.perusahaan ?? "-");
+        drawField("Alamat", customer.alamatKtp ?? "-", 15);
+
+        checkY(20);
+        doc
+          .font("Helvetica")
+          .text(
+            "Telah menyetujui untuk memesan / membeli unit rumah dan atau kavling sebagai berikut:",
+            startX,
+            y,
+          );
+        y += 20;
+
+        const formatRp = (num: number | Prisma.Decimal) => {
+          const val =
+            typeof num === "object" && "toNumber" in num
+              ? num.toNumber()
+              : Number(num);
+          return `Rp. ${val.toLocaleString("id-ID")}`;
+        };
+
+        // --- UNIT INFO ---
+        drawField("Perumahan", kavling.perumahan.nama);
+        drawField(
+          "Blok/Type",
+          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
+        );
+        drawField("Harga Jual", formatRp(penjualan.hargaJual));
+
+        if (
+          penjualan.diskonPenjualan &&
+          Number(penjualan.diskonPenjualan) > 0
+        ) {
+          drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
+        }
+
+        drawField(
+          "Cara Pembayaran",
+          penjualan.caraPembayaran.replace(/_/g, " "),
+        );
+
+        if (penjualan.bank) {
+          const bankLabel =
+            penjualan.caraPembayaran === "KPR" ? "Bank KPR" : "Bank";
+          drawField(bankLabel, penjualan.bank);
+        }
+        if (
+          penjualan.nilaiPengajuanKpr &&
+          Number(penjualan.nilaiPengajuanKpr) > 0
+        ) {
+          const labelPengajuan =
+            penjualan.caraPembayaran === "KPR"
+              ? "Nilai Pengajuan KPR"
+              : "Nilai Pengajuan (Plafon)";
+
+          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
+        }
+
+        const colNo = startX;
+        const colKet = startX + 35;
+        const colTempo = startX + 230;
+        const colNilai = startX + 360;
+        const rowHeight = 20;
+
+        checkY(rowHeight);
+        doc
+          .rect(startX, y, contentWidth, rowHeight)
+          .fillAndStroke("#f0f0f0", "#000");
+        doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
+        doc.text("NO", colNo + 5, y + 6);
+        doc.text("KETERANGAN", colKet + 5, y + 6);
+        doc.text("JATUH TEMPO", colTempo + 5, y + 6);
+        doc.text("NILAI", colNilai + 5, y + 6);
+        y += rowHeight;
+
+        let totalNilai = 0;
+        doc.font("Helvetica").fontSize(9);
+
+        // 1. Filter tagihan: Hanya ambil Booking Fee dan DP
+        const tagihanAwal =
+          tagihan?.filter((t) => {
+            const namaPembayaran = t.pembayaran.toLowerCase();
+            return (
+              namaPembayaran.includes("booking") ||
+              namaPembayaran.includes("dp") ||
+              namaPembayaran.includes("down")
+            );
+          }) || [];
+
+        // 2. Render hanya tagihan yang sudah difilter
+        if (tagihanAwal.length > 0) {
+          tagihanAwal.forEach((p, idx) => {
+            checkY(rowHeight);
+
+            const dateStr = p.jatuhTempo
+              .toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+              .replace(/\//g, "-");
+
+            doc.rect(startX, y, contentWidth, rowHeight).stroke();
+            doc.text(`${idx + 1}.`, colNo + 5, y + 6);
+            doc.text(p.pembayaran, colKet + 5, y + 6);
+            doc.text(dateStr, colTempo + 5, y + 6);
+            doc.text(formatRp(p.nominal), colNilai + 5, y + 6);
+
+            doc
+              .moveTo(colKet, y)
+              .lineTo(colKet, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colTempo, y)
+              .lineTo(colTempo, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colNilai, y)
+              .lineTo(colNilai, y + rowHeight)
+              .stroke();
+
+            totalNilai +=
+              typeof p.nominal === "object" && "toNumber" in p.nominal
+                ? p.nominal.toNumber()
+                : Number(p.nominal);
+
+            y += rowHeight;
+          });
+        }
+
+        // Row Total
+        checkY(rowHeight);
+        doc.rect(startX, y, contentWidth, rowHeight).stroke();
+        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 6);
+        doc.text(formatRp(totalNilai), colNilai + 5, y + 6);
+        doc
+          .moveTo(colKet, y)
+          .lineTo(colKet, y + rowHeight)
+          .stroke();
+        doc
+          .moveTo(colNilai, y)
+          .lineTo(colNilai, y + rowHeight)
+          .stroke();
+        y += 35;
+
+        // --- SIGNATURE AREA ---
+        checkY(130);
+        const today = new Date()
+          .toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .replace(/\//g, "-");
+        doc
+          .font("Helvetica")
+          .fontSize(10)
+          .text(`Dibuat Tanggal: ${today}`, startX, y, {
+            width: contentWidth,
+            align: "right",
+          });
+        y += 20;
+
+        const w = contentWidth / 4;
+
+        // Render Tanda Tangan & Nama
+        sigData.forEach((title, i) => {
+          const currentX = startX + w * i;
+          // Cetak Title (Pemesan, Marketing, dll)
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .text(title, currentX, y, { width: w, align: "center" });
+
+          if (ttdData?.[title]) {
+            const ttd = ttdData[title];
+
+            // Cetak gambar TTD
+            if (sigBuffers[title]) {
+              try {
+                // PERBAIKAN: y + 15 agar gambar turun dan tidak menabrak teks judul
+                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 15, {
+                  width: 50,
+                  height: 35,
+                });
+              } catch (imgErr) {
+                console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
+              }
+            }
+
+            // Cetak Tanggal TTD
+            if (ttd.tanggal) {
+              const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+              // PERBAIKAN: y + 52 agar berada pas di bawah gambar tanda tangan
+              doc
+                .fontSize(7)
+                .font("Helvetica")
+                .text(tglStr, currentX, y + 52, { width: w, align: "center" });
+            }
+
+            // Cetak Nama (di bawah garis)
+            // PERBAIKAN: y + 70 agar berada tepat di bawah garis hitam
+            doc
+              .fontSize(8)
+              .font("Helvetica-Bold")
+              .text(ttd.nama, currentX, y + 70, { width: w, align: "center" });
+            doc.fontSize(10).font("Helvetica"); // Reset
+          }
+        });
+
+        // PERBAIKAN: Jarak garis diturunkan ke y + 65 agar tidak menabrak tanggal
+        y += 65;
+        const lineW = w - 20;
+
+        // Render Garis TTD
+        sigData.forEach((_, i) => {
+          const cx = startX + w * i + w / 2;
+          doc
+            .moveTo(cx - lineW / 2, y)
+            .lineTo(cx + lineW / 2, y)
+            .stroke();
+        });
+
+        y += 30;
+
+        // --- TERMS & BANK INFO ---
+        checkY(100);
+        doc.fontSize(8).font("Helvetica");
+        const termLines = [
+          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
+          "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
+          "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
+        ];
+
+        termLines.forEach((text) => {
+          doc.text(text, startX, y, { width: contentWidth, align: "justify" });
+          y += 12;
+        });
+
+        y += 5;
+
+        if (rekeningTujuan) {
+          doc.rect(startX, y, 280, 45).stroke();
+          doc
+            .font("Helvetica-Bold")
+            .text(
+              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
+              startX + 5,
+              y + 10,
+            );
+          doc
+            .font("Helvetica")
+            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
+        }
+
+        // [TAMBAHKAN KODE INI] Render QR Code di sebelah kanan kotak Bank
+        if (qrCodeBuffer) {
+          const qrX = startX + 350; // Posisi X agak ke kanan
+          const qrY = y - 10; // Sesuaikan sedikit agar sejajar
+
+          // Gambar kotak pembungkus QR
+          doc.rect(qrX - 5, qrY - 5, 80, 95).stroke("#e2e8f0");
+
+          // Masukkan gambar QR
+          doc.image(qrCodeBuffer, qrX, qrY, { width: 70, height: 70 });
+
+          // Tambahkan teks validasi di bawah QR
+          doc.fontSize(6).font("Helvetica-Bold").fillColor("#64748b");
+          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 75, {
+            width: 80,
+            align: "center",
+          });
+        }
+
+        doc.end();
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+}
+</file>
+
 <file path="src/validations/penjualanSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -9697,9 +9968,8 @@ export class PenjualanRepository implements IPenjualanRepository {
       data,
       include: {
         customer: true,
-        kavling: {
-          include: { perumahan: true },
-        },
+        kavling: { include: { perumahan: true, rekeningTujuan: true } },
+
         rekeningTujuan: true,
         tagihan: true,
         agent: true,
@@ -9867,7 +10137,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       if (data.bookingFee && data.bookingFee > 0) {
         await tx.tagihan.create({
           data: {
-            noTagihan: `INV-BF-${noTransaksi}`,
+            noTagihan: `${noTransaksi}`,
             customerId: customer.id,
             penjualanId: penjualan.id,
             pembayaran: "Booking Fee",
@@ -9920,7 +10190,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       orderBy: [{ createdAt: "desc" }],
       include: {
         customer: true,
-        kavling: { include: { perumahan: true } },
+        kavling: { include: { perumahan: true, rekeningTujuan: true } },
         agent: true,
         tagihan: true,
       },
@@ -9995,6 +10265,13 @@ export class PenjualanRepository implements IPenjualanRepository {
         ttdData: item.ttdData ?? null,
         progressCicilan,
         rekeningTujuanId: item.kavling.rekeningTujuanId ?? null,
+        rekeningTujuan: item.kavling.rekeningTujuan
+          ? {
+              namaBank: item.kavling.rekeningTujuan.namaBank,
+              noRekening: item.kavling.rekeningTujuan.noRekening,
+              atasNama: item.kavling.rekeningTujuan.atasNama,
+            }
+          : null,
       };
     });
 
@@ -10011,7 +10288,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       where: { id },
       include: {
         customer: true,
-        kavling: { include: { perumahan: true } },
+        kavling: { include: { perumahan: true, rekeningTujuan: true } },
         rekeningTujuan: true,
         tagihan: { orderBy: { jatuhTempo: "asc" } },
         agent: true,
