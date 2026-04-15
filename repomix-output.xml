@@ -1,127 +1,5 @@
 kode backend:
 
-<file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
-import type { Prisma } from "@prisma/client";
-import { type PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
-export class UpdatePenjualanUseCase {
-  constructor(private readonly db: PrismaClient) {}
-  async execute(
-    noTransaksi: string,
-    data: Partial<CreatePenjualanDTO>,
-    userId?: number,
-  ) {
-    return await this.db.$transaction(async (tx) => {
-      const old = await tx.penjualan.findUnique({
-        where: { noTransaksi },
-        include: {
-          customer: true,
-          agent: true,
-          kavling: { include: { perumahan: true } },
-        },
-      });
-      if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
-      if (data.nama || data.noIdentitas || data.noTelepon || data.alamat) {
-        const updateCustomerData: Prisma.CustomerUpdateInput = {};
-        if (data.nama !== undefined) updateCustomerData.nama = data.nama;
-        if (data.noIdentitas !== undefined)
-          updateCustomerData.nikKtp = data.noIdentitas;
-        if (data.noTelepon !== undefined)
-          updateCustomerData.noHp = data.noTelepon;
-        if (data.alamat !== undefined)
-          updateCustomerData.alamatKtp = data.alamat;
-        if (data.perusahaan !== undefined)
-          updateCustomerData.perusahaan = data.perusahaan ?? null;
-        if (data.alamatKoresponden !== undefined)
-          updateCustomerData.alamatKoresponden = data.alamatKoresponden ?? null;
-        await tx.customer.update({
-          where: { id: old.customerId },
-          data: updateCustomerData,
-        });
-      }
-      if (data.agent && old.agentId) {
-        await tx.agent.update({
-          where: { id: old.agentId },
-          data: { nama: data.agent },
-        });
-      }
-      let formattedPayment = data.caraPembayaran as string | undefined;
-      if (formattedPayment) {
-        formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
-      }
-      const updateData: Prisma.PenjualanUpdateInput = {};
-      if (formattedPayment !== undefined)
-        updateData.caraPembayaran = formattedPayment as any;
-      if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
-      if (data.dp !== undefined) updateData.dp = data.dp ?? null;
-      if (data.diskonPenjualan !== undefined)
-        updateData.diskonPenjualan = data.diskonPenjualan ?? null;
-      if (data.hargaPromosi !== undefined)
-        updateData.hargaPromosi = data.hargaPromosi ?? null;
-      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
-      if (data.nilaiPengajuanKpr !== undefined)
-        updateData.nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? null;
-      if (
-        data.blok &&
-        data.nomorUnit &&
-        (data.blok !== old.kavling.blok ||
-          data.nomorUnit !== old.kavling.nomorUnit)
-      ) {
-        const newKavling = await tx.kavling.findFirst({
-          where: {
-            perumahan: { nama: data.perumahan ?? old.kavling.perumahan.nama },
-            blok: data.blok,
-            nomorUnit: data.nomorUnit,
-          },
-        });
-        if (newKavling && newKavling.id !== old.kavlingId) {
-          if (newKavling.status !== "AVAILABLE") {
-            throw new ConflictError(
-              `Kavling Blok ${data.blok} No ${data.nomorUnit} tidak tersedia (Status: ${newKavling.status})`,
-            );
-          }
-          await tx.kavling.update({
-            where: { id: old.kavlingId },
-            data: { status: "AVAILABLE" },
-          });
-          await tx.kavling.update({
-            where: { id: newKavling.id },
-            data: {
-              status: old.kavling.status,
-              namaTipe: data.tipe ?? newKavling.namaTipe,
-              luasBangunan: data.luasBangunan ?? newKavling.luasBangunan,
-              luasTanah: data.luasTanah ?? newKavling.luasTanah,
-              hargaJual: data.hargaJual ?? newKavling.hargaJual,
-            },
-          });
-          updateData.kavling = { connect: { id: newKavling.id } };
-        }
-      }
-      const updated = await tx.penjualan.update({
-        where: { noTransaksi },
-        data: updateData,
-      });
-      await tx.auditLog.create({
-        data: {
-          entityName: "Penjualan",
-          entityId: noTransaksi,
-          action: "UPDATE",
-          changes: {
-            before: old,
-            after: updated,
-            input_raw: data,
-          } as unknown as Prisma.InputJsonValue,
-          userId: userId ?? null,
-        },
-      });
-      return updated;
-    });
-  }
-}
-</file>
-
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
 import type {
@@ -881,6 +759,145 @@ export class SaveSignatureUseCase {
 }
 </file>
 
+<file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
+import type { Prisma } from "@prisma/client";
+import { type PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
+export class UpdatePenjualanUseCase {
+  constructor(private readonly db: PrismaClient) {}
+  async execute(
+    noTransaksi: string,
+    data: Partial<CreatePenjualanDTO>,
+    userId?: number,
+  ) {
+    return await this.db.$transaction(async (tx) => {
+      const old = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: {
+          customer: true,
+          agent: true,
+          kavling: { include: { perumahan: true } },
+        },
+      });
+      if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
+      if (
+        data.nama !== undefined ||
+        data.noIdentitas !== undefined ||
+        data.noTelepon !== undefined ||
+        data.alamat !== undefined ||
+        data.perusahaan !== undefined ||
+        data.alamatKoresponden !== undefined
+      ) {
+        if (data.noIdentitas && data.noIdentitas !== old.customer.nikKtp) {
+          const existingCustomer = await tx.customer.findUnique({
+            where: { nikKtp: data.noIdentitas },
+          });
+          if (existingCustomer && existingCustomer.id !== old.customerId) {
+            throw new ConflictError(
+              `Gagal update! NIK KTP ${data.noIdentitas} sudah terdaftar untuk customer lain.`,
+            );
+          }
+        }
+        const updateCustomerData: Prisma.CustomerUpdateInput = {};
+        if (data.nama !== undefined) updateCustomerData.nama = data.nama;
+        if (data.noIdentitas !== undefined)
+          updateCustomerData.nikKtp = data.noIdentitas;
+        if (data.noTelepon !== undefined)
+          updateCustomerData.noHp = data.noTelepon;
+        if (data.alamat !== undefined)
+          updateCustomerData.alamatKtp = data.alamat;
+        if (data.perusahaan !== undefined)
+          updateCustomerData.perusahaan = data.perusahaan ?? null;
+        if (data.alamatKoresponden !== undefined)
+          updateCustomerData.alamatKoresponden = data.alamatKoresponden ?? null;
+        await tx.customer.update({
+          where: { id: old.customerId },
+          data: updateCustomerData,
+        });
+      }
+      if (data.agent && old.agentId) {
+        await tx.agent.update({
+          where: { id: old.agentId },
+          data: { nama: data.agent },
+        });
+      }
+      let formattedPayment = data.caraPembayaran as string | undefined;
+      if (formattedPayment) {
+        formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
+      }
+      const updateData: Prisma.PenjualanUpdateInput = {};
+      if (formattedPayment !== undefined)
+        updateData.caraPembayaran = formattedPayment as any;
+      if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
+      if (data.dp !== undefined) updateData.dp = data.dp ?? null;
+      if (data.diskonPenjualan !== undefined)
+        updateData.diskonPenjualan = data.diskonPenjualan ?? null;
+      if (data.hargaPromosi !== undefined)
+        updateData.hargaPromosi = data.hargaPromosi ?? null;
+      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+      if (data.nilaiPengajuanKpr !== undefined)
+        updateData.nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? null;
+      if (
+        data.blok &&
+        data.nomorUnit &&
+        (data.blok !== old.kavling.blok ||
+          data.nomorUnit !== old.kavling.nomorUnit)
+      ) {
+        const newKavling = await tx.kavling.findFirst({
+          where: {
+            perumahanId: old.kavling.perumahanId,
+            blok: data.blok,
+            nomorUnit: data.nomorUnit,
+          },
+        });
+        if (newKavling && newKavling.id !== old.kavlingId) {
+          if (newKavling.status !== "AVAILABLE") {
+            throw new ConflictError(
+              `Kavling Blok ${data.blok} No ${data.nomorUnit} tidak tersedia (Status: ${newKavling.status})`,
+            );
+          }
+          await tx.kavling.update({
+            where: { id: old.kavlingId },
+            data: { status: "AVAILABLE" },
+          });
+          await tx.kavling.update({
+            where: { id: newKavling.id },
+            data: {
+              status: old.kavling.status,
+              namaTipe: data.tipe ?? newKavling.namaTipe,
+              luasBangunan: data.luasBangunan ?? newKavling.luasBangunan,
+              luasTanah: data.luasTanah ?? newKavling.luasTanah,
+              hargaJual: data.hargaJual ?? newKavling.hargaJual,
+            },
+          });
+          updateData.kavling = { connect: { id: newKavling.id } };
+        }
+      }
+      const updated = await tx.penjualan.update({
+        where: { noTransaksi },
+        data: updateData,
+      });
+      await tx.auditLog.create({
+        data: {
+          entityName: "Penjualan",
+          entityId: noTransaksi,
+          action: "UPDATE",
+          changes: {
+            before: old,
+            after: updated,
+            input_raw: data,
+          } as unknown as Prisma.InputJsonValue,
+          userId: userId ?? null,
+        },
+      });
+      return updated;
+    });
+  }
+}
+</file>
+
 <file path="src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -1170,146 +1187,6 @@ export class UpdateUserUseCase {
       email: updatedUser.email,
       role: updatedUser.role,
       createdAt: updatedUser.createdAt,
-    };
-  }
-}
-</file>
-
-<file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
-import { StatusCodes } from "http-status-codes";
-import { AppError } from "../../../domain/errors/AppError.js";
-import type { PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-
-export class VerifyDocumentUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(documentNumber: string) {
-    if (!documentNumber) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
-    }
-
-    // 1. JIKA DOKUMEN ADALAH TAGIHAN BIASA (INV-...)
-    if (documentNumber.startsWith("INV-")) {
-      return await this.handleTagihan(documentNumber);
-    }
-
-    // 2. JIKA DOKUMEN BERAWAL TRX- (Bisa SPR murni, atau Invoice Booking Fee/DP)
-    if (documentNumber.startsWith("TRX-")) {
-      // Cek apakah ini Invoice khusus (Booking Fee / DP) yang menggunakan No Transaksi sebagai referensi
-      // Kita cari di tabel tagihan yang noTagihan-nya mengandung No Transaksi ini
-      const tagihanKhusus = await this.db.tagihan.findFirst({
-        where: {
-          noTagihan: { contains: documentNumber },
-        },
-      });
-
-      // Jika ditemukan tagihan terkait dan ini bukan scan untuk SPR murni
-      // (Berdasarkan logic Anda, Invoice Booking Fee punya no: TRX-... / BMT / 2026)
-      // Kita asumsikan jika ada tagihan terkait, kita tampilkan mode Invoice
-      if (tagihanKhusus) {
-        return await this.handleTagihan(tagihanKhusus.noTagihan);
-      }
-
-      // Jika tidak ada tagihan terkait, tampilkan sebagai SPR Murni
-      const penjualan = await this.db.penjualan.findUnique({
-        where: { noTransaksi: documentNumber },
-        include: {
-          customer: { select: { nama: true, noHp: true, alamatKtp: true } },
-          kavling: {
-            include: { perumahan: { select: { nama: true } } },
-          },
-        },
-      });
-
-      if (!penjualan) throw new NotFoundError("Dokumen tidak ditemukan");
-
-      return {
-        type: "SPR",
-        data: {
-          noDokumen: penjualan.noTransaksi,
-          tanggalTransaksi: penjualan.tanggal,
-          status: penjualan.status,
-          hargaJual: Number(penjualan.hargaJual),
-          dp: Number(penjualan.dp ?? 0),
-          bookingFee: Number(penjualan.bookingFee ?? 0),
-          caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
-          bank: penjualan.bank ?? "",
-          customer: {
-            nama: penjualan.customer.nama,
-            noHp: penjualan.customer.noHp,
-            alamat: penjualan.customer.alamatKtp,
-          },
-          kavling: {
-            perumahan: penjualan.kavling.perumahan.nama,
-            blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
-            tipe: penjualan.kavling.namaTipe,
-          },
-        },
-      };
-    }
-
-    throw new AppError(
-      StatusCodes.BAD_REQUEST,
-      "Format nomor dokumen tidak dikenali",
-    );
-  }
-
-  // Helper function agar kode tidak duplikat
-  private async handleTagihan(noTagihan: string) {
-    const tagihan = await this.db.tagihan.findUnique({
-      where: { noTagihan },
-      include: {
-        customer: { select: { nama: true, noHp: true, alamatKtp: true } },
-        penjualan: {
-          include: {
-            kavling: {
-              include: { perumahan: { select: { nama: true } } },
-            },
-          },
-        },
-      },
-    });
-
-    if (!tagihan) throw new NotFoundError("Data tagihan tidak ditemukan");
-
-    const totalTerbayarAgg = await this.db.tagihan.aggregate({
-      where: { penjualanId: tagihan.penjualanId, status: "LUNAS" },
-      _sum: { nominal: true },
-    });
-
-    const totalTerbayar = Number(totalTerbayarAgg._sum.nominal ?? 0);
-    const hargaJual = Number(tagihan.penjualan.hargaJual);
-    const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
-    const documentType = tagihan.status === "LUNAS" ? "KWITANSI" : "INVOICE";
-
-    return {
-      type: documentType,
-      data: {
-        noDokumen: tagihan.noTagihan,
-        pembayaran: tagihan.pembayaran,
-        nominal: Number(tagihan.nominal),
-        jatuhTempo: tagihan.jatuhTempo,
-        status: tagihan.status,
-        tanggalDibuat: tagihan.createdAt,
-        customer: {
-          nama: tagihan.customer.nama,
-          noHp: tagihan.customer.noHp,
-          alamat: tagihan.customer.alamatKtp,
-        },
-        kavling: {
-          perumahan: tagihan.penjualan.kavling.perumahan.nama,
-          blok: tagihan.penjualan.kavling.blok,
-          nomorUnit: tagihan.penjualan.kavling.nomorUnit,
-          tipe: tagihan.penjualan.kavling.namaTipe,
-        },
-        transaksi: {
-          caraPembayaran: tagihan.penjualan.caraPembayaran.replace(/_/g, " "),
-          bank: tagihan.penjualan.bank ?? "",
-          hargaJual: hargaJual,
-          sisaBelumDibayar: sisaBelumDibayar,
-        },
-      },
     };
   }
 }
@@ -5570,6 +5447,130 @@ export class UploadBuktiTagihanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
+import { StatusCodes } from "http-status-codes";
+import { AppError } from "../../../domain/errors/AppError.js";
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+
+export class VerifyDocumentUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(documentNumber: string) {
+    if (!documentNumber) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
+    }
+
+    // 1. JIKA DOKUMEN ADALAH TAGIHAN BIASA / INVOICE BF / INVOICE DP (INV-...)
+    if (documentNumber.startsWith("INV-")) {
+      return await this.handleTagihan(documentNumber);
+    }
+
+    // 2. JIKA DOKUMEN BERAWAL TRX- (PASTI SPR MURNI)
+    if (documentNumber.startsWith("TRX-")) {
+      const penjualan = await this.db.penjualan.findUnique({
+        where: { noTransaksi: documentNumber },
+        include: {
+          customer: { select: { nama: true, noHp: true, alamatKtp: true } },
+          kavling: {
+            include: { perumahan: { select: { nama: true } } },
+          },
+        },
+      });
+
+      if (!penjualan) throw new NotFoundError("Dokumen tidak ditemukan");
+
+      return {
+        type: "SPR",
+        data: {
+          noDokumen: penjualan.noTransaksi,
+          tanggalTransaksi: penjualan.tanggal,
+          status: penjualan.status,
+          hargaJual: Number(penjualan.hargaJual),
+          dp: Number(penjualan.dp ?? 0),
+          bookingFee: Number(penjualan.bookingFee ?? 0),
+          caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
+          bank: penjualan.bank ?? "",
+          customer: {
+            nama: penjualan.customer.nama,
+            noHp: penjualan.customer.noHp,
+            alamat: penjualan.customer.alamatKtp,
+          },
+          kavling: {
+            perumahan: penjualan.kavling.perumahan.nama,
+            blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
+            tipe: penjualan.kavling.namaTipe,
+          },
+        },
+      };
+    }
+
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Format nomor dokumen tidak dikenali",
+    );
+  }
+
+  // Helper function agar kode tidak duplikat
+  private async handleTagihan(noTagihan: string) {
+    const tagihan = await this.db.tagihan.findUnique({
+      where: { noTagihan },
+      include: {
+        customer: { select: { nama: true, noHp: true, alamatKtp: true } },
+        penjualan: {
+          include: {
+            kavling: {
+              include: { perumahan: { select: { nama: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tagihan) throw new NotFoundError("Data tagihan tidak ditemukan");
+
+    const totalTerbayarAgg = await this.db.tagihan.aggregate({
+      where: { penjualanId: tagihan.penjualanId, status: "LUNAS" },
+      _sum: { nominal: true },
+    });
+
+    const totalTerbayar = Number(totalTerbayarAgg._sum.nominal ?? 0);
+    const hargaJual = Number(tagihan.penjualan.hargaJual);
+    const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
+    const documentType = tagihan.status === "LUNAS" ? "KWITANSI" : "INVOICE";
+
+    return {
+      type: documentType,
+      data: {
+        noDokumen: tagihan.noTagihan,
+        pembayaran: tagihan.pembayaran,
+        nominal: Number(tagihan.nominal),
+        jatuhTempo: tagihan.jatuhTempo,
+        status: tagihan.status,
+        tanggalDibuat: tagihan.createdAt,
+        customer: {
+          nama: tagihan.customer.nama,
+          noHp: tagihan.customer.noHp,
+          alamat: tagihan.customer.alamatKtp,
+        },
+        kavling: {
+          perumahan: tagihan.penjualan.kavling.perumahan.nama,
+          blok: tagihan.penjualan.kavling.blok,
+          nomorUnit: tagihan.penjualan.kavling.nomorUnit,
+          tipe: tagihan.penjualan.kavling.namaTipe,
+        },
+        transaksi: {
+          caraPembayaran: tagihan.penjualan.caraPembayaran.replace(/_/g, " "),
+          bank: tagihan.penjualan.bank ?? "",
+          hargaJual: hargaJual,
+          sisaBelumDibayar: sisaBelumDibayar,
+        },
+      },
+    };
+  }
+}
+</file>
+
 <file path="src/config/env.ts">
 import { z } from "zod";
 import dotenv from "dotenv";
@@ -8306,6 +8307,210 @@ export class CloudinaryService {
 }
 </file>
 
+<file path="src/validations/paginationSchema.ts">
+// src/validations/paginationSchema.ts
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+
+const baseFilterSchema = z.object({
+  search: emptyAsUndefined(z.string().optional()),
+  startDate: emptyAsUndefined(z.string().datetime().optional()),
+  endDate: emptyAsUndefined(z.string().datetime().optional()),
+  orderBy: emptyAsUndefined(
+    z
+      .string()
+      .regex(
+        /^[a-zA-Z0-9_]+:(asc|desc)$/,
+        "Format harus field:asc atau field:desc",
+      )
+      .transform((val) => {
+        const parts = val.split(":");
+        return { field: parts[0], direction: parts[1] as "asc" | "desc" };
+      })
+      .optional(),
+  ),
+});
+
+export const cursorPaginationQuerySchema = baseFilterSchema.extend({
+  limit: z.coerce.number().min(1).max(500).default(20),
+  cursor: emptyAsUndefined(z.string().optional()),
+});
+
+export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
+
+export const offsetPaginationQuerySchema = baseFilterSchema.extend({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(500).default(10),
+});
+
+export type OffsetPaginationQuery = z.infer<typeof offsetPaginationQuerySchema>;
+</file>
+
+<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
+import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
+import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
+import type {
+  UpdateCustomerKavlingDTO,
+  CustomerKavlingFilterDTO,
+} from "../../../domain/dtos/CustomerKavlingDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { CursorPaginatedData } from "../../../types/response.js";
+import type {
+  CreateDetailKavlingPajakDTO,
+  UpdateDetailKavlingPajakDTO,
+} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
+
+export class GetCustomerKavlingsPaginatedUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerKavlingFilterDTO,
+  ): Promise<CursorPaginatedData<any>> {
+    const where: Prisma.PenjualanWhereInput = {
+      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
+    };
+
+    if (filters?.search) {
+      where.customer = { nama: { contains: filters.search } };
+    }
+
+    const items = await this.db.penjualan.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ id: "desc" }],
+      include: {
+        customer: { select: { nama: true } },
+        kavling: { include: { perumahan: true } },
+        detailKavlingPajak: { include: { notaris: true } },
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const mappedItems = items.map((p) => {
+      const { id: _, ...restDetailPajak } = p.detailKavlingPajak ?? {};
+
+      return {
+        id: p.id.toString(),
+        customerId: p.customerId,
+        namaCustomer: p.customer?.nama || "-",
+        perumahan: p.kavling.perumahan?.nama || "",
+
+        status: p.status,
+        statusKavling: p.kavling.status,
+        blok: p.kavling.blok,
+        unit: p.kavling.nomorUnit,
+        tipe: p.kavling.namaTipe,
+        luasBangunan: Number(p.kavling.luasBangunan),
+        luasTanah: Number(p.kavling.luasTanah),
+        harga: Number(p.kavling.hargaJual),
+        totalHargaJual: Number(p.hargaJual),
+        pembiayaan: p.caraPembayaran,
+
+        ...restDetailPajak,
+
+        notarisId: p.detailKavlingPajak?.notarisId ?? "",
+      };
+    });
+
+    return {
+      items: mappedItems,
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+
+export class UpdateCustomerKavlingUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly kavlingRepo: IKavlingRepository,
+    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
+  ) {}
+
+  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { id: penjualanId },
+      include: { kavling: true },
+    });
+
+    if (!penjualan) {
+      throw new NotFoundError("Data Penjualan tidak ditemukan");
+    }
+
+    const {
+      statusKavling,
+      namaTipe,
+      luasBangunan,
+      luasTanah,
+      hargaJualKavling,
+      ...detailPajakData
+    } = data;
+
+    if (
+      statusKavling !== undefined ||
+      namaTipe !== undefined ||
+      luasBangunan !== undefined ||
+      luasTanah !== undefined ||
+      hargaJualKavling !== undefined
+    ) {
+      await this.kavlingRepo.update(penjualan.kavlingId, {
+        status: statusKavling,
+        namaTipe: namaTipe,
+        luasBangunan: luasBangunan,
+        luasTanah: luasTanah,
+        hargaJual: hargaJualKavling,
+      });
+    }
+
+    const createDataPayload: Record<string, unknown> = { penjualanId };
+    const updateDataPayload: Record<string, unknown> = {};
+
+    if (luasBangunan !== undefined) {
+      createDataPayload.luasBangunan = luasBangunan.toString();
+      updateDataPayload.luasBangunan = luasBangunan.toString();
+    }
+
+    for (const [key, value] of Object.entries(detailPajakData)) {
+      if (value !== undefined) {
+        createDataPayload[key] = value;
+        updateDataPayload[key] = value;
+      }
+    }
+
+    const existingDetail =
+      await this.detailPajakRepo.findByPenjualanId(penjualanId);
+
+    if (existingDetail) {
+      await this.detailPajakRepo.update(
+        penjualanId,
+        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
+      );
+    } else {
+      await this.detailPajakRepo.create(
+        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
+      );
+    }
+
+    return {
+      success: true,
+      message: "Data Kavling Customer berhasil diperbarui",
+    };
+  }
+}
+</file>
+
 <file path="src/presentation/controllers/penjualanController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -8533,621 +8738,6 @@ export const createPenjualanRoutes = (
   );
   return router;
 };
-</file>
-
-<file path="src/validations/paginationSchema.ts">
-// src/validations/paginationSchema.ts
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-
-const baseFilterSchema = z.object({
-  search: emptyAsUndefined(z.string().optional()),
-  startDate: emptyAsUndefined(z.string().datetime().optional()),
-  endDate: emptyAsUndefined(z.string().datetime().optional()),
-  orderBy: emptyAsUndefined(
-    z
-      .string()
-      .regex(
-        /^[a-zA-Z0-9_]+:(asc|desc)$/,
-        "Format harus field:asc atau field:desc",
-      )
-      .transform((val) => {
-        const parts = val.split(":");
-        return { field: parts[0], direction: parts[1] as "asc" | "desc" };
-      })
-      .optional(),
-  ),
-});
-
-export const cursorPaginationQuerySchema = baseFilterSchema.extend({
-  limit: z.coerce.number().min(1).max(500).default(20),
-  cursor: emptyAsUndefined(z.string().optional()),
-});
-
-export type CursorPaginationQuery = z.infer<typeof cursorPaginationQuerySchema>;
-
-export const offsetPaginationQuerySchema = baseFilterSchema.extend({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(500).default(10),
-});
-
-export type OffsetPaginationQuery = z.infer<typeof offsetPaginationQuerySchema>;
-</file>
-
-<file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IDetailKavlingPajakRepository } from "../../../domain/repositories/IDetailKavlingPajakRepo.js";
-import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
-import type {
-  UpdateCustomerKavlingDTO,
-  CustomerKavlingFilterDTO,
-} from "../../../domain/dtos/CustomerKavlingDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
-import type {
-  CreateDetailKavlingPajakDTO,
-  UpdateDetailKavlingPajakDTO,
-} from "../../../domain/dtos/DetailKavlingPajakDTO.js";
-
-export class GetCustomerKavlingsPaginatedUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(
-    limit: number,
-    cursor?: number,
-    filters?: CustomerKavlingFilterDTO,
-  ): Promise<CursorPaginatedData<any>> {
-    const where: Prisma.PenjualanWhereInput = {
-      status: { in: ["BOOKED", "PROSES", "LUNAS"] },
-    };
-
-    if (filters?.search) {
-      where.customer = { nama: { contains: filters.search } };
-    }
-
-    const items = await this.db.penjualan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ id: "desc" }],
-      include: {
-        customer: { select: { nama: true } },
-        kavling: { include: { perumahan: true } },
-        detailKavlingPajak: { include: { notaris: true } },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    const mappedItems = items.map((p) => {
-      const { id: _, ...restDetailPajak } = p.detailKavlingPajak ?? {};
-
-      return {
-        id: p.id.toString(),
-        customerId: p.customerId,
-        namaCustomer: p.customer?.nama || "-",
-        perumahan: p.kavling.perumahan?.nama || "",
-
-        status: p.status,
-        statusKavling: p.kavling.status,
-        blok: p.kavling.blok,
-        unit: p.kavling.nomorUnit,
-        tipe: p.kavling.namaTipe,
-        luasBangunan: Number(p.kavling.luasBangunan),
-        luasTanah: Number(p.kavling.luasTanah),
-        harga: Number(p.kavling.hargaJual),
-        totalHargaJual: Number(p.hargaJual),
-        pembiayaan: p.caraPembayaran,
-
-        ...restDetailPajak,
-
-        notarisId: p.detailKavlingPajak?.notarisId ?? "",
-      };
-    });
-
-    return {
-      items: mappedItems,
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-}
-
-export class UpdateCustomerKavlingUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly kavlingRepo: IKavlingRepository,
-    private readonly detailPajakRepo: IDetailKavlingPajakRepository,
-  ) {}
-
-  async execute(penjualanId: number, data: UpdateCustomerKavlingDTO) {
-    const penjualan = await this.db.penjualan.findUnique({
-      where: { id: penjualanId },
-      include: { kavling: true },
-    });
-
-    if (!penjualan) {
-      throw new NotFoundError("Data Penjualan tidak ditemukan");
-    }
-
-    const {
-      statusKavling,
-      namaTipe,
-      luasBangunan,
-      luasTanah,
-      hargaJualKavling,
-      ...detailPajakData
-    } = data;
-
-    if (
-      statusKavling !== undefined ||
-      namaTipe !== undefined ||
-      luasBangunan !== undefined ||
-      luasTanah !== undefined ||
-      hargaJualKavling !== undefined
-    ) {
-      await this.kavlingRepo.update(penjualan.kavlingId, {
-        status: statusKavling,
-        namaTipe: namaTipe,
-        luasBangunan: luasBangunan,
-        luasTanah: luasTanah,
-        hargaJual: hargaJualKavling,
-      });
-    }
-
-    const createDataPayload: Record<string, unknown> = { penjualanId };
-    const updateDataPayload: Record<string, unknown> = {};
-
-    if (luasBangunan !== undefined) {
-      createDataPayload.luasBangunan = luasBangunan.toString();
-      updateDataPayload.luasBangunan = luasBangunan.toString();
-    }
-
-    for (const [key, value] of Object.entries(detailPajakData)) {
-      if (value !== undefined) {
-        createDataPayload[key] = value;
-        updateDataPayload[key] = value;
-      }
-    }
-
-    const existingDetail =
-      await this.detailPajakRepo.findByPenjualanId(penjualanId);
-
-    if (existingDetail) {
-      await this.detailPajakRepo.update(
-        penjualanId,
-        updateDataPayload as unknown as UpdateDetailKavlingPajakDTO,
-      );
-    } else {
-      await this.detailPajakRepo.create(
-        createDataPayload as unknown as CreateDetailKavlingPajakDTO,
-      );
-    }
-
-    return {
-      success: true,
-      message: "Data Kavling Customer berhasil diperbarui",
-    };
-  }
-}
-</file>
-
-<file path="prisma/schema.prisma">
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
-enum Role {
-  ADMIN      @map("admin")
-  MARKETING  @map("marketing")
-  CUSTOMER   @map("customer")
-}
-
-enum UnitStatus {
-  AVAILABLE  @map("Available")
-  BOOKING    @map("Booking")
-  TERJUAL    @map("Terjual")
-  HOLD       @map("Hold")
-}
-enum ActionType {
-  CREATE
-  UPDATE
-  DELETE
-}
-enum PaymentStatus {
-  BELUM_BAYAR @map("Belum Bayar")
-  LUNAS       @map("Lunas")
-}
-
-enum PaymentMethod {
-  CASH_KERAS    @map("CASH KERAS")
-  CASH_BERTAHAP @map("CASH BERTAHAP")
-  KPR           @map("KPR")
-}
-
-enum ProgressStatus {
-  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
-  DISETUJUI           @map("Disetujui")
-  REVISI              @map("Revisi")
-}
-
-enum PenjualanStatus {
-  BOOKED    @map("Booked")
-  PROSES    @map("Proses")
-  LUNAS     @map("Lunas")
-  BATAL     @map("Batal")
-}
-
-enum AgentStatus {
-  AKTIF      @map("Aktif")
-  NONAKTIF   @map("Nonaktif")
-}
-
-enum SP3R {
-  BANK  @map("BANK")
-  CASH  @map("Cash")
-}
-
-model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @db.VarChar(100)
-  email     String   @unique @db.VarChar(100)
-  password  String   @db.VarChar(255)
-  role      Role
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  auditLogs AuditLog[]
-  customers Customer[]
-
-  @@map("users")
-}
-
-model Customer {
-  id                Int         @id @default(autoincrement())
-  userId            Int?        @map("user_id")
-  nikKtp            String      @unique @map("nik_ktp") @db.VarChar(20)
-  nama              String      @db.VarChar(150)
-  noHp              String      @map("no_hp") @db.VarChar(20)
-  alamatKtp         String      @map("alamat_ktp") @db.Text
-  alamatTinggal     String?     @map("alamat_tinggal") @db.Text
-  email             String?     @db.VarChar(100)
-  pekerjaan         String?     @db.VarChar(100)
-  perusahaan        String?     @db.VarChar(150)
-  bank              String?     @db.VarChar(100)
-  alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
-  fileKtp           String?     @map("file_ktp") @db.VarChar(255)
-  fileKk            String?     @map("file_kk") @db.VarChar(255)
-  fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
-  createdAt         DateTime    @default(now()) @map("created_at")
-  updatedAt         DateTime    @updatedAt @map("updated_at")
-
-  user              User?       @relation(fields: [userId], references: [id])
-  penjualan         Penjualan[]
-  tagihan           Tagihan[]
-
-  @@map("customers")
-}
-
-model Perumahan {
-  id             Int              @id @default(autoincrement())
-  nama           String           @unique @db.VarChar(150)
-  logo           String           @unique @db.VarChar(150)
-  alamat         String           @unique @db.VarChar(150)
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-
-  kavlings       Kavling[]
-  bankRekeningPt BankRekeningPt[]
-
-  @@map("perumahan")
-}
-
-model BankRekeningPt {
-  id          Int         @id @default(autoincrement())
-  perumahanId Int         @map("perumahan_id")
-  namaBank    String      @map("nama_bank") @db.VarChar(100)
-  noRekening  String      @map("no_rekening") @db.VarChar(50)
-  atasNama    String      @map("atas_nama") @db.VarChar(150)
-  createdAt   DateTime    @default(now()) @map("created_at")
-
-  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  penjualan   Penjualan[]
-  kavlings    Kavling[]
-
-  @@map("bank_rekening_pt")
-}
-
-model Notaris {
-  id                 Int                  @id @default(autoincrement())
-  nama               String               @db.VarChar(150)
-  biayaAjb           Decimal              @map("biaya_ajb") @db.Decimal(15, 2)
-  createdAt          DateTime             @default(now()) @map("created_at")
-  updatedAt          DateTime             @updatedAt @map("updated_at")
-
-  pics               PicNotaris[]
-  detailKavlingPajak DetailKavlingPajak[]
-
-  @@map("notaris")
-}
-
-model PicNotaris {
-  id        Int      @id @default(autoincrement())
-  notarisId Int      @map("notaris_id")
-  nama      String   @db.VarChar(150)
-  noHp      String   @map("no_hp") @db.VarChar(20)
-  alamat    String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
-
-  @@map("pic_notaris")
-}
-
-model Agent {
-  id        Int         @id @default(autoincrement())
-  nik       String      @unique @db.VarChar(20)
-  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
-  nama      String      @db.VarChar(150)
-  alamat    String?     @db.Text
-  noHp      String      @map("no_hp") @db.VarChar(20)
-  email     String?     @db.VarChar(100)
-  status    AgentStatus @default(AKTIF)
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
-
-  pics      PicAgent[]
-  fees      FeeAgent[]
-  penjualan Penjualan[]
-
-  @@map("agents")
-}
-
-model PicAgent {
-  id        Int      @id @default(autoincrement())
-  agentId   Int      @map("agent_id")
-  nama      String   @db.VarChar(150)
-  noHp      String   @map("no_hp") @db.VarChar(20)
-  alamat    String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-
-  @@map("pic_agents")
-}
-
-model Kavling {
-  id                  Int              @id @default(autoincrement())
-  perumahanId         Int              @map("perumahan_id")
-  blok                String           @db.VarChar(10)
-  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
-  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
-  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
-  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
-  hargaJual           Decimal          @map("harga_jual") @db.Decimal(15, 2)
-  status              UnitStatus       @default(AVAILABLE)
-  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
-  filePbg             String?          @map("file_pbg") @db.VarChar(255)
-  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
-  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
-
-  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
-  penjualan           Penjualan[]
-  progressProyek      ProgressProyek[]
-
-  @@map("kavling")
-}
-
-model Penjualan {
-  id                Int                 @id @default(autoincrement())
-  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
-  tanggal           DateTime            @db.Date
-  customerId        Int                 @map("customer_id")
-  kavlingId         Int                 @map("kavling_id")
-  agentId           Int?                @map("agent_id")
-  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
-  caraPembayaran    PaymentMethod       @map("cara_pembayaran")
-  hargaJual         Decimal             @map("harga_jual") @db.Decimal(15, 2)
-  dp                Decimal?            @db.Decimal(15, 2)
-  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
-  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
-  bank              String?             @db.VarChar(100)
-  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
-  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
-  status            PenjualanStatus     @default(BOOKED)
-  alasanBatal       String?             @map("alasan_batal") @db.Text
-  fileSpr           String?             @map("file_spr") @db.VarChar(255)
-  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
-  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
-  ttdData           Json?               @map("ttd_data")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  customer          Customer            @relation(fields: [customerId], references: [id])
-  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
-  agent             Agent?              @relation(fields: [agentId], references: [id])
-  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
-  tagihan           Tagihan[]
-  detailKavlingPajak DetailKavlingPajak?
-  feeAgent          FeeAgent?
-
-
-  @@map("penjualan")
-}
-
-model DetailKavlingPajak {
-  id                      Int       @id @default(autoincrement())
-  penjualanId             Int       @unique @map("penjualan_id")
-  notarisId               Int?      @map("notaris_id")
-  lantai                  String?   @db.VarChar(10)
-  luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
-  lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
-  tanggalAkadPpjb         DateTime? @map("tanggal_akad_ppjb") @db.Date
-  akadPpjb                String?   @map("akad_ppjb") @db.VarChar(100)
-  tanggalAkadAjbPpat      DateTime? @map("tanggal_akad_ajb_ppat") @db.Date
-  tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
-  tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
-  pembiayaan              String?   @db.VarChar(100)
-  sp3r                    SP3R?     @default(BANK) 
-  lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
-  biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
-  nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
-  nrDiskonAngsuran        Decimal?  @map("nr_diskon_angsuran") @db.Decimal(15, 2)
-  nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
-  nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
-  nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
-  nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
-  nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
-  nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
-  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
-  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
-  nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
-  nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
-  nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
-  pjBiayaKpr              Decimal?  @map("pj_biaya_kpr") @db.Decimal(15, 2)
-  pjBiayaAsuransi         Decimal?  @map("pj_biaya_asuransi") @db.Decimal(15, 2)
-  pjDiskonAngsuran        Decimal?  @map("pj_diskon_angsuran") @db.Decimal(15, 2)
-  pjBiayaBbn              Decimal?  @map("pj_biaya_bbn") @db.Decimal(15, 2)
-  pjBiayaAjb              Decimal?  @map("pj_biaya_ajb") @db.Decimal(15, 2)
-  pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
-  pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
-  pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
-  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
-  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
-  pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
-  pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
-  pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
-  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
-  ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
-  ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
-  ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
-  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
-  ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
-  ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
-  ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
-  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
-  ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
-
-  penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
-
-  @@map("detail_kavling_pajak")
-}
-
-model Tagihan {
-  id                 Int           @id @default(autoincrement())
-  noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
-  customerId         Int           @map("customer_id")
-  penjualanId        Int           @map("penjualan_id")
-  pembayaran         String        @db.VarChar(255)
-  nominal            Decimal       @db.Decimal(15, 2)
-  jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
-  status             PaymentStatus @default(BELUM_BAYAR)
-  fileBukti          String?       @map("file_bukti") @db.VarChar(255)
-  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
-
-  customer           Customer      @relation(fields: [customerId], references: [id])
-  penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
-
-  @@map("tagihan")
-}
-
-model FeeAgent {
-  id               Int       @id @default(autoincrement())
-  agentId          Int       @map("agent_id")
-  penjualanId      Int       @unique @map("penjualan_id")
-  bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
-  bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
-  bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
-  closingNominal   Decimal?  @map("closing_nominal") @db.Decimal(15, 2)
-  closingTanggal   DateTime? @map("closing_tanggal") @db.Date
-  closingBukti     String?   @map("closing_bukti") @db.VarChar(255)
-  marketingNominal Decimal?  @map("marketing_nominal") @db.Decimal(15, 2)
-  marketingTanggal DateTime? @map("marketing_tanggal") @db.Date
-  marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  agent            Agent     @relation(fields: [agentId], references: [id])
-
-  @@map("fee_agent")
-}
-
-model Spk {
-  id               Int      @id @default(autoincrement())
-  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
-  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
-  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
-  lokasi           String   @db.Text
-  jangkaWaktu      Int      @map("jangka_waktu")
-  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
-  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
-  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
-  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
-  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
-  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
-  namaBank         String   @map("nama_bank") @db.VarChar(100)
-  noRekening       String   @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
-  fileSpk          String?  @map("file_spk") @db.VarChar(255)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-
-  @@map("spk")
-}
-
-model ProgressProyek {
-  id               Int            @id @default(autoincrement())
-  kavlingId        Int            @map("kavling_id")
-  pelaksana        String         @db.VarChar(150)
-  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
-  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
-  persentase       Int            @default(0)
-  keterangan       String         @db.Text
-  kendala          String?        @db.Text
-  fotoLapangan     Json?          @map("foto_lapangan")
-  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-
-  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
-
-  @@map("progress_proyek")
-}
-model AuditLog {
-  id          Int        @id @default(autoincrement())
-  entityName  String     @map("entity_name") @db.VarChar(100) 
-  entityId    String     @map("entity_id") @db.VarChar(50)    
-  action      ActionType
-  changes     Json       
-  userId      Int?       @map("user_id") 
-  createdAt   DateTime   @default(now()) @map("created_at")
-
-  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("audit_logs")
-}
 </file>
 
 <file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
@@ -9567,95 +9157,415 @@ export class GenerateSprPdfUseCase {
 }
 </file>
 
-<file path="src/validations/penjualanSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import type { PaymentMethod } from "@prisma/client";
-export const createPenjualanSchema = {
-  body: z.object({
-    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
-    nama: z.string().min(3, "Nama minimal 3 karakter"),
-    noTelepon: z.string().min(9, "No Telepon minimal 9 karakter"),
-    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
-    perusahaan: emptyAsUndefined(z.string().optional()),
-    alamatKoresponden: emptyAsUndefined(z.string().optional()),
-    perumahan: z.string().min(1, "Perumahan wajib diisi"),
-    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
-    nomorUnit: z
-      .string()
-      .min(1, "Nomor unit wajib diisi")
-      .max(10, "No Unit Max 10 Karakter"),
-    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
-    luasBangunan: z.coerce.number().min(0),
-    luasTanah: z.coerce.number().min(0),
-    tanggal: z.string().datetime().or(z.string().min(1)),
-    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
-    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    caraPembayaran: z.string().transform((val) => {
-      const formatted = val.toUpperCase().replace(/\s+/g, "_");
-      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
-        return formatted as PaymentMethod;
-      }
-      throw new Error("Cara pembayaran tidak valid");
-    }),
-    bank: emptyAsUndefined(z.string().optional()),
-    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    agent: z.string().min(1, "Agent wajib diisi"),
-  }),
-};
-export const getPenjualanPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
-export const cancelPenjualanSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-  }),
-  body: z.object({
-    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
-  }),
-};
-export const uploadBuktiPenjualanSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-    type: z.string().min(1, "Type wajib diisi"),
-  }),
-  body: z.object({
-    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
-  }),
-};
-export const uploadSignatureSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-  }),
-  body: z.object({
-    signatureBase64: z.string().min(1, "Data signature wajib diisi"),
-    nama: z.string().min(1, "Nama wajib diisi"),
-    peran: z.string().min(1, "Peran wajib diisi"),
-    tanggal: z.string().min(1, "Tanggal wajib diisi"),
-  }),
-};
-export const updatePenjualanSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-  }),
-  body: z
-    .object({
-      nama: emptyAsUndefined(z.string().min(3).optional()),
-      noIdentitas: emptyAsUndefined(z.string().min(16).optional()),
-      noTelepon: emptyAsUndefined(z.string().optional()),
-      alamat: emptyAsUndefined(z.string().optional()),
-      caraPembayaran: emptyAsUndefined(z.string().optional()),
-      bank: emptyAsUndefined(z.string().optional()),
-      dp: emptyAsUndefined(z.coerce.number().optional()),
-      bookingFee: emptyAsUndefined(z.coerce.number().optional()),
-      agent: emptyAsUndefined(z.string().optional()),
-    })
-    .partial(),
-};
+<file path="prisma/schema.prisma">
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN      @map("admin")
+  MARKETING  @map("marketing")
+  CUSTOMER   @map("customer")
+}
+
+enum UnitStatus {
+  AVAILABLE  @map("Available")
+  BOOKING    @map("Booking")
+  TERJUAL    @map("Terjual")
+  HOLD       @map("Hold")
+}
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+}
+enum PaymentStatus {
+  BELUM_BAYAR @map("Belum Bayar")
+  LUNAS       @map("Lunas")
+}
+
+enum PaymentMethod {
+  CASH_KERAS    @map("CASH KERAS")
+  CASH_BERTAHAP @map("CASH BERTAHAP")
+  KPR           @map("KPR")
+}
+
+enum ProgressStatus {
+  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
+  DISETUJUI           @map("Disetujui")
+  REVISI              @map("Revisi")
+}
+
+enum PenjualanStatus {
+  BOOKED    @map("Booked")
+  PROSES    @map("Proses")
+  LUNAS     @map("Lunas")
+  BATAL     @map("Batal")
+}
+
+enum AgentStatus {
+  AKTIF      @map("Aktif")
+  NONAKTIF   @map("Nonaktif")
+}
+
+enum SP3R {
+  BANK  @map("BANK")
+  CASH  @map("Cash")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  auditLogs AuditLog[]
+  customers Customer[]
+
+  @@map("users")
+}
+
+model Customer {
+  id                Int         @id @default(autoincrement())
+  userId            Int?        @map("user_id")
+  nikKtp            String      @unique @map("nik_ktp") @db.VarChar(20)
+  nama              String      @db.VarChar(150)
+  noHp              String      @map("no_hp") @db.VarChar(20)
+  alamatKtp         String      @map("alamat_ktp") @db.Text
+  alamatTinggal     String?     @map("alamat_tinggal") @db.Text
+  email             String?     @db.VarChar(100)
+  pekerjaan         String?     @db.VarChar(100)
+  perusahaan        String?     @db.VarChar(150)
+  bank              String?     @db.VarChar(100)
+  alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
+  fileKtp           String?     @map("file_ktp") @db.VarChar(255)
+  fileKk            String?     @map("file_kk") @db.VarChar(255)
+  fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  user              User?       @relation(fields: [userId], references: [id])
+  penjualan         Penjualan[]
+  tagihan           Tagihan[]
+
+  @@map("customers")
+}
+
+model Perumahan {
+  id             Int              @id @default(autoincrement())
+  nama           String           @unique @db.VarChar(150)
+  logo           String           @unique @db.VarChar(150)
+  alamat         String           @unique @db.VarChar(150)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  kavlings       Kavling[]
+  bankRekeningPt BankRekeningPt[]
+
+  @@map("perumahan")
+}
+
+model BankRekeningPt {
+  id          Int         @id @default(autoincrement())
+  perumahanId Int         @map("perumahan_id")
+  namaBank    String      @map("nama_bank") @db.VarChar(100)
+  noRekening  String      @map("no_rekening") @db.VarChar(50)
+  atasNama    String      @map("atas_nama") @db.VarChar(150)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  penjualan   Penjualan[]
+  kavlings    Kavling[]
+
+  @@map("bank_rekening_pt")
+}
+
+model Notaris {
+  id                 Int                  @id @default(autoincrement())
+  nama               String               @db.VarChar(150)
+  biayaAjb           Decimal              @map("biaya_ajb") @db.Decimal(15, 2)
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  pics               PicNotaris[]
+  detailKavlingPajak DetailKavlingPajak[]
+
+  @@map("notaris")
+}
+
+model PicNotaris {
+  id        Int      @id @default(autoincrement())
+  notarisId Int      @map("notaris_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
+
+  @@map("pic_notaris")
+}
+
+model Agent {
+  id        Int         @id @default(autoincrement())
+  nik       String      @unique @db.VarChar(20)
+  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
+  nama      String      @db.VarChar(150)
+  alamat    String?     @db.Text
+  noHp      String      @map("no_hp") @db.VarChar(20)
+  email     String?     @db.VarChar(100)
+  status    AgentStatus @default(AKTIF)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  pics      PicAgent[]
+  fees      FeeAgent[]
+  penjualan Penjualan[]
+
+  @@map("agents")
+}
+
+model PicAgent {
+  id        Int      @id @default(autoincrement())
+  agentId   Int      @map("agent_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("pic_agents")
+}
+
+model Kavling {
+  id                  Int              @id @default(autoincrement())
+  perumahanId         Int              @map("perumahan_id")
+  blok                String           @db.VarChar(10)
+  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
+  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
+  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
+  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
+  hargaJual           Decimal          @map("harga_jual") @db.Decimal(15, 2)
+  status              UnitStatus       @default(AVAILABLE)
+  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
+  filePbg             String?          @map("file_pbg") @db.VarChar(255)
+  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
+  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
+  penjualan           Penjualan[]
+  progressProyek      ProgressProyek[]
+
+  @@map("kavling")
+}
+
+model Penjualan {
+  id                Int                 @id @default(autoincrement())
+  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
+  tanggal           DateTime            @db.Date
+  customerId        Int                 @map("customer_id")
+  kavlingId         Int                 @map("kavling_id")
+  agentId           Int?                @map("agent_id")
+  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
+  caraPembayaran    PaymentMethod       @map("cara_pembayaran")
+  hargaJual         Decimal             @map("harga_jual") @db.Decimal(15, 2)
+  dp                Decimal?            @db.Decimal(15, 2)
+  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
+  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
+  bank              String?             @db.VarChar(100)
+  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
+  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
+  status            PenjualanStatus     @default(BOOKED)
+  alasanBatal       String?             @map("alasan_batal") @db.Text
+  fileSpr           String?             @map("file_spr") @db.VarChar(255)
+  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
+  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
+  ttdData           Json?               @map("ttd_data")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  customer          Customer            @relation(fields: [customerId], references: [id])
+  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
+  agent             Agent?              @relation(fields: [agentId], references: [id])
+  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
+  tagihan           Tagihan[]
+  detailKavlingPajak DetailKavlingPajak?
+  feeAgent          FeeAgent?
+
+
+  @@map("penjualan")
+}
+
+model DetailKavlingPajak {
+  id                      Int       @id @default(autoincrement())
+  penjualanId             Int       @unique @map("penjualan_id")
+  notarisId               Int?      @map("notaris_id")
+  lantai                  String?   @db.VarChar(10)
+  luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
+  lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
+  tanggalAkadPpjb         DateTime? @map("tanggal_akad_ppjb") @db.Date
+  akadPpjb                String?   @map("akad_ppjb") @db.VarChar(100)
+  tanggalAkadAjbPpat      DateTime? @map("tanggal_akad_ajb_ppat") @db.Date
+  tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
+  tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
+  pembiayaan              String?   @db.VarChar(100)
+  sp3r                    SP3R?     @default(BANK) 
+  lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
+  biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
+  nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
+  nrDiskonAngsuran        Decimal?  @map("nr_diskon_angsuran") @db.Decimal(15, 2)
+  nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
+  nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
+  nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
+  nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
+  nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
+  nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
+  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
+  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
+  nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
+  nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
+  nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
+  pjBiayaKpr              Decimal?  @map("pj_biaya_kpr") @db.Decimal(15, 2)
+  pjBiayaAsuransi         Decimal?  @map("pj_biaya_asuransi") @db.Decimal(15, 2)
+  pjDiskonAngsuran        Decimal?  @map("pj_diskon_angsuran") @db.Decimal(15, 2)
+  pjBiayaBbn              Decimal?  @map("pj_biaya_bbn") @db.Decimal(15, 2)
+  pjBiayaAjb              Decimal?  @map("pj_biaya_ajb") @db.Decimal(15, 2)
+  pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
+  pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
+  pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
+  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
+  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
+  pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
+  pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
+  pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
+  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
+  ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
+  ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
+  ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
+  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
+  ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
+  ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
+  ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
+  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
+  ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
+
+  penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
+
+  @@map("detail_kavling_pajak")
+}
+
+model Tagihan {
+  id                 Int           @id @default(autoincrement())
+  noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
+  customerId         Int           @map("customer_id")
+  penjualanId        Int           @map("penjualan_id")
+  pembayaran         String        @db.VarChar(255)
+  nominal            Decimal       @db.Decimal(15, 2)
+  jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
+  status             PaymentStatus @default(BELUM_BAYAR)
+  fileBukti          String?       @map("file_bukti") @db.VarChar(255)
+  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
+
+  @@map("tagihan")
+}
+
+model FeeAgent {
+  id               Int       @id @default(autoincrement())
+  agentId          Int       @map("agent_id")
+  penjualanId      Int       @unique @map("penjualan_id")
+  bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
+  bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
+  bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
+  closingNominal   Decimal?  @map("closing_nominal") @db.Decimal(15, 2)
+  closingTanggal   DateTime? @map("closing_tanggal") @db.Date
+  closingBukti     String?   @map("closing_bukti") @db.VarChar(255)
+  marketingNominal Decimal?  @map("marketing_nominal") @db.Decimal(15, 2)
+  marketingTanggal DateTime? @map("marketing_tanggal") @db.Date
+  marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  agent            Agent     @relation(fields: [agentId], references: [id])
+
+  @@map("fee_agent")
+}
+
+model Spk {
+  id               Int      @id @default(autoincrement())
+  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
+  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
+  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
+  lokasi           String   @db.Text
+  jangkaWaktu      Int      @map("jangka_waktu")
+  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
+  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
+  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
+  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
+  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
+  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
+  namaBank         String   @map("nama_bank") @db.VarChar(100)
+  noRekening       String   @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
+  fileSpk          String?  @map("file_spk") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("spk")
+}
+
+model ProgressProyek {
+  id               Int            @id @default(autoincrement())
+  kavlingId        Int            @map("kavling_id")
+  pelaksana        String         @db.VarChar(150)
+  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
+  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
+  persentase       Int            @default(0)
+  keterangan       String         @db.Text
+  kendala          String?        @db.Text
+  fotoLapangan     Json?          @map("foto_lapangan")
+  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
+
+  @@map("progress_proyek")
+}
+model AuditLog {
+  id          Int        @id @default(autoincrement())
+  entityName  String     @map("entity_name") @db.VarChar(100) 
+  entityId    String     @map("entity_id") @db.VarChar(50)    
+  action      ActionType
+  changes     Json       
+  userId      Int?       @map("user_id") 
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
 </file>
 
 <file path="src/domain/repositories/penjualanRepo.ts">
@@ -10004,6 +9914,108 @@ export class PenjualanRepository implements IPenjualanRepository {
     });
   }
 }
+</file>
+
+<file path="src/validations/penjualanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import type { PaymentMethod } from "@prisma/client";
+export const createPenjualanSchema = {
+  body: z.object({
+    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
+    nama: z.string().min(3, "Nama minimal 3 karakter"),
+    noTelepon: z.string().min(9, "No Telepon minimal 9 karakter"),
+    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+    perumahan: z.string().min(1, "Perumahan wajib diisi"),
+    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
+    nomorUnit: z
+      .string()
+      .min(1, "Nomor unit wajib diisi")
+      .max(10, "No Unit Max 10 Karakter"),
+    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
+    luasBangunan: z.coerce.number().min(0),
+    luasTanah: z.coerce.number().min(0),
+    tanggal: z.string().datetime().or(z.string().min(1)),
+    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
+    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    caraPembayaran: z.string().transform((val) => {
+      const formatted = val.toUpperCase().replace(/\s+/g, "_");
+      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
+        return formatted as PaymentMethod;
+      }
+      throw new Error("Cara pembayaran tidak valid");
+    }),
+    bank: emptyAsUndefined(z.string().optional()),
+    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    agent: z.string().min(1, "Agent wajib diisi"),
+  }),
+};
+export const getPenjualanPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+export const cancelPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
+  }),
+};
+export const uploadBuktiPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+    type: z.string().min(1, "Type wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
+  }),
+};
+export const uploadSignatureSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    signatureBase64: z.string().min(1, "Data signature wajib diisi"),
+    nama: z.string().min(1, "Nama wajib diisi"),
+    peran: z.string().min(1, "Peran wajib diisi"),
+    tanggal: z.string().min(1, "Tanggal wajib diisi"),
+  }),
+};
+export const updatePenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z
+    .object({
+      nama: emptyAsUndefined(z.string().min(3).optional()),
+      noIdentitas: emptyAsUndefined(z.string().min(16).optional()),
+      noTelepon: emptyAsUndefined(z.string().optional()),
+      alamat: emptyAsUndefined(z.string().optional()),
+      perusahaan: emptyAsUndefined(z.string().optional()),
+      alamatKoresponden: emptyAsUndefined(z.string().optional()),
+      caraPembayaran: emptyAsUndefined(z.string().optional()),
+      bank: emptyAsUndefined(z.string().optional()),
+      nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().optional()),
+      dp: emptyAsUndefined(z.coerce.number().optional()),
+      bookingFee: emptyAsUndefined(z.coerce.number().optional()),
+      diskonPenjualan: emptyAsUndefined(z.coerce.number().optional()),
+      hargaPromosi: emptyAsUndefined(z.coerce.number().optional()),
+      agent: emptyAsUndefined(z.string().optional()),
+      blok: emptyAsUndefined(z.string().optional()),
+      nomorUnit: emptyAsUndefined(z.string().optional()),
+      tipe: emptyAsUndefined(z.string().optional()),
+      luasBangunan: emptyAsUndefined(z.coerce.number().optional()),
+      luasTanah: emptyAsUndefined(z.coerce.number().optional()),
+      hargaJual: emptyAsUndefined(z.coerce.number().optional()),
+    })
+    .partial(),
+};
 </file>
 
 <file path="src/presentation/routes/index.ts">

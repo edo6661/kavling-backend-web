@@ -319,6 +319,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         fileSpr: item.fileSpr ?? null,
         ttdData: item.ttdData ?? null,
         progressCicilan,
+        rekeningTujuanId: item.kavling.rekeningTujuanId ?? null,
       };
     });
 

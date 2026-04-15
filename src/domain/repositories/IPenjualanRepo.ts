@@ -59,6 +59,7 @@ export interface PenjualanPaginatedItem {
   fileBuktiDp: string;
   fileSpr: string | null;
   ttdData?: any;
+  rekeningTujuanId?: number | null;
 }
 
 export interface IPenjualanRepository {
