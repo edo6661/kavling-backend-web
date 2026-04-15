@@ -60,6 +60,11 @@ export interface PenjualanPaginatedItem {
   fileSpr: string | null;
   ttdData?: any;
   rekeningTujuanId?: number | null;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
 }
 
 export interface IPenjualanRepository {

@@ -34,6 +34,11 @@ export interface TagihanResponseDTO {
   status: PaymentStatus;
   fileBukti: string | null;
   reminderBerikutnya: Date | null;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
 }

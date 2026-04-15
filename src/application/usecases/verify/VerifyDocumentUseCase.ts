@@ -11,19 +11,20 @@ export class VerifyDocumentUseCase {
       throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
     }
 
-    // 1. JIKA DOKUMEN ADALAH TAGIHAN BIASA / INVOICE BF / INVOICE DP (INV-...)
     if (documentNumber.startsWith("INV-")) {
       return await this.handleTagihan(documentNumber);
     }
 
-    // 2. JIKA DOKUMEN BERAWAL TRX- (PASTI SPR MURNI)
     if (documentNumber.startsWith("TRX-")) {
       const penjualan = await this.db.penjualan.findUnique({
         where: { noTransaksi: documentNumber },
         include: {
           customer: { select: { nama: true, noHp: true, alamatKtp: true } },
           kavling: {
-            include: { perumahan: { select: { nama: true } } },
+            include: {
+              perumahan: { select: { nama: true, logo: true } },
+              rekeningTujuan: true,
+            },
           },
         },
       });
@@ -48,8 +49,10 @@ export class VerifyDocumentUseCase {
           },
           kavling: {
             perumahan: penjualan.kavling.perumahan.nama,
+            logoPerumahan: penjualan.kavling.perumahan.logo,
             blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
             tipe: penjualan.kavling.namaTipe,
+            rekeningTujuan: penjualan.kavling.rekeningTujuan,
           },
         },
       };
@@ -61,7 +64,6 @@ export class VerifyDocumentUseCase {
     );
   }
 
-  // Helper function agar kode tidak duplikat
   private async handleTagihan(noTagihan: string) {
     const tagihan = await this.db.tagihan.findUnique({
       where: { noTagihan },
@@ -70,7 +72,12 @@ export class VerifyDocumentUseCase {
         penjualan: {
           include: {
             kavling: {
-              include: { perumahan: { select: { nama: true } } },
+              include: {
+                perumahan: { select: { nama: true, logo: true } },
+                rekeningTujuan: {
+                  select: { namaBank: true, noRekening: true, atasNama: true },
+                },
+              },
             },
           },
         },
@@ -105,9 +112,11 @@ export class VerifyDocumentUseCase {
         },
         kavling: {
           perumahan: tagihan.penjualan.kavling.perumahan.nama,
+          logoPerumahan: tagihan.penjualan.kavling.perumahan.logo,
           blok: tagihan.penjualan.kavling.blok,
           nomorUnit: tagihan.penjualan.kavling.nomorUnit,
           tipe: tagihan.penjualan.kavling.namaTipe,
+          rekeningTujuan: tagihan.penjualan.kavling.rekeningTujuan,
         },
         transaksi: {
           caraPembayaran: tagihan.penjualan.caraPembayaran.replace(/_/g, " "),

@@ -19,6 +19,7 @@ export const updateCustomerKavlingSchema = {
     luasBangunan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     luasTanah: emptyAsUndefined(z.coerce.number().min(0).optional()),
     hargaJualKavling: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    rekeningTujuanId: emptyAsUndefined(z.coerce.number().optional()),
 
     // Detail Kavling Pajak - Data Utama
     notarisId: emptyAsUndefined(z.coerce.number().optional()),

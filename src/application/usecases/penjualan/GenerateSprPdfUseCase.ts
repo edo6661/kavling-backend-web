@@ -25,6 +25,18 @@ export class GenerateSprPdfUseCase {
 
     const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
     let qrCodeBuffer: Buffer | null = null;
+    let logoBuffer: Buffer | null = null; // Tambahkan variabel ini
+
+    // Ambil logo dari Cloudinary
+    if (kavling.perumahan.logo) {
+      try {
+        const response = await fetch(kavling.perumahan.logo);
+        const arrayBuffer = await response.arrayBuffer();
+        logoBuffer = Buffer.from(arrayBuffer);
+      } catch (err) {
+        console.error("Gagal download logo perumahan", err);
+      }
+    }
 
     try {
       const qrDataUri = await QRCode.toDataURL(verifyUrl, {
@@ -84,7 +96,12 @@ export class GenerateSprPdfUseCase {
           .fontSize(22)
           .font("Helvetica-Bold")
           .text(kavling.perumahan.nama.toUpperCase(), startX, y);
-        doc.fontSize(16).text("BUMANTARA", startX, y + 24);
+
+        if (logoBuffer) {
+          doc.image(logoBuffer, startX, y + 24, { height: 30 });
+        } else {
+          doc.fontSize(16).text("BUMANTARA", startX, y + 24);
+        }
 
         y += 70;
 

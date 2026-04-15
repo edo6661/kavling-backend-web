@@ -245,7 +245,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       orderBy: [{ createdAt: "desc" }],
       include: {
         customer: true,
-        kavling: { include: { perumahan: true } },
+        kavling: { include: { perumahan: true, rekeningTujuan: true } },
         agent: true,
         tagihan: true,
       },
@@ -320,6 +320,13 @@ export class PenjualanRepository implements IPenjualanRepository {
         ttdData: item.ttdData ?? null,
         progressCicilan,
         rekeningTujuanId: item.kavling.rekeningTujuanId ?? null,
+        rekeningTujuan: item.kavling.rekeningTujuan
+          ? {
+              namaBank: item.kavling.rekeningTujuan.namaBank,
+              noRekening: item.kavling.rekeningTujuan.noRekening,
+              atasNama: item.kavling.rekeningTujuan.atasNama,
+            }
+          : null,
       };
     });
 

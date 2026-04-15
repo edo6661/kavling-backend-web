@@ -6,7 +6,12 @@ export async function seedPerumahan(prisma: PrismaClient) {
       {
         nama: "Puri Safana",
         alamat: "Test Alamat",
-        logo: "Test Logo",
+        logo: "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
+      },
+      {
+        nama: "Poris 88",
+        alamat: "Test Alamat 2",
+        logo: "",
       },
     ],
   });

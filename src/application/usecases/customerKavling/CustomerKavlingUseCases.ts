@@ -106,6 +106,7 @@ export class UpdateCustomerKavlingUseCase {
       luasBangunan,
       luasTanah,
       hargaJualKavling,
+      rekeningTujuanId,
       ...detailPajakData
     } = data;
 
@@ -114,7 +115,8 @@ export class UpdateCustomerKavlingUseCase {
       namaTipe !== undefined ||
       luasBangunan !== undefined ||
       luasTanah !== undefined ||
-      hargaJualKavling !== undefined
+      hargaJualKavling !== undefined ||
+      rekeningTujuanId !== undefined
     ) {
       await this.kavlingRepo.update(penjualan.kavlingId, {
         status: statusKavling,
@@ -122,6 +124,7 @@ export class UpdateCustomerKavlingUseCase {
         luasBangunan: luasBangunan,
         luasTanah: luasTanah,
         hargaJual: hargaJualKavling,
+        rekeningTujuanId: rekeningTujuanId ?? undefined,
       });
     }
 

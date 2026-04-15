@@ -7,8 +7,12 @@ type TagihanWithRelations = Prisma.TagihanGetPayload<{
     penjualan: {
       include: {
         kavling: {
-          include: { perumahan: { select: { nama: true } } };
+          include: {
+            perumahan: { select: { nama: true } };
+            rekeningTujuan: true;
+          };
         };
+        rekeningTujuan: true;
       };
     };
   };
@@ -31,6 +35,14 @@ export class TagihanMapper {
       status: prismaTagihan.status,
       fileBukti: prismaTagihan.fileBukti,
       reminderBerikutnya: prismaTagihan.reminderBerikutnya,
+      rekeningTujuan: prismaTagihan.penjualan.kavling.rekeningTujuan
+        ? {
+            namaBank: prismaTagihan.penjualan.kavling.rekeningTujuan.namaBank,
+            noRekening:
+              prismaTagihan.penjualan.kavling.rekeningTujuan.noRekening,
+            atasNama: prismaTagihan.penjualan.kavling.rekeningTujuan.atasNama,
+          }
+        : null,
       createdAt: prismaTagihan.createdAt,
       updatedAt: prismaTagihan.updatedAt,
     };
