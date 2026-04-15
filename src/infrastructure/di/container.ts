@@ -116,6 +116,7 @@ import { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjuala
 import { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
 import { VerifyDocumentUseCase } from "../../application/usecases/verify/VerifyDocumentUseCase.js";
 import { VerifyController } from "../../presentation/controllers/verifyController.js";
+import { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -291,6 +292,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const penjualanRepo = new PenjualanRepository(dbClient);
   const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);
   const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
+  const updatePenjualanUseCase = new UpdatePenjualanUseCase(dbClient);
   const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
     penjualanRepo,
   );
@@ -311,6 +313,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     cancelPenjualanUseCase,
     uploadBuktiPenjualanUseCase,
     saveSignatureUseCase,
+    updatePenjualanUseCase,
   );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,

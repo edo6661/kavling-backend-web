@@ -11,29 +11,13 @@ export class VerifyDocumentUseCase {
       throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
     }
 
-    // 1. JIKA DOKUMEN ADALAH TAGIHAN BIASA (INV-...)
+    // 1. JIKA DOKUMEN ADALAH TAGIHAN BIASA / INVOICE BF / INVOICE DP (INV-...)
     if (documentNumber.startsWith("INV-")) {
       return await this.handleTagihan(documentNumber);
     }
 
-    // 2. JIKA DOKUMEN BERAWAL TRX- (Bisa SPR murni, atau Invoice Booking Fee/DP)
+    // 2. JIKA DOKUMEN BERAWAL TRX- (PASTI SPR MURNI)
     if (documentNumber.startsWith("TRX-")) {
-      // Cek apakah ini Invoice khusus (Booking Fee / DP) yang menggunakan No Transaksi sebagai referensi
-      // Kita cari di tabel tagihan yang noTagihan-nya mengandung No Transaksi ini
-      const tagihanKhusus = await this.db.tagihan.findFirst({
-        where: {
-          noTagihan: { contains: documentNumber },
-        },
-      });
-
-      // Jika ditemukan tagihan terkait dan ini bukan scan untuk SPR murni
-      // (Berdasarkan logic Anda, Invoice Booking Fee punya no: TRX-... / BMT / 2026)
-      // Kita asumsikan jika ada tagihan terkait, kita tampilkan mode Invoice
-      if (tagihanKhusus) {
-        return await this.handleTagihan(tagihanKhusus.noTagihan);
-      }
-
-      // Jika tidak ada tagihan terkait, tampilkan sebagai SPR Murni
       const penjualan = await this.db.penjualan.findUnique({
         where: { noTransaksi: documentNumber },
         include: {

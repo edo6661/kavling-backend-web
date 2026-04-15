@@ -19,7 +19,11 @@ enum UnitStatus {
   TERJUAL    @map("Terjual")
   HOLD       @map("Hold")
 }
-
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+}
 enum PaymentStatus {
   BELUM_BAYAR @map("Belum Bayar")
   LUNAS       @map("Lunas")
@@ -63,6 +67,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  auditLogs AuditLog[]
   customers Customer[]
 
   @@map("users")
@@ -387,4 +392,17 @@ model ProgressProyek {
   kavling          Kavling        @relation(fields: [kavlingId], references: [id])
 
   @@map("progress_proyek")
+}
+model AuditLog {
+  id          Int        @id @default(autoincrement())
+  entityName  String     @map("entity_name") @db.VarChar(100) 
+  entityId    String     @map("entity_id") @db.VarChar(50)    
+  action      ActionType
+  changes     Json       
+  userId      Int?       @map("user_id") 
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
 }

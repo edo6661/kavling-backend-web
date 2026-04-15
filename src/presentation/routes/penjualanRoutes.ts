@@ -5,6 +5,7 @@ import {
   cancelPenjualanSchema,
   createPenjualanSchema,
   getPenjualanPaginatedSchema,
+  updatePenjualanSchema,
   uploadSignatureSchema,
 } from "../../validations/penjualanSchema.js";
 import type { PenjualanController } from "../controllers/penjualanController.js";
@@ -47,6 +48,12 @@ export const createPenjualanRoutes = (
     requireRole(["ADMIN", "MARKETING"]),
     validate(uploadSignatureSchema),
     controller.uploadSignature,
+  );
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(updatePenjualanSchema),
+    controller.update,
   );
   return router;
 };

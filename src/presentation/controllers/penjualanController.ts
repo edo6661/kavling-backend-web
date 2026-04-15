@@ -7,15 +7,20 @@ import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/pe
 import type {
   cancelPenjualanSchema,
   createPenjualanSchema,
+  updatePenjualanSchema,
   uploadBuktiPenjualanSchema,
   uploadSignatureSchema,
 } from "../../validations/penjualanSchema.js";
 import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
-import type { PenjualanFilterDTO } from "../../domain/dtos/PenjualanDTO.js";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../../domain/dtos/PenjualanDTO.js";
 import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
 import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
 import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
 import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
+import type { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
 
 export class PenjualanController {
   constructor(
@@ -24,6 +29,7 @@ export class PenjualanController {
     private readonly cancelUseCase: CancelPenjualanUseCase,
     private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
     private readonly saveSignatureUseCase: SaveSignatureUseCase,
+    private readonly updateUseCase: UpdatePenjualanUseCase,
   ) {}
 
   create = async (
@@ -128,6 +134,30 @@ export class PenjualanController {
       res,
       StatusCodes.OK,
       `Tanda tangan digital untuk ${peran} berhasil disimpan`,
+      result,
+    );
+  };
+  update = async (
+    req: TypedRequest<
+      typeof updatePenjualanSchema.body,
+      any,
+      typeof updatePenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+
+    const result = await this.updateUseCase.execute(
+      id,
+      req.body as Partial<CreatePenjualanDTO>,
+      userId,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data penjualan berhasil diperbarui dan direkam.",
       result,
     );
   };
