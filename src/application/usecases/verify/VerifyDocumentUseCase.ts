@@ -11,7 +11,10 @@ export class VerifyDocumentUseCase {
       throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
     }
 
-    if (documentNumber.startsWith("INV-")) {
+    if (
+      documentNumber.startsWith("INV-") ||
+      documentNumber.startsWith("KWT-")
+    ) {
       return await this.handleTagihan(documentNumber);
     }
 
@@ -29,7 +32,7 @@ export class VerifyDocumentUseCase {
         },
       });
 
-      if (!penjualan) throw new NotFoundError("Dokumen tidak ditemukan");
+      if (!penjualan) throw new NotFoundError("Dokumen SPR tidak ditemukan");
 
       return {
         type: "SPR",
@@ -64,9 +67,15 @@ export class VerifyDocumentUseCase {
     );
   }
 
-  private async handleTagihan(noTagihan: string) {
+  private async handleTagihan(requestedNumber: string) {
+    // 2. Deteksi apakah user meminta Kwitansi atau Invoice dari URL-nya
+    const isRequestingKwitansi = requestedNumber.startsWith("KWT-");
+
+    // 3. Konversi KWT- kembali menjadi INV- karena di database disimpannya sebagai INV-
+    const searchNoTagihan = requestedNumber.replace(/^KWT-/, "INV-");
+
     const tagihan = await this.db.tagihan.findUnique({
-      where: { noTagihan },
+      where: { noTagihan: searchNoTagihan },
       include: {
         customer: { select: { nama: true, noHp: true, alamatKtp: true } },
         penjualan: {
@@ -94,12 +103,14 @@ export class VerifyDocumentUseCase {
     const totalTerbayar = Number(totalTerbayarAgg._sum.nominal ?? 0);
     const hargaJual = Number(tagihan.penjualan.hargaJual);
     const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
-    const documentType = tagihan.status === "LUNAS" ? "KWITANSI" : "INVOICE";
+
+    // 4. Return tipe dokumen dengan tepat agar frontend memproses judul dengan benar
+    const documentType = isRequestingKwitansi ? "KWITANSI" : "INVOICE";
 
     return {
       type: documentType,
       data: {
-        noDokumen: tagihan.noTagihan,
+        noDokumen: requestedNumber, // Kembalikan nomor asli sesuai request (INV/KWT)
         pembayaran: tagihan.pembayaran,
         nominal: Number(tagihan.nominal),
         jatuhTempo: tagihan.jatuhTempo,
