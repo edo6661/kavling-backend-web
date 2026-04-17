@@ -1,218 +1,4 @@
-This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
-
-<file_summary>
-This section contains a summary of this file.
-
-<purpose>
-This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
-It is designed to be easily consumable by AI systems for analysis, code review,
-or other automated processes.
-</purpose>
-
-<file_format>
-The content is organized as follows:
-1. This summary section
-2. Repository information
-3. Directory structure
-4. Repository files (if enabled)
-5. Multiple file entries, each consisting of:
-  - File path as an attribute
-  - Full contents of the file
-</file_format>
-
-<usage_guidelines>
-- This file should be treated as read-only. Any changes should be made to the
-  original repository files, not this packed version.
-- When processing this file, use the file path to distinguish
-  between different files in the repository.
-- Be aware that this file may contain sensitive information. Handle it with
-  the same level of security as you would the original repository.
-</usage_guidelines>
-
-<notes>
-- Some files may have been excluded based on .gitignore rules and Repomix's configuration
-- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: src/**/*, package.json, vite.config.ts, tsconfig.json, prisma/schema.prisma
-- Files matching these patterns are excluded: **/*.test.ts
-- Files matching patterns in .gitignore are excluded
-- Files matching default ignore patterns are excluded
-- Files are sorted by Git change count (files with more changes are at the bottom)
-</notes>
-
-</file_summary>
-
-<directory_structure>
-package.json
-prisma/schema.prisma
-src/app.ts
-src/application/usecases/agent/AgentUseCases.ts
-src/application/usecases/auth/GetProfileUseCase.ts
-src/application/usecases/auth/LoginUserUseCase.ts
-src/application/usecases/auth/RegisterUserUseCase.ts
-src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.ts
-src/application/usecases/customer/CreateCustomerUseCase.ts
-src/application/usecases/customer/DeleteCustomerUseCase.ts
-src/application/usecases/customer/ExportCustomersPdfUseCase.ts
-src/application/usecases/customer/ExportCustomersUseCase.ts
-src/application/usecases/customer/GenerateCustomerAccountUseCase.ts
-src/application/usecases/customer/GetCustomerByIdUseCase.ts
-src/application/usecases/customer/GetCustomersPaginatedUseCase.ts
-src/application/usecases/customer/UpdateCustomerUseCase.ts
-src/application/usecases/customer/UploadCustomerDocumentUseCase.ts
-src/application/usecases/customerKavling/CustomerKavlingUseCases.ts
-src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts
-src/application/usecases/feeAgent/FeeAgentUseCases.ts
-src/application/usecases/kavling/KavlingUseCases.ts
-src/application/usecases/kavling/UploadKavlingDocumentUseCase.ts
-src/application/usecases/notaris/NotarisUseCases.ts
-src/application/usecases/ocr/ExtractKtpDataUseCase.ts
-src/application/usecases/penjualan/CancelPenjualanUseCase.ts
-src/application/usecases/penjualan/CreatePenjualanUseCase.ts
-src/application/usecases/penjualan/GantiKavlingUseCase.ts
-src/application/usecases/penjualan/GenerateSprPdfUseCase.ts
-src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts
-src/application/usecases/penjualan/SaveSignatureUseCase.ts
-src/application/usecases/penjualan/UpdatePenjualanUseCase.ts
-src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts
-src/application/usecases/perumahan/PerumahanUseCases.ts
-src/application/usecases/tagihan/TagihanUseCases.ts
-src/application/usecases/tagihan/UploadBuktiRefundUseCase.ts
-src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts
-src/application/usecases/user/GetAllUsersUseCase.ts
-src/application/usecases/user/GetUsersPaginatedUseCase.ts
-src/application/usecases/user/UpdateUserUseCase.ts
-src/application/usecases/verify/VerifyDocumentUseCase.ts
-src/config/env.ts
-src/domain/dtos/AgentDTO.ts
-src/domain/dtos/BankRekeningPtDTO.ts
-src/domain/dtos/BaseFilterDTO.ts
-src/domain/dtos/CustomerDTO.ts
-src/domain/dtos/CustomerKavlingDTO.ts
-src/domain/dtos/DashboardDTO.ts
-src/domain/dtos/DetailKavlingPajakDTO.ts
-src/domain/dtos/FeeAgentDTO.ts
-src/domain/dtos/KavlingDTO.ts
-src/domain/dtos/NotarisDTO.ts
-src/domain/dtos/PenjualanDTO.ts
-src/domain/dtos/PerumahanDTO.ts
-src/domain/dtos/TagihanDTO.ts
-src/domain/dtos/UserDTO.ts
-src/domain/entities/Agent.ts
-src/domain/entities/BankRekeningPt.ts
-src/domain/entities/Customer.ts
-src/domain/entities/DetailKavlingPajak.ts
-src/domain/entities/FeeAgent.ts
-src/domain/entities/Kavling.ts
-src/domain/entities/Notaris.ts
-src/domain/entities/Perumahan.ts
-src/domain/entities/User.ts
-src/domain/errors/AppError.ts
-src/domain/errors/ConflictError.ts
-src/domain/errors/NotFoundError.ts
-src/domain/repositories/agentRepo.ts
-src/domain/repositories/bankRekeningPtRepo.ts
-src/domain/repositories/customerRepo.ts
-src/domain/repositories/detailKavlingPajakRepo.ts
-src/domain/repositories/feeAgentRepo.ts
-src/domain/repositories/IAgentRepo.ts
-src/domain/repositories/IBankRekeningPtRepo.ts
-src/domain/repositories/ICustomerRepo.ts
-src/domain/repositories/IDetailKavlingPajakRepo.ts
-src/domain/repositories/IFeeAgentRepo.ts
-src/domain/repositories/IKavlingRepo.ts
-src/domain/repositories/INotarisRepo.ts
-src/domain/repositories/IPenjualanRepo.ts
-src/domain/repositories/IPerumahanRepo.ts
-src/domain/repositories/ITagihanRepo.ts
-src/domain/repositories/IUserRepo.ts
-src/domain/repositories/kavlingRepo.ts
-src/domain/repositories/notarisRepo.ts
-src/domain/repositories/penjualanRepo.ts
-src/domain/repositories/perumahanRepo.ts
-src/domain/repositories/tagihanRepo.ts
-src/domain/repositories/userRepo.ts
-src/infrastructure/database/prisma.ts
-src/infrastructure/di/container.ts
-src/infrastructure/external/CloudinaryService.ts
-src/infrastructure/external/GoogleVisionService.ts
-src/infrastructure/mapper/AgentMapper.ts
-src/infrastructure/mapper/BankRekeningPtMapper.ts
-src/infrastructure/mapper/CustomerMapper.ts
-src/infrastructure/mapper/DetailKavlingPajakMapper.ts
-src/infrastructure/mapper/FeeAgentMapper.ts
-src/infrastructure/mapper/KavlingMapper.ts
-src/infrastructure/mapper/NotarisMapper.ts
-src/infrastructure/mapper/PerumahanMapper.ts
-src/infrastructure/mapper/TagihanMapper.ts
-src/infrastructure/mapper/UserMapper.ts
-src/middlewares/authMiddleware.ts
-src/middlewares/errorHandler.ts
-src/middlewares/upload.ts
-src/middlewares/validate.ts
-src/presentation/controllers/agentController.ts
-src/presentation/controllers/authController.ts
-src/presentation/controllers/bankRekeningPtController.ts
-src/presentation/controllers/customerController.ts
-src/presentation/controllers/customerKavlingController.ts
-src/presentation/controllers/dashboardController.ts
-src/presentation/controllers/feeAgentController.ts
-src/presentation/controllers/healthController.ts
-src/presentation/controllers/kavlingController.ts
-src/presentation/controllers/notarisController.ts
-src/presentation/controllers/ocrController.ts
-src/presentation/controllers/penjualanController.ts
-src/presentation/controllers/perumahanController.ts
-src/presentation/controllers/tagihanController.ts
-src/presentation/controllers/userController.ts
-src/presentation/controllers/verifyController.ts
-src/presentation/routes/agentRoutes.ts
-src/presentation/routes/authRoutes.ts
-src/presentation/routes/bankRekeningPtRoutes.ts
-src/presentation/routes/customerKavlingRoutes.ts
-src/presentation/routes/customerRoutes.ts
-src/presentation/routes/dashboardRoutes.ts
-src/presentation/routes/feeAgentRoutes.ts
-src/presentation/routes/index.ts
-src/presentation/routes/kavlingRoutes.ts
-src/presentation/routes/notarisRoutes.ts
-src/presentation/routes/ocrRoutes.ts
-src/presentation/routes/penjualanRoutes.ts
-src/presentation/routes/perumahanRoutes.ts
-src/presentation/routes/tagihanRoutes.ts
-src/presentation/routes/userRoutes.ts
-src/presentation/routes/verifyRoutes.ts
-src/server.ts
-src/tests/factories/bankRekeningPtFactory.ts
-src/tests/factories/customerFactory.ts
-src/tests/factories/index.ts
-src/tests/factories/userFactory.ts
-src/tests/setup.ts
-src/types/express.d.ts
-src/types/request.ts
-src/types/response.ts
-src/utils/hashing.ts
-src/utils/logger.ts
-src/utils/response.ts
-src/validations/agentSchema.ts
-src/validations/authSchema.ts
-src/validations/bankRekeningPtSchema.ts
-src/validations/customerKavlingSchema.ts
-src/validations/customerSchema.ts
-src/validations/emptySchema.ts
-src/validations/feeAgentSchema.ts
-src/validations/kavlingSchema.ts
-src/validations/notarisSchema.ts
-src/validations/ocrSchema.ts
-src/validations/paginationSchema.ts
-src/validations/penjualanSchema.ts
-src/validations/perumahanSchema.ts
-src/validations/tagihanSchema.ts
-src/validations/userSchema.ts
-tsconfig.json
-</directory_structure>
-
-<files>
-This section contains the contents of the repository's files.
+kode backend:
 
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -9174,93 +8960,6 @@ export const createPenjualanRoutes = (
 };
 </file>
 
-<file path="src/domain/repositories/IPenjualanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../dtos/PenjualanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-
-export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: true;
-    kavling: {
-      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
-    };
-    rekeningTujuan: true;
-    tagihan: true;
-    agent: true;
-  };
-}>;
-
-export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: { select: { id: true; nama: true } };
-    kavling: {
-      select: {
-        id: true;
-        blok: true;
-        nomorUnit: true;
-        perumahan: { select: { nama: true } };
-      };
-    };
-  };
-}>;
-
-export interface PenjualanPaginatedItem {
-  id: string;
-  tanggal: string;
-  nama: string;
-  alamat: string;
-  noTelepon: string;
-  noIdentitas: string;
-  perumahan: string;
-  blok: string;
-  alasanBatal: string | null;
-  nomorUnit: string;
-  tipe: string;
-  luasBangunan: number;
-  luasTanah: number;
-  hargaJual: number;
-  dp: number;
-  diskonPenjualan: number;
-  hargaPromosi: number;
-  bank: string;
-  caraPembayaran: string;
-  nilaiPengajuanKpr: number;
-  bookingFee: number;
-  status: string;
-  agent: string;
-  fileBuktiBooking: string;
-  fileBuktiDp: string;
-  fileSpr: string | null;
-  ttdData?: any;
-  rekeningTujuanId?: number | null;
-  rekeningTujuan?: {
-    namaBank: string;
-    noRekening: string;
-    atasNama: string;
-  } | null;
-}
-
-export interface IPenjualanRepository {
-  createWithTransaction(
-    data: CreatePenjualanDTO,
-  ): Promise<PenjualanWithRelations>;
-  findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
-  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
-  update(
-    id: number,
-    data: Partial<Prisma.PenjualanUpdateInput>,
-  ): Promise<PenjualanWithCompleteRelations>;
-}
-</file>
-
 <file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
 import PDFDocument from "pdfkit";
 import type { Prisma } from "@prisma/client";
@@ -9695,6 +9394,94 @@ export class GenerateSprPdfUseCase {
       }
     });
   }
+}
+</file>
+
+<file path="src/domain/repositories/IPenjualanRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../dtos/PenjualanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    kavling: {
+      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
+    };
+    rekeningTujuan: true;
+    tagihan: true;
+    agent: true;
+  };
+}>;
+
+export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: { select: { id: true; nama: true } };
+    kavling: {
+      select: {
+        id: true;
+        blok: true;
+        nomorUnit: true;
+        perumahan: { select: { nama: true } };
+      };
+    };
+  };
+}>;
+
+export interface PenjualanPaginatedItem {
+  id: string;
+  tanggal: string;
+  nama: string;
+  alamat: string;
+  noTelepon: string;
+  noIdentitas: string;
+  perumahan: string;
+  blok: string;
+  alasanBatal: string | null;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  hargaJual: number;
+  dp: number;
+  diskonPenjualan: number;
+  hargaPromosi: number;
+  bank: string;
+  caraPembayaran: string;
+  nilaiPengajuanKpr: number;
+  bookingFee: number;
+  status: string;
+  agent: string;
+  fileBuktiBooking: string;
+  fileBuktiDp: string;
+  fileSpr: string | null;
+  ttdData?: any;
+  rekeningTujuanId?: number | null;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
+  riwayatGantiKavling?: any[];
+}
+
+export interface IPenjualanRepository {
+  createWithTransaction(
+    data: CreatePenjualanDTO,
+  ): Promise<PenjualanWithRelations>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PenjualanFilterDTO,
+  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
+  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
+  update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations>;
 }
 </file>
 
@@ -10241,6 +10028,60 @@ model RiwayatGantiKavling {
 }
 </file>
 
+<file path="src/presentation/routes/index.ts">
+import { Router } from "express";
+import { checkHealth } from "../controllers/healthController.js";
+import { createAuthRoutes } from "./authRoutes.js";
+import { createUserRoutes } from "./userRoutes.js";
+import { createOcrRoutes } from "./ocrRoutes.js";
+import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
+import { createCustomerRoutes } from "./customerRoutes.js";
+import { container } from "../../infrastructure/di/container.js";
+import { createPerumahanRoutes } from "./perumahanRoutes.js";
+import { createDashboardRoutes } from "./dashboardRoutes.js";
+import { createAgentRoutes } from "./agentRoutes.js";
+import { createNotarisRoutes } from "./notarisRoutes.js";
+import { createKavlingRoutes } from "./kavlingRoutes.js";
+import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
+import { createTagihanRoutes } from "./tagihanRoutes.js";
+import { createPenjualanRoutes } from "./penjualanRoutes.js";
+import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
+import { createVerifyRoutes } from "./verifyRoutes.js";
+export const createMainRouter = (deps: typeof container): Router => {
+  const router = Router();
+
+  router.get("/health", checkHealth);
+  router.use("/verify", createVerifyRoutes(deps.verifyController));
+
+  router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/users", createUserRoutes(deps.userController));
+  router.use("/ocr", createOcrRoutes(deps.ocrController));
+
+  router.use(
+    "/bank-rekening",
+    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  );
+
+  router.use("/customers", createCustomerRoutes(deps.customerController));
+  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
+  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/agents", createAgentRoutes(deps.agentController));
+  router.use("/notaris", createNotarisRoutes(deps.notarisController));
+  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
+  router.use(
+    "/customer-kavling",
+    createCustomerKavlingRoutes(deps.customerKavlingController),
+  );
+  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
+  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
+  return router;
+};
+
+const router = createMainRouter(container);
+export default router;
+</file>
+
 <file path="src/domain/repositories/penjualanRepo.ts">
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
@@ -10491,6 +10332,13 @@ export class PenjualanRepository implements IPenjualanRepository {
         kavling: { include: { perumahan: true, rekeningTujuan: true } },
         agent: true,
         tagihan: true,
+        riwayatGantiKavling: {
+          include: {
+            kavlingLama: { include: { perumahan: true } },
+            kavlingBaru: { include: { perumahan: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -10570,6 +10418,7 @@ export class PenjualanRepository implements IPenjualanRepository {
               atasNama: item.kavling.rekeningTujuan.atasNama,
             }
           : null,
+        riwayatGantiKavling: item.riwayatGantiKavling || [],
       };
     });
 
@@ -10594,60 +10443,6 @@ export class PenjualanRepository implements IPenjualanRepository {
     });
   }
 }
-</file>
-
-<file path="src/presentation/routes/index.ts">
-import { Router } from "express";
-import { checkHealth } from "../controllers/healthController.js";
-import { createAuthRoutes } from "./authRoutes.js";
-import { createUserRoutes } from "./userRoutes.js";
-import { createOcrRoutes } from "./ocrRoutes.js";
-import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
-import { createCustomerRoutes } from "./customerRoutes.js";
-import { container } from "../../infrastructure/di/container.js";
-import { createPerumahanRoutes } from "./perumahanRoutes.js";
-import { createDashboardRoutes } from "./dashboardRoutes.js";
-import { createAgentRoutes } from "./agentRoutes.js";
-import { createNotarisRoutes } from "./notarisRoutes.js";
-import { createKavlingRoutes } from "./kavlingRoutes.js";
-import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
-import { createTagihanRoutes } from "./tagihanRoutes.js";
-import { createPenjualanRoutes } from "./penjualanRoutes.js";
-import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
-import { createVerifyRoutes } from "./verifyRoutes.js";
-export const createMainRouter = (deps: typeof container): Router => {
-  const router = Router();
-
-  router.get("/health", checkHealth);
-  router.use("/verify", createVerifyRoutes(deps.verifyController));
-
-  router.use("/auth", createAuthRoutes(deps.authController));
-  router.use("/users", createUserRoutes(deps.userController));
-  router.use("/ocr", createOcrRoutes(deps.ocrController));
-
-  router.use(
-    "/bank-rekening",
-    createBankRekeningPtRoutes(deps.bankRekeningPtController),
-  );
-
-  router.use("/customers", createCustomerRoutes(deps.customerController));
-  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
-  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
-  router.use("/agents", createAgentRoutes(deps.agentController));
-  router.use("/notaris", createNotarisRoutes(deps.notarisController));
-  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
-  router.use(
-    "/customer-kavling",
-    createCustomerKavlingRoutes(deps.customerKavlingController),
-  );
-  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
-  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
-  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
-  return router;
-};
-
-const router = createMainRouter(container);
-export default router;
 </file>
 
 <file path="src/infrastructure/di/container.ts">

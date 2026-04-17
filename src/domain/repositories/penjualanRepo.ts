@@ -334,6 +334,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             }
           : null,
         riwayatGantiKavling: item.riwayatGantiKavling || [],
+        tagihan: item.tagihan || [],
       };
     });
 
