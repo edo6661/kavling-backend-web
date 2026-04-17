@@ -18,6 +18,7 @@ import type {
 } from "../../validations/tagihanSchema.js";
 import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
 import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
+import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
 
 export class TagihanController {
   constructor(
@@ -27,6 +28,7 @@ export class TagihanController {
     private readonly getPaginatedUseCase: GetTagihansPaginatedUseCase,
     private readonly deleteUseCase: DeleteTagihanUseCase,
     private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
+    private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
   ) {}
 
   create = async (
@@ -109,5 +111,29 @@ export class TagihanController {
       "Bukti pembayaran berhasil diunggah",
       result,
     );
+  };
+  uploadBuktiRefund = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File bukti refund wajib diunggah",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiRefundUseCase.execute(
+      id,
+      req.file.buffer,
+    );
+    sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
   };
 }

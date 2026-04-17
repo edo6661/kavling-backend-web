@@ -35,6 +35,8 @@ export class TagihanMapper {
       status: prismaTagihan.status,
       fileBukti: prismaTagihan.fileBukti,
       reminderBerikutnya: prismaTagihan.reminderBerikutnya,
+      isRefunded: prismaTagihan.isRefunded ?? false,
+      fileBuktiRefund: prismaTagihan.fileBuktiRefund ?? null,
       rekeningTujuan: prismaTagihan.penjualan.kavling.rekeningTujuan
         ? {
             namaBank: prismaTagihan.penjualan.kavling.rekeningTujuan.namaBank,

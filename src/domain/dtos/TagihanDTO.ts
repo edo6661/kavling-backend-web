@@ -34,6 +34,8 @@ export interface TagihanResponseDTO {
   status: PaymentStatus;
   fileBukti: string | null;
   reminderBerikutnya: Date | null;
+  isRefunded?: boolean;
+  fileBuktiRefund?: string | null;
   rekeningTujuan?: {
     namaBank: string;
     noRekening: string;

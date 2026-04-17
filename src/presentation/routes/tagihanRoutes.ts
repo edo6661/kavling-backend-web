@@ -51,6 +51,12 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
     upload.single("fileBukti"),
     controller.uploadBukti,
   );
+  router.patch(
+    "/:id/refund",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("fileBuktiRefund"),
+    controller.uploadBuktiRefund,
+  );
 
   return router;
 };
