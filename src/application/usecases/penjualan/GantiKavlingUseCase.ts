@@ -1,0 +1,76 @@
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class GantiKavlingUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(noTransaksi: string, kavlingBaruId: number, alasan: string) {
+    return await this.db.$transaction(async (tx) => {
+      const penjualan = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: { kavling: true, detailKavlingPajak: true },
+      });
+
+      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
+      if (penjualan.status === "BATAL" || penjualan.status === "LUNAS") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Status penjualan tidak valid untuk ganti kavling",
+        );
+      }
+
+      const kavlingBaru = await tx.kavling.findUnique({
+        where: { id: kavlingBaruId },
+      });
+
+      if (!kavlingBaru) throw new NotFoundError("Kavling baru tidak ditemukan");
+      if (kavlingBaru.status !== "AVAILABLE") {
+        throw new ConflictError(
+          "Kavling baru sudah terisi atau tidak tersedia",
+        );
+      }
+
+      await tx.riwayatGantiKavling.create({
+        data: {
+          penjualanId: penjualan.id,
+          kavlingLamaId: penjualan.kavlingId,
+          kavlingBaruId: kavlingBaru.id,
+          alasan: alasan,
+        },
+      });
+
+      await tx.kavling.update({
+        where: { id: penjualan.kavlingId },
+        data: { status: "AVAILABLE" },
+      });
+
+      await tx.kavling.update({
+        where: { id: kavlingBaru.id },
+        data: { status: penjualan.kavling.status },
+      });
+
+      const updatedPenjualan = await tx.penjualan.update({
+        where: { id: penjualan.id },
+        data: {
+          kavlingId: kavlingBaru.id,
+          hargaJual: kavlingBaru.hargaJual,
+        },
+        include: {
+          kavling: { include: { perumahan: true } },
+        },
+      });
+
+      if (penjualan.detailKavlingPajak) {
+        await tx.detailKavlingPajak.update({
+          where: { penjualanId: penjualan.id },
+          data: { luasBangunan: kavlingBaru.luasBangunan.toString() },
+        });
+      }
+
+      return updatedPenjualan;
+    });
+  }
+}

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../../utils/response.js";
 import type { TypedRequest } from "../../types/request.js";
-
+import type { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
 import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
 import type {
   cancelPenjualanSchema,
@@ -30,6 +30,7 @@ export class PenjualanController {
     private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
     private readonly saveSignatureUseCase: SaveSignatureUseCase,
     private readonly updateUseCase: UpdatePenjualanUseCase,
+    private readonly gantiKavlingUseCase: GantiKavlingUseCase,
   ) {}
 
   create = async (
@@ -158,6 +159,29 @@ export class PenjualanController {
       res,
       StatusCodes.OK,
       "Data penjualan berhasil diperbarui dan direkam.",
+      result,
+    );
+  };
+  gantiKavling = async (
+    req: TypedRequest<
+      typeof gantiKavlingSchema.body,
+      any,
+      typeof gantiKavlingSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { kavlingBaruId, alasan } = req.body;
+
+    const result = await this.gantiKavlingUseCase.execute(
+      id,
+      kavlingBaruId,
+      alasan,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Berhasil ganti kavling. Status telah diperbarui.",
       result,
     );
   };

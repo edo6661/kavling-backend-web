@@ -97,3 +97,13 @@ export const updatePenjualanSchema = {
     })
     .partial(),
 };
+
+export const gantiKavlingSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    kavlingBaruId: z.coerce.number().positive("Kavling baru wajib dipilih"),
+    alasan: z.string().min(5, "Alasan ganti kavling minimal 5 karakter"),
+  }),
+};

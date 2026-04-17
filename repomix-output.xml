@@ -1,4 +1,4 @@
-kode backend:
+tolong ingat kode backend nya:
 
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -755,221 +755,6 @@ export class SaveSignatureUseCase {
 
       return penjualan;
     }
-  }
-}
-</file>
-
-<file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
-import type { Prisma } from "@prisma/client";
-import { type PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
-export class UpdatePenjualanUseCase {
-  constructor(private readonly db: PrismaClient) {}
-  async execute(
-    noTransaksi: string,
-    data: Partial<CreatePenjualanDTO>,
-    userId?: number,
-  ) {
-    return await this.db.$transaction(async (tx) => {
-      const old = await tx.penjualan.findUnique({
-        where: { noTransaksi },
-        include: {
-          customer: true,
-          agent: true,
-          kavling: { include: { perumahan: true } },
-        },
-      });
-      if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
-      if (
-        data.nama !== undefined ||
-        data.noIdentitas !== undefined ||
-        data.noTelepon !== undefined ||
-        data.alamat !== undefined ||
-        data.perusahaan !== undefined ||
-        data.alamatKoresponden !== undefined
-      ) {
-        if (data.noIdentitas && data.noIdentitas !== old.customer.nikKtp) {
-          const existingCustomer = await tx.customer.findUnique({
-            where: { nikKtp: data.noIdentitas },
-          });
-          if (existingCustomer && existingCustomer.id !== old.customerId) {
-            throw new ConflictError(
-              `Gagal update! NIK KTP ${data.noIdentitas} sudah terdaftar untuk customer lain.`,
-            );
-          }
-        }
-        const updateCustomerData: Prisma.CustomerUpdateInput = {};
-        if (data.nama !== undefined) updateCustomerData.nama = data.nama;
-        if (data.noIdentitas !== undefined)
-          updateCustomerData.nikKtp = data.noIdentitas;
-        if (data.noTelepon !== undefined)
-          updateCustomerData.noHp = data.noTelepon;
-        if (data.alamat !== undefined)
-          updateCustomerData.alamatKtp = data.alamat;
-        if (data.perusahaan !== undefined)
-          updateCustomerData.perusahaan = data.perusahaan ?? null;
-        if (data.alamatKoresponden !== undefined)
-          updateCustomerData.alamatKoresponden = data.alamatKoresponden ?? null;
-        await tx.customer.update({
-          where: { id: old.customerId },
-          data: updateCustomerData,
-        });
-      }
-      if (data.agent && old.agentId) {
-        await tx.agent.update({
-          where: { id: old.agentId },
-          data: { nama: data.agent },
-        });
-      }
-      let formattedPayment = data.caraPembayaran as string | undefined;
-      if (formattedPayment) {
-        formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
-      }
-      const updateData: Prisma.PenjualanUpdateInput = {};
-      if (formattedPayment !== undefined)
-        updateData.caraPembayaran = formattedPayment as any;
-      if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
-      if (data.dp !== undefined) updateData.dp = data.dp ?? null;
-      if (data.diskonPenjualan !== undefined)
-        updateData.diskonPenjualan = data.diskonPenjualan ?? null;
-      if (data.hargaPromosi !== undefined)
-        updateData.hargaPromosi = data.hargaPromosi ?? null;
-      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
-      if (data.nilaiPengajuanKpr !== undefined)
-        updateData.nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? null;
-      if (
-        data.blok &&
-        data.nomorUnit &&
-        (data.blok !== old.kavling.blok ||
-          data.nomorUnit !== old.kavling.nomorUnit)
-      ) {
-        const newKavling = await tx.kavling.findFirst({
-          where: {
-            perumahanId: old.kavling.perumahanId,
-            blok: data.blok,
-            nomorUnit: data.nomorUnit,
-          },
-        });
-        if (newKavling && newKavling.id !== old.kavlingId) {
-          if (newKavling.status !== "AVAILABLE") {
-            throw new ConflictError(
-              `Kavling Blok ${data.blok} No ${data.nomorUnit} tidak tersedia (Status: ${newKavling.status})`,
-            );
-          }
-          await tx.kavling.update({
-            where: { id: old.kavlingId },
-            data: { status: "AVAILABLE" },
-          });
-          await tx.kavling.update({
-            where: { id: newKavling.id },
-            data: {
-              status: old.kavling.status,
-              namaTipe: data.tipe ?? newKavling.namaTipe,
-              luasBangunan: data.luasBangunan ?? newKavling.luasBangunan,
-              luasTanah: data.luasTanah ?? newKavling.luasTanah,
-              hargaJual: data.hargaJual ?? newKavling.hargaJual,
-            },
-          });
-          updateData.kavling = { connect: { id: newKavling.id } };
-        }
-      }
-      const updated = await tx.penjualan.update({
-        where: { noTransaksi },
-        data: updateData,
-      });
-      await tx.auditLog.create({
-        data: {
-          entityName: "Penjualan",
-          entityId: noTransaksi,
-          action: "UPDATE",
-          changes: {
-            before: old,
-            after: updated,
-            input_raw: data,
-          } as unknown as Prisma.InputJsonValue,
-          userId: userId ?? null,
-        },
-      });
-      return updated;
-    });
-  }
-}
-</file>
-
-<file path="src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts">
-import type { PrismaClient } from "@prisma/client";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-export class UploadBuktiPenjualanUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly cloudinaryService: CloudinaryService,
-    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
-  ) {}
-  async execute(id: string, type: "booking" | "dp", fileBuffer: Buffer) {
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-    const penjualan = await this.db.penjualan.findUnique({
-      where: { noTransaksi: id },
-      include: { tagihan: true },
-    });
-    if (!penjualan)
-      throw new AppError(
-        StatusCodes.NOT_FOUND,
-        "Data Penjualan tidak ditemukan",
-      );
-    const folderPath = `bumantara/penjualan/${type}`;
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      folderPath,
-    );
-    const updateData: Record<string, string> = {};
-
-    if (type === "booking") {
-      updateData.fileBuktiBooking = imageUrl;
-      updateData.status = "PROSES";
-    }
-
-    if (type === "dp") {
-      updateData.fileBuktiDp = imageUrl;
-    }
-    if (type === "booking") {
-      try {
-        const pdfBuffer = await this.generateSprPdfUseCase.execute(
-          penjualan.id,
-        );
-        const sprUrl = await this.cloudinaryService.uploadFile(
-          pdfBuffer,
-          "bumantara/spr",
-        );
-        updateData.fileSpr = sprUrl;
-      } catch (error) {
-        console.error("Gagal auto-generate SPR:", error);
-      }
-    }
-    const updatedPenjualan = await this.db.penjualan.update({
-      where: { id: penjualan.id },
-      data: updateData,
-    });
-    const keyword = type === "booking" ? "booking" : "dp";
-    const tagihanTerkait = penjualan.tagihan.find((t) =>
-      t.pembayaran.toLowerCase().includes(keyword),
-    );
-    if (tagihanTerkait) {
-      await this.db.tagihan.update({
-        where: { id: tagihanTerkait.id },
-        data: { status: "LUNAS", fileBukti: imageUrl },
-      });
-    }
-    return updatedPenjualan;
   }
 }
 </file>
@@ -5134,6 +4919,277 @@ export class ExtractKtpDataUseCase {
     }
 
     return this.googleVisionService.extractKtpData(fotoKtpBuffer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
+import type { Prisma } from "@prisma/client";
+import { type PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+
+export class UpdatePenjualanUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
+
+  async execute(
+    noTransaksi: string,
+    data: Partial<CreatePenjualanDTO>,
+    userId?: number,
+  ) {
+    const transactionResult = await this.db.$transaction(async (tx) => {
+      const old = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: {
+          customer: true,
+          agent: true,
+          kavling: { include: { perumahan: true } },
+        },
+      });
+
+      if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
+
+      if (
+        data.nama !== undefined ||
+        data.noIdentitas !== undefined ||
+        data.noTelepon !== undefined ||
+        data.alamat !== undefined ||
+        data.perusahaan !== undefined ||
+        data.alamatKoresponden !== undefined
+      ) {
+        if (data.noIdentitas && data.noIdentitas !== old.customer.nikKtp) {
+          const existingCustomer = await tx.customer.findUnique({
+            where: { nikKtp: data.noIdentitas },
+          });
+          if (existingCustomer && existingCustomer.id !== old.customerId) {
+            throw new ConflictError(
+              `Gagal update! NIK KTP ${data.noIdentitas} sudah terdaftar untuk customer lain.`,
+            );
+          }
+        }
+        const updateCustomerData: Prisma.CustomerUpdateInput = {};
+        if (data.nama !== undefined) updateCustomerData.nama = data.nama;
+        if (data.noIdentitas !== undefined)
+          updateCustomerData.nikKtp = data.noIdentitas;
+        if (data.noTelepon !== undefined)
+          updateCustomerData.noHp = data.noTelepon;
+        if (data.alamat !== undefined)
+          updateCustomerData.alamatKtp = data.alamat;
+        if (data.perusahaan !== undefined)
+          updateCustomerData.perusahaan = data.perusahaan ?? null;
+        if (data.alamatKoresponden !== undefined)
+          updateCustomerData.alamatKoresponden = data.alamatKoresponden ?? null;
+        await tx.customer.update({
+          where: { id: old.customerId },
+          data: updateCustomerData,
+        });
+      }
+
+      if (data.agent && old.agentId) {
+        await tx.agent.update({
+          where: { id: old.agentId },
+          data: { nama: data.agent },
+        });
+      }
+
+      let formattedPayment = data.caraPembayaran as string | undefined;
+      if (formattedPayment) {
+        formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
+      }
+
+      const updateData: Prisma.PenjualanUpdateInput = {};
+      if (formattedPayment !== undefined)
+        updateData.caraPembayaran = formattedPayment as any;
+      if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
+      if (data.dp !== undefined) updateData.dp = data.dp ?? null;
+      if (data.diskonPenjualan !== undefined)
+        updateData.diskonPenjualan = data.diskonPenjualan ?? null;
+      if (data.hargaPromosi !== undefined)
+        updateData.hargaPromosi = data.hargaPromosi ?? null;
+      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+      if (data.nilaiPengajuanKpr !== undefined)
+        updateData.nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? null;
+
+      if (
+        data.blok &&
+        data.nomorUnit &&
+        (data.blok !== old.kavling.blok ||
+          data.nomorUnit !== old.kavling.nomorUnit)
+      ) {
+        const newKavling = await tx.kavling.findFirst({
+          where: {
+            perumahanId: old.kavling.perumahanId,
+            blok: data.blok,
+            nomorUnit: data.nomorUnit,
+          },
+        });
+        if (newKavling && newKavling.id !== old.kavlingId) {
+          if (newKavling.status !== "AVAILABLE") {
+            throw new ConflictError(
+              `Kavling Blok ${data.blok} No ${data.nomorUnit} tidak tersedia (Status: ${newKavling.status})`,
+            );
+          }
+          await tx.kavling.update({
+            where: { id: old.kavlingId },
+            data: { status: "AVAILABLE" },
+          });
+          await tx.kavling.update({
+            where: { id: newKavling.id },
+            data: {
+              status: old.kavling.status,
+              namaTipe: data.tipe ?? newKavling.namaTipe,
+              luasBangunan: data.luasBangunan ?? newKavling.luasBangunan,
+              luasTanah: data.luasTanah ?? newKavling.luasTanah,
+              hargaJual: data.hargaJual ?? newKavling.hargaJual,
+            },
+          });
+          updateData.kavling = { connect: { id: newKavling.id } };
+        }
+      }
+
+      const updated = await tx.penjualan.update({
+        where: { noTransaksi },
+        data: updateData,
+      });
+
+      if (data.dp && data.dp > 0) {
+        const existingDp = await tx.tagihan.findFirst({
+          where: {
+            penjualanId: old.id,
+            pembayaran: { contains: "Down Payment" },
+          },
+        });
+        if (!existingDp) {
+          const dpDueDate = new Date(old.tanggal);
+          dpDueDate.setDate(dpDueDate.getDate() + 14);
+
+          await tx.tagihan.create({
+            data: {
+              noTagihan: `INV-DP-${noTransaksi}`,
+              customerId: old.customerId,
+              penjualanId: old.id,
+              pembayaran: "Down Payment (DP)",
+              nominal: data.dp,
+              jatuhTempo: dpDueDate,
+              status: "BELUM_BAYAR",
+            },
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          entityName: "Penjualan",
+          entityId: noTransaksi,
+          action: "UPDATE",
+          changes: {
+            before: old,
+            after: updated,
+            input_raw: data,
+          } as unknown as Prisma.InputJsonValue,
+          userId: userId ?? null,
+        },
+      });
+
+      return updated;
+    });
+
+    if (
+      data.caraPembayaran &&
+      transactionResult &&
+      !transactionResult.fileSpr
+    ) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          transactionResult.id,
+        );
+        const sprUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        const finalUpdated = await this.db.penjualan.update({
+          where: { id: transactionResult.id },
+          data: { fileSpr: sprUrl },
+        });
+
+        return finalUpdated;
+      } catch (error) {
+        console.error("Gagal auto-generate SPR setelah update skema:", error);
+      }
+    }
+
+    return transactionResult;
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+export class UploadBuktiPenjualanUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
+  async execute(id: string, type: "booking" | "dp", fileBuffer: Buffer) {
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { noTransaksi: id },
+      include: { tagihan: true },
+    });
+    if (!penjualan)
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Data Penjualan tidak ditemukan",
+      );
+    const folderPath = `bumantara/penjualan/${type}`;
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      folderPath,
+    );
+    const updateData: Record<string, string> = {};
+
+    if (type === "booking") {
+      updateData.fileBuktiBooking = imageUrl;
+      updateData.status = "PROSES";
+    }
+
+    if (type === "dp") {
+      updateData.fileBuktiDp = imageUrl;
+    }
+
+    const updatedPenjualan = await this.db.penjualan.update({
+      where: { id: penjualan.id },
+      data: updateData,
+    });
+    const keyword = type === "booking" ? "booking" : "dp";
+    const tagihanTerkait = penjualan.tagihan.find((t) =>
+      t.pembayaran.toLowerCase().includes(keyword),
+    );
+    if (tagihanTerkait) {
+      await this.db.tagihan.update({
+        where: { id: tagihanTerkait.id },
+        data: { status: "LUNAS", fileBukti: imageUrl },
+      });
+    }
+    return updatedPenjualan;
   }
 }
 </file>
@@ -10446,7 +10502,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   const penjualanRepo = new PenjualanRepository(dbClient);
   const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);
   const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
-  const updatePenjualanUseCase = new UpdatePenjualanUseCase(dbClient);
+  const updatePenjualanUseCase = new UpdatePenjualanUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
   const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
     penjualanRepo,
   );

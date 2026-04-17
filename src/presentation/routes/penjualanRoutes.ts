@@ -4,6 +4,7 @@ import { validate } from "../../middlewares/validate.js";
 import {
   cancelPenjualanSchema,
   createPenjualanSchema,
+  gantiKavlingSchema,
   getPenjualanPaginatedSchema,
   updatePenjualanSchema,
   uploadSignatureSchema,
@@ -54,6 +55,12 @@ export const createPenjualanRoutes = (
     requireRole(["ADMIN", "MARKETING"]),
     validate(updatePenjualanSchema),
     controller.update,
+  );
+  router.patch(
+    "/:id/ganti-kavling",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(gantiKavlingSchema),
+    controller.gantiKavling,
   );
   return router;
 };

@@ -204,7 +204,8 @@ model Kavling {
   fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
   createdAt           DateTime         @default(now()) @map("created_at")
   updatedAt           DateTime         @updatedAt @map("updated_at")
-
+  riwayatLama        RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
+  riwayatBaru        RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
   perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
   rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
   penjualan           Penjualan[]
@@ -237,6 +238,7 @@ model Penjualan {
   ttdData           Json?               @map("ttd_data")
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
+  riwayatGantiKavling RiwayatGantiKavling[]
   customer          Customer            @relation(fields: [customerId], references: [id])
   kavling           Kavling             @relation(fields: [kavlingId], references: [id])
   agent             Agent?              @relation(fields: [agentId], references: [id])
@@ -405,4 +407,19 @@ model AuditLog {
   user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+model RiwayatGantiKavling {
+  id            Int      @id @default(autoincrement())
+  penjualanId   Int      @map("penjualan_id")
+  kavlingLamaId Int      @map("kavling_lama_id")
+  kavlingBaruId Int      @map("kavling_baru_id")
+  alasan        String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  penjualan     Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  kavlingLama   Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
+  kavlingBaru   Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
+
+  @@map("riwayat_ganti_kavling")
 }
