@@ -65,6 +65,7 @@ export interface PenjualanPaginatedItem {
     noRekening: string;
     atasNama: string;
   } | null;
+  riwayatGantiKavling?: any[];
 }
 
 export interface IPenjualanRepository {

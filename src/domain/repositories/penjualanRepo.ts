@@ -247,6 +247,13 @@ export class PenjualanRepository implements IPenjualanRepository {
         kavling: { include: { perumahan: true, rekeningTujuan: true } },
         agent: true,
         tagihan: true,
+        riwayatGantiKavling: {
+          include: {
+            kavlingLama: { include: { perumahan: true } },
+            kavlingBaru: { include: { perumahan: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -326,6 +333,7 @@ export class PenjualanRepository implements IPenjualanRepository {
               atasNama: item.kavling.rekeningTujuan.atasNama,
             }
           : null,
+        riwayatGantiKavling: item.riwayatGantiKavling || [],
       };
     });
 
