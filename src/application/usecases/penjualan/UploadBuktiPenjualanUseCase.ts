@@ -40,20 +40,7 @@ export class UploadBuktiPenjualanUseCase {
     if (type === "dp") {
       updateData.fileBuktiDp = imageUrl;
     }
-    if (type === "booking") {
-      try {
-        const pdfBuffer = await this.generateSprPdfUseCase.execute(
-          penjualan.id,
-        );
-        const sprUrl = await this.cloudinaryService.uploadFile(
-          pdfBuffer,
-          "bumantara/spr",
-        );
-        updateData.fileSpr = sprUrl;
-      } catch (error) {
-        console.error("Gagal auto-generate SPR:", error);
-      }
-    }
+
     const updatedPenjualan = await this.db.penjualan.update({
       where: { id: penjualan.id },
       data: updateData,

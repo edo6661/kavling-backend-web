@@ -292,7 +292,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   const penjualanRepo = new PenjualanRepository(dbClient);
   const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);
   const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
-  const updatePenjualanUseCase = new UpdatePenjualanUseCase(dbClient);
+  const updatePenjualanUseCase = new UpdatePenjualanUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
   const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
     penjualanRepo,
   );

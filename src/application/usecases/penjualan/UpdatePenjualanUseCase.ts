@@ -3,14 +3,22 @@ import { type PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+
 export class UpdatePenjualanUseCase {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
+
   async execute(
     noTransaksi: string,
     data: Partial<CreatePenjualanDTO>,
     userId?: number,
   ) {
-    return await this.db.$transaction(async (tx) => {
+    const transactionResult = await this.db.$transaction(async (tx) => {
       const old = await tx.penjualan.findUnique({
         where: { noTransaksi },
         include: {
@@ -19,7 +27,9 @@ export class UpdatePenjualanUseCase {
           kavling: { include: { perumahan: true } },
         },
       });
+
       if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
+
       if (
         data.nama !== undefined ||
         data.noIdentitas !== undefined ||
@@ -55,16 +65,19 @@ export class UpdatePenjualanUseCase {
           data: updateCustomerData,
         });
       }
+
       if (data.agent && old.agentId) {
         await tx.agent.update({
           where: { id: old.agentId },
           data: { nama: data.agent },
         });
       }
+
       let formattedPayment = data.caraPembayaran as string | undefined;
       if (formattedPayment) {
         formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
       }
+
       const updateData: Prisma.PenjualanUpdateInput = {};
       if (formattedPayment !== undefined)
         updateData.caraPembayaran = formattedPayment as any;
@@ -77,6 +90,7 @@ export class UpdatePenjualanUseCase {
       if (data.bank !== undefined) updateData.bank = data.bank ?? null;
       if (data.nilaiPengajuanKpr !== undefined)
         updateData.nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? null;
+
       if (
         data.blok &&
         data.nomorUnit &&
@@ -113,10 +127,37 @@ export class UpdatePenjualanUseCase {
           updateData.kavling = { connect: { id: newKavling.id } };
         }
       }
+
       const updated = await tx.penjualan.update({
         where: { noTransaksi },
         data: updateData,
       });
+
+      if (data.dp && data.dp > 0) {
+        const existingDp = await tx.tagihan.findFirst({
+          where: {
+            penjualanId: old.id,
+            pembayaran: { contains: "Down Payment" },
+          },
+        });
+        if (!existingDp) {
+          const dpDueDate = new Date(old.tanggal);
+          dpDueDate.setDate(dpDueDate.getDate() + 14);
+
+          await tx.tagihan.create({
+            data: {
+              noTagihan: `INV-DP-${noTransaksi}`,
+              customerId: old.customerId,
+              penjualanId: old.id,
+              pembayaran: "Down Payment (DP)",
+              nominal: data.dp,
+              jatuhTempo: dpDueDate,
+              status: "BELUM_BAYAR",
+            },
+          });
+        }
+      }
+
       await tx.auditLog.create({
         data: {
           entityName: "Penjualan",
@@ -130,7 +171,35 @@ export class UpdatePenjualanUseCase {
           userId: userId ?? null,
         },
       });
+
       return updated;
     });
+
+    if (
+      data.caraPembayaran &&
+      transactionResult &&
+      !transactionResult.fileSpr
+    ) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          transactionResult.id,
+        );
+        const sprUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        const finalUpdated = await this.db.penjualan.update({
+          where: { id: transactionResult.id },
+          data: { fileSpr: sprUrl },
+        });
+
+        return finalUpdated;
+      } catch (error) {
+        console.error("Gagal auto-generate SPR setelah update skema:", error);
+      }
+    }
+
+    return transactionResult;
   }
 }
