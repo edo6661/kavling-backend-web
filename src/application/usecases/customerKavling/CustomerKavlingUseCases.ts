@@ -38,6 +38,7 @@ export class GetCustomerKavlingsPaginatedUseCase {
         customer: { select: { nama: true } },
         kavling: { include: { perumahan: true } },
         detailKavlingPajak: { include: { notaris: true } },
+        agent: { select: { nama: true } },
       },
     });
 
@@ -66,6 +67,7 @@ export class GetCustomerKavlingsPaginatedUseCase {
         harga: Number(p.kavling.hargaJual),
         totalHargaJual: Number(p.hargaJual),
         pembiayaan: p.caraPembayaran,
+        agent: p.agent?.nama ?? "Nama Agent",
 
         ...restDetailPajak,
 
