@@ -200,7 +200,7 @@ export class GenerateSprPdfUseCase {
           const labelPengajuan =
             penjualan.caraPembayaran === "KPR"
               ? "Nilai Pengajuan KPR"
-              : "Nilai Pengajuan (Plafon)";
+              : "Nilai Pengajuan Plafon";
 
           drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
         }
