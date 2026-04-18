@@ -15,7 +15,7 @@ services:
   db:
     image: mysql:8.0
     container_name: kavling-backend-db
-    command: --skip-name-resolve
+    command: --skip-name-resolve --default-authentication-plugin=mysql_native_password
     restart: unless-stopped
     ports:
       - "127.0.0.1:3307:3306"

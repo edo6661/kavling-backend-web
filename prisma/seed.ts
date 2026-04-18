@@ -18,19 +18,19 @@ const prisma = new PrismaClient();
 async function main() {
   await seedUser(prisma);
   await seedPerumahan(prisma);
-  await seedNotaris(prisma);
-  await seedAgent(prisma);
+  // await seedNotaris(prisma);
+  // await seedAgent(prisma);
   await seedBankRekeningPt(prisma);
 
-  await seedCustomer(prisma);
-  await seedKavling(prisma);
-  await seedSpk(prisma);
+  // await seedCustomer(prisma);
+  // await seedKavling(prisma);
+  // await seedSpk(prisma);
 
-  await seedPenjualan(prisma);
-  await seedDetailKavlingPajak(prisma);
-  await seedTagihan(prisma);
-  await seedFeeAgent(prisma);
-  await seedProgressProyek(prisma);
+  // await seedPenjualan(prisma);
+  // await seedDetailKavlingPajak(prisma);
+  // await seedTagihan(prisma);
+  // await seedFeeAgent(prisma);
+  // await seedProgressProyek(prisma);
 }
 
 main()
