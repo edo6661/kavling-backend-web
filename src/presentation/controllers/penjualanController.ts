@@ -7,6 +7,7 @@ import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/pe
 import type {
   cancelPenjualanSchema,
   createPenjualanSchema,
+  gantiKavlingSchema,
   updatePenjualanSchema,
   uploadBuktiPenjualanSchema,
   uploadSignatureSchema,
@@ -37,7 +38,12 @@ export class PenjualanController {
     req: TypedRequest<typeof createPenjualanSchema.body>,
     res: Response,
   ): Promise<void> => {
-    const result = await this.createUseCase.execute(req.body);
+    const pembuat = req.user?.username ?? "Admin";
+
+    const result = await this.createUseCase.execute({
+      ...req.body,
+      createdBy: pembuat,
+    });
     sendResponse(
       res,
       StatusCodes.CREATED,

@@ -31,6 +31,7 @@ export interface CreatePenjualanDTO {
 
   // --- Data Agent ---
   agent: string;
+  createdBy?: string;
 }
 
 export interface PenjualanResponseDTO {

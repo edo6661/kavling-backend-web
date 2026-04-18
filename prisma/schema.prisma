@@ -236,6 +236,7 @@ model Penjualan {
   fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
   fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
   ttdData           Json?               @map("ttd_data")
+  createdBy           String?             @map("created_by") @db.VarChar(100) 
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
   riwayatGantiKavling RiwayatGantiKavling[]

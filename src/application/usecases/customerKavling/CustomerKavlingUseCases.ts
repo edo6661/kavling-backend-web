@@ -72,6 +72,7 @@ export class GetCustomerKavlingsPaginatedUseCase {
         ...restDetailPajak,
 
         notarisId: p.detailKavlingPajak?.notarisId ?? "",
+        createdBy: p.createdBy ?? "Admin",
       };
     });
 

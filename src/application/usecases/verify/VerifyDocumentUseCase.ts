@@ -45,6 +45,7 @@ export class VerifyDocumentUseCase {
           bookingFee: Number(penjualan.bookingFee ?? 0),
           caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
           bank: penjualan.bank ?? "",
+          pembuat: penjualan.createdBy ?? "Admin",
           customer: {
             nama: penjualan.customer.nama,
             noHp: penjualan.customer.noHp,
@@ -68,10 +69,8 @@ export class VerifyDocumentUseCase {
   }
 
   private async handleTagihan(requestedNumber: string) {
-    // 2. Deteksi apakah user meminta Kwitansi atau Invoice dari URL-nya
     const isRequestingKwitansi = requestedNumber.startsWith("KWT-");
 
-    // 3. Konversi KWT- kembali menjadi INV- karena di database disimpannya sebagai INV-
     const searchNoTagihan = requestedNumber.replace(/^KWT-/, "INV-");
 
     const tagihan = await this.db.tagihan.findUnique({
@@ -104,18 +103,18 @@ export class VerifyDocumentUseCase {
     const hargaJual = Number(tagihan.penjualan.hargaJual);
     const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
 
-    // 4. Return tipe dokumen dengan tepat agar frontend memproses judul dengan benar
     const documentType = isRequestingKwitansi ? "KWITANSI" : "INVOICE";
 
     return {
       type: documentType,
       data: {
-        noDokumen: requestedNumber, // Kembalikan nomor asli sesuai request (INV/KWT)
+        noDokumen: requestedNumber,
         pembayaran: tagihan.pembayaran,
         nominal: Number(tagihan.nominal),
         jatuhTempo: tagihan.jatuhTempo,
         status: tagihan.status,
         tanggalDibuat: tagihan.createdAt,
+        pembuat: tagihan.penjualan.createdBy ?? "Admin",
         customer: {
           nama: tagihan.customer.nama,
           noHp: tagihan.customer.noHp,

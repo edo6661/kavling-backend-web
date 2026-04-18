@@ -165,6 +165,7 @@ export class PenjualanRepository implements IPenjualanRepository {
           nilaiPengajuanKpr: data.nilaiPengajuanKpr ?? null,
           bookingFee: data.bookingFee ?? null,
           status: "BOOKED",
+          createdBy: data.createdBy ?? "Admin",
         },
         include: {
           customer: { select: { id: true, nama: true } },
@@ -335,6 +336,7 @@ export class PenjualanRepository implements IPenjualanRepository {
           : null,
         riwayatGantiKavling: item.riwayatGantiKavling || [],
         tagihan: item.tagihan || [],
+        createdBy: item.createdBy ?? "Admin",
       };
     });
 
