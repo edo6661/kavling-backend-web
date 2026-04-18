@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
 import QRCode from "qrcode";
+
 export class GenerateSprPdfUseCase {
   constructor(private readonly penjualanRepo: IPenjualanRepository) {}
 
@@ -15,7 +16,7 @@ export class GenerateSprPdfUseCase {
 
     const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
 
-    // --- 1. PRE-FETCH DATA TANDA TANGAN (ASINKRON) ---
+    // --- 1. PRE-FETCH DATA TANDA TANGAN & LOGO (ASINKRON) ---
     const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
     const ttdData = penjualan.ttdData as Record<
       string,
@@ -25,7 +26,7 @@ export class GenerateSprPdfUseCase {
 
     const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
     let qrCodeBuffer: Buffer | null = null;
-    let logoBuffer: Buffer | null = null; // Tambahkan variabel ini
+    let logoBuffer: Buffer | null = null;
 
     // Ambil logo dari Cloudinary
     if (kavling.perumahan.logo) {
@@ -72,58 +73,60 @@ export class GenerateSprPdfUseCase {
     // --- 2. PEMBUATAN DOKUMEN PDF (SINKRON) ---
     return new Promise((resolve, reject) => {
       try {
-        const doc = new PDFDocument({ size: "A4", margin: 50 });
+        const doc = new PDFDocument({ size: "A4", margin: 40 }); // Margin diperkecil
         const buffers: Buffer[] = [];
 
         doc.on("data", (buffer) => buffers.push(buffer));
         doc.on("end", () => resolve(Buffer.concat(buffers)));
 
         let y = 40;
-        const startX = 50;
-        const contentWidth = 495;
-        const pageBottomLimit = 780;
+        const startX = 40; // Margin kiri
+        const contentWidth = 515; // Lebar konten dimaksimalkan
+        const pageBottomLimit = 800;
 
         const checkY = (neededHeight: number) => {
           if (y + neededHeight > pageBottomLimit) {
             doc.addPage();
-            y = 50;
+            y = 40;
           }
         };
 
-        // --- HEADER ---
-        checkY(150);
-        doc
-          .fontSize(24)
-          .font("Helvetica-Bold")
-          .fillColor("#0f172a")
-          .text(kavling.perumahan.nama.toUpperCase(), startX, y);
-
+        // --- HEADER LOGO ---
+        checkY(80);
         if (logoBuffer) {
-          doc.image(logoBuffer, startX, y + 28, { height: 60 });
+          // Hanya logo, hapus nama perumahan
+          doc.image(logoBuffer, startX, y, { height: 50 });
         } else {
-          doc.fontSize(16).text("BUMANTARA", startX, y + 28);
+          doc
+            .fontSize(16)
+            .font("Helvetica-Bold")
+            .fillColor("#0f172a")
+            .text("BUMANTARA", startX, y);
         }
 
-        y += 105;
+        y += 60; // Jarak setelah logo sangat ditekan
 
+        // --- JUDUL DOKUMEN ---
         doc
           .fontSize(14)
           .fillColor("#000000")
+          .font("Helvetica-Bold")
           .text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
             width: contentWidth,
             align: "center",
             underline: true,
           });
-        y += 35;
+        y += 20;
 
         doc
           .fontSize(10)
           .font("Helvetica")
           .text("Yang bertanda tangan di bawah ini :", startX, y);
-        y += 20;
+        y += 15;
 
-        const drawField = (label: string, value: string, extraMargin = 8) => {
-          const labelWidth = 130;
+        // Fungsi Helper untuk merender list data dengan jarak rapat
+        const drawField = (label: string, value: string, extraMargin = 4) => {
+          const labelWidth = 120;
           const textHeight =
             doc.heightOfString(value, {
               width: contentWidth - labelWidth - 10,
@@ -148,9 +151,10 @@ export class GenerateSprPdfUseCase {
         );
         drawField("No. Identitas", customer.nikKtp);
         drawField("Perusahaan", customer.perusahaan ?? "-");
-        drawField("Alamat", customer.alamatKtp ?? "-", 15);
+        // extraMargin dibesarkan sedikit khusus baris terakhir dari blok ini
+        drawField("Alamat Korespondensi", customer.alamatKoresponden ?? "-", 8);
 
-        checkY(20);
+        checkY(15);
         doc
           .font("Helvetica")
           .text(
@@ -158,7 +162,7 @@ export class GenerateSprPdfUseCase {
             startX,
             y,
           );
-        y += 20;
+        y += 15;
 
         const formatRp = (num: number | Prisma.Decimal) => {
           const val =
@@ -200,32 +204,33 @@ export class GenerateSprPdfUseCase {
           const labelPengajuan =
             penjualan.caraPembayaran === "KPR"
               ? "Nilai Pengajuan KPR"
-              : "Nilai Pengajuan Plafon";
+              : "Nilai Pengajuan (Plafon)";
 
-          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr));
+          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr), 10);
         }
 
+        // --- TABEL PEMBAYARAN ---
         const colNo = startX;
-        const colKet = startX + 35;
-        const colTempo = startX + 230;
-        const colNilai = startX + 360;
-        const rowHeight = 20;
+        const colKet = startX + 30;
+        const colTempo = startX + 240;
+        const colNilai = startX + 370;
+        const rowHeight = 18; // Row height dipadatkan
 
         checkY(rowHeight);
         doc
           .rect(startX, y, contentWidth, rowHeight)
           .fillAndStroke("#f0f0f0", "#000");
         doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
-        doc.text("NO", colNo + 5, y + 6);
-        doc.text("KETERANGAN", colKet + 5, y + 6);
-        doc.text("JATUH TEMPO", colTempo + 5, y + 6);
-        doc.text("NILAI", colNilai + 5, y + 6);
+        doc.text("NO", colNo + 5, y + 5);
+        doc.text("KETERANGAN", colKet + 5, y + 5);
+        doc.text("JATUH TEMPO", colTempo + 5, y + 5);
+        doc.text("NILAI", colNilai + 5, y + 5);
         y += rowHeight;
 
         let totalNilai = 0;
         doc.font("Helvetica").fontSize(9);
 
-        // 1. Filter tagihan: Hanya ambil Booking Fee dan DP
+        // Filter tagihan: Hanya ambil Booking Fee dan DP
         const tagihanAwal =
           tagihan?.filter((t) => {
             const namaPembayaran = t.pembayaran.toLowerCase();
@@ -236,7 +241,7 @@ export class GenerateSprPdfUseCase {
             );
           }) || [];
 
-        // 2. Render hanya tagihan yang sudah difilter
+        // Render tagihan
         if (tagihanAwal.length > 0) {
           tagihanAwal.forEach((p, idx) => {
             checkY(rowHeight);
@@ -250,11 +255,12 @@ export class GenerateSprPdfUseCase {
               .replace(/\//g, "-");
 
             doc.rect(startX, y, contentWidth, rowHeight).stroke();
-            doc.text(`${idx + 1}.`, colNo + 5, y + 6);
-            doc.text(p.pembayaran, colKet + 5, y + 6);
-            doc.text(dateStr, colTempo + 5, y + 6);
-            doc.text(formatRp(p.nominal), colNilai + 5, y + 6);
+            doc.text(`${idx + 1}.`, colNo + 5, y + 5);
+            doc.text(p.pembayaran, colKet + 5, y + 5);
+            doc.text(dateStr, colTempo + 5, y + 5);
+            doc.text(formatRp(p.nominal), colNilai + 5, y + 5);
 
+            // Garis vertikal pemisah kolom
             doc
               .moveTo(colKet, y)
               .lineTo(colKet, y + rowHeight)
@@ -280,8 +286,8 @@ export class GenerateSprPdfUseCase {
         // Row Total
         checkY(rowHeight);
         doc.rect(startX, y, contentWidth, rowHeight).stroke();
-        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 6);
-        doc.text(formatRp(totalNilai), colNilai + 5, y + 6);
+        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 5);
+        doc.text(formatRp(totalNilai), colNilai + 5, y + 5);
         doc
           .moveTo(colKet, y)
           .lineTo(colKet, y + rowHeight)
@@ -290,10 +296,11 @@ export class GenerateSprPdfUseCase {
           .moveTo(colNilai, y)
           .lineTo(colNilai, y + rowHeight)
           .stroke();
-        y += 35;
+
+        y += 20; // Jarak setelah tabel sangat dikurangi
 
         // --- SIGNATURE AREA ---
-        checkY(130);
+        checkY(80);
         const today = new Date()
           .toLocaleDateString("id-ID", {
             day: "2-digit",
@@ -301,24 +308,25 @@ export class GenerateSprPdfUseCase {
             year: "numeric",
           })
           .replace(/\//g, "-");
+
         doc
           .font("Helvetica")
-          .fontSize(10)
+          .fontSize(9)
           .text(`Dibuat Tanggal: ${today}`, startX, y, {
             width: contentWidth,
             align: "right",
           });
-        y += 20;
+        y += 12;
 
         const w = contentWidth / 4;
 
         // Render Tanda Tangan & Nama
         sigData.forEach((title, i) => {
           const currentX = startX + w * i;
-          // Cetak Title (Pemesan, Marketing, dll)
+
           doc
             .font("Helvetica")
-            .fontSize(10)
+            .fontSize(9)
             .text(title, currentX, y, { width: w, align: "center" });
 
           if (ttdData?.[title]) {
@@ -327,42 +335,40 @@ export class GenerateSprPdfUseCase {
             // Cetak gambar TTD
             if (sigBuffers[title]) {
               try {
-                // PERBAIKAN: y + 15 agar gambar turun dan tidak menabrak teks judul
-                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 15, {
+                // Diangkat ke y + 5 agar tidak membuang space kosong
+                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 5, {
                   width: 50,
-                  height: 35,
+                  height: 30,
                 });
               } catch (imgErr) {
                 console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
               }
             }
 
-            // Cetak Tanggal TTD
+            // Cetak Tanggal TTD ditarik ke atas
             if (ttd.tanggal) {
               const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
               });
-              // PERBAIKAN: y + 52 agar berada pas di bawah gambar tanda tangan
               doc
                 .fontSize(7)
                 .font("Helvetica")
-                .text(tglStr, currentX, y + 52, { width: w, align: "center" });
+                .text(tglStr, currentX, y + 40, { width: w, align: "center" });
             }
 
-            // Cetak Nama (di bawah garis)
-            // PERBAIKAN: y + 70 agar berada tepat di bawah garis hitam
+            // Cetak Nama ditarik ke atas
             doc
               .fontSize(8)
               .font("Helvetica-Bold")
-              .text(ttd.nama, currentX, y + 70, { width: w, align: "center" });
-            doc.fontSize(10).font("Helvetica"); // Reset
+              .text(ttd.nama, currentX, y + 55, { width: w, align: "center" });
+
+            doc.fontSize(9).font("Helvetica"); // Reset
           }
         });
 
-        // PERBAIKAN: Jarak garis diturunkan ke y + 65 agar tidak menabrak tanggal
-        y += 65;
+        y += 50; // Jarak untuk menarik garis jauh lebih pendek
         const lineW = w - 20;
 
         // Render Garis TTD
@@ -374,10 +380,10 @@ export class GenerateSprPdfUseCase {
             .stroke();
         });
 
-        y += 30;
+        y += 20; // Jarak sebelum Terms dikurangi drastis
 
         // --- TERMS & BANK INFO ---
-        checkY(100);
+        checkY(70);
         doc.fontSize(8).font("Helvetica");
         const termLines = [
           "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
@@ -387,40 +393,41 @@ export class GenerateSprPdfUseCase {
 
         termLines.forEach((text) => {
           doc.text(text, startX, y, { width: contentWidth, align: "justify" });
-          y += 12;
+          y += 10; // Line height dipadatkan
         });
 
         y += 5;
 
+        // Render Kotak Bank Rekening
         if (rekeningTujuan) {
-          doc.rect(startX, y, 280, 45).stroke();
+          doc.rect(startX, y, 260, 40).stroke(); // Tinggi kotak diperkecil
           doc
             .font("Helvetica-Bold")
             .text(
               `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
               startX + 5,
-              y + 10,
+              y + 8,
             );
           doc
             .font("Helvetica")
-            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 25);
+            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 22);
         }
 
-        // [TAMBAHKAN KODE INI] Render QR Code di sebelah kanan kotak Bank
+        // Render QR Code
         if (qrCodeBuffer) {
-          const qrX = startX + 350; // Posisi X agak ke kanan
-          const qrY = y - 10; // Sesuaikan sedikit agar sejajar
+          const qrX = startX + 360;
+          const qrY = y - 10;
 
-          // Gambar kotak pembungkus QR
-          doc.rect(qrX - 5, qrY - 5, 80, 95).stroke("#e2e8f0");
+          // Gambar kotak pembungkus QR (Lebih kecil)
+          doc.rect(qrX - 5, qrY - 5, 75, 85).stroke("#e2e8f0");
 
           // Masukkan gambar QR
-          doc.image(qrCodeBuffer, qrX, qrY, { width: 70, height: 70 });
+          doc.image(qrCodeBuffer, qrX, qrY, { width: 65, height: 65 });
 
           // Tambahkan teks validasi di bawah QR
           doc.fontSize(6).font("Helvetica-Bold").fillColor("#64748b");
-          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 75, {
-            width: 80,
+          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 70, {
+            width: 75,
             align: "center",
           });
         }
