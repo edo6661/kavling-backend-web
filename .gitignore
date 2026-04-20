@@ -26,6 +26,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-
+/dist
 
 kinetic-hydra-441503-h2-78e218b83450.json

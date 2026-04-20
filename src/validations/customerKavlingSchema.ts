@@ -1,4 +1,3 @@
-// src/validations/customerKavlingSchema.ts
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import { cursorPaginationQuerySchema } from "./paginationSchema.js";
@@ -13,15 +12,13 @@ export const updateCustomerKavlingSchema = {
     id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
   }),
   body: z.object({
-    // Kavling Utama
     statusKavling: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
     namaTipe: emptyAsUndefined(z.string().optional()),
     luasBangunan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     luasTanah: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    hargaJualKavling: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    hargaDasarKavling: emptyAsUndefined(z.coerce.number().min(0).optional()),
     rekeningTujuanId: emptyAsUndefined(z.coerce.number().optional()),
 
-    // Detail Kavling Pajak - Data Utama
     notarisId: emptyAsUndefined(z.coerce.number().optional()),
     lantai: emptyAsUndefined(z.string().optional()),
     lokasiStrategis: emptyAsUndefined(z.string().optional()),
@@ -35,7 +32,6 @@ export const updateCustomerKavlingSchema = {
     lebihTanah: emptyAsUndefined(z.coerce.number().optional()),
     biayaStrategis: emptyAsUndefined(z.coerce.number().optional()),
 
-    // Nilai Rumah
     nrBiayaKprAsuransi: emptyAsUndefined(z.coerce.number().optional()),
     nrDiskonAngsuran: emptyAsUndefined(z.coerce.number().optional()),
     nrDiskonCash: emptyAsUndefined(z.coerce.number().optional()),
@@ -50,7 +46,6 @@ export const updateCustomerKavlingSchema = {
     nrBphtb: emptyAsUndefined(z.coerce.number().optional()),
     nrPph: emptyAsUndefined(z.coerce.number().optional()),
 
-    // Pajak
     pjBiayaKpr: emptyAsUndefined(z.coerce.number().optional()),
     pjBiayaAsuransi: emptyAsUndefined(z.coerce.number().optional()),
     pjDiskonAngsuran: emptyAsUndefined(z.coerce.number().optional()),
@@ -66,7 +61,6 @@ export const updateCustomerKavlingSchema = {
     pjPph: emptyAsUndefined(z.coerce.number().optional()),
     pjTotalBphtbPph: emptyAsUndefined(z.coerce.number().optional()),
 
-    // AJB
     ajbNjopTanahPerMeter: emptyAsUndefined(z.coerce.number().optional()),
     ajbNjopTanah: emptyAsUndefined(z.coerce.number().optional()),
     ajbNjopBangunanPerMeter: emptyAsUndefined(z.coerce.number().optional()),

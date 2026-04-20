@@ -20,7 +20,7 @@ export const createKavlingSchema = {
       .max(50, "Nama tipe maksimal 50 karakter"),
     luasBangunan: z.coerce.number().min(0),
     luasTanah: z.coerce.number().min(0),
-    hargaJual: z.coerce.number().min(0),
+    hargaDasar: z.coerce.number().min(0),
     status: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
     rekeningTujuanId: emptyAsUndefined(
       z.coerce.number().int().positive().optional(),
@@ -56,7 +56,7 @@ export const updateKavlingSchema = {
     ),
     luasBangunan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     luasTanah: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    hargaJual: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    hargaDasar: emptyAsUndefined(z.coerce.number().min(0).optional()),
     status: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
     rekeningTujuanId: emptyAsUndefined(
       z.coerce.number().int().positive().optional(),

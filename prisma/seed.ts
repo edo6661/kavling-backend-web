@@ -60,7 +60,7 @@ async function main() {
             namaTipe: item.kavling.namaTipe,
             luasTanah: item.kavling.luasTanah,
             luasBangunan: item.kavling.luasBangunan,
-            hargaJual: item.kavling.hargaJual,
+            hargaDasar: item.kavling.hargaDasar,
             status: UnitStatus.TERJUAL,
           },
         });

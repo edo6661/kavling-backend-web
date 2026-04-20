@@ -5,7 +5,7 @@ export interface UpdateCustomerKavlingDTO {
   namaTipe?: string | undefined;
   luasBangunan?: number | undefined;
   luasTanah?: number | undefined;
-  hargaJualKavling?: number | undefined;
+  hargaDasarKavling?: number | undefined;
   rekeningTujuanId?: number | null | undefined;
   notarisId?: number | null | undefined;
   lantai?: string | undefined;

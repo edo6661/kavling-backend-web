@@ -64,7 +64,7 @@ export class GetCustomerKavlingsPaginatedUseCase {
         tipe: p.kavling.namaTipe,
         luasBangunan: Number(p.kavling.luasBangunan),
         luasTanah: Number(p.kavling.luasTanah),
-        harga: Number(p.kavling.hargaJual),
+        hargaDasarKavling: Number(p.kavling.hargaDasar),
         totalHargaJual: Number(p.hargaJual),
         pembiayaan: p.caraPembayaran,
         agent: p.agent?.nama ?? "Nama Agent",
@@ -108,7 +108,7 @@ export class UpdateCustomerKavlingUseCase {
       namaTipe,
       luasBangunan,
       luasTanah,
-      hargaJualKavling,
+      hargaDasarKavling,
       rekeningTujuanId,
       ...detailPajakData
     } = data;
@@ -118,7 +118,7 @@ export class UpdateCustomerKavlingUseCase {
       namaTipe !== undefined ||
       luasBangunan !== undefined ||
       luasTanah !== undefined ||
-      hargaJualKavling !== undefined ||
+      hargaDasarKavling !== undefined ||
       rekeningTujuanId !== undefined
     ) {
       await this.kavlingRepo.update(penjualan.kavlingId, {
@@ -126,7 +126,7 @@ export class UpdateCustomerKavlingUseCase {
         namaTipe: namaTipe,
         luasBangunan: luasBangunan,
         luasTanah: luasTanah,
-        hargaJual: hargaJualKavling,
+        hargaDasar: hargaDasarKavling,
         rekeningTujuanId: rekeningTujuanId ?? undefined,
       });
     }

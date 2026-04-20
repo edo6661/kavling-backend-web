@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
   IPenjualanRepository,
+  PenjualanPaginatedItem,
   PenjualanWithCompleteRelations,
 } from "./IPenjualanRepo.js";
 import { ConflictError } from "../errors/ConflictError.js";
@@ -92,7 +93,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             namaTipe: data.tipe,
             luasBangunan: data.luasBangunan,
             luasTanah: data.luasTanah,
-            hargaJual: data.hargaJual,
+            hargaDasar: data.hargaDasar,
           },
         });
       } else {
@@ -104,7 +105,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             namaTipe: data.tipe,
             luasBangunan: data.luasBangunan,
             luasTanah: data.luasTanah,
-            hargaJual: data.hargaJual,
+            hargaDasar: data.hargaDasar,
             status: "BOOKING",
           },
         });
@@ -149,6 +150,32 @@ export class PenjualanRepository implements IPenjualanRepository {
 
       const noTransaksi = `${prefix}${String(nextSequence).padStart(3, "0")}`;
 
+      const hargaDasar = Number(data.hargaDasar);
+      const diskon = Number(data.diskonPenjualan ?? 0);
+      const bookingFee = Number(data.bookingFee ?? 0);
+
+      const plafonAwal = hargaDasar - diskon - bookingFee;
+
+      let biayaKpr = 0;
+      let nilaiPengajuanKpr = 0;
+      let dp = 0;
+      let hargaJual = 0;
+
+      if (
+        data.caraPembayaran === "CASH_KERAS" ||
+        data.caraPembayaran === "CASH_BERTAHAP"
+      ) {
+        biayaKpr = 0;
+        nilaiPengajuanKpr = 0;
+        dp = 0;
+        hargaJual = plafonAwal;
+      } else if (data.caraPembayaran === "KPR") {
+        biayaKpr = plafonAwal * 0.06;
+        nilaiPengajuanKpr = plafonAwal + biayaKpr;
+        dp = data.dp ? Number(data.dp) : nilaiPengajuanKpr * 0.1;
+        hargaJual = nilaiPengajuanKpr + dp;
+      }
+
       const penjualan = await tx.penjualan.create({
         data: {
           noTransaksi,
@@ -157,13 +184,18 @@ export class PenjualanRepository implements IPenjualanRepository {
           kavlingId: kavling.id,
           agentId: agent.id,
           caraPembayaran: data.caraPembayaran,
-          hargaJual: data.hargaJual,
-          dp: data.dp ?? null,
-          diskonPenjualan: data.diskonPenjualan ?? null,
+
+          hargaDasar: hargaDasar,
+          plafonAwal: plafonAwal,
+          biayaKpr: biayaKpr > 0 ? biayaKpr : null,
+          nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
+          dp: dp > 0 ? dp : null,
+          hargaJual: hargaJual,
+
+          diskonPenjualan: diskon > 0 ? diskon : null,
+          bookingFee: bookingFee > 0 ? bookingFee : null,
           hargaPromosi: data.hargaPromosi ?? null,
           bank: data.bank ?? null,
-          nilaiPengajuanKpr: data.nilaiPengajuanKpr ?? null,
-          bookingFee: data.bookingFee ?? null,
           status: "BOOKED",
           createdBy: data.createdBy ?? "Admin",
         },
@@ -189,21 +221,21 @@ export class PenjualanRepository implements IPenjualanRepository {
         });
       }
 
-      if (data.bookingFee && data.bookingFee > 0) {
+      if (bookingFee > 0) {
         await tx.tagihan.create({
           data: {
             noTagihan: `INV-BF-${noTransaksi}`,
             customerId: customer.id,
             penjualanId: penjualan.id,
             pembayaran: "Booking Fee",
-            nominal: data.bookingFee,
+            nominal: bookingFee,
             jatuhTempo: new Date(data.tanggal),
             status: "BELUM_BAYAR",
           },
         });
       }
 
-      if (data.dp && data.dp > 0) {
+      if (dp > 0) {
         const dpDueDate = new Date(data.tanggal);
         dpDueDate.setDate(dpDueDate.getDate() + 14);
 
@@ -213,7 +245,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             customerId: customer.id,
             penjualanId: penjualan.id,
             pembayaran: "Down Payment (DP)",
-            nominal: data.dp,
+            nominal: dp,
             jatuhTempo: dpDueDate,
             status: "BELUM_BAYAR",
           },
@@ -228,7 +260,7 @@ export class PenjualanRepository implements IPenjualanRepository {
     limit: number,
     cursor?: number,
     filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<any>> {
+  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>> {
     const where: Prisma.PenjualanWhereInput = {};
 
     if (filters?.search) {
@@ -315,6 +347,9 @@ export class PenjualanRepository implements IPenjualanRepository {
         luasBangunan: Number(item.kavling.luasBangunan),
         luasTanah: Number(item.kavling.luasTanah),
         nomorUnit: item.kavling.nomorUnit,
+        hargaDasar: Number(item.hargaDasar),
+        plafonAwal: Number(item.plafonAwal),
+        biayaKpr: Number(item.biayaKpr ?? 0),
         hargaJual: Number(item.hargaJual),
         dp: Number(item.dp ?? 0),
         diskonPenjualan: Number(item.diskonPenjualan ?? 0),

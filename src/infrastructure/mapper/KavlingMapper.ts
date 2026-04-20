@@ -31,7 +31,7 @@ export class KavlingMapper {
       namaTipe: prismaKavling.namaTipe,
       luasBangunan: Number(prismaKavling.luasBangunan),
       luasTanah: Number(prismaKavling.luasTanah),
-      hargaJual: Number(prismaKavling.hargaJual),
+      hargaDasar: Number(prismaKavling.hargaDasar),
       status: prismaKavling.status,
       rekeningTujuanId: prismaKavling.rekeningTujuanId,
       rekeningTujuan: prismaKavling.rekeningTujuan

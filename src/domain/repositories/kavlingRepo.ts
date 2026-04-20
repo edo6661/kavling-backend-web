@@ -22,7 +22,7 @@ export class KavlingRepository implements IKavlingRepository {
         namaTipe: data.namaTipe,
         luasBangunan: data.luasBangunan,
         luasTanah: data.luasTanah,
-        hargaJual: data.hargaJual,
+        hargaDasar: data.hargaDasar,
         rekeningTujuanId: data.rekeningTujuanId ?? null,
         filePbg: data.filePbg ?? null,
         fileSertifikatTanah: data.fileSertifikatTanah ?? null,
@@ -61,7 +61,7 @@ export class KavlingRepository implements IKavlingRepository {
     if (data.luasBangunan !== undefined)
       updateData.luasBangunan = data.luasBangunan;
     if (data.luasTanah !== undefined) updateData.luasTanah = data.luasTanah;
-    if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
+    if (data.hargaDasar !== undefined) updateData.hargaDasar = data.hargaDasar;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.rekeningTujuanId !== undefined)
       updateData.rekeningTujuanId = data.rekeningTujuanId ?? null;
@@ -97,7 +97,7 @@ export class KavlingRepository implements IKavlingRepository {
     ];
     if (filters?.orderBy) {
       const { field, direction } = filters.orderBy;
-      const validFields = ["blok", "hargaJual", "luasBangunan", "luasTanah"];
+      const validFields = ["blok", "hargaDasar", "luasBangunan", "luasTanah"];
       if (validFields.includes(field)) {
         orderByClause = [{ [field]: direction }, { id: "asc" }];
       }

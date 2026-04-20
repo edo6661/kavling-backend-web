@@ -1,25 +1,22 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
-
 export interface CreatePenjualanDTO {
-  // --- Data Customer ---
   noIdentitas: string;
   nama: string;
   noTelepon: string;
   alamat: string;
   perusahaan?: string | undefined;
   alamatKoresponden?: string | undefined;
-
-  // --- Data Kavling & Perumahan ---
   perumahan: string;
   blok: string;
   nomorUnit: string;
   tipe: string;
   luasBangunan: number;
   luasTanah: number;
-
-  // --- Data Penjualan ---
   tanggal: string | Date;
+  hargaDasar: number;
+  plafonAwal?: number;
+  biayaKpr?: number;
   hargaJual: number;
   hargaPromosi?: number | undefined;
   diskonPenjualan?: number | undefined;
@@ -28,12 +25,9 @@ export interface CreatePenjualanDTO {
   caraPembayaran: PaymentMethod;
   bank?: string | undefined;
   nilaiPengajuanKpr?: number | undefined;
-
-  // --- Data Agent ---
   agent: string;
   createdBy?: string;
 }
-
 export interface PenjualanResponseDTO {
   id: number;
   noTransaksi: string;
@@ -53,5 +47,4 @@ export interface PenjualanResponseDTO {
   status: PenjualanStatus;
   createdAt: Date;
 }
-
 export type PenjualanFilterDTO = BaseFilterDTO;

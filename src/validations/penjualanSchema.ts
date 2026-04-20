@@ -2,6 +2,7 @@ import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import { cursorPaginationQuerySchema } from "./paginationSchema.js";
 import type { PaymentMethod } from "@prisma/client";
+
 export const createPenjualanSchema = {
   body: z.object({
     noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
@@ -20,7 +21,7 @@ export const createPenjualanSchema = {
     luasBangunan: z.coerce.number().min(0),
     luasTanah: z.coerce.number().min(0),
     tanggal: z.string().datetime().or(z.string().min(1)),
-    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
+    hargaDasar: z.coerce.number().min(1, "Harga dasar tidak valid"),
     hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
     diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
@@ -82,6 +83,10 @@ export const updatePenjualanSchema = {
       alamatKoresponden: emptyAsUndefined(z.string().optional()),
       caraPembayaran: emptyAsUndefined(z.string().optional()),
       bank: emptyAsUndefined(z.string().optional()),
+
+      // TAMBAHAN: Diizinkan menerima input manual untuk kalkulasi
+      plafonAwal: emptyAsUndefined(z.coerce.number().optional()),
+      biayaKpr: emptyAsUndefined(z.coerce.number().optional()),
       nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().optional()),
       dp: emptyAsUndefined(z.coerce.number().optional()),
       bookingFee: emptyAsUndefined(z.coerce.number().optional()),

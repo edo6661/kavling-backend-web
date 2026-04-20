@@ -60,6 +60,7 @@ export class UpdatePenjualanUseCase {
           updateCustomerData.perusahaan = data.perusahaan ?? null;
         if (data.alamatKoresponden !== undefined)
           updateCustomerData.alamatKoresponden = data.alamatKoresponden ?? null;
+
         await tx.customer.update({
           where: { id: old.customerId },
           data: updateCustomerData,
@@ -73,23 +74,15 @@ export class UpdatePenjualanUseCase {
         });
       }
 
+      const updateData: Prisma.PenjualanUpdateInput = {};
+
       let formattedPayment = data.caraPembayaran as string | undefined;
       if (formattedPayment) {
         formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
+        updateData.caraPembayaran = formattedPayment as any;
       }
 
-      const updateData: Prisma.PenjualanUpdateInput = {};
-      if (formattedPayment !== undefined)
-        updateData.caraPembayaran = formattedPayment as any;
-      if (data.hargaJual !== undefined) updateData.hargaJual = data.hargaJual;
-      if (data.dp !== undefined) updateData.dp = data.dp ?? null;
-      if (data.diskonPenjualan !== undefined)
-        updateData.diskonPenjualan = data.diskonPenjualan ?? null;
-      if (data.hargaPromosi !== undefined)
-        updateData.hargaPromosi = data.hargaPromosi ?? null;
-      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
-      if (data.nilaiPengajuanKpr !== undefined)
-        updateData.nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? null;
+      let overrideHargaDasarDariKavlingBaru: number | undefined = undefined;
 
       if (
         data.blok &&
@@ -110,10 +103,12 @@ export class UpdatePenjualanUseCase {
               `Kavling Blok ${data.blok} No ${data.nomorUnit} tidak tersedia (Status: ${newKavling.status})`,
             );
           }
+
           await tx.kavling.update({
             where: { id: old.kavlingId },
             data: { status: "AVAILABLE" },
           });
+
           await tx.kavling.update({
             where: { id: newKavling.id },
             data: {
@@ -121,19 +116,76 @@ export class UpdatePenjualanUseCase {
               namaTipe: data.tipe ?? newKavling.namaTipe,
               luasBangunan: data.luasBangunan ?? newKavling.luasBangunan,
               luasTanah: data.luasTanah ?? newKavling.luasTanah,
-              hargaJual: data.hargaJual ?? newKavling.hargaJual,
+              hargaDasar: data.hargaDasar ?? newKavling.hargaDasar,
             },
           });
           updateData.kavling = { connect: { id: newKavling.id } };
+
+          overrideHargaDasarDariKavlingBaru =
+            data.hargaDasar ?? Number(newKavling.hargaDasar);
         }
       }
+
+      if (data.hargaPromosi !== undefined)
+        updateData.hargaPromosi = data.hargaPromosi ?? null;
+      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+
+      const currentCaraPembayaran = formattedPayment ?? old.caraPembayaran;
+
+      const currentHargaDasar =
+        overrideHargaDasarDariKavlingBaru ??
+        data.hargaDasar ??
+        Number(old.hargaDasar);
+
+      const currentDiskon =
+        data.diskonPenjualan ?? Number(old.diskonPenjualan ?? 0);
+      const currentBookingFee = data.bookingFee ?? Number(old.bookingFee ?? 0);
+
+      const plafonAwal =
+        data.plafonAwal ??
+        currentHargaDasar - currentDiskon - currentBookingFee;
+
+      let biayaKpr = 0;
+      let nilaiPengajuanKpr = 0;
+      let dp = 0;
+      let hargaJual = 0;
+
+      if (
+        currentCaraPembayaran === "CASH_KERAS" ||
+        currentCaraPembayaran === "CASH_BERTAHAP"
+      ) {
+        hargaJual = data.hargaJual ?? plafonAwal;
+      } else if (currentCaraPembayaran === "KPR") {
+        biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
+        nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? plafonAwal + biayaKpr;
+
+        if (data.dp !== undefined) {
+          dp = data.dp ?? 0;
+        } else if (old.dp) {
+          dp = Number(old.dp);
+        } else {
+          dp = nilaiPengajuanKpr * 0.1;
+        }
+
+        hargaJual = data.hargaJual ?? nilaiPengajuanKpr + dp;
+      }
+
+      updateData.hargaDasar = currentHargaDasar;
+      updateData.plafonAwal = plafonAwal;
+      updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
+      updateData.nilaiPengajuanKpr =
+        nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
+      updateData.dp = dp > 0 ? dp : null;
+      updateData.hargaJual = hargaJual;
+      updateData.diskonPenjualan = currentDiskon > 0 ? currentDiskon : null;
+      updateData.bookingFee = currentBookingFee > 0 ? currentBookingFee : null;
 
       const updated = await tx.penjualan.update({
         where: { noTransaksi },
         data: updateData,
       });
 
-      if (data.dp && data.dp > 0) {
+      if (dp > 0 && currentCaraPembayaran === "KPR") {
         const existingDp = await tx.tagihan.findFirst({
           where: {
             penjualanId: old.id,
@@ -150,7 +202,7 @@ export class UpdatePenjualanUseCase {
               customerId: old.customerId,
               penjualanId: old.id,
               pembayaran: "Down Payment (DP)",
-              nominal: data.dp,
+              nominal: dp,
               jatuhTempo: dpDueDate,
               status: "BELUM_BAYAR",
             },
@@ -189,12 +241,10 @@ export class UpdatePenjualanUseCase {
           "bumantara/spr",
         );
 
-        const finalUpdated = await this.db.penjualan.update({
+        return await this.db.penjualan.update({
           where: { id: transactionResult.id },
           data: { fileSpr: sprUrl },
         });
-
-        return finalUpdated;
       } catch (error) {
         console.error("Gagal auto-generate SPR setelah update skema:", error);
       }

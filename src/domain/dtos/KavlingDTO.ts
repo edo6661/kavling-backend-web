@@ -8,8 +8,9 @@ export interface CreateKavlingDTO {
   nomorUnit: string;
   namaTipe: string;
   luasBangunan: number;
+
   luasTanah: number;
-  hargaJual: number;
+  hargaDasar: number;
   status?: UnitStatus | undefined;
   rekeningTujuanId?: number | undefined;
   filePbg?: string | undefined;
@@ -24,7 +25,7 @@ export interface UpdateKavlingDTO {
   namaTipe?: string | undefined;
   luasBangunan?: number | undefined;
   luasTanah?: number | undefined;
-  hargaJual?: number | undefined;
+  hargaDasar?: number | undefined;
   status?: UnitStatus | undefined;
   rekeningTujuanId?: number | undefined;
   filePbg?: string | undefined;

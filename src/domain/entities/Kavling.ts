@@ -9,7 +9,7 @@ export interface KavlingEntity {
   namaTipe: string;
   luasBangunan: number;
   luasTanah: number;
-  hargaJual: number;
+  hargaDasar: number;
   status: UnitStatus;
   rekeningTujuanId: number | null;
   rekeningTujuan?:

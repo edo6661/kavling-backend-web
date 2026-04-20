@@ -42,11 +42,43 @@ export class ApproveGantiKavlingUseCase {
         data: { status: riwayat.penjualan.kavling.status },
       });
 
+      const oldPenjualan = riwayat.penjualan;
+      const hargaDasarBaru = Number(riwayat.kavlingBaru.hargaDasar);
+      const diskon = Number(oldPenjualan.diskonPenjualan ?? 0);
+      const bookingFee = Number(oldPenjualan.bookingFee ?? 0);
+
+      const plafonAwal = hargaDasarBaru - diskon - bookingFee;
+
+      let biayaKpr = 0;
+      let nilaiPengajuanKpr = 0;
+      let dp = 0;
+      let hargaJual = 0;
+
+      if (
+        oldPenjualan.caraPembayaran === "CASH_KERAS" ||
+        oldPenjualan.caraPembayaran === "CASH_BERTAHAP"
+      ) {
+        hargaJual = plafonAwal;
+      } else if (oldPenjualan.caraPembayaran === "KPR") {
+        biayaKpr = plafonAwal * 0.06;
+        nilaiPengajuanKpr = plafonAwal + biayaKpr;
+
+        dp = oldPenjualan.dp
+          ? Number(oldPenjualan.dp)
+          : nilaiPengajuanKpr * 0.1;
+        hargaJual = nilaiPengajuanKpr + dp;
+      }
+
       await tx.penjualan.update({
         where: { id: riwayat.penjualanId },
         data: {
           kavlingId: riwayat.kavlingBaruId,
-          hargaJual: riwayat.kavlingBaru.hargaJual,
+          hargaDasar: hargaDasarBaru,
+          plafonAwal: plafonAwal,
+          biayaKpr: biayaKpr > 0 ? biayaKpr : null,
+          nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
+          dp: dp > 0 ? dp : null,
+          hargaJual: hargaJual,
         },
       });
 
