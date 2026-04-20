@@ -7,11 +7,16 @@ import { StatusCodes } from "http-status-codes";
 export class GantiKavlingUseCase {
   constructor(private readonly db: PrismaClient) {}
 
-  async execute(noTransaksi: string, kavlingBaruId: number, alasan: string) {
+  async execute(
+    noTransaksi: string,
+    kavlingBaruId: number,
+    alasan: string,
+    requestedById: number,
+  ) {
     return await this.db.$transaction(async (tx) => {
       const penjualan = await tx.penjualan.findUnique({
         where: { noTransaksi },
-        include: { kavling: true, detailKavlingPajak: true },
+        include: { riwayatGantiKavling: { where: { status: "PENDING" } } },
       });
 
       if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
@@ -19,6 +24,11 @@ export class GantiKavlingUseCase {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           "Status penjualan tidak valid untuk ganti kavling",
+        );
+      }
+      if (penjualan.riwayatGantiKavling.length > 0) {
+        throw new ConflictError(
+          "Masih ada pengajuan ganti kavling yang menunggu persetujuan.",
         );
       }
 
@@ -33,44 +43,21 @@ export class GantiKavlingUseCase {
         );
       }
 
-      await tx.riwayatGantiKavling.create({
+      await tx.kavling.update({
+        where: { id: kavlingBaru.id },
+        data: { status: "HOLD" },
+      });
+
+      return await tx.riwayatGantiKavling.create({
         data: {
           penjualanId: penjualan.id,
           kavlingLamaId: penjualan.kavlingId,
           kavlingBaruId: kavlingBaru.id,
           alasan: alasan,
+          status: "PENDING",
+          requestedById: requestedById,
         },
       });
-
-      await tx.kavling.update({
-        where: { id: penjualan.kavlingId },
-        data: { status: "AVAILABLE" },
-      });
-
-      await tx.kavling.update({
-        where: { id: kavlingBaru.id },
-        data: { status: penjualan.kavling.status },
-      });
-
-      const updatedPenjualan = await tx.penjualan.update({
-        where: { id: penjualan.id },
-        data: {
-          kavlingId: kavlingBaru.id,
-          hargaJual: kavlingBaru.hargaJual,
-        },
-        include: {
-          kavling: { include: { perumahan: true } },
-        },
-      });
-
-      if (penjualan.detailKavlingPajak) {
-        await tx.detailKavlingPajak.update({
-          where: { penjualanId: penjualan.id },
-          data: { luasBangunan: kavlingBaru.luasBangunan.toString() },
-        });
-      }
-
-      return updatedPenjualan;
     });
   }
 }

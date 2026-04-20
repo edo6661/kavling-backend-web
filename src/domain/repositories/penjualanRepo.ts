@@ -248,6 +248,9 @@ export class PenjualanRepository implements IPenjualanRepository {
         kavling: { include: { perumahan: true, rekeningTujuan: true } },
         agent: true,
         tagihan: true,
+        pengajuanBatal: {
+          where: { status: "PENDING" },
+        },
         riwayatGantiKavling: {
           include: {
             kavlingLama: { include: { perumahan: true } },
@@ -294,6 +297,8 @@ export class PenjualanRepository implements IPenjualanRepository {
       if (item.status === "BOOKED" && bfTagihan?.status === "LUNAS") {
         currentStatus = "PROSES";
       }
+      const isPendingBatal =
+        item.pengajuanBatal && item.pengajuanBatal.length > 0;
 
       return {
         id: item.noTransaksi,
@@ -337,6 +342,9 @@ export class PenjualanRepository implements IPenjualanRepository {
         riwayatGantiKavling: item.riwayatGantiKavling || [],
         tagihan: item.tagihan || [],
         createdBy: item.createdBy ?? "Admin",
+        isPendingBatal,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
       };
     });
 

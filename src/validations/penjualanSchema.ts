@@ -107,3 +107,14 @@ export const gantiKavlingSchema = {
     alasan: z.string().min(5, "Alasan ganti kavling minimal 5 karakter"),
   }),
 };
+
+export const approveSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    isApproved: z.boolean({
+      error: "Status persetujuan (isApproved) wajib diisi boolean",
+    }),
+  }),
+};

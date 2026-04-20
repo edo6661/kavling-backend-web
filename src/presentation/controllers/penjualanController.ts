@@ -2,8 +2,19 @@ import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../../utils/response.js";
 import type { TypedRequest } from "../../types/request.js";
-import type { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
+
+import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
 import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
+import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
+import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
+import type { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
+import type { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
+import type { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
+import type { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
+import type { GetPengajuanBatalUseCase } from "../../application/usecases/penjualan/GetPengajuanBatalUseCase.js";
+import type { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penjualan/GetPengajuanGantiKavlingUseCase.js";
+
 import type {
   cancelPenjualanSchema,
   createPenjualanSchema,
@@ -11,17 +22,13 @@ import type {
   updatePenjualanSchema,
   uploadBuktiPenjualanSchema,
   uploadSignatureSchema,
+  approveSchema,
 } from "../../validations/penjualanSchema.js";
 import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
 import type {
   CreatePenjualanDTO,
   PenjualanFilterDTO,
 } from "../../domain/dtos/PenjualanDTO.js";
-import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
-import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
-import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
-import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
-import type { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
 
 export class PenjualanController {
   constructor(
@@ -32,6 +39,10 @@ export class PenjualanController {
     private readonly saveSignatureUseCase: SaveSignatureUseCase,
     private readonly updateUseCase: UpdatePenjualanUseCase,
     private readonly gantiKavlingUseCase: GantiKavlingUseCase,
+    private readonly approveBatalUseCase: ApproveBatalUseCase,
+    private readonly approveGantiKavlingUseCase: ApproveGantiKavlingUseCase,
+    private readonly getPengajuanBatalUseCase: GetPengajuanBatalUseCase,
+    private readonly getPengajuanGantiKavlingUseCase: GetPengajuanGantiKavlingUseCase,
   ) {}
 
   create = async (
@@ -80,9 +91,15 @@ export class PenjualanController {
   ): Promise<void> => {
     const { id } = req.params;
     const { alasanBatal } = req.body;
+    const userId = req.user!.userId;
 
-    const result = await this.cancelUseCase.execute(id, alasanBatal);
-    sendResponse(res, StatusCodes.OK, "Penjualan berhasil dibatalkan", result);
+    const result = await this.cancelUseCase.execute(id, alasanBatal, userId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Pengajuan pembatalan berhasil dikirim dan menunggu persetujuan Admin",
+      result,
+    );
   };
   uploadBukti = async (
     req: TypedRequest<
@@ -178,17 +195,97 @@ export class PenjualanController {
   ): Promise<void> => {
     const { id } = req.params;
     const { kavlingBaruId, alasan } = req.body;
+    const userId = req.user!.userId;
 
     const result = await this.gantiKavlingUseCase.execute(
       id,
       kavlingBaruId,
       alasan,
+      userId,
     );
     sendResponse(
       res,
       StatusCodes.OK,
-      "Berhasil ganti kavling. Status telah diperbarui.",
+      "Pengajuan ganti kavling berhasil dikirim dan menunggu persetujuan Admin.",
       result,
     );
+  };
+  getPengajuanBatal = async (req: Request, res: Response): Promise<void> => {
+    const status = req.query.status as
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED"
+      | undefined;
+    const result = await this.getPengajuanBatalUseCase.execute(status);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar pengajuan pembatalan berhasil diambil",
+      result,
+    );
+  };
+
+  getPengajuanGantiKavling = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const status = req.query.status as
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED"
+      | undefined;
+    const result = await this.getPengajuanGantiKavlingUseCase.execute(status);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar pengajuan ganti kavling berhasil diambil",
+      result,
+    );
+  };
+
+  approveBatal = async (
+    req: TypedRequest<
+      typeof approveSchema.body,
+      any,
+      typeof approveSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { isApproved } = req.body;
+    const userId = req.user!.userId;
+
+    const result = await this.approveBatalUseCase.execute(
+      id,
+      userId,
+      isApproved,
+    );
+    const msg = isApproved
+      ? "Pembatalan berhasil disetujui dan dieksekusi"
+      : "Pengajuan pembatalan ditolak";
+    sendResponse(res, StatusCodes.OK, msg, result);
+  };
+
+  approveGantiKavling = async (
+    req: TypedRequest<
+      typeof approveSchema.body,
+      any,
+      typeof approveSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { isApproved } = req.body;
+    const userId = req.user!.userId;
+
+    const result = await this.approveGantiKavlingUseCase.execute(
+      id,
+      userId,
+      isApproved,
+    );
+    const msg = isApproved
+      ? "Ganti Kavling berhasil disetujui dan dieksekusi"
+      : "Pengajuan ganti kavling ditolak";
+    sendResponse(res, StatusCodes.OK, msg, result);
   };
 }

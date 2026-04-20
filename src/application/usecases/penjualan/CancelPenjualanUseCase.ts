@@ -1,38 +1,42 @@
 import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+
 export class CancelPenjualanUseCase {
   constructor(private readonly db: PrismaClient) {}
 
-  async execute(noTransaksi: string, alasanBatal: string) {
+  async execute(
+    noTransaksi: string,
+    alasanBatal: string,
+    requestedById: number,
+  ) {
     return await this.db.$transaction(async (tx) => {
       const penjualan = await tx.penjualan.findUnique({
         where: { noTransaksi },
-        include: { kavling: true },
+        include: { pengajuanBatal: { where: { status: "PENDING" } } },
       });
 
       if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
+      if (penjualan.status === "BATAL")
+        throw new ConflictError("Penjualan sudah dibatalkan sebelumnya");
+      if (penjualan.status === "LUNAS")
+        throw new ConflictError(
+          "Penjualan Lunas tidak bisa dibatalkan sembarangan",
+        );
+      if (penjualan.pengajuanBatal.length > 0) {
+        throw new ConflictError(
+          "Sudah ada pengajuan pembatalan yang menunggu persetujuan (PENDING).",
+        );
+      }
 
-      const updatedPenjualan = await tx.penjualan.update({
-        where: { id: penjualan.id },
+      return await tx.pengajuanBatal.create({
         data: {
-          status: "BATAL",
-          alasanBatal: alasanBatal,
-        },
-      });
-
-      await tx.kavling.update({
-        where: { id: penjualan.kavlingId },
-        data: { status: "AVAILABLE" },
-      });
-
-      await tx.tagihan.deleteMany({
-        where: {
           penjualanId: penjualan.id,
-          status: "BELUM_BAYAR",
+          alasan: alasanBatal,
+          status: "PENDING",
+          requestedById: requestedById,
         },
       });
-
-      return updatedPenjualan;
     });
   }
 }

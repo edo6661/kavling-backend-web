@@ -119,6 +119,11 @@ import { VerifyController } from "../../presentation/controllers/verifyControlle
 import { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
 import { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
 import { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
+import { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
+import { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
+import { GetPengajuanBatalUseCase } from "../../application/usecases/penjualan/GetPengajuanBatalUseCase.js";
+import { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penjualan/GetPengajuanGantiKavlingUseCase.js";
+
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -314,6 +319,12 @@ export const createContainer = (dbClient: PrismaClient) => {
     generateSprPdfUseCase,
   );
   const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient);
+  const approveBatalUseCase = new ApproveBatalUseCase(dbClient);
+  const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(dbClient);
+  const getPengajuanBatalUseCase = new GetPengajuanBatalUseCase(dbClient);
+  const getPengajuanGantiKavlingUseCase = new GetPengajuanGantiKavlingUseCase(
+    dbClient,
+  );
   const penjualanController = new PenjualanController(
     createPenjualanUseCase,
     getPenjualanPaginatedUseCase,
@@ -322,6 +333,10 @@ export const createContainer = (dbClient: PrismaClient) => {
     saveSignatureUseCase,
     updatePenjualanUseCase,
     gantiKavlingUseCase,
+    approveBatalUseCase,
+    approveGantiKavlingUseCase,
+    getPengajuanBatalUseCase,
+    getPengajuanGantiKavlingUseCase,
   );
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,

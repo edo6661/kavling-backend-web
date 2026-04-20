@@ -58,6 +58,12 @@ enum SP3R {
   CASH  @map("Cash")
 }
 
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @db.VarChar(100)
@@ -69,6 +75,10 @@ model User {
 
   auditLogs AuditLog[]
   customers Customer[]
+  pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
+  persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
+  pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
+  persetujuanBatal        PengajuanBatal[]      @relation("PenyetujuBatal")
 
   @@map("users")
 }
@@ -247,6 +257,7 @@ model Penjualan {
   tagihan           Tagihan[]
   detailKavlingPajak DetailKavlingPajak?
   feeAgent          FeeAgent?
+  pengajuanBatal PengajuanBatal[]
 
 
   @@map("penjualan")
@@ -312,6 +323,7 @@ model DetailKavlingPajak {
 
   @@map("detail_kavling_pajak")
 }
+
 
 model Tagihan {
   id                 Int           @id @default(autoincrement())
@@ -414,16 +426,43 @@ model AuditLog {
 }
 
 model RiwayatGantiKavling {
-  id            Int      @id @default(autoincrement())
-  penjualanId   Int      @map("penjualan_id")
-  kavlingLamaId Int      @map("kavling_lama_id")
-  kavlingBaruId Int      @map("kavling_baru_id")
-  alasan        String?  @db.Text
-  createdAt     DateTime @default(now()) @map("created_at")
+  id            Int            @id @default(autoincrement())
+  penjualanId   Int            @map("penjualan_id")
+  kavlingLamaId Int            @map("kavling_lama_id")
+  kavlingBaruId Int            @map("kavling_baru_id")
+  alasan        String?        @db.Text
+  
+  status        ApprovalStatus @default(PENDING)
+  requestedById Int?           @map("requested_by_id")
+  approvedById  Int?           @map("approved_by_id")
 
-  penjualan     Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  kavlingLama   Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
-  kavlingBaru   Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") 
+
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  kavlingLama Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
+  kavlingBaru Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
+  
+  requestedBy User?     @relation("PengajuGantiKavling", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy  User?     @relation("PenyetujuGantiKavling", fields: [approvedById], references: [id], onDelete: SetNull)
 
   @@map("riwayat_ganti_kavling")
+}
+
+
+model PengajuanBatal {
+  id            Int            @id @default(autoincrement())
+  penjualanId   Int            @map("penjualan_id")
+  alasan        String         @db.Text
+  status        ApprovalStatus @default(PENDING)
+  requestedById Int?           @map("requested_by_id")
+  approvedById  Int?           @map("approved_by_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  requestedBy User?     @relation("PengajuBatal", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy  User?     @relation("PenyetujuBatal", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@map("pengajuan_batal")
 }
