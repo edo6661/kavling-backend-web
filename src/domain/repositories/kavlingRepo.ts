@@ -92,9 +92,13 @@ export class KavlingRepository implements IKavlingRepository {
         { namaTipe: { contains: filters.search } },
       ];
     }
+
     let orderByClause: Prisma.KavlingOrderByWithRelationInput[] = [
+      { blok: "asc" },
+      { nomorUnit: "asc" },
       { id: "desc" },
     ];
+
     if (filters?.orderBy) {
       const { field, direction } = filters.orderBy;
       const validFields = ["blok", "hargaDasar", "luasBangunan", "luasTanah"];

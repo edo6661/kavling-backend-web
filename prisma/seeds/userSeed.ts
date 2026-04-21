@@ -6,19 +6,19 @@ export async function seedUser(prisma: PrismaClient) {
   await prisma.user.createMany({
     data: [
       {
-        username: "Andi",
+        username: "Admin",
         email: "admin@gmail.com",
         password: defaultPassword,
         role: Role.ADMIN,
       },
       {
-        username: "Mahdi",
+        username: "Marketing",
         email: "marketing@gmail.com",
         password: defaultPassword,
         role: Role.MARKETING,
       },
       {
-        username: "Curo",
+        username: "Customer",
         email: "customer@gmail.com",
         password: defaultPassword,
         role: Role.CUSTOMER,

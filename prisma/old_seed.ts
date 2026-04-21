@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { seedUser } from "./seeds/userSeed";
 import { seedPerumahan } from "./seeds/perumahanSeed";
 // import { seedNotaris } from "./seeds/notarisSeed";
-import { seedAgent } from "./seeds/agentSeed";
+// import { seedAgent } from "./seeds/agentSeed";
 import { seedBankRekeningPt } from "./seeds/bankRekeningPtSeed";
 // import { seedCustomer } from "./seeds/customerSeed";
 // import { seedKavling } from "./seeds/kavlingSeed";
@@ -19,7 +19,7 @@ async function main() {
   await seedUser(prisma);
   await seedPerumahan(prisma);
   // await seedNotaris(prisma);
-  await seedAgent(prisma);
+  // await seedAgent(prisma);
   await seedBankRekeningPt(prisma);
 
   // await seedCustomer(prisma);

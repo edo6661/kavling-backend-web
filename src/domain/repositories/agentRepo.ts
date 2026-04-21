@@ -172,11 +172,23 @@ export class AgentRepository implements IAgentRepository {
       ];
     }
 
+    let orderByClause: Prisma.AgentOrderByWithRelationInput[] = [
+      { nama: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "nik", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
     const items = await this.db.agent.findMany({
       take: limit + 1,
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
-      orderBy: [{ id: "desc" }],
+      orderBy: orderByClause,
       include: {
         pics: true,
         penjualan: {

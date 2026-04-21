@@ -27,5 +27,6 @@ Thumbs.db
 *.sln
 *.sw?
 /dist
+/py
 
 kinetic-hydra-441503-h2-78e218b83450.json
