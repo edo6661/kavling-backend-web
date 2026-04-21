@@ -72,14 +72,14 @@ export class PenjualanController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getPenjualanPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
+    const { page, limit, ...filters } = getPenjualanPaginatedSchema.query.parse(
+      req.query,
+    );
 
     const result = await this.getPaginatedUseCase.execute(
+      page,
       limit,
-      parsedCursor,
-      filters as PenjualanFilterDTO,
+      filters as PenjualanFilterDTO & { status?: string },
     );
 
     sendResponse(

@@ -10,7 +10,10 @@ import type {
   CreatePenjualanDTO,
   PenjualanFilterDTO,
 } from "../dtos/PenjualanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type {
+  CursorPaginatedData,
+  OffsetPaginatedData,
+} from "../../types/response.js";
 
 export class PenjualanRepository implements IPenjualanRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -267,11 +270,11 @@ export class PenjualanRepository implements IPenjualanRepository {
     });
   }
 
-  async findWithCursorPagination(
+  async findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
-    filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>> {
+    filters?: PenjualanFilterDTO & { status?: string },
+  ): Promise<OffsetPaginatedData<PenjualanPaginatedItem>> {
     const where: Prisma.PenjualanWhereInput = {};
 
     if (filters?.search) {
@@ -281,36 +284,69 @@ export class PenjualanRepository implements IPenjualanRepository {
       ];
     }
 
-    const items = await this.db.penjualan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ createdAt: "desc" }],
-      include: {
-        customer: true,
-        kavling: { include: { perumahan: true, rekeningTujuan: true } },
-        agent: true,
-        tagihan: true,
-        pengajuanBatal: {
-          where: { status: "PENDING" },
-        },
-        riwayatGantiKavling: {
-          include: {
-            kavlingLama: { include: { perumahan: true } },
-            kavlingBaru: { include: { perumahan: true } },
-          },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
+    if (filters?.status) {
+      where.status = filters.status as any;
     }
 
+    let orderByClause: Prisma.PenjualanOrderByWithRelationInput[] = [
+      { createdAt: "desc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      // Menangani sort relasional jika fieldnya nama customer
+      if (field === "nama") {
+        orderByClause = [{ customer: { nama: direction } }];
+      } else {
+        orderByClause = [{ [field]: direction }, { id: "desc" }];
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Jalankan Query Data, Total Count, dan Grouping Summary secara Paralel
+    const [items, totalItems, summaryData] = await Promise.all([
+      this.db.penjualan.findMany({
+        take: limit,
+        skip,
+        where,
+        orderBy: orderByClause,
+        include: {
+          customer: true,
+          kavling: { include: { perumahan: true, rekeningTujuan: true } },
+          agent: true,
+          tagihan: true,
+          pengajuanBatal: { where: { status: "PENDING" } },
+          riwayatGantiKavling: {
+            include: {
+              kavlingLama: { include: { perumahan: true } },
+              kavlingBaru: { include: { perumahan: true } },
+            },
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      }),
+      this.db.penjualan.count({ where }),
+      this.db.penjualan.groupBy({
+        by: ["status"],
+        _count: { id: true },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit) || 1;
+
+    // Format Summary
+    const summary = summaryData.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count.id;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
     const mappedItems = items.map((item) => {
+      // ... (Isi mapping items tetap persis SAMA seperti yang lama) ...
+      // Copy paste logika mapping mappedItems yang ada di kode lama Anda ke sini.
       const bfTagihan = item.tagihan?.find((t) =>
         t.pembayaran.toLowerCase().includes("booking"),
       );
@@ -319,7 +355,6 @@ export class PenjualanRepository implements IPenjualanRepository {
           t.pembayaran.toLowerCase().includes("dp") ||
           t.pembayaran.toLowerCase().includes("down"),
       );
-
       const daftarCicilan =
         item.tagihan?.filter(
           (t) =>
@@ -327,7 +362,6 @@ export class PenjualanRepository implements IPenjualanRepository {
             !t.pembayaran.toLowerCase().includes("dp") &&
             !t.pembayaran.toLowerCase().includes("down"),
         ) || [];
-
       const cicilanTerbayar = daftarCicilan.filter(
         (t) => t.status === "LUNAS",
       ).length;
@@ -397,8 +431,13 @@ export class PenjualanRepository implements IPenjualanRepository {
     return {
       items: mappedItems,
       meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        summary,
       },
     };
   }

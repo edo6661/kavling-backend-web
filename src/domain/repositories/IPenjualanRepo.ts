@@ -3,7 +3,10 @@ import type {
   CreatePenjualanDTO,
   PenjualanFilterDTO,
 } from "../dtos/PenjualanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type {
+  CursorPaginatedData,
+  OffsetPaginatedData,
+} from "../../types/response.js";
 
 export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
   include: {
@@ -73,11 +76,12 @@ export interface IPenjualanRepository {
   createWithTransaction(
     data: CreatePenjualanDTO,
   ): Promise<PenjualanWithRelations>;
-  findWithCursorPagination(
+  findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
-    filters?: PenjualanFilterDTO,
-  ): Promise<CursorPaginatedData<PenjualanPaginatedItem>>;
+    filters?: PenjualanFilterDTO & { status?: string },
+  ): Promise<OffsetPaginatedData<PenjualanPaginatedItem>>;
+
   findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
   update(
     id: number,
