@@ -27,6 +27,7 @@ export interface CreatePenjualanDTO {
   nilaiPengajuanKpr?: number | undefined;
   agent: string;
   createdBy?: string;
+  userId?: number;
 }
 export interface PenjualanResponseDTO {
   id: number;

@@ -22,6 +22,7 @@ export const createPenjualanSchema = {
     luasTanah: z.coerce.number().min(0),
     tanggal: z.string().datetime().or(z.string().min(1)),
     hargaDasar: z.coerce.number().min(1, "Harga dasar tidak valid"),
+    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
     hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
     diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     dp: emptyAsUndefined(z.coerce.number().min(0).optional()),

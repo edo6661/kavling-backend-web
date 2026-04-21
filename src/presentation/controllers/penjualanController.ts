@@ -29,6 +29,7 @@ import type {
   CreatePenjualanDTO,
   PenjualanFilterDTO,
 } from "../../domain/dtos/PenjualanDTO.js";
+import { NotFoundError } from "../../domain/errors/NotFoundError.js";
 
 export class PenjualanController {
   constructor(
@@ -50,11 +51,18 @@ export class PenjualanController {
     res: Response,
   ): Promise<void> => {
     const pembuat = req.user?.username ?? "Admin";
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new NotFoundError("User tidak ditemukan");
+    }
 
     const result = await this.createUseCase.execute({
       ...req.body,
       createdBy: pembuat,
+      userId: userId,
     });
+
     sendResponse(
       res,
       StatusCodes.CREATED,

@@ -251,7 +251,18 @@ export class PenjualanRepository implements IPenjualanRepository {
           },
         });
       }
-
+      await tx.auditLog.create({
+        data: {
+          entityName: "Penjualan",
+          entityId: noTransaksi,
+          action: "CREATE",
+          changes: {
+            after: penjualan,
+            input_raw: data,
+          } as unknown as Prisma.InputJsonValue,
+          userId: data.userId ?? null,
+        },
+      });
       return penjualan;
     });
   }

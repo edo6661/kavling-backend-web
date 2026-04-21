@@ -123,6 +123,9 @@ import { ApproveBatalUseCase } from "../../application/usecases/penjualan/Approv
 import { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
 import { GetPengajuanBatalUseCase } from "../../application/usecases/penjualan/GetPengajuanBatalUseCase.js";
 import { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penjualan/GetPengajuanGantiKavlingUseCase.js";
+import { AuditLogRepository } from "../../domain/repositories/auditLogRepo.js";
+import { GetAuditLogsPaginatedUseCase } from "../../application/usecases/auditLog/GetAuditLogsPaginatedUseCase.js";
+import { AuditLogController } from "../../presentation/controllers/auditLogController.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -374,6 +377,13 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const verifyDocumentUseCase = new VerifyDocumentUseCase(dbClient);
   const verifyController = new VerifyController(verifyDocumentUseCase);
+  const auditLogRepo = new AuditLogRepository(dbClient);
+  const getAuditLogsPaginatedUseCase = new GetAuditLogsPaginatedUseCase(
+    auditLogRepo,
+  );
+  const auditLogController = new AuditLogController(
+    getAuditLogsPaginatedUseCase,
+  );
   return {
     authController,
     userRepo,
@@ -394,6 +404,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     penjualanController,
     feeAgentController,
     verifyController,
+    auditLogController,
   };
 };
 
