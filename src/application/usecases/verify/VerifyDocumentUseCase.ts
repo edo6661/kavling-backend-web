@@ -43,7 +43,9 @@ export class VerifyDocumentUseCase {
           hargaJual: Number(penjualan.hargaJual),
           dp: Number(penjualan.dp ?? 0),
           bookingFee: Number(penjualan.bookingFee ?? 0),
-          caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
+          caraPembayaran: penjualan.caraPembayaran
+            ? penjualan.caraPembayaran.replace(/_/g, " ")
+            : null,
           bank: penjualan.bank ?? "",
           pembuat: penjualan.createdBy ?? "Admin",
           customer: {
@@ -129,11 +131,14 @@ export class VerifyDocumentUseCase {
           rekeningTujuan: tagihan.penjualan.kavling.rekeningTujuan,
         },
         transaksi: {
-          caraPembayaran: tagihan.penjualan.caraPembayaran.replace(/_/g, " "),
+          caraPembayaran: tagihan.penjualan.caraPembayaran
+            ? tagihan.penjualan.caraPembayaran.replace(/_/g, " ")
+            : null,
           bank: tagihan.penjualan.bank ?? "",
           hargaJual: hargaJual,
           sisaBelumDibayar: sisaBelumDibayar,
         },
+        ttdData: tagihan.ttdData ?? null,
       },
     };
   }

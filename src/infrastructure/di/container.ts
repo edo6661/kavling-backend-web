@@ -126,6 +126,7 @@ import { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penj
 import { AuditLogRepository } from "../../domain/repositories/auditLogRepo.js";
 import { GetAuditLogsPaginatedUseCase } from "../../application/usecases/auditLog/GetAuditLogsPaginatedUseCase.js";
 import { AuditLogController } from "../../presentation/controllers/auditLogController.js";
+import { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -351,6 +352,11 @@ export const createContainer = (dbClient: PrismaClient) => {
     dbClient,
     cloudinaryService,
   );
+  const saveTagihanSignatureUseCase = new SaveTagihanSignatureUseCase(
+    dbClient,
+    cloudinaryService,
+  );
+
   const tagihanController = new TagihanController(
     createTagihanUseCase,
     updateTagihanUseCase,
@@ -359,6 +365,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteTagihanUseCase,
     uploadBuktiTagihanUseCase,
     uploadBuktiRefundUseCase,
+    saveTagihanSignatureUseCase,
   );
   const feeAgentRepo = new FeeAgentRepository(dbClient);
   const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(

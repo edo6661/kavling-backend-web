@@ -8,6 +8,7 @@ import {
   getTagihansPaginatedSchema,
 } from "../../validations/tagihanSchema.js";
 import type { TagihanController } from "../controllers/tagihanController.js";
+import { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
 
 export const createTagihanRoutes = (controller: TagihanController): Router => {
   const router = Router();
@@ -56,6 +57,12 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
     requireRole(["ADMIN", "MARKETING"]),
     upload.single("fileBuktiRefund"),
     controller.uploadBuktiRefund,
+  );
+  router.post(
+    "/:id/signature",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(uploadSignatureSchema),
+    controller.uploadSignature,
   );
 
   return router;

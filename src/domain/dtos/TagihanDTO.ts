@@ -36,6 +36,7 @@ export interface TagihanResponseDTO {
   reminderBerikutnya: Date | null;
   isRefunded?: boolean;
   fileBuktiRefund?: string | null;
+  ttdData?: any;
   rekeningTujuan?: {
     namaBank: string;
     noRekening: string;

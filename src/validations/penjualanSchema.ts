@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import { PenjualanStatus, type PaymentMethod } from "@prisma/client";
+import type { PaymentMethod } from "@prisma/client";
+import { PenjualanStatus } from "@prisma/client";
 import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 
 export const createPenjualanSchema = {
@@ -22,19 +23,23 @@ export const createPenjualanSchema = {
     luasTanah: z.coerce.number().min(0),
     tanggal: z.string().datetime().or(z.string().min(1)),
     hargaDasar: z.coerce.number().min(1, "Harga dasar tidak valid"),
-    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
     hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
     diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
     bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    caraPembayaran: z.string().transform((val) => {
-      const formatted = val.toUpperCase().replace(/\s+/g, "_");
-      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
-        return formatted as PaymentMethod;
-      }
-      throw new Error("Cara pembayaran tidak valid");
-    }),
     bank: emptyAsUndefined(z.string().optional()),
+    caraPembayaran: emptyAsUndefined(
+      z
+        .string()
+        .transform((val) => {
+          const formatted = val.toUpperCase().replace(/\s+/g, "_");
+          if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
+            return formatted as PaymentMethod;
+          }
+          throw new Error("Cara pembayaran tidak valid");
+        })
+        .optional(),
+    ),
     nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
     agent: z.string().min(1, "Agent wajib diisi"),
   }),

@@ -3,10 +3,7 @@ import type {
   CreatePenjualanDTO,
   PenjualanFilterDTO,
 } from "../dtos/PenjualanDTO.js";
-import type {
-  CursorPaginatedData,
-  OffsetPaginatedData,
-} from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
 export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
   include: {
@@ -33,7 +30,6 @@ export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
     };
   };
 }>;
-
 export interface PenjualanPaginatedItem {
   id: string;
   tanggal: string;
@@ -48,12 +44,16 @@ export interface PenjualanPaginatedItem {
   tipe: string;
   luasBangunan: number;
   luasTanah: number;
-  hargaJual: number;
+
+  plafonAwal: number | null;
+  hargaJual: number | null;
+  caraPembayaran: string | null;
+
+  hargaDasar: number;
   dp: number;
   diskonPenjualan: number;
   hargaPromosi: number;
   bank: string;
-  caraPembayaran: string;
   nilaiPengajuanKpr: number;
   bookingFee: number;
   status: string;
@@ -62,6 +62,7 @@ export interface PenjualanPaginatedItem {
   fileBuktiDp: string;
   fileSpr: string | null;
   ttdData?: any;
+  progressCicilan?: string;
   rekeningTujuanId?: number | null;
   rekeningTujuan?: {
     namaBank: string;
@@ -70,6 +71,11 @@ export interface PenjualanPaginatedItem {
   } | null;
   riwayatGantiKavling?: any[];
   tagihan?: any[];
+
+  createdBy?: string;
+  isPendingBatal?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface IPenjualanRepository {

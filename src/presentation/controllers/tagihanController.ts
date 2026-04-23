@@ -19,6 +19,8 @@ import type {
 import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
 import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
 import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
+import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
+import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
 
 export class TagihanController {
   constructor(
@@ -29,6 +31,7 @@ export class TagihanController {
     private readonly deleteUseCase: DeleteTagihanUseCase,
     private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
     private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
+    private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
   ) {}
 
   create = async (
@@ -135,5 +138,31 @@ export class TagihanController {
       req.file.buffer,
     );
     sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
+  };
+  uploadSignature = async (
+    req: TypedRequest<
+      typeof uploadSignatureSchema.body,
+      any,
+      typeof uploadSignatureSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { signatureBase64, nama, peran, tanggal } = req.body;
+
+    const result = await this.saveSignatureUseCase.execute(
+      id,
+      signatureBase64,
+      nama,
+      peran,
+      tanggal,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Tanda tangan untuk kwitansi berhasil disimpan`,
+      result,
+    );
   };
 }

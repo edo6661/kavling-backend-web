@@ -232,11 +232,11 @@ model Penjualan {
   kavlingId         Int                 @map("kavling_id")
   agentId           Int?                @map("agent_id")
   rekeningTujuanId  Int?                @map("rekening_tujuan_id")
-  caraPembayaran    PaymentMethod       @map("cara_pembayaran")
+  caraPembayaran    PaymentMethod?       @map("cara_pembayaran")
   hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
-  plafonAwal          Decimal             @map("plafon_awal") @db.Decimal(15, 2)
+  plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
   biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
-  hargaJual         Decimal             @map("harga_jual") @db.Decimal(15, 2)
+  hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
   dp                Decimal?            @db.Decimal(15, 2)
   diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
   hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
@@ -341,6 +341,7 @@ model Tagihan {
   reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
   isRefunded         Boolean       @default(false) @map("is_refunded")
   fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
+  ttdData            Json?         @map("ttd_data") 
   
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")

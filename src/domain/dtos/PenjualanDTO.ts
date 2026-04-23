@@ -17,7 +17,7 @@ export interface CreatePenjualanDTO {
   hargaDasar: number;
   plafonAwal?: number;
   biayaKpr?: number;
-  hargaJual: number;
+  hargaJual?: number;
   hargaPromosi?: number | undefined;
   diskonPenjualan?: number | undefined;
   dp?: number | undefined;
@@ -44,7 +44,7 @@ export interface PenjualanResponseDTO {
     nomorUnit: string;
     perumahan: string;
   };
-  caraPembayaran: string;
+  caraPembayaran: string | null;
   hargaJual: number;
   status: PenjualanStatus;
   createdAt: Date;

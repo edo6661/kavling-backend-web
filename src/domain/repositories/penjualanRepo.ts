@@ -3,6 +3,7 @@ import type {
   IPenjualanRepository,
   PenjualanPaginatedItem,
   PenjualanWithCompleteRelations,
+  PenjualanWithRelations,
 } from "./IPenjualanRepo.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
@@ -10,13 +11,11 @@ import type {
   CreatePenjualanDTO,
   PenjualanFilterDTO,
 } from "../dtos/PenjualanDTO.js";
-import type {
-  CursorPaginatedData,
-  OffsetPaginatedData,
-} from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
 export class PenjualanRepository implements IPenjualanRepository {
   constructor(private readonly db: PrismaClient) {}
+
   async update(
     id: number,
     data: Partial<Prisma.PenjualanUpdateInput>,
@@ -27,7 +26,6 @@ export class PenjualanRepository implements IPenjualanRepository {
       include: {
         customer: true,
         kavling: { include: { perumahan: true, rekeningTujuan: true } },
-
         rekeningTujuan: true,
         tagihan: true,
         agent: true,
@@ -35,7 +33,9 @@ export class PenjualanRepository implements IPenjualanRepository {
     });
   }
 
-  async createWithTransaction(data: CreatePenjualanDTO) {
+  async createWithTransaction(
+    data: CreatePenjualanDTO,
+  ): Promise<PenjualanWithRelations> {
     return await this.db.$transaction(async (tx) => {
       let customer = await tx.customer.findUnique({
         where: { nikKtp: data.noIdentitas },
@@ -157,26 +157,26 @@ export class PenjualanRepository implements IPenjualanRepository {
       const diskon = Number(data.diskonPenjualan ?? 0);
       const bookingFee = Number(data.bookingFee ?? 0);
 
-      const plafonAwal = hargaDasar - diskon - bookingFee;
-
+      let plafonAwal: number | null = null;
       let biayaKpr = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
-      let hargaJual = 0;
+      let hargaJual: number | null = null;
 
-      if (
-        data.caraPembayaran === "CASH_KERAS" ||
-        data.caraPembayaran === "CASH_BERTAHAP"
-      ) {
-        biayaKpr = 0;
-        nilaiPengajuanKpr = 0;
-        dp = 0;
-        hargaJual = plafonAwal;
-      } else if (data.caraPembayaran === "KPR") {
-        biayaKpr = plafonAwal * 0.06;
-        nilaiPengajuanKpr = plafonAwal + biayaKpr;
-        dp = data.dp ? Number(data.dp) : nilaiPengajuanKpr * 0.1;
-        hargaJual = nilaiPengajuanKpr + dp;
+      if (data.caraPembayaran) {
+        plafonAwal = hargaDasar - diskon - bookingFee;
+
+        if (
+          data.caraPembayaran === "CASH_KERAS" ||
+          data.caraPembayaran === "CASH_BERTAHAP"
+        ) {
+          hargaJual = plafonAwal;
+        } else if (data.caraPembayaran === "KPR") {
+          biayaKpr = plafonAwal * 0.06;
+          nilaiPengajuanKpr = plafonAwal + biayaKpr;
+          dp = data.dp ? Number(data.dp) : nilaiPengajuanKpr * 0.1;
+          hargaJual = nilaiPengajuanKpr + dp;
+        }
       }
 
       const penjualan = await tx.penjualan.create({
@@ -186,14 +186,16 @@ export class PenjualanRepository implements IPenjualanRepository {
           customerId: customer.id,
           kavlingId: kavling.id,
           agentId: agent.id,
-          caraPembayaran: data.caraPembayaran,
 
+          // Cast as any to bypass temporary Prisma type mismatches until next `prisma generate`
+          caraPembayaran: (data.caraPembayaran || null) as any,
           hargaDasar: hargaDasar,
-          plafonAwal: plafonAwal,
+          plafonAwal: (plafonAwal ?? undefined) as any,
+          hargaJual: (hargaJual ?? undefined) as any,
+
           biayaKpr: biayaKpr > 0 ? biayaKpr : null,
           nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
           dp: dp > 0 ? dp : null,
-          hargaJual: hargaJual,
 
           diskonPenjualan: diskon > 0 ? diskon : null,
           bookingFee: bookingFee > 0 ? bookingFee : null,
@@ -254,6 +256,7 @@ export class PenjualanRepository implements IPenjualanRepository {
           },
         });
       }
+
       await tx.auditLog.create({
         data: {
           entityName: "Penjualan",
@@ -266,7 +269,8 @@ export class PenjualanRepository implements IPenjualanRepository {
           userId: data.userId ?? null,
         },
       });
-      return penjualan;
+
+      return penjualan as PenjualanWithRelations;
     });
   }
 
@@ -294,7 +298,6 @@ export class PenjualanRepository implements IPenjualanRepository {
 
     if (filters?.orderBy) {
       const { field, direction } = filters.orderBy;
-      // Menangani sort relasional jika fieldnya nama customer
       if (field === "nama") {
         orderByClause = [{ customer: { nama: direction } }];
       } else {
@@ -304,7 +307,6 @@ export class PenjualanRepository implements IPenjualanRepository {
 
     const skip = (page - 1) * limit;
 
-    // Jalankan Query Data, Total Count, dan Grouping Summary secara Paralel
     const [items, totalItems, summaryData] = await Promise.all([
       this.db.penjualan.findMany({
         take: limit,
@@ -335,7 +337,6 @@ export class PenjualanRepository implements IPenjualanRepository {
 
     const totalPages = Math.ceil(totalItems / limit) || 1;
 
-    // Format Summary
     const summary = summaryData.reduce(
       (acc, curr) => {
         acc[curr.status] = curr._count.id;
@@ -344,9 +345,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       {} as Record<string, number>,
     );
 
-    const mappedItems = items.map((item) => {
-      // ... (Isi mapping items tetap persis SAMA seperti yang lama) ...
-      // Copy paste logika mapping mappedItems yang ada di kode lama Anda ke sini.
+    const mappedItems: PenjualanPaginatedItem[] = items.map((item) => {
       const bfTagihan = item.tagihan?.find((t) =>
         t.pembayaran.toLowerCase().includes("booking"),
       );
@@ -360,7 +359,8 @@ export class PenjualanRepository implements IPenjualanRepository {
           (t) =>
             !t.pembayaran.toLowerCase().includes("booking") &&
             !t.pembayaran.toLowerCase().includes("dp") &&
-            !t.pembayaran.toLowerCase().includes("down"),
+            !t.pembayaran.toLowerCase().includes("down") &&
+            !t.pembayaran.toLowerCase().includes("uang muka"),
         ) || [];
       const cicilanTerbayar = daftarCicilan.filter(
         (t) => t.status === "LUNAS",
@@ -370,6 +370,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         totalCicilan > 0
           ? `${cicilanTerbayar} / ${totalCicilan} Kali`
           : "Belum Ada Cicilan";
+
       let currentStatus = item.status;
       if (item.status === "BOOKED" && bfTagihan?.status === "LUNAS") {
         currentStatus = "PROSES";
@@ -392,15 +393,19 @@ export class PenjualanRepository implements IPenjualanRepository {
         luasBangunan: Number(item.kavling.luasBangunan),
         luasTanah: Number(item.kavling.luasTanah),
         nomorUnit: item.kavling.nomorUnit,
+
+        plafonAwal: item.plafonAwal ? Number(item.plafonAwal) : null,
+        hargaJual: item.hargaJual ? Number(item.hargaJual) : null,
+        caraPembayaran: item.caraPembayaran
+          ? item.caraPembayaran.replace(/_/g, " ")
+          : null,
+
         hargaDasar: Number(item.hargaDasar),
-        plafonAwal: Number(item.plafonAwal),
         biayaKpr: Number(item.biayaKpr ?? 0),
-        hargaJual: Number(item.hargaJual),
         dp: Number(item.dp ?? 0),
         diskonPenjualan: Number(item.diskonPenjualan ?? 0),
         hargaPromosi: Number(item.hargaPromosi ?? 0),
         bank: item.bank ?? "",
-        caraPembayaran: item.caraPembayaran,
         nilaiPengajuanKpr: Number(item.nilaiPengajuanKpr ?? 0),
         bookingFee: Number(item.bookingFee ?? 0),
         status: currentStatus,
@@ -441,6 +446,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       },
     };
   }
+
   async findById(id: number) {
     return await this.db.penjualan.findUnique({
       where: { id },
