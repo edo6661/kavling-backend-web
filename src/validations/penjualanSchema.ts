@@ -72,6 +72,10 @@ export const uploadSignatureSchema = {
     tanggal: z.string().min(1, "Tanggal wajib diisi"),
   }),
 };
+export const biayaTambahanSchema = z.object({
+  nama: z.string().min(1, "Nama biaya wajib diisi"),
+  nominal: z.coerce.number().min(0, "Nominal tidak boleh negatif"),
+});
 export const updatePenjualanSchema = {
   params: z.object({
     id: z.string().min(1, "No Transaksi wajib diisi"),
@@ -102,6 +106,7 @@ export const updatePenjualanSchema = {
       luasBangunan: emptyAsUndefined(z.coerce.number().optional()),
       luasTanah: emptyAsUndefined(z.coerce.number().optional()),
       hargaJual: emptyAsUndefined(z.coerce.number().optional()),
+      biayaTambahan: emptyAsUndefined(z.array(biayaTambahanSchema).optional()),
     })
     .partial(),
 };

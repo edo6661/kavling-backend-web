@@ -28,6 +28,7 @@ export interface CreatePenjualanDTO {
   agent: string;
   createdBy?: string;
   userId?: number;
+  biayaTambahan?: BiayaTambahanDTO[] | undefined;
 }
 export interface PenjualanResponseDTO {
   id: number;
@@ -49,3 +50,8 @@ export interface PenjualanResponseDTO {
   createdAt: Date;
 }
 export type PenjualanFilterDTO = BaseFilterDTO;
+
+export interface BiayaTambahanDTO {
+  nama: string;
+  nominal: number;
+}

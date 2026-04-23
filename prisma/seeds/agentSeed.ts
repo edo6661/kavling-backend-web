@@ -1,45 +1,231 @@
 import { PrismaClient, AgentStatus } from "@prisma/client";
 
 export async function seedAgent(prisma: PrismaClient) {
-  await prisma.agent.create({
-    data: {
-      nik: "3671001122334455",
-      kodeSales: "SLS-001",
-      nama: "Agus Pramono",
-      alamat: "Jl. Merdeka No. 10, Tangerang",
-      noHp: "081234567890",
-      email: "agus.agent@example.com",
-      status: AgentStatus.AKTIF,
-      pics: {
-        create: [
-          {
-            nama: "Budi (PIC Agus)",
-            noHp: "081299990000",
-            alamat: "Jl. Merdeka 11, Tangerang",
-          },
-        ],
+  await prisma.agent.createMany({
+    data: [
+      {
+        nik: "NIK-001",
+        nama: "Afiat Ahan",
+        noHp: "080000000001",
+        status: AgentStatus.AKTIF,
       },
-    },
-  });
-
-  await prisma.agent.create({
-    data: {
-      nik: "3671009988776655",
-      kodeSales: "SLS-002",
-      nama: "Rina Wijaya",
-      alamat: "Jl. Sudirman No. 5, Tangerang",
-      noHp: "081987654321",
-      email: "rina.agent@example.com",
-      status: AgentStatus.NONAKTIF,
-      pics: {
-        create: [
-          {
-            nama: "Sari (PIC Rina)",
-            noHp: "081900001111",
-            alamat: "Jl. Sudirman 6, Tangerang",
-          },
-        ],
+      {
+        nik: "NIK-002",
+        nama: "Afiat Habibah",
+        noHp: "080000000002",
+        status: AgentStatus.AKTIF,
       },
-    },
+      {
+        nik: "NIK-003",
+        nama: "Afiat Ika",
+        noHp: "080000000003",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-004",
+        nama: "Agen Ayu",
+        noHp: "080000000004",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-005",
+        nama: "Agen Chris",
+        noHp: "080000000005",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-006",
+        nama: "Agen Dian",
+        noHp: "080000000006",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-007",
+        nama: "Agen Dinda",
+        noHp: "080000000007",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-008",
+        nama: "Agen Endah",
+        noHp: "080000000008",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-009",
+        nama: "Agen Ida",
+        noHp: "080000000009",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-010",
+        nama: "Agen Iin",
+        noHp: "080000000010",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-011",
+        nama: "Agen Ikoh",
+        noHp: "080000000011",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-012",
+        nama: "Agen Indah",
+        noHp: "080000000012",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-013",
+        nama: "Agen Irene",
+        noHp: "080000000013",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-014",
+        nama: "Agen Irma",
+        noHp: "080000000014",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-015",
+        nama: "Agen Marzuki",
+        noHp: "080000000015",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-016",
+        nama: "Agen Mustangin",
+        noHp: "080000000016",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-017",
+        nama: "Agen Nurhalimah",
+        noHp: "080000000017",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-018",
+        nama: "Agen Renaldy",
+        noHp: "080000000018",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-019",
+        nama: "Agen Saeful",
+        noHp: "080000000019",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-020",
+        nama: "Agen Saeful Anwar",
+        noHp: "080000000020",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-021",
+        nama: "Agen Sugeng Riyadi",
+        noHp: "080000000021",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-022",
+        nama: "Agen Sugiono",
+        noHp: "080000000022",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-023",
+        nama: "Agen Unis",
+        noHp: "080000000023",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-024",
+        nama: "Arga",
+        noHp: "080000000024",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-025",
+        nama: "Astana Rian",
+        noHp: "080000000025",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-026",
+        nama: "Astana Zega",
+        noHp: "080000000026",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-027",
+        nama: "Benju Bayu",
+        noHp: "080000000027",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-028",
+        nama: "Benjuber Aji",
+        noHp: "080000000028",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-029",
+        nama: "Benjuber Bayu",
+        noHp: "080000000029",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-030",
+        nama: "Eva",
+        noHp: "080000000030",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-031",
+        nama: "Gas25",
+        noHp: "080000000031",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-032",
+        nama: "Rumascope Fajar",
+        noHp: "080000000032",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-033",
+        nama: "Weltown",
+        noHp: "080000000033",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-034",
+        nama: "Weltown Adit",
+        noHp: "080000000034",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-035",
+        nama: "Weltown Bella",
+        noHp: "080000000035",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-036",
+        nama: "Weltown Rico",
+        noHp: "080000000036",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-037",
+        nama: "Wiwi",
+        noHp: "080000000037",
+        status: AgentStatus.AKTIF,
+      },
+    ],
+    skipDuplicates: true,
   });
 }

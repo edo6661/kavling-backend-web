@@ -1,4 +1,393 @@
-simpan kode backend nya:
+tolong simpan kode backend nya:
+
+<file path="prisma/seeds/agentSeed.ts">
+import { PrismaClient, AgentStatus } from "@prisma/client";
+
+export async function seedAgent(prisma: PrismaClient) {
+  await prisma.agent.createMany({
+    data: [
+      {
+        nik: "NIK-001",
+        nama: "Afiat Ahan",
+        noHp: "080000000001",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-002",
+        nama: "Afiat Habibah",
+        noHp: "080000000002",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-003",
+        nama: "Afiat Ika",
+        noHp: "080000000003",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-004",
+        nama: "Agen Ayu",
+        noHp: "080000000004",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-005",
+        nama: "Agen Chris",
+        noHp: "080000000005",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-006",
+        nama: "Agen Dian",
+        noHp: "080000000006",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-007",
+        nama: "Agen Dinda",
+        noHp: "080000000007",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-008",
+        nama: "Agen Endah",
+        noHp: "080000000008",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-009",
+        nama: "Agen Ida",
+        noHp: "080000000009",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-010",
+        nama: "Agen Iin",
+        noHp: "080000000010",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-011",
+        nama: "Agen Ikoh",
+        noHp: "080000000011",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-012",
+        nama: "Agen Indah",
+        noHp: "080000000012",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-013",
+        nama: "Agen Irene",
+        noHp: "080000000013",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-014",
+        nama: "Agen Irma",
+        noHp: "080000000014",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-015",
+        nama: "Agen Marzuki",
+        noHp: "080000000015",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-016",
+        nama: "Agen Mustangin",
+        noHp: "080000000016",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-017",
+        nama: "Agen Nurhalimah",
+        noHp: "080000000017",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-018",
+        nama: "Agen Renaldy",
+        noHp: "080000000018",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-019",
+        nama: "Agen Saeful",
+        noHp: "080000000019",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-020",
+        nama: "Agen Saeful Anwar",
+        noHp: "080000000020",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-021",
+        nama: "Agen Sugeng Riyadi",
+        noHp: "080000000021",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-022",
+        nama: "Agen Sugiono",
+        noHp: "080000000022",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-023",
+        nama: "Agen Unis",
+        noHp: "080000000023",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-024",
+        nama: "Arga",
+        noHp: "080000000024",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-025",
+        nama: "Astana Rian",
+        noHp: "080000000025",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-026",
+        nama: "Astana Zega",
+        noHp: "080000000026",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-027",
+        nama: "Benju Bayu",
+        noHp: "080000000027",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-028",
+        nama: "Benjuber Aji",
+        noHp: "080000000028",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-029",
+        nama: "Benjuber Bayu",
+        noHp: "080000000029",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-030",
+        nama: "Eva",
+        noHp: "080000000030",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-031",
+        nama: "Gas25",
+        noHp: "080000000031",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-032",
+        nama: "Rumascope Fajar",
+        noHp: "080000000032",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-033",
+        nama: "Weltown",
+        noHp: "080000000033",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-034",
+        nama: "Weltown Adit",
+        noHp: "080000000034",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-035",
+        nama: "Weltown Bella",
+        noHp: "080000000035",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-036",
+        nama: "Weltown Rico",
+        noHp: "080000000036",
+        status: AgentStatus.AKTIF,
+      },
+      {
+        nik: "NIK-037",
+        nama: "Wiwi",
+        noHp: "080000000037",
+        status: AgentStatus.AKTIF,
+      },
+    ],
+    skipDuplicates: true,
+  });
+}
+</file>
+
+<file path="prisma/seeds/detailKavlingPajakSeed.ts">
+import { PrismaClient, SP3R } from "@prisma/client";
+
+export async function seedDetailKavlingPajak(prisma: PrismaClient) {
+  await prisma.detailKavlingPajak.create({
+    data: {
+      penjualanId: 1,
+      notarisId: 1,
+      lantai: "1",
+      luasBangunan: "36",
+      lokasiStrategis: "Pojok / Hook",
+      tanggalAkadPpjb: new Date("2026-04-20"),
+      akadPpjb: "Notaris Budi Santoso",
+      tanggalAkadAjbPpat: new Date("2026-05-10"),
+      tanggalPembayaranPph: new Date("2026-05-01"),
+      tanggalPembayaranBphtb: new Date("2026-05-02"),
+      pembiayaan: "KPR BCA",
+      sp3r: SP3R.BANK,
+      lebihTanah: 0.0,
+      biayaStrategis: 5000000.0,
+      nrBiayaKprAsuransi: 15000000.0,
+      nrDiskonAngsuran: 0.0,
+      nrDiskonCash: 0.0,
+      nrBiayaBbn: 3500000.0,
+      nrBiayaNotarisAjb: 5000000.0,
+      nrBiayaAppraisal: 1500000.0,
+      nrBiayaBphtb: 12500000.0,
+      nrLainLain: 1000000.0,
+      nrPpn: 35000000.0,
+      nrBphtb: 12500000.0,
+      nrPph: 8750000.0,
+      pjBiayaKpr: 15000000.0,
+      pjBiayaAsuransi: 5000000.0,
+      pjDiskonAngsuran: 0.0,
+      pjBiayaBbn: 3500000.0,
+      pjBiayaAjb: 5000000.0,
+      pjBiayaAppraisal: 1500000.0,
+      pjBphtb: 12500000.0,
+      pjLainLain: 0.0,
+      pjPpn: 35000000.0,
+      pjBphtbPajak: 12500000.0,
+      pjPph: 8750000.0,
+      ajbNjopTanahPerMeter: 1500000.0,
+      ajbNjopTanah: 90000000.0,
+      ajbNjopBangunanPerMeter: 2000000.0,
+      ajbNjopBangunan: 72000000.0,
+      ajbPpn: 35000000.0,
+      ajbBphtb: 12500000.0,
+      ajbPph: 8750000.0,
+      ajbSelisihPajakPbb: 0.0,
+      ajbUping: 0.0,
+    },
+  });
+}
+</file>
+
+<file path="prisma/seeds/notarisSeed.ts">
+import { PrismaClient } from "@prisma/client";
+
+export async function seedNotaris(prisma: PrismaClient) {
+  // Menggunakan .create() agar bisa insert data relasi PIC Notaris sekaligus
+  await prisma.notaris.create({
+    data: {
+      nama: "Notaris Budi Santoso, S.H., M.Kn.",
+      biayaAjb: 5000000.0,
+      pics: {
+        create: [
+          {
+            nama: "Agus (Staff Notaris)",
+            noHp: "081233334444",
+            alamat: "Kantor Notaris Budi",
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.notaris.create({
+    data: {
+      nama: "Notaris Siti Aminah, S.H., M.Kn.",
+      biayaAjb: 4500000.0,
+      pics: {
+        create: [
+          {
+            nama: "Rini (Staff Notaris)",
+            noHp: "081999998888",
+            alamat: "Kantor Notaris Siti",
+          },
+        ],
+      },
+    },
+  });
+}
+</file>
+
+<file path="prisma/seeds/progressPoyekSeed.ts">
+import { PrismaClient, ProgressStatus } from "@prisma/client";
+
+export async function seedProgressProyek(prisma: PrismaClient) {
+  await prisma.progressProyek.createMany({
+    data: [
+      {
+        kavlingId: 1,
+        pelaksana: "H. Mandor Surya",
+        tanggalLaporan: new Date("2026-04-10"),
+        tahapanPekerjaan: "Pondasi dan Cakar Ayam",
+        persentase: 15,
+        keterangan: "Penggalian dan pemasangan batu kali selesai",
+        kendala: "Hujan deras 2 hari berturut-turut",
+        fotoLapangan: ["pondasi_1.jpg", "pondasi_2.jpg"],
+        status: ProgressStatus.DISETUJUI,
+      },
+      {
+        kavlingId: 1,
+        pelaksana: "H. Mandor Surya",
+        tanggalLaporan: new Date("2026-04-17"),
+        tahapanPekerjaan: "Pemasangan Bata Merah",
+        persentase: 35,
+        keterangan: "Dinding lantai 1 hampir selesai",
+        kendala: null,
+        fotoLapangan: ["bata_1.jpg"],
+        status: ProgressStatus.MENUNGGU_VERIFIKASI,
+      },
+    ],
+  });
+}
+</file>
+
+<file path="prisma/seeds/spkSeed.ts">
+import { PrismaClient } from "@prisma/client";
+
+export async function seedSpk(prisma: PrismaClient) {
+  await prisma.spk.createMany({
+    data: [
+      {
+        noSpk: "SPK/001/SAR/IV/2026",
+        tanggalSpk: new Date("2026-04-01"),
+        judulPekerjaan: "Pembangunan Unit Rumah Blok A1 No. 01 & 02",
+        lokasi: "Sari Asih Residence Tangerang",
+        jangkaWaktu: 90,
+        nilaiKontrak: 300000000.0,
+        namaPihakPertama: "Direktur PT Sari Asih Group",
+        nikPihakPertama: "3671000055556666",
+        namaPihakKedua: "H. Mandor Surya",
+        nikPihakKedua: "3671000077778888",
+        alamatPihakKedua: "Jl. Pembangunan Raya No. 99, Tangerang",
+        namaBank: "BCA",
+        noRekening: "1234567890",
+        atasNamaRekening: "Surya",
+      },
+    ],
+  });
+}
+</file>
 
 <file path="src/application/usecases/agent/AgentUseCases.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -794,23 +1183,6 @@ export class GetPengajuanGantiKavlingUseCase {
         approvedBy: { select: { username: true } },
       },
     });
-  }
-}
-</file>
-
-<file path="src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts">
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import type { PenjualanFilterDTO } from "../../../domain/dtos/PenjualanDTO.js";
-
-export class GetPenjualanPaginatedUseCase {
-  constructor(private readonly repo: IPenjualanRepository) {}
-
-  async execute(
-    page: number,
-    limit: number,
-    filters?: PenjualanFilterDTO & { status?: string },
-  ) {
-    return await this.repo.findWithOffsetPagination(page, limit, filters);
   }
 }
 </file>
@@ -4702,6 +5074,200 @@ export const updateUserSchema = {
 }
 </file>
 
+<file path="prisma/seeds/bankRekeningPtSeed.ts">
+import { PrismaClient } from "@prisma/client";
+
+export async function seedBankRekeningPt(prisma: PrismaClient) {
+  await prisma.bankRekeningPt.createMany({
+    data: [
+      {
+        perumahanId: 1,
+        namaBank: "BSI",
+        noRekening: "7326575644",
+        atasNama: "PT. Bintang Safana Gajah",
+      },
+      {
+        perumahanId: 1,
+        namaBank: "BSI",
+        noRekening: "7326573692",
+        atasNama: "PT. Bintang Safana Mahligai",
+      },
+    ],
+  });
+}
+</file>
+
+<file path="prisma/seeds/customerSeed.ts">
+import { PrismaClient } from "@prisma/client";
+
+export async function seedCustomer(prisma: PrismaClient) {
+  await prisma.customer.createMany({
+    data: [
+      {
+        userId: 3,
+        nikKtp: "3671000011112222",
+        nama: "Budi Gunawan",
+        noHp: "081122334455",
+        alamatKtp: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
+        alamatTinggal: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
+        email: "budigunawan@example.com",
+        pekerjaan: "Pegawai Swasta",
+        perusahaan: "PT Maju Terus Pantang Mundur",
+        bank: "BCA",
+        alamatKoresponden: "Sama dengan KTP",
+      },
+      {
+        userId: null,
+        nikKtp: "3671000033334444",
+        nama: "Siti Rahmawati",
+        noHp: "081998877665",
+        alamatKtp: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
+        alamatTinggal: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
+        email: "sitirahma@example.com",
+        pekerjaan: "Wiraswasta",
+        perusahaan: "Toko Kelontong Rahma",
+        bank: "Mandiri",
+        alamatKoresponden: "Sama dengan KTP",
+      },
+    ],
+  });
+}
+</file>
+
+<file path="prisma/seeds/feeAgentSeed.ts">
+import { PrismaClient } from "@prisma/client";
+
+export async function seedFeeAgent(prisma: PrismaClient) {
+  await prisma.feeAgent.createMany({
+    data: [
+      {
+        agentId: 1,
+        penjualanId: 1,
+        bookingNominal: 1000000.0,
+        bookingTanggal: new Date("2026-04-06"),
+        bookingBukti: "bukti_tf_agus_booking_01.pdf",
+        closingNominal: null,
+        closingTanggal: null,
+        closingBukti: null,
+        marketingNominal: null,
+        marketingTanggal: null,
+        marketingBukti: null,
+      },
+    ],
+  });
+}
+</file>
+
+<file path="prisma/seeds/penjualanSeed.ts">
+import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
+
+export async function seedPenjualan(prisma: PrismaClient) {
+  await prisma.penjualan.createMany({
+    data: [
+      {
+        noTransaksi: "TRX-202604-0001",
+        tanggal: new Date("2026-04-05"),
+        customerId: 1,
+        kavlingId: 1,
+        agentId: 1,
+        caraPembayaran: PaymentMethod.KPR,
+        hargaJual: 350000000.0,
+        dp: 35000000.0,
+        diskonPenjualan: 10000000.0,
+        hargaPromosi: 5000000.0,
+        bank: "BCA",
+        nilaiPengajuanKpr: 305000000.0,
+        bookingFee: 5000000.0,
+        rekeningTujuanId: 1,
+        status: PenjualanStatus.LUNAS,
+        alasanBatal: null,
+        fileSpr: null,
+        fileBuktiBooking: "bukti_booking_01.pdf",
+        fileBuktiDp: "bukti_dp_01.pdf",
+      },
+      {
+        noTransaksi: "TRX-202604-0002",
+        tanggal: new Date("2026-04-08"),
+        customerId: 2,
+        kavlingId: 2,
+        agentId: 1,
+        caraPembayaran: PaymentMethod.CASH_BERTAHAP,
+        hargaJual: 350000000.0,
+        dp: 100000000.0,
+        diskonPenjualan: 0,
+        hargaPromosi: 0,
+        bank: "Mandiri",
+        nilaiPengajuanKpr: null,
+        bookingFee: 5000000.0,
+        rekeningTujuanId: 1,
+        status: PenjualanStatus.BOOKED,
+        alasanBatal: null,
+        fileSpr: null,
+        fileBuktiBooking: "bukti_booking_02.pdf",
+        fileBuktiDp: null,
+      },
+    ],
+  });
+}
+</file>
+
+<file path="prisma/seeds/perumahanSeed.ts">
+import { PrismaClient } from "@prisma/client";
+
+export async function seedPerumahan(prisma: PrismaClient) {
+  await prisma.perumahan.createMany({
+    data: [
+      {
+        nama: "Puri Safana",
+        alamat: "Test Alamat",
+        logo: "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
+      },
+    ],
+  });
+}
+</file>
+
+<file path="prisma/seeds/tagihanSeed.ts">
+import { PrismaClient, PaymentStatus } from "@prisma/client";
+
+export async function seedTagihan(prisma: PrismaClient) {
+  await prisma.tagihan.createMany({
+    data: [
+      {
+        noTagihan: "INV-2604-001",
+        customerId: 1,
+        penjualanId: 1,
+        pembayaran: "Pembayaran Booking Fee",
+        nominal: 5000000.0,
+        jatuhTempo: new Date("2026-04-06"),
+        status: PaymentStatus.LUNAS,
+        reminderBerikutnya: null,
+      },
+      {
+        noTagihan: "INV-2604-002",
+        customerId: 2,
+        penjualanId: 2,
+        pembayaran: "Pembayaran Booking Fee",
+        nominal: 5000000.0,
+        jatuhTempo: new Date("2026-04-09"),
+        status: PaymentStatus.LUNAS,
+        reminderBerikutnya: null,
+      },
+      {
+        noTagihan: "INV-2604-003",
+        customerId: 2,
+        penjualanId: 2,
+        pembayaran: "Pembayaran DP Cicilan 1",
+        nominal: 50000000.0,
+        jatuhTempo: new Date("2026-05-09"),
+        status: PaymentStatus.BELUM_BAYAR,
+        reminderBerikutnya: new Date("2026-05-15"),
+      },
+    ],
+  });
+}
+</file>
+
 <file path="src/app.ts">
 import { env } from "./config/env";
 import * as Sentry from "@sentry/node";
@@ -5143,6 +5709,23 @@ export class GantiKavlingUseCase {
 }
 </file>
 
+<file path="src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts">
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { PenjualanFilterDTO } from "../../../domain/dtos/PenjualanDTO.js";
+
+export class GetPenjualanPaginatedUseCase {
+  constructor(private readonly repo: IPenjualanRepository) {}
+
+  async execute(
+    page: number,
+    limit: number,
+    filters?: PenjualanFilterDTO & { status?: string },
+  ) {
+    return await this.repo.findWithOffsetPagination(page, limit, filters);
+  }
+}
+</file>
+
 <file path="src/application/usecases/penjualan/UploadBuktiPenjualanUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -5456,235 +6039,6 @@ export interface NotarisEntity {
   ajbDitangani?: AjbDitanganiEntity[];
   createdAt: Date;
   updatedAt: Date;
-}
-</file>
-
-<file path="src/domain/repositories/agentRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IAgentRepository } from "./IAgentRepo.js";
-import type { AgentEntity } from "../entities/Agent.js";
-import type {
-  CreateAgentDTO,
-  UpdateAgentDTO,
-  AgentFilterDTO,
-} from "../dtos/AgentDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
-
-export class AgentRepository implements IAgentRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreateAgentDTO): Promise<AgentEntity> {
-    const checkDuplicate = await this.db.agent.findFirst({
-      where: { nik: data.nik },
-    });
-
-    if (checkDuplicate) {
-      throw new ConflictError("NIK Agent sudah terdaftar");
-    }
-
-    const createData: Prisma.AgentCreateInput = {
-      nik: data.nik,
-      nama: data.nama,
-      noHp: data.noHp,
-      email: data.email ?? null,
-      alamat: data.alamat ?? null,
-    };
-
-    if (data.status) {
-      createData.status = data.status;
-    }
-
-    if (data.pics && data.pics.length > 0) {
-      createData.pics = {
-        create: data.pics.map((p) => ({
-          nama: p.nama,
-          noHp: p.noHp,
-          alamat: p.alamat ?? null,
-        })),
-      };
-    }
-
-    const result = await this.db.agent.create({
-      data: createData,
-      include: {
-        pics: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return AgentMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<AgentEntity | null> {
-    const result = await this.db.agent.findUnique({
-      where: { id },
-      include: {
-        pics: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-    if (!result) return null;
-    return AgentMapper.toDomain(result);
-  }
-
-  async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Agent tidak ditemukan");
-    }
-
-    const updateData: Prisma.AgentUpdateInput = {};
-
-    if (data.nik !== undefined) updateData.nik = data.nik;
-    if (data.nama !== undefined) updateData.nama = data.nama;
-    if (data.noHp !== undefined) updateData.noHp = data.noHp;
-    if (data.email !== undefined) updateData.email = data.email ?? null;
-    if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
-    if (data.status !== undefined) updateData.status = data.status;
-
-    if (data.pics) {
-      updateData.pics = {
-        deleteMany: {},
-        create: data.pics.map((p) => ({
-          nama: p.nama,
-          noHp: p.noHp,
-          alamat: p.alamat ?? null,
-        })),
-      };
-    }
-
-    const result = await this.db.agent.update({
-      where: { id },
-      data: updateData,
-      include: {
-        pics: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return AgentMapper.toDomain(result);
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: AgentFilterDTO,
-  ): Promise<CursorPaginatedData<AgentEntity>> {
-    const where: Prisma.AgentWhereInput = {};
-
-    if (filters?.search) {
-      where.OR = [
-        { nama: { contains: filters.search } },
-        { nik: { contains: filters.search } },
-      ];
-    }
-
-    const items = await this.db.agent.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ id: "desc" }],
-      include: {
-        pics: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    return {
-      items: items.map((item) => AgentMapper.toDomain(item)),
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Agent tidak ditemukan");
-    }
-
-    await this.db.agent.delete({ where: { id } });
-  }
 }
 </file>
 
@@ -6902,6 +7256,1467 @@ export const getPerumahanPaginatedSchema = {
 }
 </file>
 
+<file path="prisma/seeds/kavlingSeed.ts">
+import { PrismaClient, UnitStatus } from "@prisma/client";
+
+export async function seedKavling(prisma: PrismaClient) {
+  await prisma.kavling.createMany({
+    data: [
+      {
+        perumahanId: 1,
+        blok: "AA1",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 66.0,
+        namaTipe: "Aruna",
+        hargaDasar: 607999998.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA1",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 66.0,
+        namaTipe: "Aruna",
+        hargaDasar: 607999998.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA1",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 66.0,
+        namaTipe: "Aruna",
+        hargaDasar: 607999998.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA1",
+        nomorUnit: "8",
+        luasBangunan: 73.0,
+        luasTanah: 66.0,
+        namaTipe: "Aruna",
+        hargaDasar: 607999998.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA1",
+        nomorUnit: "10",
+        luasBangunan: 73.0,
+        luasTanah: 66.0,
+        namaTipe: "Aruna",
+        hargaDasar: 607999998.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA1",
+        nomorUnit: "12",
+        luasBangunan: 73.0,
+        luasTanah: 90.0,
+        namaTipe: "Aruna",
+        hargaDasar: 687999990.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA2",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA2",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA3",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA3",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 72.7,
+        namaTipe: "Aruna",
+        hargaDasar: 630333329.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA3",
+        nomorUnit: "5",
+        luasBangunan: 73.0,
+        luasTanah: 66.0,
+        namaTipe: "Aruna",
+        hargaDasar: 607999998.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA3",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA3",
+        nomorUnit: "7",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA5",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 788000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA5",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 788000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA5",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 788000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA5",
+        nomorUnit: "8",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 788000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA5",
+        nomorUnit: "11",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 788000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA5",
+        nomorUnit: "20",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 788000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA5",
+        nomorUnit: "22",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 788000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 62.0,
+        namaTipe: "Aruna",
+        hargaDasar: 594666666.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "2",
+        luasBangunan: 73.0,
+        luasTanah: 66.4,
+        namaTipe: "Aruna",
+        hargaDasar: 609333331.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 70.8,
+        namaTipe: "Aruna",
+        hargaDasar: 623999996.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "5",
+        luasBangunan: 73.0,
+        luasTanah: 75.2,
+        namaTipe: "Aruna",
+        hargaDasar: 638666662.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 78.3,
+        namaTipe: "Aruna",
+        hargaDasar: 648999994.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "7",
+        luasBangunan: 73.0,
+        luasTanah: 79.6,
+        namaTipe: "Aruna",
+        hargaDasar: 653333327.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "8",
+        luasBangunan: 73.0,
+        luasTanah: 80.5,
+        namaTipe: "Aruna",
+        hargaDasar: 656333327.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "9",
+        luasBangunan: 73.0,
+        luasTanah: 81.3,
+        namaTipe: "Aruna",
+        hargaDasar: 658999993.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA6",
+        nomorUnit: "10",
+        luasBangunan: 73.0,
+        luasTanah: 142.5,
+        namaTipe: "Aruna",
+        hargaDasar: 862999973.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA7",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 70.8,
+        namaTipe: "Aruna",
+        hargaDasar: 623999996.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA7",
+        nomorUnit: "2",
+        luasBangunan: 73.0,
+        luasTanah: 97.7,
+        namaTipe: "Aruna",
+        hargaDasar: 713666654.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "8",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "10",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "12",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "15",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA8",
+        nomorUnit: "18",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 71.6,
+        namaTipe: "Aruna",
+        hargaDasar: 626666663.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "2",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "5",
+        luasBangunan: 73.0,
+        luasTanah: 80.0,
+        namaTipe: "Aruna",
+        hargaDasar: 654666660.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 80.0,
+        namaTipe: "Aruna",
+        hargaDasar: 654666660.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "7",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "8",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 588000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA9",
+        nomorUnit: "9",
+        luasBangunan: 73.0,
+        luasTanah: 83.1,
+        namaTipe: "Aruna",
+        hargaDasar: 664999992.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "2",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "3",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "5",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "7",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "8",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "9",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "12",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "14",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "16",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "23",
+        luasBangunan: 48.0,
+        luasTanah: 120.0,
+        namaTipe: "Asvara",
+        hargaDasar: 629000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "25",
+        luasBangunan: 73.0,
+        luasTanah: 122.0,
+        namaTipe: "Aruna",
+        hargaDasar: 836000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "27",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 829000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA14",
+        nomorUnit: "33",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 859000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA15",
+        nomorUnit: "2",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA15",
+        nomorUnit: "9",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 828000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "1",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 879000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "6",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 829000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "10",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 829000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "14",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "15",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "16",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "17",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "18",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 639000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "20",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "21",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "22",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "23",
+        luasBangunan: 73.0,
+        luasTanah: 60.0,
+        namaTipe: "Aruna",
+        hargaDasar: 609000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "24",
+        luasBangunan: 73.0,
+        luasTanah: 122.0,
+        namaTipe: "Aruna",
+        hargaDasar: 836000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "27",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 829000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "29",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 829000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "31",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 829000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA17",
+        nomorUnit: "35",
+        luasBangunan: 73.0,
+        luasTanah: 120.0,
+        namaTipe: "Aruna",
+        hargaDasar: 879000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA18",
+        nomorUnit: "11",
+        luasBangunan: 48.0,
+        luasTanah: 120.0,
+        namaTipe: "Asvara",
+        hargaDasar: 628000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA19",
+        nomorUnit: "7",
+        luasBangunan: 48.0,
+        luasTanah: 123.0,
+        namaTipe: "Asvara",
+        hargaDasar: 639000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA19",
+        nomorUnit: "8",
+        luasBangunan: 48.0,
+        luasTanah: 134.0,
+        namaTipe: "Asvara",
+        hargaDasar: 676000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA21",
+        nomorUnit: "3",
+        luasBangunan: 52.0,
+        luasTanah: 70.0,
+        namaTipe: "Adara",
+        hargaDasar: 492000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA21",
+        nomorUnit: "8",
+        luasBangunan: 48.0,
+        luasTanah: 96.0,
+        namaTipe: "Asvara",
+        hargaDasar: 549000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA22",
+        nomorUnit: "3",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 659000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA22",
+        nomorUnit: "6",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 709000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA22",
+        nomorUnit: "12",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 709000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA23",
+        nomorUnit: "10",
+        luasBangunan: 48.0,
+        luasTanah: 132.0,
+        namaTipe: "Asvara",
+        hargaDasar: 669000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA23",
+        nomorUnit: "12",
+        luasBangunan: 48.0,
+        luasTanah: 120.0,
+        namaTipe: "Asvara",
+        hargaDasar: 629000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA23",
+        nomorUnit: "15",
+        luasBangunan: 48.0,
+        luasTanah: 120.0,
+        namaTipe: "Asvara",
+        hargaDasar: 629000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA24",
+        nomorUnit: "1",
+        luasBangunan: 52.0,
+        luasTanah: 82.0,
+        namaTipe: "Adara",
+        hargaDasar: 582000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA24",
+        nomorUnit: "2",
+        luasBangunan: 52.0,
+        luasTanah: 121.0,
+        namaTipe: "Adara",
+        hargaDasar: 662000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA24",
+        nomorUnit: "5",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 659000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA24",
+        nomorUnit: "9",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 659000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA26",
+        nomorUnit: "3",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 659000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA26",
+        nomorUnit: "5",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 659000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA26",
+        nomorUnit: "7",
+        luasBangunan: 48.0,
+        luasTanah: 120.0,
+        namaTipe: "Asvara",
+        hargaDasar: 679000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA27",
+        nomorUnit: "1",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 709000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA27",
+        nomorUnit: "3",
+        luasBangunan: 52.0,
+        luasTanah: 120.0,
+        namaTipe: "Adara",
+        hargaDasar: 659000000.0,
+        rekeningTujuanId: 2,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA28",
+        nomorUnit: "6",
+        luasBangunan: 48.0,
+        luasTanah: 60.0,
+        namaTipe: "Asvara",
+        hargaDasar: 429000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA28",
+        nomorUnit: "9",
+        luasBangunan: 48.0,
+        luasTanah: 60.0,
+        namaTipe: "Asvara",
+        hargaDasar: 429000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA28",
+        nomorUnit: "10",
+        luasBangunan: 48.0,
+        luasTanah: 60.0,
+        namaTipe: "Asvara",
+        hargaDasar: 429000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA28",
+        nomorUnit: "11",
+        luasBangunan: 48.0,
+        luasTanah: 60.0,
+        namaTipe: "Asvara",
+        hargaDasar: 429000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA28",
+        nomorUnit: "12",
+        luasBangunan: 48.0,
+        luasTanah: 60.0,
+        namaTipe: "Asvara",
+        hargaDasar: 429000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "2",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "3",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "5",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "6",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "7",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "8",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "12",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "16",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 399000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "17",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "18",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "19",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "20",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "21",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "22",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "23",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "24",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "25",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA29",
+        nomorUnit: "26",
+        luasBangunan: 36.0,
+        luasTanah: 60.0,
+        namaTipe: "Ansara",
+        hargaDasar: 369000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+
+      {
+        perumahanId: 1,
+        blok: "AA30",
+        nomorUnit: "3",
+        luasBangunan: 36.0,
+        luasTanah: 62.0,
+        namaTipe: "Ansara",
+        hargaDasar: 376000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA30",
+        nomorUnit: "5",
+        luasBangunan: 36.0,
+        luasTanah: 62.0,
+        namaTipe: "Ansara",
+        hargaDasar: 376000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA30",
+        nomorUnit: "6",
+        luasBangunan: 36.0,
+        luasTanah: 63.0,
+        namaTipe: "Ansara",
+        hargaDasar: 379000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA30",
+        nomorUnit: "8",
+        luasBangunan: 36.0,
+        luasTanah: 71.0,
+        namaTipe: "Ansara",
+        hargaDasar: 406000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA31",
+        nomorUnit: "6",
+        luasBangunan: 36.0,
+        luasTanah: 109.0,
+        namaTipe: "Ansara",
+        hargaDasar: 532000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA32",
+        nomorUnit: "6",
+        luasBangunan: 48.0,
+        luasTanah: 67.0,
+        namaTipe: "Asvara",
+        hargaDasar: 431000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+      {
+        perumahanId: 1,
+        blok: "AA32",
+        nomorUnit: "8",
+        luasBangunan: 48.0,
+        luasTanah: 72.0,
+        namaTipe: "Asvara",
+        hargaDasar: 444000000.0,
+        rekeningTujuanId: 1,
+        status: UnitStatus.AVAILABLE,
+      },
+    ],
+  });
+}
+</file>
+
 <file path="src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type {
@@ -7590,6 +9405,247 @@ export interface KavlingEntity {
     | undefined;
   createdAt: Date;
   updatedAt: Date;
+}
+</file>
+
+<file path="src/domain/repositories/agentRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IAgentRepository } from "./IAgentRepo.js";
+import type { AgentEntity } from "../entities/Agent.js";
+import type {
+  CreateAgentDTO,
+  UpdateAgentDTO,
+  AgentFilterDTO,
+} from "../dtos/AgentDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
+
+export class AgentRepository implements IAgentRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateAgentDTO): Promise<AgentEntity> {
+    const checkDuplicate = await this.db.agent.findFirst({
+      where: { nik: data.nik },
+    });
+
+    if (checkDuplicate) {
+      throw new ConflictError("NIK Agent sudah terdaftar");
+    }
+
+    const createData: Prisma.AgentCreateInput = {
+      nik: data.nik,
+      nama: data.nama,
+      noHp: data.noHp,
+      email: data.email ?? null,
+      alamat: data.alamat ?? null,
+    };
+
+    if (data.status) {
+      createData.status = data.status;
+    }
+
+    if (data.pics && data.pics.length > 0) {
+      createData.pics = {
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
+
+    const result = await this.db.agent.create({
+      data: createData,
+      include: {
+        pics: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return AgentMapper.toDomain(result);
+  }
+
+  async findById(id: number): Promise<AgentEntity | null> {
+    const result = await this.db.agent.findUnique({
+      where: { id },
+      include: {
+        pics: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!result) return null;
+    return AgentMapper.toDomain(result);
+  }
+
+  async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
+    }
+
+    const updateData: Prisma.AgentUpdateInput = {};
+
+    if (data.nik !== undefined) updateData.nik = data.nik;
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.email !== undefined) updateData.email = data.email ?? null;
+    if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
+    if (data.status !== undefined) updateData.status = data.status;
+
+    if (data.pics) {
+      updateData.pics = {
+        deleteMany: {},
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
+
+    const result = await this.db.agent.update({
+      where: { id },
+      data: updateData,
+      include: {
+        pics: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return AgentMapper.toDomain(result);
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: AgentFilterDTO,
+  ): Promise<CursorPaginatedData<AgentEntity>> {
+    const where: Prisma.AgentWhereInput = {};
+
+    if (filters?.search) {
+      where.OR = [
+        { nama: { contains: filters.search } },
+        { nik: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.AgentOrderByWithRelationInput[] = [
+      { nama: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "nik", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.agent.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+      include: {
+        pics: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => AgentMapper.toDomain(item)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
+    }
+
+    await this.db.agent.delete({ where: { id } });
+  }
 }
 </file>
 
@@ -8625,6 +10681,37 @@ export const offsetPaginationQuerySchema = baseFilterSchema.extend({
 export type OffsetPaginationQuery = z.infer<typeof offsetPaginationQuerySchema>;
 </file>
 
+<file path="prisma/seeds/userSeed.ts">
+import { PrismaClient, Role } from "@prisma/client";
+import * as bcrypt from "bcrypt";
+
+export async function seedUser(prisma: PrismaClient) {
+  const defaultPassword = await bcrypt.hash("password", 10);
+  await prisma.user.createMany({
+    data: [
+      {
+        username: "Admin",
+        email: "admin@gmail.com",
+        password: defaultPassword,
+        role: Role.ADMIN,
+      },
+      {
+        username: "Marketing",
+        email: "marketing@gmail.com",
+        password: defaultPassword,
+        role: Role.MARKETING,
+      },
+      {
+        username: "Customer",
+        email: "customer@gmail.com",
+        password: defaultPassword,
+        role: Role.CUSTOMER,
+      },
+    ],
+  });
+}
+</file>
+
 <file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
 import { StatusCodes } from "http-status-codes";
 import { AppError } from "../../../domain/errors/AppError.js";
@@ -8768,6 +10855,130 @@ export class VerifyDocumentUseCase {
 }
 </file>
 
+<file path="prisma/seed.ts">
+import {
+  PrismaClient,
+  Role,
+  UnitStatus,
+  PaymentMethod,
+  PenjualanStatus,
+} from "@prisma/client";
+import * as fs from "fs";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const perumahan = await prisma.perumahan.upsert({
+    where: { nama: "Puri Safana Cikeas" },
+    update: {},
+    create: {
+      nama: "Puri Safana Cikeas",
+      logo: "logo-safana.png",
+      alamat: "Cikeas, Bogor",
+    },
+  });
+
+  const rawData = fs.readFileSync("cleaned_data.json", "utf-8");
+  const data = JSON.parse(rawData);
+
+  console.log(`Memulai migrasi ${data.length} data...`);
+
+  for (const item of data) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        const agent = await tx.agent.upsert({
+          where: {
+            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
+          },
+          update: {},
+          create: {
+            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
+            nama: item.agent.nama,
+            noHp: "0",
+          },
+        });
+
+        const customer = await tx.customer.create({
+          data: {
+            nama: item.customer.nama,
+            alamatKtp: item.customer.alamatKtp,
+            alamatTinggal: item.customer.alamatTinggal,
+            noHp: item.customer.noHp,
+            nikKtp: `TEMP-${Math.random().toString(36).substr(2, 9)}`,
+            pekerjaan: item.customer.pekerjaan,
+            bank: item.customer.bank,
+          },
+        });
+
+        const kavling = await tx.kavling.create({
+          data: {
+            perumahanId: perumahan.id,
+            blok: item.kavling.blok,
+            nomorUnit: item.kavling.nomorUnit,
+            namaTipe: item.kavling.namaTipe,
+            luasTanah: item.kavling.luasTanah,
+            luasBangunan: item.kavling.luasBangunan,
+            hargaDasar: item.kavling.hargaDasar,
+            status: UnitStatus.TERJUAL,
+          },
+        });
+
+        const penjualan = await tx.penjualan.create({
+          data: {
+            noTransaksi: item.penjualan.noTransaksi,
+            tanggal: new Date(item.penjualan.tanggal),
+            customerId: customer.id,
+            kavlingId: kavling.id,
+            agentId: agent.id,
+            caraPembayaran: item.penjualan.caraPembayaran as PaymentMethod,
+            hargaJual: item.penjualan.hargaJual,
+            bookingFee: item.penjualan.bookingFee,
+            status: PenjualanStatus.PROSES,
+          },
+        });
+
+        await tx.detailKavlingPajak.create({
+          data: {
+            penjualanId: penjualan.id,
+            lantai: item.detailPajak.lantai,
+            tanggalAkadPpjb: item.detailPajak.tanggalAkadPpjb
+              ? new Date(item.detailPajak.tanggalAkadPpjb)
+              : null,
+            akadPpjb: item.detailPajak.akadPpjb,
+            lebihTanah: item.detailPajak.lebihTanah,
+            biayaStrategis: item.detailPajak.biayaStrategis,
+            nrNilaiPenyerahan: item.detailPajak.nrNilaiPenyerahan,
+            pjNilaiPenyerahan: item.detailPajak.pjNilaiPenyerahan,
+            ajbNjopTotal: item.detailPajak.ajbNjopTotal,
+          },
+        });
+
+        if (item.feeAgent.closingNominal > 0) {
+          await tx.feeAgent.create({
+            data: {
+              agentId: agent.id,
+              penjualanId: penjualan.id,
+              closingNominal: item.feeAgent.closingNominal,
+              closingTanggal: item.feeAgent.closingTanggal
+                ? new Date(item.feeAgent.closingTanggal)
+                : null,
+            },
+          });
+        }
+      });
+    } catch (error) {
+      console.error(`Gagal memproses baris: ${item.customer.nama}`, error);
+    }
+  }
+
+  console.log("Migrasi selesai!");
+}
+
+main()
+  .catch((e) => console.error(e))
+  .finally(async () => await prisma.$disconnect());
+</file>
+
 <file path="src/domain/repositories/kavlingRepo.ts">
 import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
@@ -8863,9 +11074,13 @@ export class KavlingRepository implements IKavlingRepository {
         { namaTipe: { contains: filters.search } },
       ];
     }
+
     let orderByClause: Prisma.KavlingOrderByWithRelationInput[] = [
+      { blok: "asc" },
+      { nomorUnit: "asc" },
       { id: "desc" },
     ];
+
     if (filters?.orderBy) {
       const { field, direction } = filters.orderBy;
       const validFields = ["blok", "hargaDasar", "luasBangunan", "luasTanah"];
@@ -9203,401 +11418,6 @@ export class UpdateCustomerKavlingUseCase {
       message: "Data Kavling Customer berhasil diperbarui",
     };
   }
-}
-</file>
-
-<file path="src/domain/repositories/IPenjualanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../dtos/PenjualanDTO.js";
-import type {
-  CursorPaginatedData,
-  OffsetPaginatedData,
-} from "../../types/response.js";
-
-export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: true;
-    kavling: {
-      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
-    };
-    rekeningTujuan: true;
-    tagihan: true;
-    agent: true;
-  };
-}>;
-
-export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: { select: { id: true; nama: true } };
-    kavling: {
-      select: {
-        id: true;
-        blok: true;
-        nomorUnit: true;
-        perumahan: { select: { nama: true } };
-      };
-    };
-  };
-}>;
-
-export interface PenjualanPaginatedItem {
-  id: string;
-  tanggal: string;
-  nama: string;
-  alamat: string;
-  noTelepon: string;
-  noIdentitas: string;
-  perumahan: string;
-  blok: string;
-  alasanBatal: string | null;
-  nomorUnit: string;
-  tipe: string;
-  luasBangunan: number;
-  luasTanah: number;
-  hargaJual: number;
-  dp: number;
-  diskonPenjualan: number;
-  hargaPromosi: number;
-  bank: string;
-  caraPembayaran: string;
-  nilaiPengajuanKpr: number;
-  bookingFee: number;
-  status: string;
-  agent: string;
-  fileBuktiBooking: string;
-  fileBuktiDp: string;
-  fileSpr: string | null;
-  ttdData?: any;
-  rekeningTujuanId?: number | null;
-  rekeningTujuan?: {
-    namaBank: string;
-    noRekening: string;
-    atasNama: string;
-  } | null;
-  riwayatGantiKavling?: any[];
-  tagihan?: any[];
-}
-
-export interface IPenjualanRepository {
-  createWithTransaction(
-    data: CreatePenjualanDTO,
-  ): Promise<PenjualanWithRelations>;
-  findWithOffsetPagination(
-    page: number,
-    limit: number,
-    filters?: PenjualanFilterDTO & { status?: string },
-  ): Promise<OffsetPaginatedData<PenjualanPaginatedItem>>;
-
-  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
-  update(
-    id: number,
-    data: Partial<Prisma.PenjualanUpdateInput>,
-  ): Promise<PenjualanWithCompleteRelations>;
-}
-</file>
-
-<file path="src/presentation/controllers/penjualanController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
-import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
-import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
-import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
-import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
-import type { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
-import type { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
-import type { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
-import type { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
-import type { GetPengajuanBatalUseCase } from "../../application/usecases/penjualan/GetPengajuanBatalUseCase.js";
-import type { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penjualan/GetPengajuanGantiKavlingUseCase.js";
-
-import type {
-  cancelPenjualanSchema,
-  createPenjualanSchema,
-  gantiKavlingSchema,
-  updatePenjualanSchema,
-  uploadBuktiPenjualanSchema,
-  uploadSignatureSchema,
-  approveSchema,
-} from "../../validations/penjualanSchema.js";
-import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../../domain/dtos/PenjualanDTO.js";
-import { NotFoundError } from "../../domain/errors/NotFoundError.js";
-
-export class PenjualanController {
-  constructor(
-    private readonly createUseCase: CreatePenjualanUseCase,
-    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
-    private readonly cancelUseCase: CancelPenjualanUseCase,
-    private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
-    private readonly saveSignatureUseCase: SaveSignatureUseCase,
-    private readonly updateUseCase: UpdatePenjualanUseCase,
-    private readonly gantiKavlingUseCase: GantiKavlingUseCase,
-    private readonly approveBatalUseCase: ApproveBatalUseCase,
-    private readonly approveGantiKavlingUseCase: ApproveGantiKavlingUseCase,
-    private readonly getPengajuanBatalUseCase: GetPengajuanBatalUseCase,
-    private readonly getPengajuanGantiKavlingUseCase: GetPengajuanGantiKavlingUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createPenjualanSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const pembuat = req.user?.username ?? "Admin";
-    const userId = req.user?.userId;
-
-    if (!userId) {
-      throw new NotFoundError("User tidak ditemukan");
-    }
-
-    const result = await this.createUseCase.execute({
-      ...req.body,
-      createdBy: pembuat,
-      userId: userId,
-    });
-
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
-      result,
-    );
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { page, limit, ...filters } = getPenjualanPaginatedSchema.query.parse(
-      req.query,
-    );
-
-    const result = await this.getPaginatedUseCase.execute(
-      page,
-      limit,
-      filters as PenjualanFilterDTO & { status?: string },
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data penjualan berhasil diambil",
-      result,
-    );
-  };
-  cancel = async (
-    req: TypedRequest<
-      typeof cancelPenjualanSchema.body,
-      any,
-      typeof cancelPenjualanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id } = req.params;
-    const { alasanBatal } = req.body;
-    const userId = req.user!.userId;
-
-    const result = await this.cancelUseCase.execute(id, alasanBatal, userId);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Pengajuan pembatalan berhasil dikirim dan menunggu persetujuan Admin",
-      result,
-    );
-  };
-  uploadBukti = async (
-    req: TypedRequest<
-      typeof cancelPenjualanSchema.body,
-      any,
-      typeof uploadBuktiPenjualanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id, type } = req.params;
-    if (!["booking", "dp"].includes(type)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe upload tidak valid.");
-      return;
-    }
-    if (!req.file?.buffer) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "File dokumen wajib diunggah.",
-      );
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(
-      id,
-      type as "booking" | "dp",
-      req.file.buffer,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      `Bukti ${type} berhasil diunggah`,
-      result,
-    );
-  };
-  uploadSignature = async (
-    req: TypedRequest<
-      typeof uploadSignatureSchema.body,
-      any,
-      typeof uploadSignatureSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id } = req.params;
-    const { signatureBase64, nama, peran, tanggal } = req.body;
-
-    const result = await this.saveSignatureUseCase.execute(
-      id,
-      signatureBase64,
-      nama,
-      peran,
-      tanggal,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      `Tanda tangan digital untuk ${peran} berhasil disimpan`,
-      result,
-    );
-  };
-  update = async (
-    req: TypedRequest<
-      typeof updatePenjualanSchema.body,
-      any,
-      typeof updatePenjualanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id } = req.params;
-    const userId = req.user?.userId;
-
-    const result = await this.updateUseCase.execute(
-      id,
-      req.body as Partial<CreatePenjualanDTO>,
-      userId,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data penjualan berhasil diperbarui dan direkam.",
-      result,
-    );
-  };
-  gantiKavling = async (
-    req: TypedRequest<
-      typeof gantiKavlingSchema.body,
-      any,
-      typeof gantiKavlingSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const { id } = req.params;
-    const { kavlingBaruId, alasan } = req.body;
-    const userId = req.user!.userId;
-
-    const result = await this.gantiKavlingUseCase.execute(
-      id,
-      kavlingBaruId,
-      alasan,
-      userId,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Pengajuan ganti kavling berhasil dikirim dan menunggu persetujuan Admin.",
-      result,
-    );
-  };
-  getPengajuanBatal = async (req: Request, res: Response): Promise<void> => {
-    const status = req.query.status as
-      | "PENDING"
-      | "APPROVED"
-      | "REJECTED"
-      | undefined;
-    const result = await this.getPengajuanBatalUseCase.execute(status);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar pengajuan pembatalan berhasil diambil",
-      result,
-    );
-  };
-
-  getPengajuanGantiKavling = async (
-    req: Request,
-    res: Response,
-  ): Promise<void> => {
-    const status = req.query.status as
-      | "PENDING"
-      | "APPROVED"
-      | "REJECTED"
-      | undefined;
-    const result = await this.getPengajuanGantiKavlingUseCase.execute(status);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar pengajuan ganti kavling berhasil diambil",
-      result,
-    );
-  };
-
-  approveBatal = async (
-    req: TypedRequest<
-      typeof approveSchema.body,
-      any,
-      typeof approveSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const { isApproved } = req.body;
-    const userId = req.user!.userId;
-
-    const result = await this.approveBatalUseCase.execute(
-      id,
-      userId,
-      isApproved,
-    );
-    const msg = isApproved
-      ? "Pembatalan berhasil disetujui dan dieksekusi"
-      : "Pengajuan pembatalan ditolak";
-    sendResponse(res, StatusCodes.OK, msg, result);
-  };
-
-  approveGantiKavling = async (
-    req: TypedRequest<
-      typeof approveSchema.body,
-      any,
-      typeof approveSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const { isApproved } = req.body;
-    const userId = req.user!.userId;
-
-    const result = await this.approveGantiKavlingUseCase.execute(
-      id,
-      userId,
-      isApproved,
-    );
-    const msg = isApproved
-      ? "Ganti Kavling berhasil disetujui dan dieksekusi"
-      : "Pengajuan ganti kavling ditolak";
-    sendResponse(res, StatusCodes.OK, msg, result);
-  };
 }
 </file>
 
@@ -10045,6 +11865,401 @@ export class GenerateSprPdfUseCase {
 }
 </file>
 
+<file path="src/domain/repositories/IPenjualanRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../dtos/PenjualanDTO.js";
+import type {
+  CursorPaginatedData,
+  OffsetPaginatedData,
+} from "../../types/response.js";
+
+export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    kavling: {
+      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
+    };
+    rekeningTujuan: true;
+    tagihan: true;
+    agent: true;
+  };
+}>;
+
+export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: { select: { id: true; nama: true } };
+    kavling: {
+      select: {
+        id: true;
+        blok: true;
+        nomorUnit: true;
+        perumahan: { select: { nama: true } };
+      };
+    };
+  };
+}>;
+
+export interface PenjualanPaginatedItem {
+  id: string;
+  tanggal: string;
+  nama: string;
+  alamat: string;
+  noTelepon: string;
+  noIdentitas: string;
+  perumahan: string;
+  blok: string;
+  alasanBatal: string | null;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  hargaJual: number;
+  dp: number;
+  diskonPenjualan: number;
+  hargaPromosi: number;
+  bank: string;
+  caraPembayaran: string;
+  nilaiPengajuanKpr: number;
+  bookingFee: number;
+  status: string;
+  agent: string;
+  fileBuktiBooking: string;
+  fileBuktiDp: string;
+  fileSpr: string | null;
+  ttdData?: any;
+  rekeningTujuanId?: number | null;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
+  riwayatGantiKavling?: any[];
+  tagihan?: any[];
+}
+
+export interface IPenjualanRepository {
+  createWithTransaction(
+    data: CreatePenjualanDTO,
+  ): Promise<PenjualanWithRelations>;
+  findWithOffsetPagination(
+    page: number,
+    limit: number,
+    filters?: PenjualanFilterDTO & { status?: string },
+  ): Promise<OffsetPaginatedData<PenjualanPaginatedItem>>;
+
+  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
+  update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations>;
+}
+</file>
+
+<file path="src/presentation/controllers/penjualanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
+import type { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
+import type { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
+import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
+import type { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
+import type { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
+import type { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
+import type { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
+import type { GetPengajuanBatalUseCase } from "../../application/usecases/penjualan/GetPengajuanBatalUseCase.js";
+import type { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penjualan/GetPengajuanGantiKavlingUseCase.js";
+
+import type {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+  gantiKavlingSchema,
+  updatePenjualanSchema,
+  uploadBuktiPenjualanSchema,
+  uploadSignatureSchema,
+  approveSchema,
+} from "../../validations/penjualanSchema.js";
+import { getPenjualanPaginatedSchema } from "../../validations/penjualanSchema.js";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../../domain/dtos/PenjualanDTO.js";
+import { NotFoundError } from "../../domain/errors/NotFoundError.js";
+
+export class PenjualanController {
+  constructor(
+    private readonly createUseCase: CreatePenjualanUseCase,
+    private readonly getPaginatedUseCase: GetPenjualanPaginatedUseCase,
+    private readonly cancelUseCase: CancelPenjualanUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
+    private readonly saveSignatureUseCase: SaveSignatureUseCase,
+    private readonly updateUseCase: UpdatePenjualanUseCase,
+    private readonly gantiKavlingUseCase: GantiKavlingUseCase,
+    private readonly approveBatalUseCase: ApproveBatalUseCase,
+    private readonly approveGantiKavlingUseCase: ApproveGantiKavlingUseCase,
+    private readonly getPengajuanBatalUseCase: GetPengajuanBatalUseCase,
+    private readonly getPengajuanGantiKavlingUseCase: GetPengajuanGantiKavlingUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createPenjualanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const pembuat = req.user?.username ?? "Admin";
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new NotFoundError("User tidak ditemukan");
+    }
+
+    const result = await this.createUseCase.execute({
+      ...req.body,
+      createdBy: pembuat,
+      userId: userId,
+    });
+
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Data Penjualan berhasil disimpan dan tagihan awal telah dibuat.",
+      result,
+    );
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { page, limit, ...filters } = getPenjualanPaginatedSchema.query.parse(
+      req.query,
+    );
+
+    const result = await this.getPaginatedUseCase.execute(
+      page,
+      limit,
+      filters as PenjualanFilterDTO & { status?: string },
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data penjualan berhasil diambil",
+      result,
+    );
+  };
+  cancel = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof cancelPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { alasanBatal } = req.body;
+    const userId = req.user!.userId;
+
+    const result = await this.cancelUseCase.execute(id, alasanBatal, userId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Pengajuan pembatalan berhasil dikirim dan menunggu persetujuan Admin",
+      result,
+    );
+  };
+  uploadBukti = async (
+    req: TypedRequest<
+      typeof cancelPenjualanSchema.body,
+      any,
+      typeof uploadBuktiPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id, type } = req.params;
+    if (!["booking", "dp"].includes(type)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe upload tidak valid.");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File dokumen wajib diunggah.",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      id,
+      type as "booking" | "dp",
+      req.file.buffer,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Bukti ${type} berhasil diunggah`,
+      result,
+    );
+  };
+  uploadSignature = async (
+    req: TypedRequest<
+      typeof uploadSignatureSchema.body,
+      any,
+      typeof uploadSignatureSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { signatureBase64, nama, peran, tanggal } = req.body;
+
+    const result = await this.saveSignatureUseCase.execute(
+      id,
+      signatureBase64,
+      nama,
+      peran,
+      tanggal,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Tanda tangan digital untuk ${peran} berhasil disimpan`,
+      result,
+    );
+  };
+  update = async (
+    req: TypedRequest<
+      typeof updatePenjualanSchema.body,
+      any,
+      typeof updatePenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+
+    const result = await this.updateUseCase.execute(
+      id,
+      req.body as Partial<CreatePenjualanDTO>,
+      userId,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data penjualan berhasil diperbarui dan direkam.",
+      result,
+    );
+  };
+  gantiKavling = async (
+    req: TypedRequest<
+      typeof gantiKavlingSchema.body,
+      any,
+      typeof gantiKavlingSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const { kavlingBaruId, alasan } = req.body;
+    const userId = req.user!.userId;
+
+    const result = await this.gantiKavlingUseCase.execute(
+      id,
+      kavlingBaruId,
+      alasan,
+      userId,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Pengajuan ganti kavling berhasil dikirim dan menunggu persetujuan Admin.",
+      result,
+    );
+  };
+  getPengajuanBatal = async (req: Request, res: Response): Promise<void> => {
+    const status = req.query.status as
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED"
+      | undefined;
+    const result = await this.getPengajuanBatalUseCase.execute(status);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar pengajuan pembatalan berhasil diambil",
+      result,
+    );
+  };
+
+  getPengajuanGantiKavling = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const status = req.query.status as
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED"
+      | undefined;
+    const result = await this.getPengajuanGantiKavlingUseCase.execute(status);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar pengajuan ganti kavling berhasil diambil",
+      result,
+    );
+  };
+
+  approveBatal = async (
+    req: TypedRequest<
+      typeof approveSchema.body,
+      any,
+      typeof approveSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { isApproved } = req.body;
+    const userId = req.user!.userId;
+
+    const result = await this.approveBatalUseCase.execute(
+      id,
+      userId,
+      isApproved,
+    );
+    const msg = isApproved
+      ? "Pembatalan berhasil disetujui dan dieksekusi"
+      : "Pengajuan pembatalan ditolak";
+    sendResponse(res, StatusCodes.OK, msg, result);
+  };
+
+  approveGantiKavling = async (
+    req: TypedRequest<
+      typeof approveSchema.body,
+      any,
+      typeof approveSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { isApproved } = req.body;
+    const userId = req.user!.userId;
+
+    const result = await this.approveGantiKavlingUseCase.execute(
+      id,
+      userId,
+      isApproved,
+    );
+    const msg = isApproved
+      ? "Ganti Kavling berhasil disetujui dan dieksekusi"
+      : "Pengajuan ganti kavling ditolak";
+    sendResponse(res, StatusCodes.OK, msg, result);
+  };
+}
+</file>
+
 <file path="src/presentation/routes/index.ts">
 import { Router } from "express";
 import { checkHealth } from "../controllers/healthController.js";
@@ -10099,137 +12314,6 @@ export const createMainRouter = (deps: typeof container): Router => {
 
 const router = createMainRouter(container);
 export default router;
-</file>
-
-<file path="src/validations/penjualanSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { PenjualanStatus, type PaymentMethod } from "@prisma/client";
-import { offsetPaginationQuerySchema } from "./paginationSchema.js";
-
-export const createPenjualanSchema = {
-  body: z.object({
-    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
-    nama: z.string().min(3, "Nama minimal 3 karakter"),
-    noTelepon: z.string().min(9, "No Telepon minimal 9 karakter"),
-    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
-    perusahaan: emptyAsUndefined(z.string().optional()),
-    alamatKoresponden: emptyAsUndefined(z.string().optional()),
-    perumahan: z.string().min(1, "Perumahan wajib diisi"),
-    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
-    nomorUnit: z
-      .string()
-      .min(1, "Nomor unit wajib diisi")
-      .max(10, "No Unit Max 10 Karakter"),
-    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
-    luasBangunan: z.coerce.number().min(0),
-    luasTanah: z.coerce.number().min(0),
-    tanggal: z.string().datetime().or(z.string().min(1)),
-    hargaDasar: z.coerce.number().min(1, "Harga dasar tidak valid"),
-    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
-    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    caraPembayaran: z.string().transform((val) => {
-      const formatted = val.toUpperCase().replace(/\s+/g, "_");
-      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
-        return formatted as PaymentMethod;
-      }
-      throw new Error("Cara pembayaran tidak valid");
-    }),
-    bank: emptyAsUndefined(z.string().optional()),
-    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    agent: z.string().min(1, "Agent wajib diisi"),
-  }),
-};
-export const getPenjualanPaginatedSchema = {
-  query: offsetPaginationQuerySchema.extend({
-    status: emptyAsUndefined(z.nativeEnum(PenjualanStatus).optional()),
-  }),
-};
-export const cancelPenjualanSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-  }),
-  body: z.object({
-    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
-  }),
-};
-export const uploadBuktiPenjualanSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-    type: z.string().min(1, "Type wajib diisi"),
-  }),
-  body: z.object({
-    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
-  }),
-};
-export const uploadSignatureSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-  }),
-  body: z.object({
-    signatureBase64: z.string().min(1, "Data signature wajib diisi"),
-    nama: z.string().min(1, "Nama wajib diisi"),
-    peran: z.string().min(1, "Peran wajib diisi"),
-    tanggal: z.string().min(1, "Tanggal wajib diisi"),
-  }),
-};
-export const updatePenjualanSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-  }),
-  body: z
-    .object({
-      nama: emptyAsUndefined(z.string().min(3).optional()),
-      noIdentitas: emptyAsUndefined(z.string().min(16).optional()),
-      noTelepon: emptyAsUndefined(z.string().optional()),
-      alamat: emptyAsUndefined(z.string().optional()),
-      perusahaan: emptyAsUndefined(z.string().optional()),
-      alamatKoresponden: emptyAsUndefined(z.string().optional()),
-      caraPembayaran: emptyAsUndefined(z.string().optional()),
-      bank: emptyAsUndefined(z.string().optional()),
-
-      // TAMBAHAN: Diizinkan menerima input manual untuk kalkulasi
-      plafonAwal: emptyAsUndefined(z.coerce.number().optional()),
-      biayaKpr: emptyAsUndefined(z.coerce.number().optional()),
-      nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().optional()),
-      dp: emptyAsUndefined(z.coerce.number().optional()),
-      bookingFee: emptyAsUndefined(z.coerce.number().optional()),
-      diskonPenjualan: emptyAsUndefined(z.coerce.number().optional()),
-      hargaPromosi: emptyAsUndefined(z.coerce.number().optional()),
-      agent: emptyAsUndefined(z.string().optional()),
-      blok: emptyAsUndefined(z.string().optional()),
-      nomorUnit: emptyAsUndefined(z.string().optional()),
-      tipe: emptyAsUndefined(z.string().optional()),
-      luasBangunan: emptyAsUndefined(z.coerce.number().optional()),
-      luasTanah: emptyAsUndefined(z.coerce.number().optional()),
-      hargaJual: emptyAsUndefined(z.coerce.number().optional()),
-    })
-    .partial(),
-};
-
-export const gantiKavlingSchema = {
-  params: z.object({
-    id: z.string().min(1, "No Transaksi wajib diisi"),
-  }),
-  body: z.object({
-    kavlingBaruId: z.coerce.number().positive("Kavling baru wajib dipilih"),
-    alasan: z.string().min(5, "Alasan ganti kavling minimal 5 karakter"),
-  }),
-};
-
-export const approveSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
-  body: z.object({
-    isApproved: z.boolean({
-      error: "Status persetujuan (isApproved) wajib diisi boolean",
-    }),
-  }),
-};
 </file>
 
 <file path="prisma/schema.prisma">
@@ -10704,6 +12788,137 @@ model PengajuanBatal {
 
   @@map("pengajuan_batal")
 }
+</file>
+
+<file path="src/validations/penjualanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { PenjualanStatus, type PaymentMethod } from "@prisma/client";
+import { offsetPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createPenjualanSchema = {
+  body: z.object({
+    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
+    nama: z.string().min(3, "Nama minimal 3 karakter"),
+    noTelepon: z.string().min(9, "No Telepon minimal 9 karakter"),
+    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
+    perusahaan: emptyAsUndefined(z.string().optional()),
+    alamatKoresponden: emptyAsUndefined(z.string().optional()),
+    perumahan: z.string().min(1, "Perumahan wajib diisi"),
+    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok Max 10 Karakter"),
+    nomorUnit: z
+      .string()
+      .min(1, "Nomor unit wajib diisi")
+      .max(10, "No Unit Max 10 Karakter"),
+    tipe: z.string().min(1, "Tipe kavling wajib diisi"),
+    luasBangunan: z.coerce.number().min(0),
+    luasTanah: z.coerce.number().min(0),
+    tanggal: z.string().datetime().or(z.string().min(1)),
+    hargaDasar: z.coerce.number().min(1, "Harga dasar tidak valid"),
+    hargaJual: z.coerce.number().min(1, "Harga jual tidak valid"),
+    hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    caraPembayaran: z.string().transform((val) => {
+      const formatted = val.toUpperCase().replace(/\s+/g, "_");
+      if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
+        return formatted as PaymentMethod;
+      }
+      throw new Error("Cara pembayaran tidak valid");
+    }),
+    bank: emptyAsUndefined(z.string().optional()),
+    nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    agent: z.string().min(1, "Agent wajib diisi"),
+  }),
+};
+export const getPenjualanPaginatedSchema = {
+  query: offsetPaginationQuerySchema.extend({
+    status: emptyAsUndefined(z.nativeEnum(PenjualanStatus).optional()),
+  }),
+};
+export const cancelPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
+  }),
+};
+export const uploadBuktiPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+    type: z.string().min(1, "Type wajib diisi"),
+  }),
+  body: z.object({
+    alasanBatal: z.string().min(5, "Alasan pembatalan minimal 5 karakter"),
+  }),
+};
+export const uploadSignatureSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    signatureBase64: z.string().min(1, "Data signature wajib diisi"),
+    nama: z.string().min(1, "Nama wajib diisi"),
+    peran: z.string().min(1, "Peran wajib diisi"),
+    tanggal: z.string().min(1, "Tanggal wajib diisi"),
+  }),
+};
+export const updatePenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z
+    .object({
+      nama: emptyAsUndefined(z.string().min(3).optional()),
+      noIdentitas: emptyAsUndefined(z.string().min(16).optional()),
+      noTelepon: emptyAsUndefined(z.string().optional()),
+      alamat: emptyAsUndefined(z.string().optional()),
+      perusahaan: emptyAsUndefined(z.string().optional()),
+      alamatKoresponden: emptyAsUndefined(z.string().optional()),
+      caraPembayaran: emptyAsUndefined(z.string().optional()),
+      bank: emptyAsUndefined(z.string().optional()),
+
+      // TAMBAHAN: Diizinkan menerima input manual untuk kalkulasi
+      plafonAwal: emptyAsUndefined(z.coerce.number().optional()),
+      biayaKpr: emptyAsUndefined(z.coerce.number().optional()),
+      nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().optional()),
+      dp: emptyAsUndefined(z.coerce.number().optional()),
+      bookingFee: emptyAsUndefined(z.coerce.number().optional()),
+      diskonPenjualan: emptyAsUndefined(z.coerce.number().optional()),
+      hargaPromosi: emptyAsUndefined(z.coerce.number().optional()),
+      agent: emptyAsUndefined(z.string().optional()),
+      blok: emptyAsUndefined(z.string().optional()),
+      nomorUnit: emptyAsUndefined(z.string().optional()),
+      tipe: emptyAsUndefined(z.string().optional()),
+      luasBangunan: emptyAsUndefined(z.coerce.number().optional()),
+      luasTanah: emptyAsUndefined(z.coerce.number().optional()),
+      hargaJual: emptyAsUndefined(z.coerce.number().optional()),
+    })
+    .partial(),
+};
+
+export const gantiKavlingSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z.object({
+    kavlingBaruId: z.coerce.number().positive("Kavling baru wajib dipilih"),
+    alasan: z.string().min(5, "Alasan ganti kavling minimal 5 karakter"),
+  }),
+};
+
+export const approveSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    isApproved: z.boolean({
+      error: "Status persetujuan (isApproved) wajib diisi boolean",
+    }),
+  }),
+};
 </file>
 
 <file path="src/domain/repositories/penjualanRepo.ts">
