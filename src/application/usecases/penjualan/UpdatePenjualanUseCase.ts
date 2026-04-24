@@ -265,26 +265,32 @@ export class UpdatePenjualanUseCase {
       return updated;
     });
     if (
-      data.caraPembayaran &&
       transactionResult &&
-      !transactionResult.fileSpr
+      ((data.caraPembayaran && !transactionResult.fileSpr) ||
+        data.bank !== undefined)
     ) {
       try {
         const pdfBuffer = await this.generateSprPdfUseCase.execute(
           transactionResult.id,
         );
+
         const sprUrl = await this.cloudinaryService.uploadFile(
           pdfBuffer,
           "bumantara/spr",
         );
+
         return await this.db.penjualan.update({
           where: { id: transactionResult.id },
           data: { fileSpr: sprUrl },
         });
       } catch (error) {
-        console.error("Gagal auto-generate SPR setelah update skema:", error);
+        console.error(
+          "Gagal auto-generate SPR setelah update skema atau bank:",
+          error,
+        );
       }
     }
+
     return transactionResult;
   }
 }
