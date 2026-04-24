@@ -58,15 +58,17 @@ export class ApproveGantiKavlingUseCase {
         oldPenjualan.caraPembayaran === "CASH_KERAS" ||
         oldPenjualan.caraPembayaran === "CASH_BERTAHAP"
       ) {
-        hargaJual = plafonAwal;
+        hargaJual = hargaDasarBaru - diskon;
       } else if (oldPenjualan.caraPembayaran === "KPR") {
         biayaKpr = plafonAwal * 0.06;
         nilaiPengajuanKpr = plafonAwal + biayaKpr;
 
+        const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
+
         dp = oldPenjualan.dp
           ? Number(oldPenjualan.dp)
-          : nilaiPengajuanKpr * 0.1;
-        hargaJual = nilaiPengajuanKpr + dp;
+          : hargaJualSetelahDiskon * 0.1;
+        hargaJual = hargaJualSetelahDiskon + diskon;
       }
 
       await tx.penjualan.update({

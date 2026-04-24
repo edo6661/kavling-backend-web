@@ -170,12 +170,14 @@ export class PenjualanRepository implements IPenjualanRepository {
           data.caraPembayaran === "CASH_KERAS" ||
           data.caraPembayaran === "CASH_BERTAHAP"
         ) {
-          hargaJual = plafonAwal;
+          hargaJual = hargaDasar - diskon;
         } else if (data.caraPembayaran === "KPR") {
           biayaKpr = plafonAwal * 0.06;
           nilaiPengajuanKpr = plafonAwal + biayaKpr;
-          dp = data.dp ? Number(data.dp) : nilaiPengajuanKpr * 0.1;
-          hargaJual = nilaiPengajuanKpr + dp;
+
+          const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
+          dp = data.dp ? Number(data.dp) : hargaJualSetelahDiskon * 0.1;
+          hargaJual = hargaJualSetelahDiskon + diskon;
         }
       }
 

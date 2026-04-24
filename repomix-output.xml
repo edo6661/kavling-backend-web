@@ -1,4 +1,4 @@
-kode backend:
+tolong simpan kode backend nya:
 
 <file path="prisma/seeds/detailKavlingPajakSeed.ts">
 import { PrismaClient, SP3R } from "@prisma/client";
@@ -1086,6 +1086,49 @@ export class DeletePerumahanUseCase {
   constructor(private readonly repo: IPerumahanRepository) {}
   async execute(id: number): Promise<void> {
     await this.repo.delete(id);
+  }
+}
+</file>
+
+<file path="src/application/usecases/tagihan/SaveTagihanSignatureUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+
+export class SaveTagihanSignatureUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    id: number,
+    signatureBase64: string,
+    nama: string,
+    peran: string,
+    tanggal: string,
+  ) {
+    const tagihan = await this.db.tagihan.findUnique({ where: { id } });
+    if (!tagihan) throw new NotFoundError("Data Tagihan tidak ditemukan");
+
+    const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      buffer,
+      `bumantara/signatures/tagihan/${tagihan.noTagihan}`,
+    );
+
+    const existingTtd = (tagihan.ttdData as any) ?? {};
+    const updatedTtd = {
+      ...existingTtd,
+      [peran]: { nama, tanggal, url: imageUrl },
+    };
+
+    return await this.db.tagihan.update({
+      where: { id },
+      data: { ttdData: updatedTtd },
+    });
   }
 }
 </file>
@@ -6827,213 +6870,6 @@ export class KavlingController {
 }
 </file>
 
-<file path="src/presentation/controllers/tagihanController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type {
-  CreateTagihanUseCase,
-  UpdateTagihanUseCase,
-  GetTagihanByIdUseCase,
-  GetTagihansPaginatedUseCase,
-  DeleteTagihanUseCase,
-} from "../../application/usecases/tagihan/TagihanUseCases.js";
-import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
-
-import type {
-  createTagihanSchema,
-  updateTagihanSchema,
-} from "../../validations/tagihanSchema.js";
-import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
-import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
-import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
-
-export class TagihanController {
-  constructor(
-    private readonly createUseCase: CreateTagihanUseCase,
-    private readonly updateUseCase: UpdateTagihanUseCase,
-    private readonly getByIdUseCase: GetTagihanByIdUseCase,
-    private readonly getPaginatedUseCase: GetTagihansPaginatedUseCase,
-    private readonly deleteUseCase: DeleteTagihanUseCase,
-    private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
-    private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createTagihanSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.CREATED, "Tagihan berhasil dibuat", result);
-  };
-
-  update = async (
-    req: TypedRequest<
-      typeof updateTagihanSchema.body,
-      any,
-      typeof updateTagihanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.updateUseCase.execute(id, req.body);
-    sendResponse(res, StatusCodes.OK, "Tagihan berhasil diperbarui", result);
-  };
-
-  getById = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.getByIdUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Data tagihan berhasil diambil", result);
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getTagihansPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as TagihanFilterDTO,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar tagihan berhasil diambil",
-      result,
-    );
-  };
-
-  delete = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    await this.deleteUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Tagihan berhasil dihapus");
-  };
-
-  uploadBukti = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
-      return;
-    }
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(id, req.file.buffer);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Bukti pembayaran berhasil diunggah",
-      result,
-    );
-  };
-  uploadBuktiRefund = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
-      return;
-    }
-    if (!req.file?.buffer) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "File bukti refund wajib diunggah",
-      );
-      return;
-    }
-
-    const result = await this.uploadBuktiRefundUseCase.execute(
-      id,
-      req.file.buffer,
-    );
-    sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
-  };
-}
-</file>
-
-<file path="src/presentation/routes/tagihanRoutes.ts">
-import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import { upload } from "../../middlewares/upload.js";
-import {
-  createTagihanSchema,
-  updateTagihanSchema,
-  getTagihansPaginatedSchema,
-} from "../../validations/tagihanSchema.js";
-import type { TagihanController } from "../controllers/tagihanController.js";
-
-export const createTagihanRoutes = (controller: TagihanController): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.post(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(createTagihanSchema),
-    controller.create,
-  );
-  router.get(
-    "/",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(getTagihansPaginatedSchema),
-    controller.getPaginated,
-  );
-  router.get(
-    "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate({ params: updateTagihanSchema.params }),
-    controller.getById,
-  );
-  router.patch(
-    "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(updateTagihanSchema),
-    controller.update,
-  );
-  router.delete(
-    "/:id",
-    requireRole(["ADMIN"]),
-    validate({ params: updateTagihanSchema.params }),
-    controller.delete,
-  );
-
-  router.patch(
-    "/:id/upload-bukti",
-    requireRole(["ADMIN", "MARKETING"]),
-    upload.single("fileBukti"),
-    controller.uploadBukti,
-  );
-  router.patch(
-    "/:id/refund",
-    requireRole(["ADMIN", "MARKETING"]),
-    upload.single("fileBuktiRefund"),
-    controller.uploadBuktiRefund,
-  );
-
-  return router;
-};
-</file>
-
 <file path="src/tests/factories/bankRekeningPtFactory.ts">
 import type { Prisma } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
@@ -7601,61 +7437,6 @@ export interface DashboardResponseDTO {
   progressData: ProgressDataDTO[];
   topAgents: TopAgentDTO[];
   documentAlerts: DocumentAlertDTO[];
-}
-</file>
-
-<file path="src/domain/dtos/TagihanDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { PaymentStatus } from "@prisma/client";
-
-export interface CreateTagihanDTO {
-  customerId: number;
-  penjualanId: number;
-  pembayaran: string;
-  nominal: number;
-  jatuhTempo: string | Date;
-  reminderBerikutnya?: string | Date | null | undefined;
-}
-
-export interface UpdateTagihanDTO {
-  pembayaran?: string | undefined;
-  nominal?: number | undefined;
-  jatuhTempo?: string | Date | undefined;
-  status?: PaymentStatus | undefined;
-  reminderBerikutnya?: string | Date | null | undefined;
-  fileBukti?: string | null | undefined;
-}
-
-export interface TagihanResponseDTO {
-  id: number;
-  noTagihan: string;
-  customerId: number;
-  namaCustomer: string;
-  penjualanId: number;
-  perumahan: string;
-  blok: string;
-  nomorUnit: string;
-  pembayaran: string;
-  nominal: number;
-  jatuhTempo: Date;
-  status: PaymentStatus;
-  fileBukti: string | null;
-  reminderBerikutnya: Date | null;
-  isRefunded?: boolean;
-  fileBuktiRefund?: string | null;
-  rekeningTujuan?: {
-    namaBank: string;
-    noRekening: string;
-    atasNama: string;
-  } | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TagihanFilterDTO extends BaseFilterDTO {
-  customerId?: number;
-  penjualanId?: number;
-  status?: PaymentStatus;
 }
 </file>
 
@@ -8374,61 +8155,6 @@ export class NotarisMapper {
 }
 </file>
 
-<file path="src/infrastructure/mapper/TagihanMapper.ts">
-import type { Prisma } from "@prisma/client";
-import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
-
-type TagihanWithRelations = Prisma.TagihanGetPayload<{
-  include: {
-    customer: { select: { nama: true } };
-    penjualan: {
-      include: {
-        kavling: {
-          include: {
-            perumahan: { select: { nama: true } };
-            rekeningTujuan: true;
-          };
-        };
-        rekeningTujuan: true;
-      };
-    };
-  };
-}>;
-
-export class TagihanMapper {
-  static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
-    return {
-      id: prismaTagihan.id,
-      noTagihan: prismaTagihan.noTagihan,
-      customerId: prismaTagihan.customerId,
-      namaCustomer: prismaTagihan.customer.nama,
-      penjualanId: prismaTagihan.penjualanId,
-      perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
-      blok: prismaTagihan.penjualan.kavling.blok,
-      nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
-      pembayaran: prismaTagihan.pembayaran,
-      nominal: Number(prismaTagihan.nominal),
-      jatuhTempo: prismaTagihan.jatuhTempo,
-      status: prismaTagihan.status,
-      fileBukti: prismaTagihan.fileBukti,
-      reminderBerikutnya: prismaTagihan.reminderBerikutnya,
-      isRefunded: prismaTagihan.isRefunded ?? false,
-      fileBuktiRefund: prismaTagihan.fileBuktiRefund ?? null,
-      rekeningTujuan: prismaTagihan.penjualan.kavling.rekeningTujuan
-        ? {
-            namaBank: prismaTagihan.penjualan.kavling.rekeningTujuan.namaBank,
-            noRekening:
-              prismaTagihan.penjualan.kavling.rekeningTujuan.noRekening,
-            atasNama: prismaTagihan.penjualan.kavling.rekeningTujuan.atasNama,
-          }
-        : null,
-      createdAt: prismaTagihan.createdAt,
-      updatedAt: prismaTagihan.updatedAt,
-    };
-  }
-}
-</file>
-
 <file path="src/presentation/controllers/dashboardController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -8452,6 +8178,177 @@ export class DashboardController {
 }
 </file>
 
+<file path="src/presentation/controllers/tagihanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type {
+  CreateTagihanUseCase,
+  UpdateTagihanUseCase,
+  GetTagihanByIdUseCase,
+  GetTagihansPaginatedUseCase,
+  DeleteTagihanUseCase,
+} from "../../application/usecases/tagihan/TagihanUseCases.js";
+import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+
+import type {
+  createTagihanSchema,
+  updateTagihanSchema,
+} from "../../validations/tagihanSchema.js";
+import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
+import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
+import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
+import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
+import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
+
+export class TagihanController {
+  constructor(
+    private readonly createUseCase: CreateTagihanUseCase,
+    private readonly updateUseCase: UpdateTagihanUseCase,
+    private readonly getByIdUseCase: GetTagihanByIdUseCase,
+    private readonly getPaginatedUseCase: GetTagihansPaginatedUseCase,
+    private readonly deleteUseCase: DeleteTagihanUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
+    private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
+    private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createTagihanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.CREATED, "Tagihan berhasil dibuat", result);
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateTagihanSchema.body,
+      any,
+      typeof updateTagihanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Tagihan berhasil diperbarui", result);
+  };
+
+  getById = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getByIdUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Data tagihan berhasil diambil", result);
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getTagihansPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as TagihanFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar tagihan berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Tagihan berhasil dihapus");
+  };
+
+  uploadBukti = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(id, req.file.buffer);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti pembayaran berhasil diunggah",
+      result,
+    );
+  };
+  uploadBuktiRefund = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File bukti refund wajib diunggah",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiRefundUseCase.execute(
+      id,
+      req.file.buffer,
+    );
+    sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
+  };
+  uploadSignature = async (
+    req: TypedRequest<
+      typeof uploadSignatureSchema.body,
+      any,
+      typeof uploadSignatureSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { signatureBase64, nama, peran, tanggal } = req.body;
+
+    const result = await this.saveSignatureUseCase.execute(
+      id,
+      signatureBase64,
+      nama,
+      peran,
+      tanggal,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Tanda tangan untuk kwitansi berhasil disimpan`,
+      result,
+    );
+  };
+}
+</file>
+
 <file path="src/presentation/routes/dashboardRoutes.ts">
 import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
@@ -8467,6 +8364,78 @@ export const createDashboardRoutes = (
     "/summary",
     requireRole(["ADMIN", "MARKETING"]),
     controller.getSummary,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/tagihanRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  createTagihanSchema,
+  updateTagihanSchema,
+  getTagihansPaginatedSchema,
+} from "../../validations/tagihanSchema.js";
+import type { TagihanController } from "../controllers/tagihanController.js";
+import { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
+
+export const createTagihanRoutes = (controller: TagihanController): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.post(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(createTagihanSchema),
+    controller.create,
+  );
+  router.get(
+    "/",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getTagihansPaginatedSchema),
+    controller.getPaginated,
+  );
+  router.get(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate({ params: updateTagihanSchema.params }),
+    controller.getById,
+  );
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(updateTagihanSchema),
+    controller.update,
+  );
+  router.delete(
+    "/:id",
+    requireRole(["ADMIN"]),
+    validate({ params: updateTagihanSchema.params }),
+    controller.delete,
+  );
+
+  router.patch(
+    "/:id/upload-bukti",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("fileBukti"),
+    controller.uploadBukti,
+  );
+  router.patch(
+    "/:id/refund",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("fileBuktiRefund"),
+    controller.uploadBuktiRefund,
+  );
+  router.post(
+    "/:id/signature",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(uploadSignatureSchema),
+    controller.uploadSignature,
   );
 
   return router;
@@ -10506,6 +10475,62 @@ export class UpdatePenjualanUseCase {
 }
 </file>
 
+<file path="src/domain/dtos/TagihanDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { PaymentStatus } from "@prisma/client";
+
+export interface CreateTagihanDTO {
+  customerId: number;
+  penjualanId: number;
+  pembayaran: string;
+  nominal: number;
+  jatuhTempo: string | Date;
+  reminderBerikutnya?: string | Date | null | undefined;
+}
+
+export interface UpdateTagihanDTO {
+  pembayaran?: string | undefined;
+  nominal?: number | undefined;
+  jatuhTempo?: string | Date | undefined;
+  status?: PaymentStatus | undefined;
+  reminderBerikutnya?: string | Date | null | undefined;
+  fileBukti?: string | null | undefined;
+}
+
+export interface TagihanResponseDTO {
+  id: number;
+  noTagihan: string;
+  customerId: number;
+  namaCustomer: string;
+  penjualanId: number;
+  perumahan: string;
+  blok: string;
+  nomorUnit: string;
+  pembayaran: string;
+  nominal: number;
+  jatuhTempo: Date;
+  status: PaymentStatus;
+  fileBukti: string | null;
+  reminderBerikutnya: Date | null;
+  isRefunded?: boolean;
+  fileBuktiRefund?: string | null;
+  ttdData?: any;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TagihanFilterDTO extends BaseFilterDTO {
+  customerId?: number;
+  penjualanId?: number;
+  status?: PaymentStatus;
+}
+</file>
+
 <file path="src/infrastructure/external/CloudinaryService.ts">
 import { v2 as cloudinary } from "cloudinary";
 import { env } from "../../config/env";
@@ -10599,6 +10624,62 @@ export class CloudinaryService {
 }
 </file>
 
+<file path="src/infrastructure/mapper/TagihanMapper.ts">
+import type { Prisma } from "@prisma/client";
+import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
+
+type TagihanWithRelations = Prisma.TagihanGetPayload<{
+  include: {
+    customer: { select: { nama: true } };
+    penjualan: {
+      include: {
+        kavling: {
+          include: {
+            perumahan: { select: { nama: true } };
+            rekeningTujuan: true;
+          };
+        };
+        rekeningTujuan: true;
+      };
+    };
+  };
+}>;
+
+export class TagihanMapper {
+  static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
+    return {
+      id: prismaTagihan.id,
+      noTagihan: prismaTagihan.noTagihan,
+      customerId: prismaTagihan.customerId,
+      namaCustomer: prismaTagihan.customer.nama,
+      penjualanId: prismaTagihan.penjualanId,
+      perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
+      blok: prismaTagihan.penjualan.kavling.blok,
+      nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
+      pembayaran: prismaTagihan.pembayaran,
+      nominal: Number(prismaTagihan.nominal),
+      jatuhTempo: prismaTagihan.jatuhTempo,
+      status: prismaTagihan.status,
+      fileBukti: prismaTagihan.fileBukti,
+      reminderBerikutnya: prismaTagihan.reminderBerikutnya,
+      isRefunded: prismaTagihan.isRefunded ?? false,
+      fileBuktiRefund: prismaTagihan.fileBuktiRefund ?? null,
+      ttdData: prismaTagihan.ttdData ?? null,
+      rekeningTujuan: prismaTagihan.penjualan.kavling.rekeningTujuan
+        ? {
+            namaBank: prismaTagihan.penjualan.kavling.rekeningTujuan.namaBank,
+            noRekening:
+              prismaTagihan.penjualan.kavling.rekeningTujuan.noRekening,
+            atasNama: prismaTagihan.penjualan.kavling.rekeningTujuan.atasNama,
+          }
+        : null,
+      createdAt: prismaTagihan.createdAt,
+      updatedAt: prismaTagihan.updatedAt,
+    };
+  }
+}
+</file>
+
 <file path="src/validations/paginationSchema.ts">
 // src/validations/paginationSchema.ts
 import { z } from "zod";
@@ -10666,209 +10747,6 @@ export async function seedUser(prisma: PrismaClient) {
       },
     ],
   });
-}
-</file>
-
-<file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
-import { StatusCodes } from "http-status-codes";
-import { AppError } from "../../../domain/errors/AppError.js";
-import type { PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-
-export class VerifyDocumentUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(documentNumber: string) {
-    if (!documentNumber) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
-    }
-
-    if (
-      documentNumber.startsWith("INV-") ||
-      documentNumber.startsWith("KWT-")
-    ) {
-      return await this.handleTagihan(documentNumber);
-    }
-
-    if (documentNumber.startsWith("TRX-")) {
-      const penjualan = await this.db.penjualan.findUnique({
-        where: { noTransaksi: documentNumber },
-        include: {
-          customer: { select: { nama: true, noHp: true, alamatKtp: true } },
-          kavling: {
-            include: {
-              perumahan: { select: { nama: true, logo: true } },
-              rekeningTujuan: true,
-            },
-          },
-        },
-      });
-
-      if (!penjualan) throw new NotFoundError("Dokumen SPR tidak ditemukan");
-
-      return {
-        type: "SPR",
-        data: {
-          noDokumen: penjualan.noTransaksi,
-          tanggalTransaksi: penjualan.tanggal,
-          status: penjualan.status,
-          hargaJual: Number(penjualan.hargaJual),
-          dp: Number(penjualan.dp ?? 0),
-          bookingFee: Number(penjualan.bookingFee ?? 0),
-          caraPembayaran: penjualan.caraPembayaran.replace(/_/g, " "),
-          bank: penjualan.bank ?? "",
-          pembuat: penjualan.createdBy ?? "Admin",
-          customer: {
-            nama: penjualan.customer.nama,
-            noHp: penjualan.customer.noHp,
-            alamat: penjualan.customer.alamatKtp,
-          },
-          kavling: {
-            perumahan: penjualan.kavling.perumahan.nama,
-            logoPerumahan: penjualan.kavling.perumahan.logo,
-            blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
-            tipe: penjualan.kavling.namaTipe,
-            rekeningTujuan: penjualan.kavling.rekeningTujuan,
-          },
-        },
-      };
-    }
-
-    throw new AppError(
-      StatusCodes.BAD_REQUEST,
-      "Format nomor dokumen tidak dikenali",
-    );
-  }
-
-  private async handleTagihan(requestedNumber: string) {
-    const isRequestingKwitansi = requestedNumber.startsWith("KWT-");
-
-    const searchNoTagihan = requestedNumber.replace(/^KWT-/, "INV-");
-
-    const tagihan = await this.db.tagihan.findUnique({
-      where: { noTagihan: searchNoTagihan },
-      include: {
-        customer: { select: { nama: true, noHp: true, alamatKtp: true } },
-        penjualan: {
-          include: {
-            kavling: {
-              include: {
-                perumahan: { select: { nama: true, logo: true } },
-                rekeningTujuan: {
-                  select: { namaBank: true, noRekening: true, atasNama: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!tagihan) throw new NotFoundError("Data tagihan tidak ditemukan");
-
-    const totalTerbayarAgg = await this.db.tagihan.aggregate({
-      where: { penjualanId: tagihan.penjualanId, status: "LUNAS" },
-      _sum: { nominal: true },
-    });
-
-    const totalTerbayar = Number(totalTerbayarAgg._sum.nominal ?? 0);
-    const hargaJual = Number(tagihan.penjualan.hargaJual);
-    const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
-
-    const documentType = isRequestingKwitansi ? "KWITANSI" : "INVOICE";
-
-    return {
-      type: documentType,
-      data: {
-        noDokumen: requestedNumber,
-        pembayaran: tagihan.pembayaran,
-        nominal: Number(tagihan.nominal),
-        jatuhTempo: tagihan.jatuhTempo,
-        status: tagihan.status,
-        tanggalDibuat: tagihan.createdAt,
-        pembuat: tagihan.penjualan.createdBy ?? "Admin",
-        customer: {
-          nama: tagihan.customer.nama,
-          noHp: tagihan.customer.noHp,
-          alamat: tagihan.customer.alamatKtp,
-        },
-        kavling: {
-          perumahan: tagihan.penjualan.kavling.perumahan.nama,
-          logoPerumahan: tagihan.penjualan.kavling.perumahan.logo,
-          blok: tagihan.penjualan.kavling.blok,
-          nomorUnit: tagihan.penjualan.kavling.nomorUnit,
-          tipe: tagihan.penjualan.kavling.namaTipe,
-          rekeningTujuan: tagihan.penjualan.kavling.rekeningTujuan,
-        },
-        transaksi: {
-          caraPembayaran: tagihan.penjualan.caraPembayaran.replace(/_/g, " "),
-          bank: tagihan.penjualan.bank ?? "",
-          hargaJual: hargaJual,
-          sisaBelumDibayar: sisaBelumDibayar,
-        },
-      },
-    };
-  }
-}
-</file>
-
-<file path="src/domain/dtos/PenjualanDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
-export interface CreatePenjualanDTO {
-  noIdentitas: string;
-  nama: string;
-  noTelepon: string;
-  alamat: string;
-  perusahaan?: string | undefined;
-  alamatKoresponden?: string | undefined;
-  perumahan: string;
-  blok: string;
-  nomorUnit: string;
-  tipe: string;
-  luasBangunan: number;
-  luasTanah: number;
-  tanggal: string | Date;
-  hargaDasar: number;
-  plafonAwal?: number;
-  biayaKpr?: number;
-  hargaJual?: number;
-  hargaPromosi?: number | undefined;
-  diskonPenjualan?: number | undefined;
-  dp?: number | undefined;
-  bookingFee?: number | undefined;
-  caraPembayaran: PaymentMethod;
-  bank?: string | undefined;
-  nilaiPengajuanKpr?: number | undefined;
-  agent: string;
-  createdBy?: string;
-  userId?: number;
-  biayaTambahan?: BiayaTambahanDTO[] | undefined;
-}
-export interface PenjualanResponseDTO {
-  id: number;
-  noTransaksi: string;
-  tanggal: Date;
-  customer: {
-    id: number;
-    nama: string;
-  };
-  kavling: {
-    id: number;
-    blok: string;
-    nomorUnit: string;
-    perumahan: string;
-  };
-  caraPembayaran: string | null;
-  hargaJual: number;
-  status: PenjualanStatus;
-  createdAt: Date;
-}
-export type PenjualanFilterDTO = BaseFilterDTO;
-
-export interface BiayaTambahanDTO {
-  nama: string;
-  nominal: number;
 }
 </file>
 
@@ -10994,6 +10872,214 @@ async function main() {
 main()
   .catch((e) => console.error(e))
   .finally(async () => await prisma.$disconnect());
+</file>
+
+<file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
+import { StatusCodes } from "http-status-codes";
+import { AppError } from "../../../domain/errors/AppError.js";
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+
+export class VerifyDocumentUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(documentNumber: string) {
+    if (!documentNumber) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Nomor dokumen tidak valid");
+    }
+
+    if (
+      documentNumber.startsWith("INV-") ||
+      documentNumber.startsWith("KWT-")
+    ) {
+      return await this.handleTagihan(documentNumber);
+    }
+
+    if (documentNumber.startsWith("TRX-")) {
+      const penjualan = await this.db.penjualan.findUnique({
+        where: { noTransaksi: documentNumber },
+        include: {
+          customer: { select: { nama: true, noHp: true, alamatKtp: true } },
+          kavling: {
+            include: {
+              perumahan: { select: { nama: true, logo: true } },
+              rekeningTujuan: true,
+            },
+          },
+        },
+      });
+
+      if (!penjualan) throw new NotFoundError("Dokumen SPR tidak ditemukan");
+
+      return {
+        type: "SPR",
+        data: {
+          noDokumen: penjualan.noTransaksi,
+          tanggalTransaksi: penjualan.tanggal,
+          status: penjualan.status,
+          hargaJual: Number(penjualan.hargaJual),
+          dp: Number(penjualan.dp ?? 0),
+          bookingFee: Number(penjualan.bookingFee ?? 0),
+          caraPembayaran: penjualan.caraPembayaran
+            ? penjualan.caraPembayaran.replace(/_/g, " ")
+            : null,
+          bank: penjualan.bank ?? "",
+          pembuat: penjualan.createdBy ?? "Admin",
+          customer: {
+            nama: penjualan.customer.nama,
+            noHp: penjualan.customer.noHp,
+            alamat: penjualan.customer.alamatKtp,
+          },
+          kavling: {
+            perumahan: penjualan.kavling.perumahan.nama,
+            logoPerumahan: penjualan.kavling.perumahan.logo,
+            blokUnit: `Blok ${penjualan.kavling.blok}-${penjualan.kavling.nomorUnit}`,
+            tipe: penjualan.kavling.namaTipe,
+            rekeningTujuan: penjualan.kavling.rekeningTujuan,
+          },
+        },
+      };
+    }
+
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Format nomor dokumen tidak dikenali",
+    );
+  }
+
+  private async handleTagihan(requestedNumber: string) {
+    const isRequestingKwitansi = requestedNumber.startsWith("KWT-");
+
+    const searchNoTagihan = requestedNumber.replace(/^KWT-/, "INV-");
+
+    const tagihan = await this.db.tagihan.findUnique({
+      where: { noTagihan: searchNoTagihan },
+      include: {
+        customer: { select: { nama: true, noHp: true, alamatKtp: true } },
+        penjualan: {
+          include: {
+            kavling: {
+              include: {
+                perumahan: { select: { nama: true, logo: true } },
+                rekeningTujuan: {
+                  select: { namaBank: true, noRekening: true, atasNama: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tagihan) throw new NotFoundError("Data tagihan tidak ditemukan");
+
+    const totalTerbayarAgg = await this.db.tagihan.aggregate({
+      where: { penjualanId: tagihan.penjualanId, status: "LUNAS" },
+      _sum: { nominal: true },
+    });
+
+    const totalTerbayar = Number(totalTerbayarAgg._sum.nominal ?? 0);
+    const hargaJual = Number(tagihan.penjualan.hargaJual);
+    const sisaBelumDibayar = Math.max(0, hargaJual - totalTerbayar);
+
+    const documentType = isRequestingKwitansi ? "KWITANSI" : "INVOICE";
+
+    return {
+      type: documentType,
+      data: {
+        noDokumen: requestedNumber,
+        pembayaran: tagihan.pembayaran,
+        nominal: Number(tagihan.nominal),
+        jatuhTempo: tagihan.jatuhTempo,
+        status: tagihan.status,
+        tanggalDibuat: tagihan.createdAt,
+        pembuat: tagihan.penjualan.createdBy ?? "Admin",
+        customer: {
+          nama: tagihan.customer.nama,
+          noHp: tagihan.customer.noHp,
+          alamat: tagihan.customer.alamatKtp,
+        },
+        kavling: {
+          perumahan: tagihan.penjualan.kavling.perumahan.nama,
+          logoPerumahan: tagihan.penjualan.kavling.perumahan.logo,
+          blok: tagihan.penjualan.kavling.blok,
+          nomorUnit: tagihan.penjualan.kavling.nomorUnit,
+          tipe: tagihan.penjualan.kavling.namaTipe,
+          rekeningTujuan: tagihan.penjualan.kavling.rekeningTujuan,
+        },
+        transaksi: {
+          caraPembayaran: tagihan.penjualan.caraPembayaran
+            ? tagihan.penjualan.caraPembayaran.replace(/_/g, " ")
+            : null,
+          bank: tagihan.penjualan.bank ?? "",
+          hargaJual: hargaJual,
+          sisaBelumDibayar: sisaBelumDibayar,
+        },
+        ttdData: tagihan.ttdData ?? null,
+      },
+    };
+  }
+}
+</file>
+
+<file path="src/domain/dtos/PenjualanDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
+export interface CreatePenjualanDTO {
+  noIdentitas: string;
+  nama: string;
+  noTelepon: string;
+  alamat: string;
+  perusahaan?: string | undefined;
+  alamatKoresponden?: string | undefined;
+  perumahan: string;
+  blok: string;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  tanggal: string | Date;
+  hargaDasar: number;
+  plafonAwal?: number;
+  biayaKpr?: number;
+  hargaJual?: number;
+  hargaPromosi?: number | undefined;
+  diskonPenjualan?: number | undefined;
+  dp?: number | undefined;
+  bookingFee?: number | undefined;
+  caraPembayaran: PaymentMethod;
+  bank?: string | undefined;
+  nilaiPengajuanKpr?: number | undefined;
+  agent: string;
+  createdBy?: string;
+  userId?: number;
+  biayaTambahan?: BiayaTambahanDTO[] | undefined;
+}
+export interface PenjualanResponseDTO {
+  id: number;
+  noTransaksi: string;
+  tanggal: Date;
+  customer: {
+    id: number;
+    nama: string;
+  };
+  kavling: {
+    id: number;
+    blok: string;
+    nomorUnit: string;
+    perumahan: string;
+  };
+  caraPembayaran: string | null;
+  hargaJual: number;
+  status: PenjualanStatus;
+  createdAt: Date;
+}
+export type PenjualanFilterDTO = BaseFilterDTO;
+
+export interface BiayaTambahanDTO {
+  nama: string;
+  nominal: number;
+}
 </file>
 
 <file path="src/domain/repositories/kavlingRepo.ts">
@@ -11882,105 +11968,6 @@ export class GenerateSprPdfUseCase {
 }
 </file>
 
-<file path="src/domain/repositories/IPenjualanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type {
-  CreatePenjualanDTO,
-  PenjualanFilterDTO,
-} from "../dtos/PenjualanDTO.js";
-import type { OffsetPaginatedData } from "../../types/response.js";
-
-export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: true;
-    kavling: {
-      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
-    };
-    rekeningTujuan: true;
-    tagihan: true;
-    agent: true;
-  };
-}>;
-
-export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
-  include: {
-    customer: { select: { id: true; nama: true } };
-    kavling: {
-      select: {
-        id: true;
-        blok: true;
-        nomorUnit: true;
-        perumahan: { select: { nama: true } };
-      };
-    };
-  };
-}>;
-export interface PenjualanPaginatedItem {
-  id: string;
-  tanggal: string;
-  nama: string;
-  alamat: string;
-  noTelepon: string;
-  noIdentitas: string;
-  perumahan: string;
-  blok: string;
-  alasanBatal: string | null;
-  nomorUnit: string;
-  tipe: string;
-  luasBangunan: number;
-  luasTanah: number;
-
-  plafonAwal: number | null;
-  hargaJual: number | null;
-  caraPembayaran: string | null;
-
-  hargaDasar: number;
-  dp: number;
-  diskonPenjualan: number;
-  hargaPromosi: number;
-  bank: string;
-  nilaiPengajuanKpr: number;
-  bookingFee: number;
-  status: string;
-  agent: string;
-  fileBuktiBooking: string;
-  fileBuktiDp: string;
-  fileSpr: string | null;
-  ttdData?: any;
-  progressCicilan?: string;
-  rekeningTujuanId?: number | null;
-  rekeningTujuan?: {
-    namaBank: string;
-    noRekening: string;
-    atasNama: string;
-  } | null;
-  riwayatGantiKavling?: any[];
-  tagihan?: any[];
-
-  createdBy?: string;
-  isPendingBatal?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface IPenjualanRepository {
-  createWithTransaction(
-    data: CreatePenjualanDTO,
-  ): Promise<PenjualanWithRelations>;
-  findWithOffsetPagination(
-    page: number,
-    limit: number,
-    filters?: PenjualanFilterDTO & { status?: string },
-  ): Promise<OffsetPaginatedData<PenjualanPaginatedItem>>;
-
-  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
-  update(
-    id: number,
-    data: Partial<Prisma.PenjualanUpdateInput>,
-  ): Promise<PenjualanWithCompleteRelations>;
-}
-</file>
-
 <file path="src/presentation/controllers/penjualanController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -12280,6 +12267,105 @@ export class PenjualanController {
       : "Pengajuan ganti kavling ditolak";
     sendResponse(res, StatusCodes.OK, msg, result);
   };
+}
+</file>
+
+<file path="src/domain/repositories/IPenjualanRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type {
+  CreatePenjualanDTO,
+  PenjualanFilterDTO,
+} from "../dtos/PenjualanDTO.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
+
+export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    kavling: {
+      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
+    };
+    rekeningTujuan: true;
+    tagihan: true;
+    agent: true;
+  };
+}>;
+
+export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: { select: { id: true; nama: true } };
+    kavling: {
+      select: {
+        id: true;
+        blok: true;
+        nomorUnit: true;
+        perumahan: { select: { nama: true } };
+      };
+    };
+  };
+}>;
+export interface PenjualanPaginatedItem {
+  id: string;
+  tanggal: string;
+  nama: string;
+  alamat: string;
+  noTelepon: string;
+  noIdentitas: string;
+  perumahan: string;
+  blok: string;
+  alasanBatal: string | null;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+
+  plafonAwal: number | null;
+  hargaJual: number | null;
+  caraPembayaran: string | null;
+
+  hargaDasar: number;
+  dp: number;
+  diskonPenjualan: number;
+  hargaPromosi: number;
+  bank: string;
+  nilaiPengajuanKpr: number;
+  bookingFee: number;
+  status: string;
+  agent: string;
+  fileBuktiBooking: string;
+  fileBuktiDp: string;
+  fileSpr: string | null;
+  ttdData?: any;
+  progressCicilan?: string;
+  rekeningTujuanId?: number | null;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
+  riwayatGantiKavling?: any[];
+  tagihan?: any[];
+
+  createdBy?: string;
+  isPendingBatal?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface IPenjualanRepository {
+  createWithTransaction(
+    data: CreatePenjualanDTO,
+  ): Promise<PenjualanWithRelations>;
+  findWithOffsetPagination(
+    page: number,
+    limit: number,
+    filters?: PenjualanFilterDTO & { status?: string },
+  ): Promise<OffsetPaginatedData<PenjualanPaginatedItem>>;
+
+  findById(id: number): Promise<PenjualanWithCompleteRelations | null>;
+  update(
+    id: number,
+    data: Partial<Prisma.PenjualanUpdateInput>,
+  ): Promise<PenjualanWithCompleteRelations>;
 }
 </file>
 
@@ -12683,6 +12769,7 @@ model Tagihan {
   reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
   isRefunded         Boolean       @default(false) @map("is_refunded")
   fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
+  ttdData            Json?         @map("ttd_data") 
   
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
@@ -13316,7 +13403,8 @@ export class PenjualanRepository implements IPenjualanRepository {
           (t) =>
             !t.pembayaran.toLowerCase().includes("booking") &&
             !t.pembayaran.toLowerCase().includes("dp") &&
-            !t.pembayaran.toLowerCase().includes("down"),
+            !t.pembayaran.toLowerCase().includes("down") &&
+            !t.pembayaran.toLowerCase().includes("uang muka"),
         ) || [];
       const cicilanTerbayar = daftarCicilan.filter(
         (t) => t.status === "LUNAS",
@@ -13547,6 +13635,7 @@ import { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penj
 import { AuditLogRepository } from "../../domain/repositories/auditLogRepo.js";
 import { GetAuditLogsPaginatedUseCase } from "../../application/usecases/auditLog/GetAuditLogsPaginatedUseCase.js";
 import { AuditLogController } from "../../presentation/controllers/auditLogController.js";
+import { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -13772,6 +13861,11 @@ export const createContainer = (dbClient: PrismaClient) => {
     dbClient,
     cloudinaryService,
   );
+  const saveTagihanSignatureUseCase = new SaveTagihanSignatureUseCase(
+    dbClient,
+    cloudinaryService,
+  );
+
   const tagihanController = new TagihanController(
     createTagihanUseCase,
     updateTagihanUseCase,
@@ -13780,6 +13874,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteTagihanUseCase,
     uploadBuktiTagihanUseCase,
     uploadBuktiRefundUseCase,
+    saveTagihanSignatureUseCase,
   );
   const feeAgentRepo = new FeeAgentRepository(dbClient);
   const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(

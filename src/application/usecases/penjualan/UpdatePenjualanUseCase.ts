@@ -130,26 +130,52 @@ export class UpdatePenjualanUseCase {
       const plafonAwal =
         data.plafonAwal ??
         currentHargaDasar - currentDiskon - currentBookingFee;
+      const listBiayaTambahan = data.biayaTambahan as
+        | IBiayaTambahan[]
+        | undefined;
+      const totalBiayaTambahan = Array.isArray(listBiayaTambahan)
+        ? listBiayaTambahan.reduce(
+            (sum, b) => sum + (Number(b.nominal) || 0),
+            0,
+          )
+        : 0;
+
       let biayaKpr = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
       let hargaJual = 0;
+
       if (
         currentCaraPembayaran === "CASH_KERAS" ||
         currentCaraPembayaran === "CASH_BERTAHAP"
       ) {
-        hargaJual = data.hargaJual ?? plafonAwal;
+        hargaJual = data.hargaJual ?? currentHargaDasar - currentDiskon;
       } else if (currentCaraPembayaran === "KPR") {
         biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
-        nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? plafonAwal + biayaKpr;
+
+        // Nilai Pengajuan KPR mengakumulasikan biaya tambahan
+        nilaiPengajuanKpr =
+          data.nilaiPengajuanKpr ?? plafonAwal + biayaKpr + totalBiayaTambahan;
+
+        const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
+
         if (data.dp !== undefined) {
           dp = data.dp ?? 0;
-        } else if (old.dp) {
+        } else if (
+          old.dp &&
+          data.nilaiPengajuanKpr === undefined &&
+          data.biayaKpr === undefined &&
+          data.hargaDasar === undefined &&
+          data.diskonPenjualan === undefined &&
+          data.bookingFee === undefined &&
+          totalBiayaTambahan === 0
+        ) {
           dp = Number(old.dp);
         } else {
-          dp = nilaiPengajuanKpr * 0.1;
+          dp = hargaJualSetelahDiskon * 0.1;
         }
-        hargaJual = data.hargaJual ?? nilaiPengajuanKpr + dp;
+
+        hargaJual = data.hargaJual ?? hargaJualSetelahDiskon + currentDiskon;
       }
       updateData.hargaDasar = currentHargaDasar;
       updateData.plafonAwal = plafonAwal;
@@ -187,9 +213,7 @@ export class UpdatePenjualanUseCase {
           });
         }
       }
-      const listBiayaTambahan = data.biayaTambahan as
-        | IBiayaTambahan[]
-        | undefined;
+
       if (Array.isArray(listBiayaTambahan) && listBiayaTambahan.length > 0) {
         const dueDate = new Date(old.tanggal);
         dueDate.setDate(dueDate.getDate() + 14);
