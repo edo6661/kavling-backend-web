@@ -1,4 +1,4 @@
-tolong ingat kode backend nya:
+kode backend:
 
 <file path="prisma/seeds/detailKavlingPajakSeed.ts">
 import { PrismaClient, SP3R } from "@prisma/client";
@@ -7154,17 +7154,24 @@ export class GetDashboardSummaryUseCase {
 import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
 
 export class ApproveGantiKavlingUseCase {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
 
   async execute(riwayatId: number, approvedById: number, isApproved: boolean) {
-    return await this.db.$transaction(async (tx) => {
+    const result = await this.db.$transaction(async (tx) => {
       const riwayat = await tx.riwayatGantiKavling.findUnique({
         where: { id: riwayatId },
         include: {
           penjualan: { include: { kavling: true, detailKavlingPajak: true } },
           kavlingBaru: true,
+          kavlingLama: true,
         },
       });
 
@@ -7182,6 +7189,7 @@ export class ApproveGantiKavlingUseCase {
         return await tx.riwayatGantiKavling.update({
           where: { id: riwayatId },
           data: { status: "REJECTED", approvedById },
+          include: { penjualan: true, kavlingLama: true, kavlingBaru: true },
         });
       }
 
@@ -7203,6 +7211,7 @@ export class ApproveGantiKavlingUseCase {
       const plafonAwal = hargaDasarBaru - diskon - bookingFee;
 
       let biayaKpr = 0;
+      let plafonKredit = 0; // <-- 4. Tambahkan ini
       let nilaiPengajuanKpr = 0;
       let dp = 0;
       let hargaJual = 0;
@@ -7214,14 +7223,11 @@ export class ApproveGantiKavlingUseCase {
         hargaJual = hargaDasarBaru - diskon;
       } else if (oldPenjualan.caraPembayaran === "KPR") {
         biayaKpr = plafonAwal * 0.06;
-        nilaiPengajuanKpr = plafonAwal + biayaKpr;
-
-        const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
-
-        dp = oldPenjualan.dp
-          ? Number(oldPenjualan.dp)
-          : hargaJualSetelahDiskon * 0.1;
-        hargaJual = hargaJualSetelahDiskon + diskon;
+        plafonKredit = plafonAwal + biayaKpr;
+        nilaiPengajuanKpr = plafonKredit;
+        const baseHargaJual = plafonKredit / 0.9;
+        dp = oldPenjualan.dp ? Number(oldPenjualan.dp) : baseHargaJual * 0.1;
+        hargaJual = baseHargaJual + diskon;
       }
 
       await tx.penjualan.update({
@@ -7231,6 +7237,7 @@ export class ApproveGantiKavlingUseCase {
           hargaDasar: hargaDasarBaru,
           plafonAwal: plafonAwal,
           biayaKpr: biayaKpr > 0 ? biayaKpr : null,
+          plafonKredit: plafonKredit > 0 ? plafonKredit : null,
           nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
           dp: dp > 0 ? dp : null,
           hargaJual: hargaJual,
@@ -7247,8 +7254,42 @@ export class ApproveGantiKavlingUseCase {
       return await tx.riwayatGantiKavling.update({
         where: { id: riwayatId },
         data: { status: "APPROVED", approvedById },
+        include: { penjualan: true, kavlingLama: true, kavlingBaru: true },
       });
     });
+
+    if (isApproved && result.status === "APPROVED" && result.penjualan) {
+      try {
+        const oldPenjualan = result.penjualan;
+
+        if (oldPenjualan.fileSpr) {
+          await this.db.riwayatSpr.create({
+            data: {
+              penjualanId: oldPenjualan.id,
+              fileSpr: oldPenjualan.fileSpr,
+              keterangan: `Ganti Kavling: Blok ${result.kavlingLama.blok}-${result.kavlingLama.nomorUnit} -> Blok ${result.kavlingBaru.blok}-${result.kavlingBaru.nomorUnit}`,
+            },
+          });
+        }
+
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          oldPenjualan.id,
+        );
+        const sprUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        await this.db.penjualan.update({
+          where: { id: oldPenjualan.id },
+          data: { fileSpr: sprUrl },
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR setelah Ganti Kavling:", error);
+      }
+    }
+
+    return result;
   }
 }
 </file>
@@ -10483,6 +10524,130 @@ export async function seedUser(prisma: PrismaClient) {
 }
 </file>
 
+<file path="prisma/seed.ts">
+import {
+  PrismaClient,
+  Role,
+  UnitStatus,
+  PaymentMethod,
+  PenjualanStatus,
+} from "@prisma/client";
+import * as fs from "fs";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const perumahan = await prisma.perumahan.upsert({
+    where: { nama: "Puri Safana Cikeas" },
+    update: {},
+    create: {
+      nama: "Puri Safana Cikeas",
+      logo: "logo-safana.png",
+      alamat: "Cikeas, Bogor",
+    },
+  });
+
+  const rawData = fs.readFileSync("cleaned_data.json", "utf-8");
+  const data = JSON.parse(rawData);
+
+  console.log(`Memulai migrasi ${data.length} data...`);
+
+  for (const item of data) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        const agent = await tx.agent.upsert({
+          where: {
+            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
+          },
+          update: {},
+          create: {
+            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
+            nama: item.agent.nama,
+            noHp: "0",
+          },
+        });
+
+        const customer = await tx.customer.create({
+          data: {
+            nama: item.customer.nama,
+            alamatKtp: item.customer.alamatKtp,
+            alamatTinggal: item.customer.alamatTinggal,
+            noHp: item.customer.noHp,
+            nikKtp: `TEMP-${Math.random().toString(36).substr(2, 9)}`,
+            pekerjaan: item.customer.pekerjaan,
+            bank: item.customer.bank,
+          },
+        });
+
+        const kavling = await tx.kavling.create({
+          data: {
+            perumahanId: perumahan.id,
+            blok: item.kavling.blok,
+            nomorUnit: item.kavling.nomorUnit,
+            namaTipe: item.kavling.namaTipe,
+            luasTanah: item.kavling.luasTanah,
+            luasBangunan: item.kavling.luasBangunan,
+            hargaDasar: item.kavling.hargaDasar,
+            status: UnitStatus.TERJUAL,
+          },
+        });
+
+        const penjualan = await tx.penjualan.create({
+          data: {
+            noTransaksi: item.penjualan.noTransaksi,
+            tanggal: new Date(item.penjualan.tanggal),
+            customerId: customer.id,
+            kavlingId: kavling.id,
+            agentId: agent.id,
+            caraPembayaran: item.penjualan.caraPembayaran as PaymentMethod,
+            hargaJual: item.penjualan.hargaJual,
+            bookingFee: item.penjualan.bookingFee,
+            status: PenjualanStatus.PROSES,
+          },
+        });
+
+        await tx.detailKavlingPajak.create({
+          data: {
+            penjualanId: penjualan.id,
+            lantai: item.detailPajak.lantai,
+            tanggalAkadPpjb: item.detailPajak.tanggalAkadPpjb
+              ? new Date(item.detailPajak.tanggalAkadPpjb)
+              : null,
+            akadPpjb: item.detailPajak.akadPpjb,
+            lebihTanah: item.detailPajak.lebihTanah,
+            biayaStrategis: item.detailPajak.biayaStrategis,
+            nrNilaiPenyerahan: item.detailPajak.nrNilaiPenyerahan,
+            pjNilaiPenyerahan: item.detailPajak.pjNilaiPenyerahan,
+            ajbNjopTotal: item.detailPajak.ajbNjopTotal,
+          },
+        });
+
+        if (item.feeAgent.closingNominal > 0) {
+          await tx.feeAgent.create({
+            data: {
+              agentId: agent.id,
+              penjualanId: penjualan.id,
+              closingNominal: item.feeAgent.closingNominal,
+              closingTanggal: item.feeAgent.closingTanggal
+                ? new Date(item.feeAgent.closingTanggal)
+                : null,
+            },
+          });
+        }
+      });
+    } catch (error) {
+      console.error(`Gagal memproses baris: ${item.customer.nama}`, error);
+    }
+  }
+
+  console.log("Migrasi selesai!");
+}
+
+main()
+  .catch((e) => console.error(e))
+  .finally(async () => await prisma.$disconnect());
+</file>
+
 <file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
 import type { Prisma } from "@prisma/client";
 import { type PrismaClient } from "@prisma/client";
@@ -10625,12 +10790,12 @@ export class UpdatePenjualanUseCase {
             0,
           )
         : 0;
-
       let biayaKpr = 0;
+      let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
+      let dpTidakDibayar = 0;
       let hargaJual = 0;
-
       if (
         currentCaraPembayaran === "CASH_KERAS" ||
         currentCaraPembayaran === "CASH_BERTAHAP"
@@ -10638,40 +10803,24 @@ export class UpdatePenjualanUseCase {
         hargaJual = data.hargaJual ?? currentHargaDasar - currentDiskon;
       } else if (currentCaraPembayaran === "KPR") {
         biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
-
-        // Nilai Pengajuan KPR mengakumulasikan biaya tambahan
+        plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
+        const baseHargaJual = plafonKredit / 0.9;
+        hargaJual = data.hargaJual ?? baseHargaJual + currentDiskon;
+        dpTidakDibayar =
+          data.dpTidakDibayar ?? baseHargaJual * 0.1 - currentBookingFee;
         nilaiPengajuanKpr =
-          data.nilaiPengajuanKpr ?? plafonAwal + biayaKpr + totalBiayaTambahan;
-
-        const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
-
-        if (data.dp !== undefined) {
-          dp = data.dp ?? 0;
-        } else if (
-          old.dp &&
-          data.nilaiPengajuanKpr === undefined &&
-          data.biayaKpr === undefined &&
-          data.hargaDasar === undefined &&
-          data.diskonPenjualan === undefined &&
-          data.bookingFee === undefined &&
-          totalBiayaTambahan === 0
-        ) {
-          dp = Number(old.dp);
-        } else {
-          dp = hargaJualSetelahDiskon * 0.1;
-        }
-
-        hargaJual = data.hargaJual ?? hargaJualSetelahDiskon + currentDiskon;
+          data.nilaiPengajuanKpr ?? plafonKredit - totalBiayaTambahan;
+        dp = data.dp ?? dpTidakDibayar;
       }
       updateData.hargaDasar = currentHargaDasar;
       updateData.plafonAwal = plafonAwal;
       updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
+      updateData.plafonKredit = plafonKredit > 0 ? plafonKredit : null;
+      updateData.dpTidakDibayar = dpTidakDibayar > 0 ? dpTidakDibayar : null;
       updateData.nilaiPengajuanKpr =
         nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
       updateData.dp = dp > 0 ? dp : null;
       updateData.hargaJual = hargaJual;
-      updateData.diskonPenjualan = currentDiskon > 0 ? currentDiskon : null;
-      updateData.bookingFee = currentBookingFee > 0 ? currentBookingFee : null;
       const updated = await tx.penjualan.update({
         where: { noTransaksi },
         data: updateData,
@@ -10699,7 +10848,6 @@ export class UpdatePenjualanUseCase {
           });
         }
       }
-
       if (Array.isArray(listBiayaTambahan) && listBiayaTambahan.length > 0) {
         const dueDate = new Date(old.tanggal);
         dueDate.setDate(dueDate.getDate() + 14);
@@ -10750,16 +10898,29 @@ export class UpdatePenjualanUseCase {
       });
       return updated;
     });
-    if (
-      transactionResult &&
-      ((data.caraPembayaran && !transactionResult.fileSpr) ||
-        data.bank !== undefined)
-    ) {
+    const triggerUpdateSpr =
+      (data.caraPembayaran !== undefined ||
+        data.bank !== undefined ||
+        (data.biayaTambahan && data.biayaTambahan.length > 0)) ??
+      data.keteranganUpdateSpr !== undefined;
+
+    if (transactionResult && triggerUpdateSpr) {
       try {
+        if (transactionResult.fileSpr) {
+          await this.db.riwayatSpr.create({
+            data: {
+              penjualanId: transactionResult.id,
+              fileSpr: transactionResult.fileSpr,
+              keterangan:
+                data.keteranganUpdateSpr ??
+                "Update Skema / Bank / Biaya Tambahan",
+            },
+          });
+        }
+
         const pdfBuffer = await this.generateSprPdfUseCase.execute(
           transactionResult.id,
         );
-
         const sprUrl = await this.cloudinaryService.uploadFile(
           pdfBuffer,
           "bumantara/spr",
@@ -10768,6 +10929,11 @@ export class UpdatePenjualanUseCase {
         return await this.db.penjualan.update({
           where: { id: transactionResult.id },
           data: { fileSpr: sprUrl },
+          include: {
+            customer: true,
+            kavling: { include: { perumahan: true, rekeningTujuan: true } },
+            agent: true,
+          },
         });
       } catch (error) {
         console.error(
@@ -10780,130 +10946,6 @@ export class UpdatePenjualanUseCase {
     return transactionResult;
   }
 }
-</file>
-
-<file path="prisma/seed.ts">
-import {
-  PrismaClient,
-  Role,
-  UnitStatus,
-  PaymentMethod,
-  PenjualanStatus,
-} from "@prisma/client";
-import * as fs from "fs";
-
-const prisma = new PrismaClient();
-
-async function main() {
-  const perumahan = await prisma.perumahan.upsert({
-    where: { nama: "Puri Safana Cikeas" },
-    update: {},
-    create: {
-      nama: "Puri Safana Cikeas",
-      logo: "logo-safana.png",
-      alamat: "Cikeas, Bogor",
-    },
-  });
-
-  const rawData = fs.readFileSync("cleaned_data.json", "utf-8");
-  const data = JSON.parse(rawData);
-
-  console.log(`Memulai migrasi ${data.length} data...`);
-
-  for (const item of data) {
-    try {
-      await prisma.$transaction(async (tx) => {
-        const agent = await tx.agent.upsert({
-          where: {
-            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
-          },
-          update: {},
-          create: {
-            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
-            nama: item.agent.nama,
-            noHp: "0",
-          },
-        });
-
-        const customer = await tx.customer.create({
-          data: {
-            nama: item.customer.nama,
-            alamatKtp: item.customer.alamatKtp,
-            alamatTinggal: item.customer.alamatTinggal,
-            noHp: item.customer.noHp,
-            nikKtp: `TEMP-${Math.random().toString(36).substr(2, 9)}`,
-            pekerjaan: item.customer.pekerjaan,
-            bank: item.customer.bank,
-          },
-        });
-
-        const kavling = await tx.kavling.create({
-          data: {
-            perumahanId: perumahan.id,
-            blok: item.kavling.blok,
-            nomorUnit: item.kavling.nomorUnit,
-            namaTipe: item.kavling.namaTipe,
-            luasTanah: item.kavling.luasTanah,
-            luasBangunan: item.kavling.luasBangunan,
-            hargaDasar: item.kavling.hargaDasar,
-            status: UnitStatus.TERJUAL,
-          },
-        });
-
-        const penjualan = await tx.penjualan.create({
-          data: {
-            noTransaksi: item.penjualan.noTransaksi,
-            tanggal: new Date(item.penjualan.tanggal),
-            customerId: customer.id,
-            kavlingId: kavling.id,
-            agentId: agent.id,
-            caraPembayaran: item.penjualan.caraPembayaran as PaymentMethod,
-            hargaJual: item.penjualan.hargaJual,
-            bookingFee: item.penjualan.bookingFee,
-            status: PenjualanStatus.PROSES,
-          },
-        });
-
-        await tx.detailKavlingPajak.create({
-          data: {
-            penjualanId: penjualan.id,
-            lantai: item.detailPajak.lantai,
-            tanggalAkadPpjb: item.detailPajak.tanggalAkadPpjb
-              ? new Date(item.detailPajak.tanggalAkadPpjb)
-              : null,
-            akadPpjb: item.detailPajak.akadPpjb,
-            lebihTanah: item.detailPajak.lebihTanah,
-            biayaStrategis: item.detailPajak.biayaStrategis,
-            nrNilaiPenyerahan: item.detailPajak.nrNilaiPenyerahan,
-            pjNilaiPenyerahan: item.detailPajak.pjNilaiPenyerahan,
-            ajbNjopTotal: item.detailPajak.ajbNjopTotal,
-          },
-        });
-
-        if (item.feeAgent.closingNominal > 0) {
-          await tx.feeAgent.create({
-            data: {
-              agentId: agent.id,
-              penjualanId: penjualan.id,
-              closingNominal: item.feeAgent.closingNominal,
-              closingTanggal: item.feeAgent.closingTanggal
-                ? new Date(item.feeAgent.closingTanggal)
-                : null,
-            },
-          });
-        }
-      });
-    } catch (error) {
-      console.error(`Gagal memproses baris: ${item.customer.nama}`, error);
-    }
-  }
-
-  console.log("Migrasi selesai!");
-}
-
-main()
-  .catch((e) => console.error(e))
-  .finally(async () => await prisma.$disconnect());
 </file>
 
 <file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
@@ -11074,6 +11116,8 @@ export interface CreatePenjualanDTO {
   hargaDasar: number;
   plafonAwal?: number;
   biayaKpr?: number;
+  plafonKredit?: number;
+  dpTidakDibayar?: number;
   hargaJual?: number;
   hargaPromosi?: number | undefined;
   diskonPenjualan?: number | undefined;
@@ -11086,6 +11130,7 @@ export interface CreatePenjualanDTO {
   createdBy?: string;
   userId?: number;
   biayaTambahan?: BiayaTambahanDTO[] | undefined;
+  keteranganUpdateSpr?: string | undefined;
 }
 export interface PenjualanResponseDTO {
   id: number;
@@ -11400,7 +11445,6 @@ import type {
   CreateDetailKavlingPajakDTO,
   UpdateDetailKavlingPajakDTO,
 } from "../../../domain/dtos/DetailKavlingPajakDTO.js";
-
 export class GetCustomerKavlingsPaginatedUseCase {
   constructor(private readonly db: PrismaClient) {}
 
@@ -11452,8 +11496,11 @@ export class GetCustomerKavlingsPaginatedUseCase {
         tipe: p.kavling.namaTipe,
         luasBangunan: Number(p.kavling.luasBangunan),
         luasTanah: Number(p.kavling.luasTanah),
+
         hargaDasarKavling: Number(p.kavling.hargaDasar),
+        diskonPenjualan: Number(p.diskonPenjualan ?? 0),
         totalHargaJual: Number(p.hargaJual),
+
         pembiayaan: p.caraPembayaran,
         agent: p.agent?.nama ?? "Nama Agent",
 
@@ -12351,6 +12398,9 @@ export interface PenjualanPaginatedItem {
   luasTanah: number;
 
   plafonAwal: number | null;
+  biayaKpr?: number | null;
+  plafonKredit?: number | null;
+  dpTidakDibayar?: number | null;
   hargaJual: number | null;
   caraPembayaran: string | null;
 
@@ -12696,6 +12746,8 @@ model Penjualan {
   hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
   plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
   biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
+  plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
+  dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
   hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
   dp                Decimal?            @db.Decimal(15, 2)
   diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
@@ -12721,6 +12773,7 @@ model Penjualan {
   detailKavlingPajak DetailKavlingPajak?
   feeAgent          FeeAgent?
   pengajuanBatal PengajuanBatal[]
+  riwayatSpr          RiwayatSpr[]
 
 
   @@map("penjualan")
@@ -12930,6 +12983,18 @@ model PengajuanBatal {
 
   @@map("pengajuan_batal")
 }
+
+model RiwayatSpr {
+  id          Int      @id @default(autoincrement())
+  penjualanId Int      @map("penjualan_id")
+  fileSpr     String   @map("file_spr") @db.VarChar(255)
+  keterangan  String?  @db.VarChar(255) 
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+
+  @@map("riwayat_spr")
+}
 </file>
 
 <file path="src/validations/penjualanSchema.ts">
@@ -13047,6 +13112,7 @@ export const updatePenjualanSchema = {
       luasTanah: emptyAsUndefined(z.coerce.number().optional()),
       hargaJual: emptyAsUndefined(z.coerce.number().optional()),
       biayaTambahan: emptyAsUndefined(z.array(biayaTambahanSchema).optional()),
+      keteranganUpdateSpr: emptyAsUndefined(z.string().optional()),
     })
     .partial(),
 };
@@ -13235,6 +13301,7 @@ export class PenjualanRepository implements IPenjualanRepository {
 
       let plafonAwal: number | null = null;
       let biayaKpr = 0;
+      let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
       let hargaJual: number | null = null;
@@ -13249,11 +13316,12 @@ export class PenjualanRepository implements IPenjualanRepository {
           hargaJual = hargaDasar - diskon;
         } else if (data.caraPembayaran === "KPR") {
           biayaKpr = plafonAwal * 0.06;
-          nilaiPengajuanKpr = plafonAwal + biayaKpr;
+          plafonKredit = plafonAwal + biayaKpr;
+          nilaiPengajuanKpr = plafonKredit;
 
-          const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
-          dp = data.dp ? Number(data.dp) : hargaJualSetelahDiskon * 0.1;
-          hargaJual = hargaJualSetelahDiskon + diskon;
+          const baseHargaJual = plafonKredit / 0.9;
+          dp = data.dp ? Number(data.dp) : baseHargaJual * 0.1;
+          hargaJual = baseHargaJual + diskon;
         }
       }
 
@@ -13265,13 +13333,13 @@ export class PenjualanRepository implements IPenjualanRepository {
           kavlingId: kavling.id,
           agentId: agent.id,
 
-          // Cast as any to bypass temporary Prisma type mismatches until next `prisma generate`
           caraPembayaran: (data.caraPembayaran || null) as any,
           hargaDasar: hargaDasar,
           plafonAwal: (plafonAwal ?? undefined) as any,
           hargaJual: (hargaJual ?? undefined) as any,
 
           biayaKpr: biayaKpr > 0 ? biayaKpr : null,
+          plafonKredit: plafonKredit > 0 ? plafonKredit : null,
           nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
           dp: dp > 0 ? dp : null,
 
@@ -13404,6 +13472,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             },
             orderBy: { createdAt: "desc" },
           },
+          riwayatSpr: { orderBy: { createdAt: "desc" } },
         },
       }),
       this.db.penjualan.count({ where }),
@@ -13473,6 +13542,10 @@ export class PenjualanRepository implements IPenjualanRepository {
         nomorUnit: item.kavling.nomorUnit,
 
         plafonAwal: item.plafonAwal ? Number(item.plafonAwal) : null,
+        plafonKredit: item.plafonKredit ? Number(item.plafonKredit) : null,
+        dpTidakDibayar: item.dpTidakDibayar
+          ? Number(item.dpTidakDibayar)
+          : null,
         hargaJual: item.hargaJual ? Number(item.hargaJual) : null,
         caraPembayaran: item.caraPembayaran
           ? item.caraPembayaran.replace(/_/g, " ")
@@ -13504,6 +13577,7 @@ export class PenjualanRepository implements IPenjualanRepository {
           : null,
         riwayatGantiKavling: item.riwayatGantiKavling || [],
         tagihan: item.tagihan || [],
+        riwayatSpr: item.riwayatSpr || [],
         createdBy: item.createdBy ?? "Admin",
         isPendingBatal,
         createdAt: item.createdAt.toISOString(),
@@ -13867,7 +13941,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient);
   const approveBatalUseCase = new ApproveBatalUseCase(dbClient);
-  const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(dbClient);
+  const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
   const getPengajuanBatalUseCase = new GetPengajuanBatalUseCase(dbClient);
   const getPengajuanGantiKavlingUseCase = new GetPengajuanGantiKavlingUseCase(
     dbClient,

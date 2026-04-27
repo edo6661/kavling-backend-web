@@ -324,7 +324,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient);
   const approveBatalUseCase = new ApproveBatalUseCase(dbClient);
-  const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(dbClient);
+  const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
   const getPengajuanBatalUseCase = new GetPengajuanBatalUseCase(dbClient);
   const getPengajuanGantiKavlingUseCase = new GetPengajuanGantiKavlingUseCase(
     dbClient,

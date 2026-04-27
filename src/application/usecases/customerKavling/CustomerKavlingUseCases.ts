@@ -12,7 +12,6 @@ import type {
   CreateDetailKavlingPajakDTO,
   UpdateDetailKavlingPajakDTO,
 } from "../../../domain/dtos/DetailKavlingPajakDTO.js";
-
 export class GetCustomerKavlingsPaginatedUseCase {
   constructor(private readonly db: PrismaClient) {}
 
@@ -64,8 +63,11 @@ export class GetCustomerKavlingsPaginatedUseCase {
         tipe: p.kavling.namaTipe,
         luasBangunan: Number(p.kavling.luasBangunan),
         luasTanah: Number(p.kavling.luasTanah),
+
         hargaDasarKavling: Number(p.kavling.hargaDasar),
+        diskonPenjualan: Number(p.diskonPenjualan ?? 0),
         totalHargaJual: Number(p.hargaJual),
+
         pembiayaan: p.caraPembayaran,
         agent: p.agent?.nama ?? "Nama Agent",
 

@@ -1,17 +1,24 @@
 import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
 
 export class ApproveGantiKavlingUseCase {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
 
   async execute(riwayatId: number, approvedById: number, isApproved: boolean) {
-    return await this.db.$transaction(async (tx) => {
+    const result = await this.db.$transaction(async (tx) => {
       const riwayat = await tx.riwayatGantiKavling.findUnique({
         where: { id: riwayatId },
         include: {
           penjualan: { include: { kavling: true, detailKavlingPajak: true } },
           kavlingBaru: true,
+          kavlingLama: true,
         },
       });
 
@@ -29,6 +36,7 @@ export class ApproveGantiKavlingUseCase {
         return await tx.riwayatGantiKavling.update({
           where: { id: riwayatId },
           data: { status: "REJECTED", approvedById },
+          include: { penjualan: true, kavlingLama: true, kavlingBaru: true },
         });
       }
 
@@ -49,7 +57,19 @@ export class ApproveGantiKavlingUseCase {
 
       const plafonAwal = hargaDasarBaru - diskon - bookingFee;
 
+      const existingTambahan = await tx.tagihan.findMany({
+        where: {
+          penjualanId: riwayat.penjualanId,
+          noTagihan: { startsWith: "INV-ADD-" },
+        },
+      });
+      const totalBiayaTambahan = existingTambahan.reduce(
+        (sum, t) => sum + Number(t.nominal),
+        0,
+      );
+
       let biayaKpr = 0;
+      let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
       let hargaJual = 0;
@@ -61,14 +81,13 @@ export class ApproveGantiKavlingUseCase {
         hargaJual = hargaDasarBaru - diskon;
       } else if (oldPenjualan.caraPembayaran === "KPR") {
         biayaKpr = plafonAwal * 0.06;
-        nilaiPengajuanKpr = plafonAwal + biayaKpr;
+        plafonKredit = plafonAwal + biayaKpr;
 
-        const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
+        nilaiPengajuanKpr = plafonKredit - totalBiayaTambahan;
 
-        dp = oldPenjualan.dp
-          ? Number(oldPenjualan.dp)
-          : hargaJualSetelahDiskon * 0.1;
-        hargaJual = hargaJualSetelahDiskon + diskon;
+        const baseHargaJual = plafonKredit / 0.9;
+        dp = oldPenjualan.dp ? Number(oldPenjualan.dp) : baseHargaJual * 0.1;
+        hargaJual = baseHargaJual + diskon;
       }
 
       await tx.penjualan.update({
@@ -78,6 +97,7 @@ export class ApproveGantiKavlingUseCase {
           hargaDasar: hargaDasarBaru,
           plafonAwal: plafonAwal,
           biayaKpr: biayaKpr > 0 ? biayaKpr : null,
+          plafonKredit: plafonKredit > 0 ? plafonKredit : null,
           nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
           dp: dp > 0 ? dp : null,
           hargaJual: hargaJual,
@@ -94,7 +114,41 @@ export class ApproveGantiKavlingUseCase {
       return await tx.riwayatGantiKavling.update({
         where: { id: riwayatId },
         data: { status: "APPROVED", approvedById },
+        include: { penjualan: true, kavlingLama: true, kavlingBaru: true },
       });
     });
+
+    if (isApproved && result.status === "APPROVED" && result.penjualan) {
+      try {
+        const oldPenjualan = result.penjualan;
+
+        if (oldPenjualan.fileSpr) {
+          await this.db.riwayatSpr.create({
+            data: {
+              penjualanId: oldPenjualan.id,
+              fileSpr: oldPenjualan.fileSpr,
+              keterangan: `Ganti Kavling: Blok ${result.kavlingLama.blok}-${result.kavlingLama.nomorUnit} -> Blok ${result.kavlingBaru.blok}-${result.kavlingBaru.nomorUnit}`,
+            },
+          });
+        }
+
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          oldPenjualan.id,
+        );
+        const sprUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        await this.db.penjualan.update({
+          where: { id: oldPenjualan.id },
+          data: { fileSpr: sprUrl },
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR setelah Ganti Kavling:", error);
+      }
+    }
+
+    return result;
   }
 }

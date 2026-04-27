@@ -157,8 +157,17 @@ export class PenjualanRepository implements IPenjualanRepository {
       const diskon = Number(data.diskonPenjualan ?? 0);
       const bookingFee = Number(data.bookingFee ?? 0);
 
+      const listBiayaTambahan = data.biayaTambahan;
+      const totalBiayaTambahan = Array.isArray(listBiayaTambahan)
+        ? listBiayaTambahan.reduce(
+            (sum, b) => sum + (Number(b.nominal) || 0),
+            0,
+          )
+        : 0;
+
       let plafonAwal: number | null = null;
       let biayaKpr = 0;
+      let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
       let hargaJual: number | null = null;
@@ -173,14 +182,16 @@ export class PenjualanRepository implements IPenjualanRepository {
           hargaJual = hargaDasar - diskon;
         } else if (data.caraPembayaran === "KPR") {
           biayaKpr = plafonAwal * 0.06;
-          nilaiPengajuanKpr = plafonAwal + biayaKpr;
+          plafonKredit = plafonAwal + biayaKpr;
 
-          const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
-          dp = data.dp ? Number(data.dp) : hargaJualSetelahDiskon * 0.1;
-          hargaJual = hargaJualSetelahDiskon + diskon;
+          nilaiPengajuanKpr =
+            data.nilaiPengajuanKpr ?? plafonKredit - totalBiayaTambahan;
+
+          const baseHargaJual = plafonKredit / 0.9;
+          dp = data.dp ? Number(data.dp) : baseHargaJual * 0.1;
+          hargaJual = baseHargaJual + diskon;
         }
       }
-
       const penjualan = await tx.penjualan.create({
         data: {
           noTransaksi,
@@ -189,13 +200,13 @@ export class PenjualanRepository implements IPenjualanRepository {
           kavlingId: kavling.id,
           agentId: agent.id,
 
-          // Cast as any to bypass temporary Prisma type mismatches until next `prisma generate`
           caraPembayaran: (data.caraPembayaran || null) as any,
           hargaDasar: hargaDasar,
           plafonAwal: (plafonAwal ?? undefined) as any,
           hargaJual: (hargaJual ?? undefined) as any,
 
           biayaKpr: biayaKpr > 0 ? biayaKpr : null,
+          plafonKredit: plafonKredit > 0 ? plafonKredit : null,
           nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
           dp: dp > 0 ? dp : null,
 
@@ -328,6 +339,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             },
             orderBy: { createdAt: "desc" },
           },
+          riwayatSpr: { orderBy: { createdAt: "desc" } },
         },
       }),
       this.db.penjualan.count({ where }),
@@ -397,6 +409,10 @@ export class PenjualanRepository implements IPenjualanRepository {
         nomorUnit: item.kavling.nomorUnit,
 
         plafonAwal: item.plafonAwal ? Number(item.plafonAwal) : null,
+        plafonKredit: item.plafonKredit ? Number(item.plafonKredit) : null,
+        dpTidakDibayar: item.dpTidakDibayar
+          ? Number(item.dpTidakDibayar)
+          : null,
         hargaJual: item.hargaJual ? Number(item.hargaJual) : null,
         caraPembayaran: item.caraPembayaran
           ? item.caraPembayaran.replace(/_/g, " ")
@@ -428,6 +444,7 @@ export class PenjualanRepository implements IPenjualanRepository {
           : null,
         riwayatGantiKavling: item.riwayatGantiKavling || [],
         tagihan: item.tagihan || [],
+        riwayatSpr: item.riwayatSpr || [],
         createdBy: item.createdBy ?? "Admin",
         isPendingBatal,
         createdAt: item.createdAt.toISOString(),

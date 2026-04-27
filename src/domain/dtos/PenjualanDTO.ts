@@ -17,6 +17,8 @@ export interface CreatePenjualanDTO {
   hargaDasar: number;
   plafonAwal?: number;
   biayaKpr?: number;
+  plafonKredit?: number;
+  dpTidakDibayar?: number;
   hargaJual?: number;
   hargaPromosi?: number | undefined;
   diskonPenjualan?: number | undefined;
@@ -29,6 +31,7 @@ export interface CreatePenjualanDTO {
   createdBy?: string;
   userId?: number;
   biayaTambahan?: BiayaTambahanDTO[] | undefined;
+  keteranganUpdateSpr?: string | undefined;
 }
 export interface PenjualanResponseDTO {
   id: number;

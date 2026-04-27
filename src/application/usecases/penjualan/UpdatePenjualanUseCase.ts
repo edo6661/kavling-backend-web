@@ -130,21 +130,36 @@ export class UpdatePenjualanUseCase {
       const plafonAwal =
         data.plafonAwal ??
         currentHargaDasar - currentDiskon - currentBookingFee;
+
+      const existingTambahan = await tx.tagihan.findMany({
+        where: {
+          penjualanId: old.id,
+          noTagihan: { startsWith: "INV-ADD-" },
+        },
+      });
+      const totalTambahanLama = existingTambahan.reduce(
+        (sum, t) => sum + Number(t.nominal),
+        0,
+      );
+
       const listBiayaTambahan = data.biayaTambahan as
         | IBiayaTambahan[]
         | undefined;
-      const totalBiayaTambahan = Array.isArray(listBiayaTambahan)
+      const totalTambahanBaru = Array.isArray(listBiayaTambahan)
         ? listBiayaTambahan.reduce(
             (sum, b) => sum + (Number(b.nominal) || 0),
             0,
           )
         : 0;
 
+      const totalSemuaBiayaTambahan = totalTambahanLama + totalTambahanBaru;
+
       let biayaKpr = 0;
+      let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
+      let dpTidakDibayar = 0;
       let hargaJual = 0;
-
       if (
         currentCaraPembayaran === "CASH_KERAS" ||
         currentCaraPembayaran === "CASH_BERTAHAP"
@@ -152,40 +167,24 @@ export class UpdatePenjualanUseCase {
         hargaJual = data.hargaJual ?? currentHargaDasar - currentDiskon;
       } else if (currentCaraPembayaran === "KPR") {
         biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
-
-        // Nilai Pengajuan KPR mengakumulasikan biaya tambahan
+        plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
+        const baseHargaJual = plafonKredit / 0.9;
+        hargaJual = data.hargaJual ?? baseHargaJual + currentDiskon;
+        dpTidakDibayar =
+          data.dpTidakDibayar ?? baseHargaJual * 0.1 - currentBookingFee;
         nilaiPengajuanKpr =
-          data.nilaiPengajuanKpr ?? plafonAwal + biayaKpr + totalBiayaTambahan;
-
-        const hargaJualSetelahDiskon = nilaiPengajuanKpr / 0.9;
-
-        if (data.dp !== undefined) {
-          dp = data.dp ?? 0;
-        } else if (
-          old.dp &&
-          data.nilaiPengajuanKpr === undefined &&
-          data.biayaKpr === undefined &&
-          data.hargaDasar === undefined &&
-          data.diskonPenjualan === undefined &&
-          data.bookingFee === undefined &&
-          totalBiayaTambahan === 0
-        ) {
-          dp = Number(old.dp);
-        } else {
-          dp = hargaJualSetelahDiskon * 0.1;
-        }
-
-        hargaJual = data.hargaJual ?? hargaJualSetelahDiskon + currentDiskon;
+          data.nilaiPengajuanKpr ?? plafonKredit - totalSemuaBiayaTambahan;
+        dp = data.dp ?? dpTidakDibayar;
       }
       updateData.hargaDasar = currentHargaDasar;
       updateData.plafonAwal = plafonAwal;
       updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
+      updateData.plafonKredit = plafonKredit > 0 ? plafonKredit : null;
+      updateData.dpTidakDibayar = dpTidakDibayar > 0 ? dpTidakDibayar : null;
       updateData.nilaiPengajuanKpr =
         nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
       updateData.dp = dp > 0 ? dp : null;
       updateData.hargaJual = hargaJual;
-      updateData.diskonPenjualan = currentDiskon > 0 ? currentDiskon : null;
-      updateData.bookingFee = currentBookingFee > 0 ? currentBookingFee : null;
       const updated = await tx.penjualan.update({
         where: { noTransaksi },
         data: updateData,
@@ -213,7 +212,6 @@ export class UpdatePenjualanUseCase {
           });
         }
       }
-
       if (Array.isArray(listBiayaTambahan) && listBiayaTambahan.length > 0) {
         const dueDate = new Date(old.tanggal);
         dueDate.setDate(dueDate.getDate() + 14);
@@ -264,16 +262,29 @@ export class UpdatePenjualanUseCase {
       });
       return updated;
     });
-    if (
-      transactionResult &&
-      ((data.caraPembayaran && !transactionResult.fileSpr) ||
-        data.bank !== undefined)
-    ) {
+    const triggerUpdateSpr =
+      (data.caraPembayaran !== undefined ||
+        data.bank !== undefined ||
+        (data.biayaTambahan && data.biayaTambahan.length > 0)) ??
+      data.keteranganUpdateSpr !== undefined;
+
+    if (transactionResult && triggerUpdateSpr) {
       try {
+        if (transactionResult.fileSpr) {
+          await this.db.riwayatSpr.create({
+            data: {
+              penjualanId: transactionResult.id,
+              fileSpr: transactionResult.fileSpr,
+              keterangan:
+                data.keteranganUpdateSpr ??
+                "Update Skema / Bank / Biaya Tambahan",
+            },
+          });
+        }
+
         const pdfBuffer = await this.generateSprPdfUseCase.execute(
           transactionResult.id,
         );
-
         const sprUrl = await this.cloudinaryService.uploadFile(
           pdfBuffer,
           "bumantara/spr",
@@ -282,6 +293,11 @@ export class UpdatePenjualanUseCase {
         return await this.db.penjualan.update({
           where: { id: transactionResult.id },
           data: { fileSpr: sprUrl },
+          include: {
+            customer: true,
+            kavling: { include: { perumahan: true, rekeningTujuan: true } },
+            agent: true,
+          },
         });
       } catch (error) {
         console.error(

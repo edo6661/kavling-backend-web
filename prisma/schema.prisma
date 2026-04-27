@@ -236,6 +236,8 @@ model Penjualan {
   hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
   plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
   biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
+  plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
+  dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
   hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
   dp                Decimal?            @db.Decimal(15, 2)
   diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
@@ -261,6 +263,7 @@ model Penjualan {
   detailKavlingPajak DetailKavlingPajak?
   feeAgent          FeeAgent?
   pengajuanBatal PengajuanBatal[]
+  riwayatSpr          RiwayatSpr[]
 
 
   @@map("penjualan")
@@ -469,4 +472,16 @@ model PengajuanBatal {
   approvedBy  User?     @relation("PenyetujuBatal", fields: [approvedById], references: [id], onDelete: SetNull)
 
   @@map("pengajuan_batal")
+}
+
+model RiwayatSpr {
+  id          Int      @id @default(autoincrement())
+  penjualanId Int      @map("penjualan_id")
+  fileSpr     String   @map("file_spr") @db.VarChar(255)
+  keterangan  String?  @db.VarChar(255) 
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+
+  @@map("riwayat_spr")
 }
