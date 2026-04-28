@@ -233,6 +233,7 @@ model Penjualan {
   agentId           Int?                @map("agent_id")
   rekeningTujuanId  Int?                @map("rekening_tujuan_id")
   caraPembayaran    PaymentMethod?       @map("cara_pembayaran")
+  termin            Int?                @map("termin")
   hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
   plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
   biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
@@ -247,6 +248,7 @@ model Penjualan {
   bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
   status            PenjualanStatus     @default(BOOKED)
   alasanBatal       String?             @map("alasan_batal") @db.Text
+  keteranganAngsuran String?            @map("keterangan_angsuran") @db.Text
   fileSpr           String?             @map("file_spr") @db.VarChar(255)
   fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
   fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)

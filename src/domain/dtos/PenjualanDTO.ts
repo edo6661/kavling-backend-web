@@ -24,6 +24,7 @@ export interface CreatePenjualanDTO {
   diskonPenjualan?: number | undefined;
   dp?: number | undefined;
   bookingFee?: number | undefined;
+  termin?: number | undefined;
   caraPembayaran: PaymentMethod;
   bank?: string | undefined;
   nilaiPengajuanKpr?: number | undefined;
@@ -32,6 +33,7 @@ export interface CreatePenjualanDTO {
   userId?: number;
   biayaTambahan?: BiayaTambahanDTO[] | undefined;
   keteranganUpdateSpr?: string | undefined;
+  keteranganAngsuran?: string | undefined;
 }
 export interface PenjualanResponseDTO {
   id: number;

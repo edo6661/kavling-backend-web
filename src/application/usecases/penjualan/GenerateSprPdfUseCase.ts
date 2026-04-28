@@ -178,7 +178,7 @@ export class GenerateSprPdfUseCase {
           "Blok/Type",
           `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
         );
-        drawField("Harga Jual", formatRp(penjualan.hargaJual));
+        drawField("Harga Jual", formatRp(penjualan.hargaJual!));
 
         if (
           penjualan.diskonPenjualan &&
@@ -187,10 +187,12 @@ export class GenerateSprPdfUseCase {
           drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
         }
 
-        drawField(
-          "Cara Pembayaran",
-          penjualan.caraPembayaran.replace(/_/g, " "),
-        );
+        // --- UPDATE 1: Menampilkan Termin di Cara Pembayaran ---
+        const caraBayarText = penjualan.caraPembayaran
+          ? penjualan.caraPembayaran.replace(/_/g, " ")
+          : "-";
+
+        drawField("Cara Pembayaran", caraBayarText);
 
         if (penjualan.bank) {
           const bankLabel =
@@ -230,7 +232,6 @@ export class GenerateSprPdfUseCase {
         let totalNilai = 0;
         doc.font("Helvetica").fontSize(9);
 
-        // Filter tagihan: Hanya ambil Booking Fee dan DP
         const tagihanAwal =
           tagihan?.filter((t) => {
             const namaPembayaran = t.pembayaran.toLowerCase();
@@ -297,10 +298,9 @@ export class GenerateSprPdfUseCase {
           .lineTo(colNilai, y + rowHeight)
           .stroke();
 
-        y += 20; // Jarak setelah tabel sangat dikurangi
+        // UBAH BAGIAN INI:
+        y += rowHeight + 15; // Jarak setelah tabel: Tinggi baris + gap ekstra 15 poin
 
-        // --- SIGNATURE AREA ---
-        checkY(80);
         const today = new Date()
           .toLocaleDateString("id-ID", {
             day: "2-digit",
@@ -309,6 +309,29 @@ export class GenerateSprPdfUseCase {
           })
           .replace(/\//g, "-");
 
+        let extraGap = 15; // Jarak default jika tidak ada keterangan
+
+        if (
+          penjualan.caraPembayaran === "CASH_BERTAHAP" &&
+          penjualan.keteranganAngsuran
+        ) {
+          const ketText = `Keterangan Angsuran: ${penjualan.keteranganAngsuran}`;
+          doc.font("Helvetica-Bold").fontSize(9);
+
+          // Hitung tinggi teks aktual berdasarkan batas lebarnya
+          const textHeight = doc.heightOfString(ketText, {
+            width: contentWidth / 2,
+          });
+
+          doc.text(ketText, startX, y, {
+            width: contentWidth / 2,
+            align: "left",
+          });
+
+          // Gap dinamis: tinggi teks + jarak ekstra 25 poin ke bawah agar lega
+          extraGap = textHeight + 25;
+        }
+
         doc
           .font("Helvetica")
           .fontSize(9)
@@ -316,7 +339,8 @@ export class GenerateSprPdfUseCase {
             width: contentWidth,
             align: "right",
           });
-        y += 12;
+
+        y += extraGap; // Terapkan gap yang sudah dikalkulasi
 
         const w = contentWidth / 4;
 

@@ -94,6 +94,7 @@ export const updatePenjualanSchema = {
       perusahaan: emptyAsUndefined(z.string().optional()),
       alamatKoresponden: emptyAsUndefined(z.string().optional()),
       caraPembayaran: emptyAsUndefined(z.string().optional()),
+      termin: emptyAsUndefined(z.coerce.number().int().min(1).optional()),
       bank: emptyAsUndefined(z.string().optional()),
 
       // TAMBAHAN: Diizinkan menerima input manual untuk kalkulasi
@@ -113,6 +114,7 @@ export const updatePenjualanSchema = {
       hargaJual: emptyAsUndefined(z.coerce.number().optional()),
       biayaTambahan: emptyAsUndefined(z.array(biayaTambahanSchema).optional()),
       keteranganUpdateSpr: emptyAsUndefined(z.string().optional()),
+      keteranganAngsuran: emptyAsUndefined(z.string().optional()),
     })
     .partial(),
 };

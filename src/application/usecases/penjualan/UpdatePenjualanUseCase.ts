@@ -5,16 +5,19 @@ import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+
 interface IBiayaTambahan {
   nama: string;
   nominal: number;
 }
+
 export class UpdatePenjualanUseCase {
   constructor(
     private readonly db: PrismaClient,
     private readonly cloudinaryService: CloudinaryService,
     private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
   ) {}
+
   async execute(
     noTransaksi: string,
     data: Partial<CreatePenjualanDTO>,
@@ -29,7 +32,9 @@ export class UpdatePenjualanUseCase {
           kavling: { include: { perumahan: true } },
         },
       });
+
       if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
+
       if (
         data.nama !== undefined ||
         data.noIdentitas !== undefined ||
@@ -65,18 +70,25 @@ export class UpdatePenjualanUseCase {
           data: updateCustomerData,
         });
       }
+
       if (data.agent && old.agentId) {
         await tx.agent.update({
           where: { id: old.agentId },
           data: { nama: data.agent },
         });
       }
+
       const updateData: Prisma.PenjualanUpdateInput = {};
       let formattedPayment = data.caraPembayaran as string | undefined;
       if (formattedPayment) {
         formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
         updateData.caraPembayaran = formattedPayment as any;
       }
+
+      if (data.keteranganAngsuran !== undefined) {
+        updateData.keteranganAngsuran = data.keteranganAngsuran ?? null;
+      }
+
       let overrideHargaDasarDariKavlingBaru: number | undefined = undefined;
       if (
         data.blok &&
@@ -116,9 +128,11 @@ export class UpdatePenjualanUseCase {
             data.hargaDasar ?? Number(newKavling.hargaDasar);
         }
       }
+
       if (data.hargaPromosi !== undefined)
         updateData.hargaPromosi = data.hargaPromosi ?? null;
       if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+
       const currentCaraPembayaran = formattedPayment ?? old.caraPembayaran;
       const currentHargaDasar =
         overrideHargaDasarDariKavlingBaru ??
@@ -160,6 +174,7 @@ export class UpdatePenjualanUseCase {
       let dp = 0;
       let dpTidakDibayar = 0;
       let hargaJual = 0;
+
       if (
         currentCaraPembayaran === "CASH_KERAS" ||
         currentCaraPembayaran === "CASH_BERTAHAP"
@@ -179,6 +194,7 @@ export class UpdatePenjualanUseCase {
           data.nilaiPengajuanKpr ?? plafonKredit - totalSemuaBiayaTambahan;
         dp = data.dp ?? dpTidakDibayar;
       }
+
       updateData.hargaDasar = currentHargaDasar;
       updateData.plafonAwal = plafonAwal;
       updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
@@ -188,11 +204,23 @@ export class UpdatePenjualanUseCase {
         nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
       updateData.dp = dp > 0 ? dp : null;
       updateData.hargaJual = hargaJual;
+
+      if (currentCaraPembayaran === "CASH_BERTAHAP" && data.termin) {
+        updateData.termin = data.termin;
+      } else {
+        updateData.termin = null;
+      }
+
       const updated = await tx.penjualan.update({
         where: { noTransaksi },
         data: updateData,
       });
-      if (dp > 0 && currentCaraPembayaran === "KPR") {
+
+      if (
+        dp > 0 &&
+        (currentCaraPembayaran === "KPR" ||
+          currentCaraPembayaran === "CASH_BERTAHAP")
+      ) {
         const existingDp = await tx.tagihan.findFirst({
           where: {
             penjualanId: old.id,
@@ -213,8 +241,61 @@ export class UpdatePenjualanUseCase {
               status: "BELUM_BAYAR",
             },
           });
+        } else if (Number(existingDp.nominal) !== dp) {
+          await tx.tagihan.update({
+            where: { id: existingDp.id },
+            data: { nominal: dp },
+          });
         }
       }
+
+      if (
+        currentCaraPembayaran === "CASH_BERTAHAP" &&
+        data.termin &&
+        data.termin > 0
+      ) {
+        const sisaPembayaran = Math.max(0, hargaJual - dp - currentBookingFee);
+        const cicilanPerBulan = sisaPembayaran / data.termin;
+
+        const existingCicilans = await tx.tagihan.findMany({
+          where: {
+            penjualanId: old.id,
+            pembayaran: { startsWith: "Cicilan Ke-" },
+          },
+        });
+
+        if (existingCicilans.length === 0 && sisaPembayaran > 0) {
+          const baseDate = new Date(old.tanggal);
+
+          for (let i = 1; i <= data.termin; i++) {
+            const jatuhTempoCicilan = new Date(baseDate);
+
+            jatuhTempoCicilan.setMonth(jatuhTempoCicilan.getMonth() + i);
+
+            await tx.tagihan.create({
+              data: {
+                noTagihan: `INV-CCL-${noTransaksi}-${i}`,
+                customerId: old.customerId,
+                penjualanId: old.id,
+                pembayaran: `Cicilan Ke-${i}`,
+                nominal: cicilanPerBulan,
+                jatuhTempo: jatuhTempoCicilan,
+                status: "BELUM_BAYAR",
+              },
+            });
+          }
+        } else if (existingCicilans.length === data.termin) {
+          for (const cicilan of existingCicilans) {
+            if (Number(cicilan.nominal) !== cicilanPerBulan) {
+              await tx.tagihan.update({
+                where: { id: cicilan.id },
+                data: { nominal: cicilanPerBulan },
+              });
+            }
+          }
+        }
+      }
+
       if (Array.isArray(listBiayaTambahan) && listBiayaTambahan.length > 0) {
         const dueDate = new Date(old.tanggal);
         dueDate.setDate(dueDate.getDate() + 14);
@@ -250,6 +331,7 @@ export class UpdatePenjualanUseCase {
           }
         }
       }
+
       await tx.auditLog.create({
         data: {
           entityName: "Penjualan",
@@ -263,8 +345,10 @@ export class UpdatePenjualanUseCase {
           userId: userId ?? null,
         },
       });
+
       return updated;
     });
+
     const triggerUpdateSpr =
       (data.caraPembayaran !== undefined ||
         data.bank !== undefined ||
