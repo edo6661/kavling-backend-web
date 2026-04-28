@@ -165,6 +165,9 @@ export class UpdatePenjualanUseCase {
         currentCaraPembayaran === "CASH_BERTAHAP"
       ) {
         hargaJual = data.hargaJual ?? currentHargaDasar - currentDiskon;
+        if (currentCaraPembayaran === "CASH_BERTAHAP") {
+          dp = data.dp ?? 0;
+        }
       } else if (currentCaraPembayaran === "KPR") {
         biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
         plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;

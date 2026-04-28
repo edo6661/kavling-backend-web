@@ -180,6 +180,9 @@ export class PenjualanRepository implements IPenjualanRepository {
           data.caraPembayaran === "CASH_BERTAHAP"
         ) {
           hargaJual = hargaDasar - diskon;
+          if (data.caraPembayaran === "CASH_BERTAHAP") {
+            dp = data.dp ? Number(data.dp) : 0;
+          }
         } else if (data.caraPembayaran === "KPR") {
           biayaKpr = plafonAwal * 0.06;
           plafonKredit = plafonAwal + biayaKpr;
