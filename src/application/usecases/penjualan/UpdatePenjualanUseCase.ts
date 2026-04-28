@@ -299,36 +299,27 @@ export class UpdatePenjualanUseCase {
       if (Array.isArray(listBiayaTambahan) && listBiayaTambahan.length > 0) {
         const dueDate = new Date(old.tanggal);
         dueDate.setDate(dueDate.getDate() + 14);
-        for (const biaya of listBiayaTambahan) {
+
+        for (let i = 0; i < listBiayaTambahan.length; i++) {
+          const biaya = listBiayaTambahan[i];
           if (typeof biaya !== "object" || biaya === null) continue;
+
           const namaBiaya = String(biaya.nama || "");
           const nominalBiaya = Number(biaya.nominal) || 0;
+
           if (!namaBiaya || nominalBiaya <= 0) continue;
-          const existingTagihan = await tx.tagihan.findFirst({
-            where: {
+
+          await tx.tagihan.create({
+            data: {
+              noTagihan: `INV-ADD-${noTransaksi}-${Date.now().toString().slice(-4)}-${i}-${Math.floor(Math.random() * 1000)}`,
+              customerId: old.customerId,
               penjualanId: old.id,
               pembayaran: namaBiaya,
+              nominal: nominalBiaya,
+              jatuhTempo: dueDate,
               status: "BELUM_BAYAR",
             },
           });
-          if (!existingTagihan) {
-            await tx.tagihan.create({
-              data: {
-                noTagihan: `INV-ADD-${noTransaksi}-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 1000)}`,
-                customerId: old.customerId,
-                penjualanId: old.id,
-                pembayaran: namaBiaya,
-                nominal: nominalBiaya,
-                jatuhTempo: dueDate,
-                status: "BELUM_BAYAR",
-              },
-            });
-          } else if (Number(existingTagihan.nominal) !== nominalBiaya) {
-            await tx.tagihan.update({
-              where: { id: existingTagihan.id },
-              data: { nominal: nominalBiaya },
-            });
-          }
         }
       }
 
