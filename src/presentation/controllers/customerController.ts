@@ -96,21 +96,20 @@ export class CustomerController {
   };
 
   uploadDocument = async (req: Request, res: Response): Promise<void> => {
-    const idParam = req.params.id as string;
+    const id = parseInt(req.params.id as string, 10);
     const docType = req.params.docType as string;
-
-    const id = parseInt(idParam, 10);
+    const { namaDokumen } = req.body;
 
     if (isNaN(id)) {
       sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
       return;
     }
 
-    if (!["fileKtp", "fileKk", "fileNpwp"].includes(docType)) {
+    if (!["fileKtp", "fileKk", "fileNpwp", "lainnya"].includes(docType)) {
       sendResponse(
         res,
         StatusCodes.BAD_REQUEST,
-        "Parameter docType harus berupa fileKtp, fileKk, atau fileNpwp",
+        "Parameter docType tidak valid",
       );
       return;
     }
@@ -123,7 +122,8 @@ export class CustomerController {
     const result = await this.uploadDocumentUseCase.execute(
       id,
       req.file.buffer,
-      docType as "fileKtp" | "fileKk" | "fileNpwp",
+      docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
+      namaDokumen,
     );
 
     sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);

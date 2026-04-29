@@ -18,6 +18,7 @@ export class CustomerMapper {
       fileKtp: prismaCustomer.fileKtp,
       fileKk: prismaCustomer.fileKk,
       fileNpwp: prismaCustomer.fileNpwp,
+      dokumenLainnya: prismaCustomer.dokumenLainnya ?? [],
       userId: prismaCustomer.userId,
       hasAccount: prismaCustomer.userId !== null,
       createdAt: prismaCustomer.createdAt,

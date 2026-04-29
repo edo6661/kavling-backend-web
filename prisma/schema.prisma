@@ -99,6 +99,7 @@ model Customer {
   fileKtp           String?     @map("file_ktp") @db.VarChar(255)
   fileKk            String?     @map("file_kk") @db.VarChar(255)
   fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
+  dokumenLainnya    Json?     @map("dokumen_lainnya") 
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 

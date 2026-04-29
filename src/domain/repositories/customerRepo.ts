@@ -42,6 +42,7 @@ export class CustomerRepository implements ICustomerRepository {
   async findByNik(nikKtp: string): Promise<Customer | null> {
     return await this.db.customer.findUnique({ where: { nikKtp } });
   }
+
   async update(id: number, data: UpdateCustomerDTO): Promise<Customer> {
     const existing = await this.findById(id);
     if (!existing) throw new NotFoundError("Customer tidak ditemukan");
@@ -73,6 +74,9 @@ export class CustomerRepository implements ICustomerRepository {
     if (data.fileKk !== undefined) updateData.fileKk = data.fileKk ?? null;
     if (data.fileNpwp !== undefined)
       updateData.fileNpwp = data.fileNpwp ?? null;
+
+    if (data.dokumenLainnya !== undefined)
+      updateData.dokumenLainnya = data.dokumenLainnya ?? Prisma.DbNull;
 
     return await this.db.customer.update({
       where: { id },

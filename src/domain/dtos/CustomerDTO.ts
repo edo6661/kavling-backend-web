@@ -4,22 +4,22 @@ export interface CreateCustomerDTO {
   nikKtp: string;
   nama: string;
   noHp: string;
-  email?: string;
-  pekerjaan?: string;
-  perusahaan?: string;
-  bank?: string;
+  email?: string | undefined;
+  pekerjaan?: string | undefined;
+  perusahaan?: string | undefined;
+  bank?: string | undefined;
   alamatKtp: string;
-  alamatTinggal?: string;
-  alamatKoresponden?: string;
+  alamatTinggal?: string | undefined;
+  alamatKoresponden?: string | undefined;
 }
 
 export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {
-  fileKtp?: string;
-  fileKk?: string;
-  fileNpwp?: string;
-  userId?: number;
+  fileKtp?: string | undefined;
+  fileKk?: string | undefined;
+  fileNpwp?: string | undefined;
+  userId?: number | undefined;
+  dokumenLainnya?: any;
 }
-
 export interface CustomerResponseDTO {
   id: number;
   nikKtp: string;
@@ -35,6 +35,9 @@ export interface CustomerResponseDTO {
   fileKtp: string | null;
   fileKk: string | null;
   fileNpwp: string | null;
+
+  dokumenLainnya?: any;
+
   hasAccount: boolean;
   createdAt: Date;
 }

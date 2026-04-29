@@ -13,6 +13,7 @@ export interface CustomerEntity {
   fileKtp: string | null;
   fileKk: string | null;
   fileNpwp: string | null;
+  dokumenLainnya: any;
   userId: number | null;
   hasAccount: boolean;
   createdAt: Date;
