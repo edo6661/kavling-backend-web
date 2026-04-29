@@ -169,7 +169,10 @@ export class GenerateSprPdfUseCase {
             typeof num === "object" && "toNumber" in num
               ? num.toNumber()
               : Number(num);
-          return `Rp. ${val.toLocaleString("id-ID")}`;
+
+          const roundedVal = Math.round(val);
+
+          return `Rp. ${roundedVal.toLocaleString("id-ID")}`;
         };
 
         // --- UNIT INFO ---
