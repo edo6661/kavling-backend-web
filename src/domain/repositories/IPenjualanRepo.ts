@@ -65,6 +65,7 @@ export interface PenjualanPaginatedItem {
   fileBuktiDp: string;
   fileSpr: string | null;
   ttdData?: any;
+  tambahanKpr?: any;
   progressCicilan?: string;
   rekeningTujuanId?: number | null;
   rekeningTujuan?: {

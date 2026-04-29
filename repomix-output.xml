@@ -10985,70 +10985,6 @@ export class KavlingRepository implements IKavlingRepository {
 }
 </file>
 
-<file path="src/domain/dtos/PenjualanDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
-export interface CreatePenjualanDTO {
-  noIdentitas: string;
-  nama: string;
-  noTelepon: string;
-  alamat: string;
-  perusahaan?: string | undefined;
-  alamatKoresponden?: string | undefined;
-  perumahan: string;
-  blok: string;
-  nomorUnit: string;
-  tipe: string;
-  luasBangunan: number;
-  luasTanah: number;
-  tanggal: string | Date;
-  hargaDasar: number;
-  plafonAwal?: number;
-  biayaKpr?: number;
-  plafonKredit?: number;
-  dpTidakDibayar?: number;
-  hargaJual?: number;
-  hargaPromosi?: number | undefined;
-  diskonPenjualan?: number | undefined;
-  dp?: number | undefined;
-  bookingFee?: number | undefined;
-  termin?: number | undefined;
-  caraPembayaran: PaymentMethod;
-  bank?: string | undefined;
-  nilaiPengajuanKpr?: number | undefined;
-  agent: string;
-  createdBy?: string;
-  userId?: number;
-  biayaTambahan?: BiayaTambahanDTO[] | undefined;
-  keteranganUpdateSpr?: string | undefined;
-}
-export interface PenjualanResponseDTO {
-  id: number;
-  noTransaksi: string;
-  tanggal: Date;
-  customer: {
-    id: number;
-    nama: string;
-  };
-  kavling: {
-    id: number;
-    blok: string;
-    nomorUnit: string;
-    perumahan: string;
-  };
-  caraPembayaran: string | null;
-  hargaJual: number;
-  status: PenjualanStatus;
-  createdAt: Date;
-}
-export type PenjualanFilterDTO = BaseFilterDTO;
-
-export interface BiayaTambahanDTO {
-  nama: string;
-  nominal: number;
-}
-</file>
-
 <file path="src/presentation/routes/penjualanRoutes.ts">
 import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
@@ -11144,401 +11080,69 @@ export const createPenjualanRoutes = (
 };
 </file>
 
-<file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
-import type { Prisma } from "@prisma/client";
-import { type PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+<file path="src/domain/dtos/PenjualanDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
+export interface CreatePenjualanDTO {
+  noIdentitas: string;
+  nama: string;
+  noTelepon: string;
+  alamat: string;
+  perusahaan?: string | undefined;
+  alamatKoresponden?: string | undefined;
+  perumahan: string;
+  blok: string;
+  nomorUnit: string;
+  tipe: string;
+  luasBangunan: number;
+  luasTanah: number;
+  tanggal: string | Date;
+  hargaDasar: number;
+  plafonAwal?: number;
+  biayaKpr?: number;
+  plafonKredit?: number;
+  dpTidakDibayar?: number;
+  hargaJual?: number;
+  hargaPromosi?: number | undefined;
+  diskonPenjualan?: number | undefined;
+  dp?: number | undefined;
+  bookingFee?: number | undefined;
+  termin?: number | undefined;
+  caraPembayaran: PaymentMethod;
+  bank?: string | undefined;
+  nilaiPengajuanKpr?: number | undefined;
+  agent: string;
+  createdBy?: string;
+  userId?: number;
+  biayaTambahan?: BiayaTambahanDTO[] | undefined;
+  biayaTambahanKpr?: BiayaTambahanDTO[] | undefined;
+  keteranganUpdateSpr?: string | undefined;
+  keteranganAngsuran?: string | undefined;
+}
+export interface PenjualanResponseDTO {
+  id: number;
+  noTransaksi: string;
+  tanggal: Date;
+  customer: {
+    id: number;
+    nama: string;
+  };
+  kavling: {
+    id: number;
+    blok: string;
+    nomorUnit: string;
+    perumahan: string;
+  };
+  caraPembayaran: string | null;
+  hargaJual: number;
+  status: PenjualanStatus;
+  createdAt: Date;
+}
+export type PenjualanFilterDTO = BaseFilterDTO;
 
-interface IBiayaTambahan {
+export interface BiayaTambahanDTO {
   nama: string;
   nominal: number;
-}
-
-export class UpdatePenjualanUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly cloudinaryService: CloudinaryService,
-    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
-  ) {}
-
-  async execute(
-    noTransaksi: string,
-    data: Partial<CreatePenjualanDTO>,
-    userId?: number,
-  ) {
-    const transactionResult = await this.db.$transaction(async (tx) => {
-      const old = await tx.penjualan.findUnique({
-        where: { noTransaksi },
-        include: {
-          customer: true,
-          agent: true,
-          kavling: { include: { perumahan: true } },
-        },
-      });
-
-      if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
-
-      if (
-        data.nama !== undefined ||
-        data.noIdentitas !== undefined ||
-        data.noTelepon !== undefined ||
-        data.alamat !== undefined ||
-        data.perusahaan !== undefined ||
-        data.alamatKoresponden !== undefined
-      ) {
-        if (data.noIdentitas && data.noIdentitas !== old.customer.nikKtp) {
-          const existingCustomer = await tx.customer.findUnique({
-            where: { nikKtp: data.noIdentitas },
-          });
-          if (existingCustomer && existingCustomer.id !== old.customerId) {
-            throw new ConflictError(
-              `Gagal update! NIK KTP ${data.noIdentitas} sudah terdaftar untuk customer lain.`,
-            );
-          }
-        }
-        const updateCustomerData: Prisma.CustomerUpdateInput = {};
-        if (data.nama !== undefined) updateCustomerData.nama = data.nama;
-        if (data.noIdentitas !== undefined)
-          updateCustomerData.nikKtp = data.noIdentitas;
-        if (data.noTelepon !== undefined)
-          updateCustomerData.noHp = data.noTelepon;
-        if (data.alamat !== undefined)
-          updateCustomerData.alamatKtp = data.alamat;
-        if (data.perusahaan !== undefined)
-          updateCustomerData.perusahaan = data.perusahaan ?? null;
-        if (data.alamatKoresponden !== undefined)
-          updateCustomerData.alamatKoresponden = data.alamatKoresponden ?? null;
-        await tx.customer.update({
-          where: { id: old.customerId },
-          data: updateCustomerData,
-        });
-      }
-
-      if (data.agent && old.agentId) {
-        await tx.agent.update({
-          where: { id: old.agentId },
-          data: { nama: data.agent },
-        });
-      }
-
-      const updateData: Prisma.PenjualanUpdateInput = {};
-      let formattedPayment = data.caraPembayaran as string | undefined;
-      if (formattedPayment) {
-        formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
-        updateData.caraPembayaran = formattedPayment as any;
-      }
-
-      let overrideHargaDasarDariKavlingBaru: number | undefined = undefined;
-      if (
-        data.blok &&
-        data.nomorUnit &&
-        (data.blok !== old.kavling.blok ||
-          data.nomorUnit !== old.kavling.nomorUnit)
-      ) {
-        const newKavling = await tx.kavling.findFirst({
-          where: {
-            perumahanId: old.kavling.perumahanId,
-            blok: data.blok,
-            nomorUnit: data.nomorUnit,
-          },
-        });
-        if (newKavling && newKavling.id !== old.kavlingId) {
-          if (newKavling.status !== "AVAILABLE") {
-            throw new ConflictError(
-              `Kavling Blok ${data.blok} No ${data.nomorUnit} tidak tersedia (Status: ${newKavling.status})`,
-            );
-          }
-          await tx.kavling.update({
-            where: { id: old.kavlingId },
-            data: { status: "AVAILABLE" },
-          });
-          await tx.kavling.update({
-            where: { id: newKavling.id },
-            data: {
-              status: old.kavling.status,
-              namaTipe: data.tipe ?? newKavling.namaTipe,
-              luasBangunan: data.luasBangunan ?? newKavling.luasBangunan,
-              luasTanah: data.luasTanah ?? newKavling.luasTanah,
-              hargaDasar: data.hargaDasar ?? newKavling.hargaDasar,
-            },
-          });
-          updateData.kavling = { connect: { id: newKavling.id } };
-          overrideHargaDasarDariKavlingBaru =
-            data.hargaDasar ?? Number(newKavling.hargaDasar);
-        }
-      }
-
-      if (data.hargaPromosi !== undefined)
-        updateData.hargaPromosi = data.hargaPromosi ?? null;
-      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
-
-      const currentCaraPembayaran = formattedPayment ?? old.caraPembayaran;
-      const currentHargaDasar =
-        overrideHargaDasarDariKavlingBaru ??
-        data.hargaDasar ??
-        Number(old.hargaDasar);
-      const currentDiskon =
-        data.diskonPenjualan ?? Number(old.diskonPenjualan ?? 0);
-      const currentBookingFee = data.bookingFee ?? Number(old.bookingFee ?? 0);
-      const plafonAwal =
-        data.plafonAwal ??
-        currentHargaDasar - currentDiskon - currentBookingFee;
-
-      const existingTambahan = await tx.tagihan.findMany({
-        where: {
-          penjualanId: old.id,
-          noTagihan: { startsWith: "INV-ADD-" },
-        },
-      });
-      const totalTambahanLama = existingTambahan.reduce(
-        (sum, t) => sum + Number(t.nominal),
-        0,
-      );
-
-      const listBiayaTambahan = data.biayaTambahan as
-        | IBiayaTambahan[]
-        | undefined;
-      const totalTambahanBaru = Array.isArray(listBiayaTambahan)
-        ? listBiayaTambahan.reduce(
-            (sum, b) => sum + (Number(b.nominal) || 0),
-            0,
-          )
-        : 0;
-
-      const totalSemuaBiayaTambahan = totalTambahanLama + totalTambahanBaru;
-
-      let biayaKpr = 0;
-      let plafonKredit = 0;
-      let nilaiPengajuanKpr = 0;
-      let dp = 0;
-      let dpTidakDibayar = 0;
-      let hargaJual = 0;
-
-      if (
-        currentCaraPembayaran === "CASH_KERAS" ||
-        currentCaraPembayaran === "CASH_BERTAHAP"
-      ) {
-        hargaJual = data.hargaJual ?? currentHargaDasar - currentDiskon;
-        if (currentCaraPembayaran === "CASH_BERTAHAP") {
-          dp = data.dp ?? 0;
-        }
-      } else if (currentCaraPembayaran === "KPR") {
-        biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
-        plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
-        const baseHargaJual = plafonKredit / 0.9;
-        hargaJual = data.hargaJual ?? baseHargaJual + currentDiskon;
-        dpTidakDibayar =
-          data.dpTidakDibayar ?? baseHargaJual * 0.1 - currentBookingFee;
-        nilaiPengajuanKpr =
-          data.nilaiPengajuanKpr ?? plafonKredit - totalSemuaBiayaTambahan;
-        dp = data.dp ?? dpTidakDibayar;
-      }
-
-      updateData.hargaDasar = currentHargaDasar;
-      updateData.plafonAwal = plafonAwal;
-      updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
-      updateData.plafonKredit = plafonKredit > 0 ? plafonKredit : null;
-      updateData.dpTidakDibayar = dpTidakDibayar > 0 ? dpTidakDibayar : null;
-      updateData.nilaiPengajuanKpr =
-        nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
-      updateData.dp = dp > 0 ? dp : null;
-      updateData.hargaJual = hargaJual;
-
-      if (currentCaraPembayaran === "CASH_BERTAHAP" && data.termin) {
-        updateData.termin = data.termin;
-      } else {
-        updateData.termin = null;
-      }
-
-      const updated = await tx.penjualan.update({
-        where: { noTransaksi },
-        data: updateData,
-      });
-
-      if (
-        dp > 0 &&
-        (currentCaraPembayaran === "KPR" ||
-          currentCaraPembayaran === "CASH_BERTAHAP")
-      ) {
-        const existingDp = await tx.tagihan.findFirst({
-          where: {
-            penjualanId: old.id,
-            pembayaran: { contains: "Down Payment" },
-          },
-        });
-        if (!existingDp) {
-          const dpDueDate = new Date(old.tanggal);
-          dpDueDate.setDate(dpDueDate.getDate() + 14);
-          await tx.tagihan.create({
-            data: {
-              noTagihan: `INV-DP-${noTransaksi}`,
-              customerId: old.customerId,
-              penjualanId: old.id,
-              pembayaran: "Down Payment (DP)",
-              nominal: dp,
-              jatuhTempo: dpDueDate,
-              status: "BELUM_BAYAR",
-            },
-          });
-        } else if (Number(existingDp.nominal) !== dp) {
-          await tx.tagihan.update({
-            where: { id: existingDp.id },
-            data: { nominal: dp },
-          });
-        }
-      }
-
-      if (
-        currentCaraPembayaran === "CASH_BERTAHAP" &&
-        data.termin &&
-        data.termin > 0
-      ) {
-        const sisaPembayaran = Math.max(0, hargaJual - dp - currentBookingFee);
-        const cicilanPerBulan = sisaPembayaran / data.termin;
-
-        const existingCicilans = await tx.tagihan.findMany({
-          where: {
-            penjualanId: old.id,
-            pembayaran: { startsWith: "Cicilan Ke-" },
-          },
-        });
-
-        if (existingCicilans.length === 0 && sisaPembayaran > 0) {
-          const baseDate = new Date(old.tanggal);
-
-          for (let i = 1; i <= data.termin; i++) {
-            const jatuhTempoCicilan = new Date(baseDate);
-
-            jatuhTempoCicilan.setMonth(jatuhTempoCicilan.getMonth() + i);
-
-            await tx.tagihan.create({
-              data: {
-                noTagihan: `INV-CCL-${noTransaksi}-${i}`,
-                customerId: old.customerId,
-                penjualanId: old.id,
-                pembayaran: `Cicilan Ke-${i}`,
-                nominal: cicilanPerBulan,
-                jatuhTempo: jatuhTempoCicilan,
-                status: "BELUM_BAYAR",
-              },
-            });
-          }
-        } else if (existingCicilans.length === data.termin) {
-          for (const cicilan of existingCicilans) {
-            if (Number(cicilan.nominal) !== cicilanPerBulan) {
-              await tx.tagihan.update({
-                where: { id: cicilan.id },
-                data: { nominal: cicilanPerBulan },
-              });
-            }
-          }
-        }
-      }
-
-      if (Array.isArray(listBiayaTambahan) && listBiayaTambahan.length > 0) {
-        const dueDate = new Date(old.tanggal);
-        dueDate.setDate(dueDate.getDate() + 14);
-        for (const biaya of listBiayaTambahan) {
-          if (typeof biaya !== "object" || biaya === null) continue;
-          const namaBiaya = String(biaya.nama || "");
-          const nominalBiaya = Number(biaya.nominal) || 0;
-          if (!namaBiaya || nominalBiaya <= 0) continue;
-          const existingTagihan = await tx.tagihan.findFirst({
-            where: {
-              penjualanId: old.id,
-              pembayaran: namaBiaya,
-              status: "BELUM_BAYAR",
-            },
-          });
-          if (!existingTagihan) {
-            await tx.tagihan.create({
-              data: {
-                noTagihan: `INV-ADD-${noTransaksi}-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 1000)}`,
-                customerId: old.customerId,
-                penjualanId: old.id,
-                pembayaran: namaBiaya,
-                nominal: nominalBiaya,
-                jatuhTempo: dueDate,
-                status: "BELUM_BAYAR",
-              },
-            });
-          } else if (Number(existingTagihan.nominal) !== nominalBiaya) {
-            await tx.tagihan.update({
-              where: { id: existingTagihan.id },
-              data: { nominal: nominalBiaya },
-            });
-          }
-        }
-      }
-
-      await tx.auditLog.create({
-        data: {
-          entityName: "Penjualan",
-          entityId: noTransaksi,
-          action: "UPDATE",
-          changes: {
-            before: old,
-            after: updated,
-            input_raw: data,
-          } as unknown as Prisma.InputJsonValue,
-          userId: userId ?? null,
-        },
-      });
-
-      return updated;
-    });
-
-    const triggerUpdateSpr =
-      (data.caraPembayaran !== undefined ||
-        data.bank !== undefined ||
-        (data.biayaTambahan && data.biayaTambahan.length > 0)) ??
-      data.keteranganUpdateSpr !== undefined;
-
-    if (transactionResult && triggerUpdateSpr) {
-      try {
-        if (transactionResult.fileSpr) {
-          await this.db.riwayatSpr.create({
-            data: {
-              penjualanId: transactionResult.id,
-              fileSpr: transactionResult.fileSpr,
-              keterangan:
-                data.keteranganUpdateSpr ??
-                "Update Skema / Bank / Biaya Tambahan",
-            },
-          });
-        }
-
-        const pdfBuffer = await this.generateSprPdfUseCase.execute(
-          transactionResult.id,
-        );
-        const sprUrl = await this.cloudinaryService.uploadFile(
-          pdfBuffer,
-          "bumantara/spr",
-        );
-
-        return await this.db.penjualan.update({
-          where: { id: transactionResult.id },
-          data: { fileSpr: sprUrl },
-          include: {
-            customer: true,
-            kavling: { include: { perumahan: true, rekeningTujuan: true } },
-            agent: true,
-          },
-        });
-      } catch (error) {
-        console.error(
-          "Gagal auto-generate SPR setelah update skema atau bank:",
-          error,
-        );
-      }
-    }
-
-    return transactionResult;
-  }
 }
 </file>
 
@@ -11715,456 +11319,412 @@ export class UpdateCustomerKavlingUseCase {
 }
 </file>
 
-<file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
-import PDFDocument from "pdfkit";
-import type { Prisma } from "@prisma/client";
+<file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
+import { Prisma } from "@prisma/client";
+import { type PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import QRCode from "qrcode";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
 
-export class GenerateSprPdfUseCase {
-  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
+interface IBiayaTambahan {
+  nama: string;
+  nominal: number;
+}
 
-  async execute(penjualanId: number): Promise<Buffer> {
-    const penjualan = await this.penjualanRepo.findById(penjualanId);
+export class UpdatePenjualanUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
 
-    if (!penjualan) {
-      throw new NotFoundError("Data Penjualan tidak ditemukan");
-    }
-
-    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
-
-    // --- 1. PRE-FETCH DATA TANDA TANGAN & LOGO (ASINKRON) ---
-    const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
-    const ttdData = penjualan.ttdData as Record<
-      string,
-      { nama: string; tanggal: string; url: string }
-    > | null;
-    const sigBuffers: Record<string, Buffer> = {};
-
-    const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
-    let qrCodeBuffer: Buffer | null = null;
-    let logoBuffer: Buffer | null = null;
-
-    // Ambil logo dari Cloudinary
-    if (kavling.perumahan.logo) {
-      try {
-        const response = await fetch(kavling.perumahan.logo);
-        const arrayBuffer = await response.arrayBuffer();
-        logoBuffer = Buffer.from(arrayBuffer);
-      } catch (err) {
-        console.error("Gagal download logo perumahan", err);
-      }
-    }
-
-    try {
-      const qrDataUri = await QRCode.toDataURL(verifyUrl, {
-        margin: 1,
-        width: 80,
+  async execute(
+    noTransaksi: string,
+    data: Partial<CreatePenjualanDTO>,
+    userId?: number,
+  ) {
+    const transactionResult = await this.db.$transaction(async (tx) => {
+      const old = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: {
+          customer: true,
+          agent: true,
+          kavling: { include: { perumahan: true } },
+        },
       });
 
-      const base64Data = qrDataUri.split(",")[1];
+      if (!old) throw new NotFoundError("Data Penjualan tidak ditemukan");
 
-      if (base64Data) {
-        qrCodeBuffer = Buffer.from(base64Data, "base64");
-      }
-    } catch (err) {
-      console.error("Gagal generate QR Code", err);
-    }
-
-    if (ttdData) {
-      await Promise.all(
-        sigData.map(async (role) => {
-          if (ttdData[role]?.url) {
-            try {
-              const response = await fetch(ttdData[role].url);
-              const arrayBuffer = await response.arrayBuffer();
-              sigBuffers[role] = Buffer.from(arrayBuffer);
-            } catch (e) {
-              console.error(`Gagal download TTD ${role} dari Cloudinary`, e);
-            }
+      if (
+        data.nama !== undefined ||
+        data.noIdentitas !== undefined ||
+        data.noTelepon !== undefined ||
+        data.alamat !== undefined ||
+        data.perusahaan !== undefined ||
+        data.alamatKoresponden !== undefined
+      ) {
+        if (data.noIdentitas && data.noIdentitas !== old.customer.nikKtp) {
+          const existingCustomer = await tx.customer.findUnique({
+            where: { nikKtp: data.noIdentitas },
+          });
+          if (existingCustomer && existingCustomer.id !== old.customerId) {
+            throw new ConflictError(
+              `Gagal update! NIK KTP ${data.noIdentitas} sudah terdaftar untuk customer lain.`,
+            );
           }
-        }),
+        }
+        const updateCustomerData: Prisma.CustomerUpdateInput = {};
+        if (data.nama !== undefined) updateCustomerData.nama = data.nama;
+        if (data.noIdentitas !== undefined)
+          updateCustomerData.nikKtp = data.noIdentitas;
+        if (data.noTelepon !== undefined)
+          updateCustomerData.noHp = data.noTelepon;
+        if (data.alamat !== undefined)
+          updateCustomerData.alamatKtp = data.alamat;
+        if (data.perusahaan !== undefined)
+          updateCustomerData.perusahaan = data.perusahaan ?? null;
+        if (data.alamatKoresponden !== undefined)
+          updateCustomerData.alamatKoresponden = data.alamatKoresponden ?? null;
+        await tx.customer.update({
+          where: { id: old.customerId },
+          data: updateCustomerData,
+        });
+      }
+
+      if (data.agent && old.agentId) {
+        await tx.agent.update({
+          where: { id: old.agentId },
+          data: { nama: data.agent },
+        });
+      }
+
+      const updateData: Prisma.PenjualanUpdateInput = {};
+      let formattedPayment = data.caraPembayaran as string | undefined;
+      if (formattedPayment) {
+        formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
+        updateData.caraPembayaran = formattedPayment as any;
+      }
+
+      if (data.keteranganAngsuran !== undefined) {
+        updateData.keteranganAngsuran = data.keteranganAngsuran ?? null;
+      }
+
+      let overrideHargaDasarDariKavlingBaru: number | undefined = undefined;
+      if (
+        data.blok &&
+        data.nomorUnit &&
+        (data.blok !== old.kavling.blok ||
+          data.nomorUnit !== old.kavling.nomorUnit)
+      ) {
+        const newKavling = await tx.kavling.findFirst({
+          where: {
+            perumahanId: old.kavling.perumahanId,
+            blok: data.blok,
+            nomorUnit: data.nomorUnit,
+          },
+        });
+        if (newKavling && newKavling.id !== old.kavlingId) {
+          if (newKavling.status !== "AVAILABLE") {
+            throw new ConflictError(
+              `Kavling Blok ${data.blok} No ${data.nomorUnit} tidak tersedia (Status: ${newKavling.status})`,
+            );
+          }
+          await tx.kavling.update({
+            where: { id: old.kavlingId },
+            data: { status: "AVAILABLE" },
+          });
+          await tx.kavling.update({
+            where: { id: newKavling.id },
+            data: {
+              status: old.kavling.status,
+              namaTipe: data.tipe ?? newKavling.namaTipe,
+              luasBangunan: data.luasBangunan ?? newKavling.luasBangunan,
+              luasTanah: data.luasTanah ?? newKavling.luasTanah,
+              hargaDasar: data.hargaDasar ?? newKavling.hargaDasar,
+            },
+          });
+          updateData.kavling = { connect: { id: newKavling.id } };
+          overrideHargaDasarDariKavlingBaru =
+            data.hargaDasar ?? Number(newKavling.hargaDasar);
+        }
+      }
+
+      if (data.hargaPromosi !== undefined)
+        updateData.hargaPromosi = data.hargaPromosi ?? null;
+      if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+
+      const currentCaraPembayaran = formattedPayment ?? old.caraPembayaran;
+      const currentHargaDasar =
+        overrideHargaDasarDariKavlingBaru ??
+        data.hargaDasar ??
+        Number(old.hargaDasar);
+      const currentDiskon =
+        data.diskonPenjualan ?? Number(old.diskonPenjualan ?? 0);
+      const currentBookingFee = data.bookingFee ?? Number(old.bookingFee ?? 0);
+      const plafonAwal =
+        data.plafonAwal ??
+        currentHargaDasar - currentDiskon - currentBookingFee;
+
+      const existingTambahan = await tx.tagihan.findMany({
+        where: {
+          penjualanId: old.id,
+          noTagihan: { startsWith: "INV-ADD-" },
+        },
+      });
+      const totalTambahanLama = existingTambahan.reduce(
+        (sum, t) => sum + Number(t.nominal),
+        0,
       );
+
+      const listBiayaTambahan = data.biayaTambahan as
+        | IBiayaTambahan[]
+        | undefined;
+      const totalTambahanBaru = Array.isArray(listBiayaTambahan)
+        ? listBiayaTambahan.reduce(
+            (sum, b) => sum + (Number(b.nominal) || 0),
+            0,
+          )
+        : 0;
+
+      const totalSemuaBiayaTambahan = totalTambahanLama + totalTambahanBaru;
+
+      const listTambahanKpr = data.biayaTambahanKpr as
+        | IBiayaTambahan[]
+        | undefined;
+      const totalTambahanKpr = Array.isArray(listTambahanKpr)
+        ? listTambahanKpr.reduce((sum, b) => sum + (Number(b.nominal) || 0), 0)
+        : 0;
+
+      let biayaKpr = 0;
+      let plafonKredit = 0;
+      let nilaiPengajuanKpr = 0;
+      let dp = 0;
+      let dpTidakDibayar = 0;
+      let hargaJual = 0;
+
+      if (
+        currentCaraPembayaran === "CASH_KERAS" ||
+        currentCaraPembayaran === "CASH_BERTAHAP"
+      ) {
+        hargaJual = data.hargaJual ?? currentHargaDasar - currentDiskon;
+        if (currentCaraPembayaran === "CASH_BERTAHAP") {
+          dp = data.dp ?? 0;
+        }
+      } else if (currentCaraPembayaran === "KPR") {
+        biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
+        plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
+        const baseHargaJual = plafonKredit / 0.9;
+        hargaJual =
+          data.hargaJual ?? baseHargaJual + currentDiskon + totalTambahanKpr;
+        nilaiPengajuanKpr =
+          data.nilaiPengajuanKpr ??
+          plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
+        dpTidakDibayar =
+          data.dpTidakDibayar ?? baseHargaJual * 0.1 - currentBookingFee;
+        nilaiPengajuanKpr =
+          data.nilaiPengajuanKpr ??
+          plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
+        dp = data.dp ?? dpTidakDibayar;
+      }
+
+      updateData.hargaDasar = currentHargaDasar;
+      updateData.plafonAwal = plafonAwal;
+      updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
+      updateData.plafonKredit = plafonKredit > 0 ? plafonKredit : null;
+      updateData.dpTidakDibayar = dpTidakDibayar > 0 ? dpTidakDibayar : null;
+      updateData.nilaiPengajuanKpr =
+        nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
+      updateData.dp = dp > 0 ? dp : null;
+      updateData.hargaJual = hargaJual;
+
+      if (data.biayaTambahanKpr !== undefined) {
+        updateData.tambahanKpr = data.biayaTambahanKpr
+          ? (data.biayaTambahanKpr as any)
+          : Prisma.DbNull;
+      }
+      if (currentCaraPembayaran === "CASH_BERTAHAP" && data.termin) {
+        updateData.termin = data.termin;
+      } else {
+        updateData.termin = null;
+      }
+
+      const updated = await tx.penjualan.update({
+        where: { noTransaksi },
+        data: updateData,
+      });
+
+      if (
+        dp > 0 &&
+        (currentCaraPembayaran === "KPR" ||
+          currentCaraPembayaran === "CASH_BERTAHAP")
+      ) {
+        const existingDp = await tx.tagihan.findFirst({
+          where: {
+            penjualanId: old.id,
+            pembayaran: { contains: "Down Payment" },
+          },
+        });
+        if (!existingDp) {
+          const dpDueDate = new Date(old.tanggal);
+          dpDueDate.setDate(dpDueDate.getDate() + 14);
+          await tx.tagihan.create({
+            data: {
+              noTagihan: `INV-DP-${noTransaksi}`,
+              customerId: old.customerId,
+              penjualanId: old.id,
+              pembayaran: "Down Payment (DP)",
+              nominal: dp,
+              jatuhTempo: dpDueDate,
+              status: "BELUM_BAYAR",
+            },
+          });
+        } else if (Number(existingDp.nominal) !== dp) {
+          await tx.tagihan.update({
+            where: { id: existingDp.id },
+            data: { nominal: dp },
+          });
+        }
+      }
+
+      if (
+        currentCaraPembayaran === "CASH_BERTAHAP" &&
+        data.termin &&
+        data.termin > 0
+      ) {
+        const sisaPembayaran = Math.max(0, hargaJual - dp - currentBookingFee);
+        const cicilanPerBulan = sisaPembayaran / data.termin;
+
+        const existingCicilans = await tx.tagihan.findMany({
+          where: {
+            penjualanId: old.id,
+            pembayaran: { startsWith: "Cicilan Ke-" },
+          },
+        });
+
+        if (existingCicilans.length === 0 && sisaPembayaran > 0) {
+          const baseDate = new Date(old.tanggal);
+
+          for (let i = 1; i <= data.termin; i++) {
+            const jatuhTempoCicilan = new Date(baseDate);
+
+            jatuhTempoCicilan.setMonth(jatuhTempoCicilan.getMonth() + i);
+
+            await tx.tagihan.create({
+              data: {
+                noTagihan: `INV-CCL-${noTransaksi}-${i}`,
+                customerId: old.customerId,
+                penjualanId: old.id,
+                pembayaran: `Cicilan Ke-${i}`,
+                nominal: cicilanPerBulan,
+                jatuhTempo: jatuhTempoCicilan,
+                status: "BELUM_BAYAR",
+              },
+            });
+          }
+        } else if (existingCicilans.length === data.termin) {
+          for (const cicilan of existingCicilans) {
+            if (Number(cicilan.nominal) !== cicilanPerBulan) {
+              await tx.tagihan.update({
+                where: { id: cicilan.id },
+                data: { nominal: cicilanPerBulan },
+              });
+            }
+          }
+        }
+      }
+
+      if (Array.isArray(listBiayaTambahan) && listBiayaTambahan.length > 0) {
+        const dueDate = new Date(old.tanggal);
+        dueDate.setDate(dueDate.getDate() + 14);
+
+        for (let i = 0; i < listBiayaTambahan.length; i++) {
+          const biaya = listBiayaTambahan[i];
+          if (typeof biaya !== "object" || biaya === null) continue;
+
+          const namaBiaya = String(biaya.nama || "");
+          const nominalBiaya = Number(biaya.nominal) || 0;
+
+          if (!namaBiaya || nominalBiaya <= 0) continue;
+
+          await tx.tagihan.create({
+            data: {
+              noTagihan: `INV-ADD-${noTransaksi}-${Date.now().toString().slice(-4)}-${i}-${Math.floor(Math.random() * 1000)}`,
+              customerId: old.customerId,
+              penjualanId: old.id,
+              pembayaran: namaBiaya,
+              nominal: nominalBiaya,
+              jatuhTempo: dueDate,
+              status: "BELUM_BAYAR",
+            },
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          entityName: "Penjualan",
+          entityId: noTransaksi,
+          action: "UPDATE",
+          changes: {
+            before: old,
+            after: updated,
+            input_raw: data,
+          } as unknown as Prisma.InputJsonValue,
+          userId: userId ?? null,
+        },
+      });
+
+      return updated;
+    });
+
+    const triggerUpdateSpr =
+      (data.caraPembayaran !== undefined ||
+        data.bank !== undefined ||
+        (data.biayaTambahan && data.biayaTambahan.length > 0)) ??
+      data.keteranganUpdateSpr !== undefined;
+
+    if (transactionResult && triggerUpdateSpr) {
+      try {
+        if (transactionResult.fileSpr) {
+          await this.db.riwayatSpr.create({
+            data: {
+              penjualanId: transactionResult.id,
+              fileSpr: transactionResult.fileSpr,
+              keterangan:
+                data.keteranganUpdateSpr ??
+                "Update Skema / Bank / Biaya Tambahan",
+            },
+          });
+        }
+
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          transactionResult.id,
+        );
+        const sprUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        return await this.db.penjualan.update({
+          where: { id: transactionResult.id },
+          data: { fileSpr: sprUrl },
+          include: {
+            customer: true,
+            kavling: { include: { perumahan: true, rekeningTujuan: true } },
+            agent: true,
+          },
+        });
+      } catch (error) {
+        console.error(
+          "Gagal auto-generate SPR setelah update skema atau bank:",
+          error,
+        );
+      }
     }
 
-    // --- 2. PEMBUATAN DOKUMEN PDF (SINKRON) ---
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({ size: "A4", margin: 40 }); // Margin diperkecil
-        const buffers: Buffer[] = [];
-
-        doc.on("data", (buffer) => buffers.push(buffer));
-        doc.on("end", () => resolve(Buffer.concat(buffers)));
-
-        let y = 40;
-        const startX = 40; // Margin kiri
-        const contentWidth = 515; // Lebar konten dimaksimalkan
-        const pageBottomLimit = 800;
-
-        const checkY = (neededHeight: number) => {
-          if (y + neededHeight > pageBottomLimit) {
-            doc.addPage();
-            y = 40;
-          }
-        };
-
-        // --- HEADER LOGO ---
-        checkY(80);
-        if (logoBuffer) {
-          // Hanya logo, hapus nama perumahan
-          doc.image(logoBuffer, startX, y, { height: 50 });
-        } else {
-          doc
-            .fontSize(16)
-            .font("Helvetica-Bold")
-            .fillColor("#0f172a")
-            .text("BUMANTARA", startX, y);
-        }
-
-        y += 60; // Jarak setelah logo sangat ditekan
-
-        // --- JUDUL DOKUMEN ---
-        doc
-          .fontSize(14)
-          .fillColor("#000000")
-          .font("Helvetica-Bold")
-          .text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
-            width: contentWidth,
-            align: "center",
-            underline: true,
-          });
-        y += 20;
-
-        doc
-          .fontSize(10)
-          .font("Helvetica")
-          .text("Yang bertanda tangan di bawah ini :", startX, y);
-        y += 15;
-
-        // Fungsi Helper untuk merender list data dengan jarak rapat
-        const drawField = (label: string, value: string, extraMargin = 4) => {
-          const labelWidth = 120;
-          const textHeight =
-            doc.heightOfString(value, {
-              width: contentWidth - labelWidth - 10,
-            }) || 12;
-          checkY(textHeight + extraMargin);
-
-          doc.font("Helvetica").text(label, startX, y);
-          doc.text(":", startX + labelWidth, y);
-          doc.font("Helvetica-Bold").text(value, startX + labelWidth + 10, y, {
-            width: contentWidth - labelWidth - 10,
-            lineBreak: true,
-          });
-          y += textHeight + extraMargin;
-        };
-
-        // --- CUSTOMER INFO ---
-        drawField("Nama", customer.nama);
-        drawField("Alamat", customer.alamatKtp);
-        drawField(
-          "No. Telepon / HP",
-          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
-        );
-        drawField("No. Identitas", customer.nikKtp);
-        drawField("Perusahaan", customer.perusahaan ?? "-");
-        // extraMargin dibesarkan sedikit khusus baris terakhir dari blok ini
-        drawField("Alamat Korespondensi", customer.alamatKoresponden ?? "-", 8);
-
-        checkY(15);
-        doc
-          .font("Helvetica")
-          .text(
-            "Telah menyetujui untuk memesan / membeli unit rumah dan atau kavling sebagai berikut:",
-            startX,
-            y,
-          );
-        y += 15;
-
-        const formatRp = (num: number | Prisma.Decimal) => {
-          const val =
-            typeof num === "object" && "toNumber" in num
-              ? num.toNumber()
-              : Number(num);
-          return `Rp. ${val.toLocaleString("id-ID")}`;
-        };
-
-        // --- UNIT INFO ---
-        drawField("Perumahan", kavling.perumahan.nama);
-        drawField(
-          "Blok/Type",
-          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
-        );
-        drawField("Harga Jual", formatRp(penjualan.hargaJual!));
-
-        if (
-          penjualan.diskonPenjualan &&
-          Number(penjualan.diskonPenjualan) > 0
-        ) {
-          drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
-        }
-
-        // --- UPDATE 1: Menampilkan Termin di Cara Pembayaran ---
-        const caraBayarText = penjualan.caraPembayaran
-          ? penjualan.caraPembayaran.replace(/_/g, " ")
-          : "-";
-
-        drawField("Cara Pembayaran", caraBayarText);
-
-        if (penjualan.bank) {
-          const bankLabel =
-            penjualan.caraPembayaran === "KPR" ? "Bank KPR" : "Bank";
-          drawField(bankLabel, penjualan.bank);
-        }
-        if (
-          penjualan.nilaiPengajuanKpr &&
-          Number(penjualan.nilaiPengajuanKpr) > 0
-        ) {
-          const labelPengajuan =
-            penjualan.caraPembayaran === "KPR"
-              ? "Nilai Pengajuan KPR"
-              : "Nilai Pengajuan (Plafon)";
-
-          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr), 10);
-        }
-
-        // --- TABEL PEMBAYARAN ---
-        const colNo = startX;
-        const colKet = startX + 30;
-        const colTempo = startX + 240;
-        const colNilai = startX + 370;
-        const rowHeight = 18; // Row height dipadatkan
-
-        checkY(rowHeight);
-        doc
-          .rect(startX, y, contentWidth, rowHeight)
-          .fillAndStroke("#f0f0f0", "#000");
-        doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
-        doc.text("NO", colNo + 5, y + 5);
-        doc.text("KETERANGAN", colKet + 5, y + 5);
-        doc.text("JATUH TEMPO", colTempo + 5, y + 5);
-        doc.text("NILAI", colNilai + 5, y + 5);
-        y += rowHeight;
-
-        let totalNilai = 0;
-        doc.font("Helvetica").fontSize(9);
-
-        // --- UPDATE 2: Memasukkan Cicilan ke Dalam Tabel ---
-        const tagihanAwal =
-          tagihan?.filter((t) => {
-            const namaPembayaran = t.pembayaran.toLowerCase();
-            return (
-              namaPembayaran.includes("booking") ||
-              namaPembayaran.includes("dp") ||
-              namaPembayaran.includes("down") ||
-              namaPembayaran.includes("cicilan") // Tambahkan kondisi cicilan
-            );
-          }) || [];
-
-        // Render tagihan
-        if (tagihanAwal.length > 0) {
-          // Sort berdasarkan tanggal jatuh tempo untuk memastikan urutan rapi
-          const sortedTagihan = tagihanAwal.sort(
-            (a, b) =>
-              new Date(a.jatuhTempo).getTime() -
-              new Date(b.jatuhTempo).getTime(),
-          );
-
-          sortedTagihan.forEach((p, idx) => {
-            checkY(rowHeight);
-
-            const dateStr = p.jatuhTempo
-              .toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
-              .replace(/\//g, "-");
-
-            doc.rect(startX, y, contentWidth, rowHeight).stroke();
-            doc.text(`${idx + 1}.`, colNo + 5, y + 5);
-            doc.text(p.pembayaran, colKet + 5, y + 5);
-            doc.text(dateStr, colTempo + 5, y + 5);
-            doc.text(formatRp(p.nominal), colNilai + 5, y + 5);
-
-            // Garis vertikal pemisah kolom
-            doc
-              .moveTo(colKet, y)
-              .lineTo(colKet, y + rowHeight)
-              .stroke();
-            doc
-              .moveTo(colTempo, y)
-              .lineTo(colTempo, y + rowHeight)
-              .stroke();
-            doc
-              .moveTo(colNilai, y)
-              .lineTo(colNilai, y + rowHeight)
-              .stroke();
-
-            totalNilai +=
-              typeof p.nominal === "object" && "toNumber" in p.nominal
-                ? p.nominal.toNumber()
-                : Number(p.nominal);
-
-            y += rowHeight;
-          });
-        }
-
-        // Row Total
-        checkY(rowHeight);
-        doc.rect(startX, y, contentWidth, rowHeight).stroke();
-        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 5);
-        doc.text(formatRp(totalNilai), colNilai + 5, y + 5);
-        doc
-          .moveTo(colKet, y)
-          .lineTo(colKet, y + rowHeight)
-          .stroke();
-        doc
-          .moveTo(colNilai, y)
-          .lineTo(colNilai, y + rowHeight)
-          .stroke();
-
-        y += 20; // Jarak setelah tabel sangat dikurangi
-
-        // --- SIGNATURE AREA ---
-        checkY(80);
-        const today = new Date()
-          .toLocaleDateString("id-ID", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .replace(/\//g, "-");
-
-        doc
-          .font("Helvetica")
-          .fontSize(9)
-          .text(`Dibuat Tanggal: ${today}`, startX, y, {
-            width: contentWidth,
-            align: "right",
-          });
-        y += 12;
-
-        const w = contentWidth / 4;
-
-        // Render Tanda Tangan & Nama
-        sigData.forEach((title, i) => {
-          const currentX = startX + w * i;
-
-          doc
-            .font("Helvetica")
-            .fontSize(9)
-            .text(title, currentX, y, { width: w, align: "center" });
-
-          if (ttdData?.[title]) {
-            const ttd = ttdData[title];
-
-            // Cetak gambar TTD
-            if (sigBuffers[title]) {
-              try {
-                // Diangkat ke y + 5 agar tidak membuang space kosong
-                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 5, {
-                  width: 50,
-                  height: 30,
-                });
-              } catch (imgErr) {
-                console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
-              }
-            }
-
-            // Cetak Tanggal TTD ditarik ke atas
-            if (ttd.tanggal) {
-              const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              });
-              doc
-                .fontSize(7)
-                .font("Helvetica")
-                .text(tglStr, currentX, y + 40, { width: w, align: "center" });
-            }
-
-            // Cetak Nama ditarik ke atas
-            doc
-              .fontSize(8)
-              .font("Helvetica-Bold")
-              .text(ttd.nama, currentX, y + 55, { width: w, align: "center" });
-
-            doc.fontSize(9).font("Helvetica"); // Reset
-          }
-        });
-
-        y += 50; // Jarak untuk menarik garis jauh lebih pendek
-        const lineW = w - 20;
-
-        // Render Garis TTD
-        sigData.forEach((_, i) => {
-          const cx = startX + w * i + w / 2;
-          doc
-            .moveTo(cx - lineW / 2, y)
-            .lineTo(cx + lineW / 2, y)
-            .stroke();
-        });
-
-        y += 20; // Jarak sebelum Terms dikurangi drastis
-
-        // --- TERMS & BANK INFO ---
-        checkY(70);
-        doc.fontSize(8).font("Helvetica");
-        const termLines = [
-          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
-          "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
-          "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
-        ];
-
-        termLines.forEach((text) => {
-          doc.text(text, startX, y, { width: contentWidth, align: "justify" });
-          y += 10; // Line height dipadatkan
-        });
-
-        y += 5;
-
-        // Render Kotak Bank Rekening
-        if (rekeningTujuan) {
-          doc.rect(startX, y, 260, 40).stroke(); // Tinggi kotak diperkecil
-          doc
-            .font("Helvetica-Bold")
-            .text(
-              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
-              startX + 5,
-              y + 8,
-            );
-          doc
-            .font("Helvetica")
-            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 22);
-        }
-
-        // Render QR Code
-        if (qrCodeBuffer) {
-          const qrX = startX + 360;
-          const qrY = y - 10;
-
-          // Gambar kotak pembungkus QR (Lebih kecil)
-          doc.rect(qrX - 5, qrY - 5, 75, 85).stroke("#e2e8f0");
-
-          // Masukkan gambar QR
-          doc.image(qrCodeBuffer, qrX, qrY, { width: 65, height: 65 });
-
-          // Tambahkan teks validasi di bawah QR
-          doc.fontSize(6).font("Helvetica-Bold").fillColor("#64748b");
-          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 70, {
-            width: 75,
-            align: "center",
-          });
-        }
-
-        doc.end();
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
+    return transactionResult;
   }
 }
 </file>
@@ -12471,6 +12031,474 @@ export class PenjualanController {
 }
 </file>
 
+<file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
+import PDFDocument from "pdfkit";
+import type { Prisma } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import QRCode from "qrcode";
+
+export class GenerateSprPdfUseCase {
+  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
+
+  async execute(penjualanId: number): Promise<Buffer> {
+    const penjualan = await this.penjualanRepo.findById(penjualanId);
+
+    if (!penjualan) {
+      throw new NotFoundError("Data Penjualan tidak ditemukan");
+    }
+
+    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
+
+    // --- 1. PRE-FETCH DATA TANDA TANGAN & LOGO (ASINKRON) ---
+    const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
+    const ttdData = penjualan.ttdData as Record<
+      string,
+      { nama: string; tanggal: string; url: string }
+    > | null;
+    const sigBuffers: Record<string, Buffer> = {};
+
+    const verifyUrl = `http://localhost:5173/verify/${penjualan.noTransaksi}`;
+    let qrCodeBuffer: Buffer | null = null;
+    let logoBuffer: Buffer | null = null;
+
+    // Ambil logo dari Cloudinary
+    if (kavling.perumahan.logo) {
+      try {
+        const response = await fetch(kavling.perumahan.logo);
+        const arrayBuffer = await response.arrayBuffer();
+        logoBuffer = Buffer.from(arrayBuffer);
+      } catch (err) {
+        console.error("Gagal download logo perumahan", err);
+      }
+    }
+
+    try {
+      const qrDataUri = await QRCode.toDataURL(verifyUrl, {
+        margin: 1,
+        width: 80,
+      });
+
+      const base64Data = qrDataUri.split(",")[1];
+
+      if (base64Data) {
+        qrCodeBuffer = Buffer.from(base64Data, "base64");
+      }
+    } catch (err) {
+      console.error("Gagal generate QR Code", err);
+    }
+
+    if (ttdData) {
+      await Promise.all(
+        sigData.map(async (role) => {
+          if (ttdData[role]?.url) {
+            try {
+              const response = await fetch(ttdData[role].url);
+              const arrayBuffer = await response.arrayBuffer();
+              sigBuffers[role] = Buffer.from(arrayBuffer);
+            } catch (e) {
+              console.error(`Gagal download TTD ${role} dari Cloudinary`, e);
+            }
+          }
+        }),
+      );
+    }
+
+    // --- 2. PEMBUATAN DOKUMEN PDF (SINKRON) ---
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: "A4", margin: 40 }); // Margin diperkecil
+        const buffers: Buffer[] = [];
+
+        doc.on("data", (buffer) => buffers.push(buffer));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+        let y = 40;
+        const startX = 40; // Margin kiri
+        const contentWidth = 515; // Lebar konten dimaksimalkan
+        const pageBottomLimit = 800;
+
+        const checkY = (neededHeight: number) => {
+          if (y + neededHeight > pageBottomLimit) {
+            doc.addPage();
+            y = 40;
+          }
+        };
+
+        // --- HEADER LOGO ---
+        checkY(80);
+        if (logoBuffer) {
+          // Hanya logo, hapus nama perumahan
+          doc.image(logoBuffer, startX, y, { height: 50 });
+        } else {
+          doc
+            .fontSize(16)
+            .font("Helvetica-Bold")
+            .fillColor("#0f172a")
+            .text("BUMANTARA", startX, y);
+        }
+
+        y += 60; // Jarak setelah logo sangat ditekan
+
+        // --- JUDUL DOKUMEN ---
+        doc
+          .fontSize(14)
+          .fillColor("#000000")
+          .font("Helvetica-Bold")
+          .text("SURAT KONFIRMASI UNIT PEMESANAN", startX, y, {
+            width: contentWidth,
+            align: "center",
+            underline: true,
+          });
+        y += 20;
+
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text("Yang bertanda tangan di bawah ini :", startX, y);
+        y += 15;
+
+        // Fungsi Helper untuk merender list data dengan jarak rapat
+        const drawField = (label: string, value: string, extraMargin = 4) => {
+          const labelWidth = 120;
+          const textHeight =
+            doc.heightOfString(value, {
+              width: contentWidth - labelWidth - 10,
+            }) || 12;
+          checkY(textHeight + extraMargin);
+
+          doc.font("Helvetica").text(label, startX, y);
+          doc.text(":", startX + labelWidth, y);
+          doc.font("Helvetica-Bold").text(value, startX + labelWidth + 10, y, {
+            width: contentWidth - labelWidth - 10,
+            lineBreak: true,
+          });
+          y += textHeight + extraMargin;
+        };
+
+        // --- CUSTOMER INFO ---
+        drawField("Nama", customer.nama);
+        drawField("Alamat", customer.alamatKtp);
+        drawField(
+          "No. Telepon / HP",
+          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
+        );
+        drawField("No. Identitas", customer.nikKtp);
+        drawField("Perusahaan", customer.perusahaan ?? "-");
+        // extraMargin dibesarkan sedikit khusus baris terakhir dari blok ini
+        drawField("Alamat Korespondensi", customer.alamatKoresponden ?? "-", 8);
+
+        checkY(15);
+        doc
+          .font("Helvetica")
+          .text(
+            "Telah menyetujui untuk memesan / membeli unit rumah dan atau kavling sebagai berikut:",
+            startX,
+            y,
+          );
+        y += 15;
+
+        const formatRp = (num: number | Prisma.Decimal) => {
+          const val =
+            typeof num === "object" && "toNumber" in num
+              ? num.toNumber()
+              : Number(num);
+          return `Rp. ${val.toLocaleString("id-ID")}`;
+        };
+
+        // --- UNIT INFO ---
+        drawField("Perumahan", kavling.perumahan.nama);
+        drawField(
+          "Blok/Type",
+          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
+        );
+        drawField("Harga Jual", formatRp(penjualan.hargaJual!));
+
+        if (
+          penjualan.diskonPenjualan &&
+          Number(penjualan.diskonPenjualan) > 0
+        ) {
+          drawField("Diskon Penjualan", formatRp(penjualan.diskonPenjualan));
+        }
+
+        // --- UPDATE 1: Menampilkan Termin di Cara Pembayaran ---
+        const caraBayarText = penjualan.caraPembayaran
+          ? penjualan.caraPembayaran.replace(/_/g, " ")
+          : "-";
+
+        drawField("Cara Pembayaran", caraBayarText);
+
+        if (penjualan.bank) {
+          const bankLabel =
+            penjualan.caraPembayaran === "KPR" ? "Bank KPR" : "Bank";
+          drawField(bankLabel, penjualan.bank);
+        }
+        if (
+          penjualan.nilaiPengajuanKpr &&
+          Number(penjualan.nilaiPengajuanKpr) > 0
+        ) {
+          const labelPengajuan =
+            penjualan.caraPembayaran === "KPR"
+              ? "Nilai Pengajuan KPR"
+              : "Nilai Pengajuan (Plafon)";
+
+          drawField(labelPengajuan, formatRp(penjualan.nilaiPengajuanKpr), 10);
+        }
+
+        // --- TABEL PEMBAYARAN ---
+        const colNo = startX;
+        const colKet = startX + 30;
+        const colTempo = startX + 240;
+        const colNilai = startX + 370;
+        const rowHeight = 18; // Row height dipadatkan
+
+        checkY(rowHeight);
+        doc
+          .rect(startX, y, contentWidth, rowHeight)
+          .fillAndStroke("#f0f0f0", "#000");
+        doc.fillColor("#000").font("Helvetica-Bold").fontSize(9);
+        doc.text("NO", colNo + 5, y + 5);
+        doc.text("KETERANGAN", colKet + 5, y + 5);
+        doc.text("JATUH TEMPO", colTempo + 5, y + 5);
+        doc.text("NILAI", colNilai + 5, y + 5);
+        y += rowHeight;
+
+        let totalNilai = 0;
+        doc.font("Helvetica").fontSize(9);
+
+        const tagihanAwal =
+          tagihan?.filter((t) => {
+            const namaPembayaran = t.pembayaran.toLowerCase();
+            return (
+              namaPembayaran.includes("booking") ||
+              namaPembayaran.includes("dp") ||
+              namaPembayaran.includes("down")
+            );
+          }) || [];
+
+        // Render tagihan
+        if (tagihanAwal.length > 0) {
+          tagihanAwal.forEach((p, idx) => {
+            checkY(rowHeight);
+
+            const dateStr = p.jatuhTempo
+              .toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+              .replace(/\//g, "-");
+
+            doc.rect(startX, y, contentWidth, rowHeight).stroke();
+            doc.text(`${idx + 1}.`, colNo + 5, y + 5);
+            doc.text(p.pembayaran, colKet + 5, y + 5);
+            doc.text(dateStr, colTempo + 5, y + 5);
+            doc.text(formatRp(p.nominal), colNilai + 5, y + 5);
+
+            // Garis vertikal pemisah kolom
+            doc
+              .moveTo(colKet, y)
+              .lineTo(colKet, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colTempo, y)
+              .lineTo(colTempo, y + rowHeight)
+              .stroke();
+            doc
+              .moveTo(colNilai, y)
+              .lineTo(colNilai, y + rowHeight)
+              .stroke();
+
+            totalNilai +=
+              typeof p.nominal === "object" && "toNumber" in p.nominal
+                ? p.nominal.toNumber()
+                : Number(p.nominal);
+
+            y += rowHeight;
+          });
+        }
+
+        // Row Total
+        checkY(rowHeight);
+        doc.rect(startX, y, contentWidth, rowHeight).stroke();
+        doc.font("Helvetica-Bold").text("JUMLAH", colKet + 5, y + 5);
+        doc.text(formatRp(totalNilai), colNilai + 5, y + 5);
+        doc
+          .moveTo(colKet, y)
+          .lineTo(colKet, y + rowHeight)
+          .stroke();
+        doc
+          .moveTo(colNilai, y)
+          .lineTo(colNilai, y + rowHeight)
+          .stroke();
+
+        // UBAH BAGIAN INI:
+        y += rowHeight + 15; // Jarak setelah tabel: Tinggi baris + gap ekstra 15 poin
+
+        const today = new Date()
+          .toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .replace(/\//g, "-");
+
+        let extraGap = 15; // Jarak default jika tidak ada keterangan
+
+        if (
+          penjualan.caraPembayaran === "CASH_BERTAHAP" &&
+          penjualan.keteranganAngsuran
+        ) {
+          const ketText = `Keterangan Angsuran: ${penjualan.keteranganAngsuran}`;
+          doc.font("Helvetica-Bold").fontSize(9);
+
+          // Hitung tinggi teks aktual berdasarkan batas lebarnya
+          const textHeight = doc.heightOfString(ketText, {
+            width: contentWidth / 2,
+          });
+
+          doc.text(ketText, startX, y, {
+            width: contentWidth / 2,
+            align: "left",
+          });
+
+          // Gap dinamis: tinggi teks + jarak ekstra 25 poin ke bawah agar lega
+          extraGap = textHeight + 25;
+        }
+
+        doc
+          .font("Helvetica")
+          .fontSize(9)
+          .text(`Dibuat Tanggal: ${today}`, startX, y, {
+            width: contentWidth,
+            align: "right",
+          });
+
+        y += extraGap; // Terapkan gap yang sudah dikalkulasi
+
+        const w = contentWidth / 4;
+
+        // Render Tanda Tangan & Nama
+        sigData.forEach((title, i) => {
+          const currentX = startX + w * i;
+
+          doc
+            .font("Helvetica")
+            .fontSize(9)
+            .text(title, currentX, y, { width: w, align: "center" });
+
+          if (ttdData?.[title]) {
+            const ttd = ttdData[title];
+
+            // Cetak gambar TTD
+            if (sigBuffers[title]) {
+              try {
+                // Diangkat ke y + 5 agar tidak membuang space kosong
+                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 5, {
+                  width: 50,
+                  height: 30,
+                });
+              } catch (imgErr) {
+                console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
+              }
+            }
+
+            // Cetak Tanggal TTD ditarik ke atas
+            if (ttd.tanggal) {
+              const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+              doc
+                .fontSize(7)
+                .font("Helvetica")
+                .text(tglStr, currentX, y + 40, { width: w, align: "center" });
+            }
+
+            // Cetak Nama ditarik ke atas
+            doc
+              .fontSize(8)
+              .font("Helvetica-Bold")
+              .text(ttd.nama, currentX, y + 55, { width: w, align: "center" });
+
+            doc.fontSize(9).font("Helvetica"); // Reset
+          }
+        });
+
+        y += 50; // Jarak untuk menarik garis jauh lebih pendek
+        const lineW = w - 20;
+
+        // Render Garis TTD
+        sigData.forEach((_, i) => {
+          const cx = startX + w * i + w / 2;
+          doc
+            .moveTo(cx - lineW / 2, y)
+            .lineTo(cx + lineW / 2, y)
+            .stroke();
+        });
+
+        y += 20; // Jarak sebelum Terms dikurangi drastis
+
+        // --- TERMS & BANK INFO ---
+        checkY(70);
+        doc.fontSize(8).font("Helvetica");
+        const termLines = [
+          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
+          "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
+          "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
+        ];
+
+        termLines.forEach((text) => {
+          doc.text(text, startX, y, { width: contentWidth, align: "justify" });
+          y += 10; // Line height dipadatkan
+        });
+
+        y += 5;
+
+        // Render Kotak Bank Rekening
+        if (rekeningTujuan) {
+          doc.rect(startX, y, 260, 40).stroke(); // Tinggi kotak diperkecil
+          doc
+            .font("Helvetica-Bold")
+            .text(
+              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
+              startX + 5,
+              y + 8,
+            );
+          doc
+            .font("Helvetica")
+            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 22);
+        }
+
+        // Render QR Code
+        if (qrCodeBuffer) {
+          const qrX = startX + 360;
+          const qrY = y - 10;
+
+          // Gambar kotak pembungkus QR (Lebih kecil)
+          doc.rect(qrX - 5, qrY - 5, 75, 85).stroke("#e2e8f0");
+
+          // Masukkan gambar QR
+          doc.image(qrCodeBuffer, qrX, qrY, { width: 65, height: 65 });
+
+          // Tambahkan teks validasi di bawah QR
+          doc.fontSize(6).font("Helvetica-Bold").fillColor("#64748b");
+          doc.text("SCAN UNTUK VALIDASI", qrX - 5, qrY + 70, {
+            width: 75,
+            align: "center",
+          });
+        }
+
+        doc.end();
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+}
+</file>
+
 <file path="src/presentation/routes/index.ts">
 import { Router } from "express";
 import { checkHealth } from "../controllers/healthController.js";
@@ -12595,6 +12623,7 @@ export interface PenjualanPaginatedItem {
   fileBuktiDp: string;
   fileSpr: string | null;
   ttdData?: any;
+  tambahanKpr?: any;
   progressCicilan?: string;
   rekeningTujuanId?: number | null;
   rekeningTujuan?: {
@@ -12880,10 +12909,12 @@ model Penjualan {
   bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
   status            PenjualanStatus     @default(BOOKED)
   alasanBatal       String?             @map("alasan_batal") @db.Text
+  keteranganAngsuran String?            @map("keterangan_angsuran") @db.Text
   fileSpr           String?             @map("file_spr") @db.VarChar(255)
   fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
   fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
   ttdData           Json?               @map("ttd_data")
+  tambahanKpr       Json?               @map("tambahan_kpr")
   createdBy           String?             @map("created_by") @db.VarChar(100) 
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
@@ -13236,7 +13267,11 @@ export const updatePenjualanSchema = {
       luasTanah: emptyAsUndefined(z.coerce.number().optional()),
       hargaJual: emptyAsUndefined(z.coerce.number().optional()),
       biayaTambahan: emptyAsUndefined(z.array(biayaTambahanSchema).optional()),
+      biayaTambahanKpr: emptyAsUndefined(
+        z.array(biayaTambahanSchema).optional(),
+      ),
       keteranganUpdateSpr: emptyAsUndefined(z.string().optional()),
+      keteranganAngsuran: emptyAsUndefined(z.string().optional()),
     })
     .partial(),
 };
@@ -13702,6 +13737,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
         fileSpr: item.fileSpr ?? null,
         ttdData: item.ttdData ?? null,
+        tambahanKpr: item.tambahanKpr ?? null,
         progressCicilan,
         rekeningTujuanId: item.kavling.rekeningTujuanId ?? null,
         rekeningTujuan: item.kavling.rekeningTujuan

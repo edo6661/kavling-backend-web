@@ -113,6 +113,9 @@ export const updatePenjualanSchema = {
       luasTanah: emptyAsUndefined(z.coerce.number().optional()),
       hargaJual: emptyAsUndefined(z.coerce.number().optional()),
       biayaTambahan: emptyAsUndefined(z.array(biayaTambahanSchema).optional()),
+      biayaTambahanKpr: emptyAsUndefined(
+        z.array(biayaTambahanSchema).optional(),
+      ),
       keteranganUpdateSpr: emptyAsUndefined(z.string().optional()),
       keteranganAngsuran: emptyAsUndefined(z.string().optional()),
     })

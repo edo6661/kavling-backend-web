@@ -32,6 +32,7 @@ export interface CreatePenjualanDTO {
   createdBy?: string;
   userId?: number;
   biayaTambahan?: BiayaTambahanDTO[] | undefined;
+  biayaTambahanKpr?: BiayaTambahanDTO[] | undefined;
   keteranganUpdateSpr?: string | undefined;
   keteranganAngsuran?: string | undefined;
 }

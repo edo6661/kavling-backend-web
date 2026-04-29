@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { type PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
@@ -168,6 +168,13 @@ export class UpdatePenjualanUseCase {
 
       const totalSemuaBiayaTambahan = totalTambahanLama + totalTambahanBaru;
 
+      const listTambahanKpr = data.biayaTambahanKpr as
+        | IBiayaTambahan[]
+        | undefined;
+      const totalTambahanKpr = Array.isArray(listTambahanKpr)
+        ? listTambahanKpr.reduce((sum, b) => sum + (Number(b.nominal) || 0), 0)
+        : 0;
+
       let biayaKpr = 0;
       let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
@@ -187,11 +194,16 @@ export class UpdatePenjualanUseCase {
         biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
         plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
         const baseHargaJual = plafonKredit / 0.9;
-        hargaJual = data.hargaJual ?? baseHargaJual + currentDiskon;
+        hargaJual =
+          data.hargaJual ?? baseHargaJual + currentDiskon + totalTambahanKpr;
+        nilaiPengajuanKpr =
+          data.nilaiPengajuanKpr ??
+          plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
         dpTidakDibayar =
           data.dpTidakDibayar ?? baseHargaJual * 0.1 - currentBookingFee;
         nilaiPengajuanKpr =
-          data.nilaiPengajuanKpr ?? plafonKredit - totalSemuaBiayaTambahan;
+          data.nilaiPengajuanKpr ??
+          plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
         dp = data.dp ?? dpTidakDibayar;
       }
 
@@ -205,6 +217,11 @@ export class UpdatePenjualanUseCase {
       updateData.dp = dp > 0 ? dp : null;
       updateData.hargaJual = hargaJual;
 
+      if (data.biayaTambahanKpr !== undefined) {
+        updateData.tambahanKpr = data.biayaTambahanKpr
+          ? (data.biayaTambahanKpr as any)
+          : Prisma.DbNull;
+      }
       if (currentCaraPembayaran === "CASH_BERTAHAP" && data.termin) {
         updateData.termin = data.termin;
       } else {

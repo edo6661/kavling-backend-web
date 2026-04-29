@@ -436,6 +436,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
         fileSpr: item.fileSpr ?? null,
         ttdData: item.ttdData ?? null,
+        tambahanKpr: item.tambahanKpr ?? null,
         progressCicilan,
         rekeningTujuanId: item.kavling.rekeningTujuanId ?? null,
         rekeningTujuan: item.kavling.rekeningTujuan
