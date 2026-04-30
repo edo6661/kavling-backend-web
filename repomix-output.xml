@@ -3214,182 +3214,6 @@ export class BankRekeningPtController {
 }
 </file>
 
-<file path="src/presentation/controllers/customerController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
-import type { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
-import type { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
-import type { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
-import type { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
-import type { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
-import type { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
-import type { generateAccountSchema } from "../../validations/customerSchema.js";
-import type {
-  createCustomerSchema,
-  updateCustomerSchema,
-} from "../../validations/customerSchema.js";
-import { getCustomersPaginatedSchema } from "../../validations/customerSchema.js";
-import type { CustomerFilterDTO } from "../../domain/dtos/CustomerDTO.js";
-import type { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
-import type { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
-
-export class CustomerController {
-  constructor(
-    private readonly createCustomerUseCase: CreateCustomerUseCase,
-    private readonly updateCustomerUseCase: UpdateCustomerUseCase,
-    private readonly getCustomerByIdUseCase: GetCustomerByIdUseCase,
-    private readonly getCustomersPaginatedUseCase: GetCustomersPaginatedUseCase,
-    private readonly deleteCustomerUseCase: DeleteCustomerUseCase,
-    private readonly uploadDocumentUseCase: UploadCustomerDocumentUseCase,
-    private readonly generateAccountUseCase: GenerateCustomerAccountUseCase,
-    private readonly exportCustomersUseCase: ExportCustomersUseCase,
-    private readonly exportCustomersPdfUseCase: ExportCustomersPdfUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createCustomerSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createCustomerUseCase.execute(req.body);
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "Customer berhasil ditambahkan",
-      result,
-    );
-  };
-
-  update = async (
-    req: TypedRequest<
-      typeof updateCustomerSchema.body,
-      any,
-      typeof updateCustomerSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.updateCustomerUseCase.execute(id, req.body);
-    sendResponse(res, StatusCodes.OK, "Customer berhasil diperbarui", result);
-  };
-
-  getById = async (
-    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.getCustomerByIdUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Data customer berhasil diambil", result);
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getCustomersPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getCustomersPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as CustomerFilterDTO,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar customer berhasil diambil",
-      result,
-    );
-  };
-
-  delete = async (
-    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    await this.deleteCustomerUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Customer berhasil dihapus");
-  };
-
-  uploadDocument = async (req: Request, res: Response): Promise<void> => {
-    const idParam = req.params.id as string;
-    const docType = req.params.docType as string;
-
-    const id = parseInt(idParam, 10);
-
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
-      return;
-    }
-
-    if (!["fileKtp", "fileKk", "fileNpwp"].includes(docType)) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "Parameter docType harus berupa fileKtp, fileKk, atau fileNpwp",
-      );
-      return;
-    }
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const result = await this.uploadDocumentUseCase.execute(
-      id,
-      req.file.buffer,
-      docType as "fileKtp" | "fileKk" | "fileNpwp",
-    );
-
-    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
-  };
-  generateAccount = async (
-    req: TypedRequest<
-      typeof generateAccountSchema.body,
-      any,
-      typeof generateAccountSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const { password } = req.body;
-
-    const result = await this.generateAccountUseCase.execute(id, password);
-
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "Akun portal customer berhasil di-generate",
-      result,
-    );
-  };
-  exportExcel = async (_req: Request, res: Response): Promise<void> => {
-    const excelBuffer = await this.exportCustomersUseCase.execute();
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `Data_Customer_${timestamp}.xlsx`;
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
-    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
-    res.status(StatusCodes.OK).send(excelBuffer);
-  };
-
-  exportPdf = async (_req: Request, res: Response): Promise<void> => {
-    const pdfBuffer = await this.exportCustomersPdfUseCase.execute();
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `Data_Customer_${timestamp}.pdf`;
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
-    res.status(StatusCodes.OK).send(pdfBuffer);
-  };
-}
-</file>
-
 <file path="src/presentation/controllers/customerKavlingController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -5202,55 +5026,102 @@ export async function seedFeeAgent(prisma: PrismaClient) {
 </file>
 
 <file path="prisma/seeds/penjualanSeed.ts">
-import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
+import { PenjualanStatus, PrismaClient, UnitStatus } from "@prisma/client";
 
-export async function seedPenjualan(prisma: PrismaClient) {
-  await prisma.penjualan.createMany({
-    data: [
-      {
-        noTransaksi: "TRX-202604-0001",
-        tanggal: new Date("2026-04-05"),
-        customerId: 1,
-        kavlingId: 1,
-        agentId: 1,
-        caraPembayaran: PaymentMethod.KPR,
-        hargaJual: 350000000.0,
-        dp: 35000000.0,
-        diskonPenjualan: 10000000.0,
-        hargaPromosi: 5000000.0,
-        bank: "BCA",
-        nilaiPengajuanKpr: 305000000.0,
-        bookingFee: 5000000.0,
-        rekeningTujuanId: 1,
-        status: PenjualanStatus.LUNAS,
-        alasanBatal: null,
-        fileSpr: null,
-        fileBuktiBooking: "bukti_booking_01.pdf",
-        fileBuktiDp: "bukti_dp_01.pdf",
-      },
-      {
-        noTransaksi: "TRX-202604-0002",
-        tanggal: new Date("2026-04-08"),
-        customerId: 2,
-        kavlingId: 2,
-        agentId: 1,
-        caraPembayaran: PaymentMethod.CASH_BERTAHAP,
-        hargaJual: 350000000.0,
-        dp: 100000000.0,
-        diskonPenjualan: 0,
-        hargaPromosi: 0,
-        bank: "Mandiri",
-        nilaiPengajuanKpr: null,
-        bookingFee: 5000000.0,
-        rekeningTujuanId: 1,
-        status: PenjualanStatus.BOOKED,
-        alasanBatal: null,
-        fileSpr: null,
-        fileBuktiBooking: "bukti_booking_02.pdf",
-        fileBuktiDp: null,
-      },
-    ],
+export async function seedPenjualanReal(prisma: PrismaClient) {
+  console.log("Menjalankan seed 1 data asli dari Excel...");
+
+  const customer = await prisma.customer.create({
+    data: {
+      nama: "M Ryan Syahputra",
+      nikKtp: "1234567890123456",
+      noHp: "080000000000",
+      alamatKtp: "Alamat Sesuai KTP",
+      email: "ryan@example.com",
+    },
   });
+
+  const agent = await prisma.agent.create({
+    data: {
+      nik: "NIK-CHRIS",
+      kodeSales: "AGT-002",
+      nama: "Agen Chris",
+      noHp: "081111111111",
+    },
+  });
+
+  const perumahan = await prisma.perumahan.create({
+    data: {
+      nama: "Puri Safana",
+      alamat: "Test Alamat",
+      logo: "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
+    },
+  });
+
+  const bank = await prisma.bankRekeningPt.create({
+    data: {
+      perumahanId: perumahan.id,
+      namaBank: "BSI",
+      noRekening: "7326575644",
+      atasNama: "PT. Bintang Safana Gajah",
+    },
+  });
+
+  const kavling = await prisma.kavling.create({
+    data: {
+      perumahanId: perumahan.id,
+      blok: "AA",
+
+      nomorUnit: "8/23",
+      luasBangunan: 48.0,
+      luasTanah: 100.0,
+      namaTipe: "48/100",
+      hargaDasar: 562000000.0,
+      rekeningTujuanId: bank.id,
+      status: UnitStatus.TERJUAL,
+    },
+  });
+
+  const penjualan = await prisma.penjualan.create({
+    data: {
+      noTransaksi: "TRX-SAFANA-001",
+      tanggal: new Date("2025-10-25"),
+      customerId: customer.id,
+      kavlingId: kavling.id,
+      agentId: agent.id,
+      caraPembayaran: "KPR",
+      hargaJual: 562000000.0,
+      diskonPenjualan: 6000000.0,
+      bookingFee: 5000000.0,
+      rekeningTujuanId: bank.id,
+      status: PenjualanStatus.PROSES,
+      hargaDasar: 562000000.0,
+    },
+  });
+
+  await prisma.detailKavlingPajak.create({
+    data: {
+      penjualanId: penjualan.id,
+
+      nrDiskonCash: 6000000.0,
+      nrBphtb: 22666666.67,
+      nrPpn: 58666666.67,
+      nrPph: 13333333.33,
+      nrNilaiPenyerahan: 533333333.3,
+
+      ajbNjopTanahPerMeter: 2352000.0,
+      ajbNjopTanah: 235200000.0,
+      ajbNjopBangunanPerMeter: 2625000.0,
+      ajbNjopBangunan: 126000000.0,
+      ajbNjopTotal: 361200000.0,
+      ajbPpn: 39732000.0,
+      ajbBphtb: 14060000.0,
+      ajbPph: 9030000.0,
+      ajbSelisihPajakPbb: 13360000.0,
+    },
+  });
+
+  console.log("✅ 1 Data Excel berhasil di-seed!");
 }
 </file>
 
@@ -5432,58 +5303,6 @@ export class GenerateCustomerAccountUseCase {
         role: newUser.role,
       },
     };
-  }
-}
-</file>
-
-<file path="src/application/usecases/customer/UploadCustomerDocumentUseCase.ts">
-import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { CustomerResponseDTO } from "../../../domain/dtos/CustomerDTO.js";
-import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-export class UploadCustomerDocumentUseCase {
-  constructor(
-    private readonly customerRepo: ICustomerRepository,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
-
-  async execute(
-    id: number,
-    fileBuffer: Buffer,
-    documentType: "fileKtp" | "fileKk" | "fileNpwp",
-  ): Promise<CustomerResponseDTO> {
-    const existing = await this.customerRepo.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Customer tidak ditemukan");
-    }
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing[documentType]) {
-      await this.cloudinaryService.deleteImageByUrl(existing[documentType]);
-    }
-
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      `bumantara/customers/${documentType}`,
-    );
-
-    const updateData = {
-      [documentType]: imageUrl,
-    };
-
-    const result = await this.customerRepo.update(id, updateData);
-
-    return CustomerMapper.toDomain(result);
   }
 }
 </file>
@@ -5917,29 +5736,6 @@ export interface BankRekeningPtEntity {
 }
 </file>
 
-<file path="src/domain/entities/Customer.ts">
-export interface CustomerEntity {
-  id: number;
-  nikKtp: string;
-  nama: string;
-  noHp: string;
-  email: string | null;
-  pekerjaan: string | null;
-  perusahaan: string | null;
-  bank: string | null;
-  alamatKoresponden: string | null;
-  alamatKtp: string;
-  alamatTinggal: string | null;
-  fileKtp: string | null;
-  fileKk: string | null;
-  fileNpwp: string | null;
-  userId: number | null;
-  hasAccount: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-</file>
-
 <file path="src/domain/entities/Notaris.ts">
 export interface PicNotarisEntity {
   id: number;
@@ -5965,163 +5761,6 @@ export interface NotarisEntity {
   ajbDitangani?: AjbDitanganiEntity[];
   createdAt: Date;
   updatedAt: Date;
-}
-</file>
-
-<file path="src/domain/repositories/customerRepo.ts">
-import { Prisma } from "@prisma/client";
-import type { PrismaClient, Customer } from "@prisma/client";
-import type { ICustomerRepository } from "./ICustomerRepo.js";
-import type {
-  CreateCustomerDTO,
-  UpdateCustomerDTO,
-  CustomerFilterDTO,
-} from "../dtos/CustomerDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-
-export class CustomerRepository implements ICustomerRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreateCustomerDTO): Promise<Customer> {
-    const existingCustomer = await this.findByNik(data.nikKtp);
-    if (existingCustomer) {
-      throw new ConflictError("Customer dengan NIK tersebut sudah terdaftar");
-    }
-
-    return await this.db.customer.create({
-      data: {
-        nikKtp: data.nikKtp,
-        nama: data.nama,
-        noHp: data.noHp,
-        email: data.email ?? null,
-        pekerjaan: data.pekerjaan ?? null,
-        perusahaan: data.perusahaan ?? null,
-        bank: data.bank ?? null,
-        alamatKoresponden: data.alamatKoresponden ?? null,
-        alamatKtp: data.alamatKtp,
-        alamatTinggal: data.alamatTinggal ?? null,
-      },
-    });
-  }
-
-  async findById(id: number): Promise<Customer | null> {
-    return await this.db.customer.findUnique({ where: { id } });
-  }
-
-  async findByNik(nikKtp: string): Promise<Customer | null> {
-    return await this.db.customer.findUnique({ where: { nikKtp } });
-  }
-  async update(id: number, data: UpdateCustomerDTO): Promise<Customer> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
-
-    if (data.nikKtp && data.nikKtp !== existing.nikKtp) {
-      const checkDuplicate = await this.findByNik(data.nikKtp);
-      if (checkDuplicate) {
-        throw new ConflictError("NIK sudah digunakan oleh customer lain");
-      }
-    }
-
-    const updateData: Prisma.CustomerUncheckedUpdateInput = {};
-    if (data.userId !== undefined) updateData.userId = data.userId;
-    if (data.nikKtp !== undefined) updateData.nikKtp = data.nikKtp;
-    if (data.nama !== undefined) updateData.nama = data.nama;
-    if (data.noHp !== undefined) updateData.noHp = data.noHp;
-    if (data.email !== undefined) updateData.email = data.email ?? null;
-    if (data.pekerjaan !== undefined)
-      updateData.pekerjaan = data.pekerjaan ?? null;
-    if (data.perusahaan !== undefined)
-      updateData.perusahaan = data.perusahaan ?? null;
-    if (data.bank !== undefined) updateData.bank = data.bank ?? null;
-    if (data.alamatKoresponden !== undefined)
-      updateData.alamatKoresponden = data.alamatKoresponden ?? null;
-    if (data.alamatKtp !== undefined) updateData.alamatKtp = data.alamatKtp;
-    if (data.alamatTinggal !== undefined)
-      updateData.alamatTinggal = data.alamatTinggal ?? null;
-    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
-    if (data.fileKk !== undefined) updateData.fileKk = data.fileKk ?? null;
-    if (data.fileNpwp !== undefined)
-      updateData.fileNpwp = data.fileNpwp ?? null;
-
-    return await this.db.customer.update({
-      where: { id },
-      data: updateData,
-    });
-  }
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: CustomerFilterDTO,
-  ): Promise<CursorPaginatedData<Customer>> {
-    const where: Prisma.CustomerWhereInput = {};
-
-    if (filters?.startDate || filters?.endDate) {
-      where.createdAt = {};
-      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
-      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
-    }
-
-    if (filters?.search) {
-      where.OR = [
-        { nama: { contains: filters.search } },
-        { nikKtp: { contains: filters.search } },
-        { noHp: { contains: filters.search } },
-      ];
-    }
-
-    let orderByClause: Prisma.CustomerOrderByWithRelationInput[] = [
-      { createdAt: "desc" },
-      { id: "asc" },
-    ];
-
-    if (filters?.orderBy) {
-      const { field, direction } = filters.orderBy;
-      const validFields = ["nama", "nikKtp", "noHp", "createdAt"];
-      if (validFields.includes(field)) {
-        orderByClause = [{ [field]: direction }, { id: "asc" }];
-      }
-    }
-
-    const items = await this.db.customer.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: orderByClause,
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
-
-    return { items, meta: { nextCursor, hasNextPage } };
-  }
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
-
-    try {
-      await this.db.customer.delete({ where: { id } });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2003"
-      ) {
-        throw new ConflictError(
-          "Customer tidak dapat dihapus karena sudah memiliki data SPR/Booking.",
-        );
-      }
-      throw error;
-    }
-  }
-  async findByUserId(userId: number): Promise<Customer | null> {
-    return await this.db.customer.findFirst({ where: { userId } });
-  }
 }
 </file>
 
@@ -6644,33 +6283,179 @@ export class AgentMapper {
 }
 </file>
 
-<file path="src/infrastructure/mapper/CustomerMapper.ts">
-import type { Customer as PrismaCustomer } from "@prisma/client";
-import type { CustomerEntity } from "../../domain/entities/Customer.js";
+<file path="src/presentation/controllers/customerController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
 
-export class CustomerMapper {
-  static toDomain(prismaCustomer: PrismaCustomer): CustomerEntity {
-    return {
-      id: prismaCustomer.id,
-      nikKtp: prismaCustomer.nikKtp,
-      nama: prismaCustomer.nama,
-      noHp: prismaCustomer.noHp,
-      email: prismaCustomer.email,
-      pekerjaan: prismaCustomer.pekerjaan,
-      perusahaan: prismaCustomer.perusahaan,
-      bank: prismaCustomer.bank,
-      alamatKoresponden: prismaCustomer.alamatKoresponden,
-      alamatKtp: prismaCustomer.alamatKtp,
-      alamatTinggal: prismaCustomer.alamatTinggal,
-      fileKtp: prismaCustomer.fileKtp,
-      fileKk: prismaCustomer.fileKk,
-      fileNpwp: prismaCustomer.fileNpwp,
-      userId: prismaCustomer.userId,
-      hasAccount: prismaCustomer.userId !== null,
-      createdAt: prismaCustomer.createdAt,
-      updatedAt: prismaCustomer.updatedAt,
-    };
-  }
+import type { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
+import type { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
+import type { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
+import type { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
+import type { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
+import type { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
+import type { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
+import type { generateAccountSchema } from "../../validations/customerSchema.js";
+import type {
+  createCustomerSchema,
+  updateCustomerSchema,
+} from "../../validations/customerSchema.js";
+import { getCustomersPaginatedSchema } from "../../validations/customerSchema.js";
+import type { CustomerFilterDTO } from "../../domain/dtos/CustomerDTO.js";
+import type { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
+import type { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
+
+export class CustomerController {
+  constructor(
+    private readonly createCustomerUseCase: CreateCustomerUseCase,
+    private readonly updateCustomerUseCase: UpdateCustomerUseCase,
+    private readonly getCustomerByIdUseCase: GetCustomerByIdUseCase,
+    private readonly getCustomersPaginatedUseCase: GetCustomersPaginatedUseCase,
+    private readonly deleteCustomerUseCase: DeleteCustomerUseCase,
+    private readonly uploadDocumentUseCase: UploadCustomerDocumentUseCase,
+    private readonly generateAccountUseCase: GenerateCustomerAccountUseCase,
+    private readonly exportCustomersUseCase: ExportCustomersUseCase,
+    private readonly exportCustomersPdfUseCase: ExportCustomersPdfUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createCustomerSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createCustomerUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Customer berhasil ditambahkan",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateCustomerSchema.body,
+      any,
+      typeof updateCustomerSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateCustomerUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Customer berhasil diperbarui", result);
+  };
+
+  getById = async (
+    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getCustomerByIdUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Data customer berhasil diambil", result);
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getCustomersPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getCustomersPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as CustomerFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar customer berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteCustomerUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Customer berhasil dihapus");
+  };
+
+  uploadDocument = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(req.params.id as string, 10);
+    const docType = req.params.docType as string;
+    const { namaDokumen } = req.body;
+
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+
+    if (!["fileKtp", "fileKk", "fileNpwp", "lainnya"].includes(docType)) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "Parameter docType tidak valid",
+      );
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadDocumentUseCase.execute(
+      id,
+      req.file.buffer,
+      docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
+      namaDokumen,
+    );
+
+    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
+  };
+  generateAccount = async (
+    req: TypedRequest<
+      typeof generateAccountSchema.body,
+      any,
+      typeof generateAccountSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { password } = req.body;
+
+    const result = await this.generateAccountUseCase.execute(id, password);
+
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Akun portal customer berhasil di-generate",
+      result,
+    );
+  };
+  exportExcel = async (_req: Request, res: Response): Promise<void> => {
+    const excelBuffer = await this.exportCustomersUseCase.execute();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Customer_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(excelBuffer);
+  };
+
+  exportPdf = async (_req: Request, res: Response): Promise<void> => {
+    const pdfBuffer = await this.exportCustomersPdfUseCase.execute();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Customer_${timestamp}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(pdfBuffer);
+  };
 }
 </file>
 
@@ -6991,6 +6776,69 @@ export async function seedPerumahan(prisma: PrismaClient) {
 }
 </file>
 
+<file path="src/application/usecases/customer/UploadCustomerDocumentUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { CustomerResponseDTO } from "../../../domain/dtos/CustomerDTO.js";
+import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+export class UploadCustomerDocumentUseCase {
+  constructor(
+    private readonly customerRepo: ICustomerRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    id: number,
+    fileBuffer: Buffer,
+    documentType: "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
+    namaDokumen?: string,
+  ): Promise<CustomerResponseDTO> {
+    const existing = await this.customerRepo.findById(id);
+    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
+    if (!fileBuffer)
+      throw new AppError(StatusCodes.BAD_REQUEST, "File tidak boleh kosong");
+
+    if (documentType === "lainnya") {
+      if (!namaDokumen)
+        throw new AppError(StatusCodes.BAD_REQUEST, "Nama dokumen wajib diisi");
+
+      const imageUrl = await this.cloudinaryService.uploadImage(
+        fileBuffer,
+        `bumantara/customers/lainnya`,
+      );
+
+      const currentDocs = Array.isArray(existing.dokumenLainnya)
+        ? existing.dokumenLainnya
+        : [];
+      const newDoc = {
+        id: Date.now().toString(),
+        nama: namaDokumen,
+        fileUrl: imageUrl,
+      };
+
+      const updateData = { dokumenLainnya: [...currentDocs, newDoc] as any };
+      const result = await this.customerRepo.update(id, updateData);
+      return CustomerMapper.toDomain(result);
+    }
+
+    if (existing[documentType]) {
+      await this.cloudinaryService.deleteImageByUrl(existing[documentType]);
+    }
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      `bumantara/customers/${documentType}`,
+    );
+    const result = await this.customerRepo.update(id, {
+      [documentType]: imageUrl,
+    });
+    return CustomerMapper.toDomain(result);
+  }
+}
+</file>
+
 <file path="src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type {
@@ -7180,51 +7028,6 @@ export interface BankRekeningPtResponseDTO {
 export type BankRekeningPtFilterDTO = BaseFilterDTO;
 </file>
 
-<file path="src/domain/dtos/CustomerDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-
-export interface CreateCustomerDTO {
-  nikKtp: string;
-  nama: string;
-  noHp: string;
-  email?: string;
-  pekerjaan?: string;
-  perusahaan?: string;
-  bank?: string;
-  alamatKtp: string;
-  alamatTinggal?: string;
-  alamatKoresponden?: string;
-}
-
-export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {
-  fileKtp?: string;
-  fileKk?: string;
-  fileNpwp?: string;
-  userId?: number;
-}
-
-export interface CustomerResponseDTO {
-  id: number;
-  nikKtp: string;
-  nama: string;
-  noHp: string;
-  email: string | null;
-  pekerjaan: string | null;
-  perusahaan: string | null;
-  bank: string | null;
-  alamatKtp: string;
-  alamatTinggal: string | null;
-  alamatKoresponden: string | null;
-  fileKtp: string | null;
-  fileKk: string | null;
-  fileNpwp: string | null;
-  hasAccount: boolean;
-  createdAt: Date;
-}
-
-export type CustomerFilterDTO = BaseFilterDTO;
-</file>
-
 <file path="src/domain/dtos/CustomerKavlingDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { SP3R, UnitStatus } from "@prisma/client";
@@ -7336,6 +7139,30 @@ export interface DashboardResponseDTO {
   progressData: ProgressDataDTO[];
   topAgents: TopAgentDTO[];
   documentAlerts: DocumentAlertDTO[];
+}
+</file>
+
+<file path="src/domain/entities/Customer.ts">
+export interface CustomerEntity {
+  id: number;
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email: string | null;
+  pekerjaan: string | null;
+  perusahaan: string | null;
+  bank: string | null;
+  alamatKoresponden: string | null;
+  alamatKtp: string;
+  alamatTinggal: string | null;
+  fileKtp: string | null;
+  fileKk: string | null;
+  fileNpwp: string | null;
+  dokumenLainnya: any;
+  userId: number | null;
+  hasAccount: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 </file>
 
@@ -7757,6 +7584,167 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
 }
 </file>
 
+<file path="src/domain/repositories/customerRepo.ts">
+import { Prisma } from "@prisma/client";
+import type { PrismaClient, Customer } from "@prisma/client";
+import type { ICustomerRepository } from "./ICustomerRepo.js";
+import type {
+  CreateCustomerDTO,
+  UpdateCustomerDTO,
+  CustomerFilterDTO,
+} from "../dtos/CustomerDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+
+export class CustomerRepository implements ICustomerRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateCustomerDTO): Promise<Customer> {
+    const existingCustomer = await this.findByNik(data.nikKtp);
+    if (existingCustomer) {
+      throw new ConflictError("Customer dengan NIK tersebut sudah terdaftar");
+    }
+
+    return await this.db.customer.create({
+      data: {
+        nikKtp: data.nikKtp,
+        nama: data.nama,
+        noHp: data.noHp,
+        email: data.email ?? null,
+        pekerjaan: data.pekerjaan ?? null,
+        perusahaan: data.perusahaan ?? null,
+        bank: data.bank ?? null,
+        alamatKoresponden: data.alamatKoresponden ?? null,
+        alamatKtp: data.alamatKtp,
+        alamatTinggal: data.alamatTinggal ?? null,
+      },
+    });
+  }
+
+  async findById(id: number): Promise<Customer | null> {
+    return await this.db.customer.findUnique({ where: { id } });
+  }
+
+  async findByNik(nikKtp: string): Promise<Customer | null> {
+    return await this.db.customer.findUnique({ where: { nikKtp } });
+  }
+
+  async update(id: number, data: UpdateCustomerDTO): Promise<Customer> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
+
+    if (data.nikKtp && data.nikKtp !== existing.nikKtp) {
+      const checkDuplicate = await this.findByNik(data.nikKtp);
+      if (checkDuplicate) {
+        throw new ConflictError("NIK sudah digunakan oleh customer lain");
+      }
+    }
+
+    const updateData: Prisma.CustomerUncheckedUpdateInput = {};
+    if (data.userId !== undefined) updateData.userId = data.userId;
+    if (data.nikKtp !== undefined) updateData.nikKtp = data.nikKtp;
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.email !== undefined) updateData.email = data.email ?? null;
+    if (data.pekerjaan !== undefined)
+      updateData.pekerjaan = data.pekerjaan ?? null;
+    if (data.perusahaan !== undefined)
+      updateData.perusahaan = data.perusahaan ?? null;
+    if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+    if (data.alamatKoresponden !== undefined)
+      updateData.alamatKoresponden = data.alamatKoresponden ?? null;
+    if (data.alamatKtp !== undefined) updateData.alamatKtp = data.alamatKtp;
+    if (data.alamatTinggal !== undefined)
+      updateData.alamatTinggal = data.alamatTinggal ?? null;
+    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
+    if (data.fileKk !== undefined) updateData.fileKk = data.fileKk ?? null;
+    if (data.fileNpwp !== undefined)
+      updateData.fileNpwp = data.fileNpwp ?? null;
+
+    if (data.dokumenLainnya !== undefined)
+      updateData.dokumenLainnya = data.dokumenLainnya ?? Prisma.DbNull;
+
+    return await this.db.customer.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerFilterDTO,
+  ): Promise<CursorPaginatedData<Customer>> {
+    const where: Prisma.CustomerWhereInput = {};
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { nama: { contains: filters.search } },
+        { nikKtp: { contains: filters.search } },
+        { noHp: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.CustomerOrderByWithRelationInput[] = [
+      { createdAt: "desc" },
+      { id: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "nikKtp", "noHp", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.customer.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
+
+    return { items, meta: { nextCursor, hasNextPage } };
+  }
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
+
+    try {
+      await this.db.customer.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ConflictError(
+          "Customer tidak dapat dihapus karena sudah memiliki data SPR/Booking.",
+        );
+      }
+      throw error;
+    }
+  }
+  async findByUserId(userId: number): Promise<Customer | null> {
+    return await this.db.customer.findFirst({ where: { userId } });
+  }
+}
+</file>
+
 <file path="src/domain/repositories/tagihanRepo.ts">
 import type { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
@@ -7932,6 +7920,37 @@ export class BankRekeningPtMapper {
       noRekening: prismaBankRekeningPt.noRekening,
       atasNama: prismaBankRekeningPt.atasNama,
       createdAt: prismaBankRekeningPt.createdAt,
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/CustomerMapper.ts">
+import type { Customer as PrismaCustomer } from "@prisma/client";
+import type { CustomerEntity } from "../../domain/entities/Customer.js";
+
+export class CustomerMapper {
+  static toDomain(prismaCustomer: PrismaCustomer): CustomerEntity {
+    return {
+      id: prismaCustomer.id,
+      nikKtp: prismaCustomer.nikKtp,
+      nama: prismaCustomer.nama,
+      noHp: prismaCustomer.noHp,
+      email: prismaCustomer.email,
+      pekerjaan: prismaCustomer.pekerjaan,
+      perusahaan: prismaCustomer.perusahaan,
+      bank: prismaCustomer.bank,
+      alamatKoresponden: prismaCustomer.alamatKoresponden,
+      alamatKtp: prismaCustomer.alamatKtp,
+      alamatTinggal: prismaCustomer.alamatTinggal,
+      fileKtp: prismaCustomer.fileKtp,
+      fileKk: prismaCustomer.fileKk,
+      fileNpwp: prismaCustomer.fileNpwp,
+      dokumenLainnya: prismaCustomer.dokumenLainnya ?? [],
+      userId: prismaCustomer.userId,
+      hasAccount: prismaCustomer.userId !== null,
+      createdAt: prismaCustomer.createdAt,
+      updatedAt: prismaCustomer.updatedAt,
     };
   }
 }
@@ -10262,6 +10281,54 @@ export class CancelPenjualanUseCase {
 }
 </file>
 
+<file path="src/domain/dtos/CustomerDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreateCustomerDTO {
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email?: string | undefined;
+  pekerjaan?: string | undefined;
+  perusahaan?: string | undefined;
+  bank?: string | undefined;
+  alamatKtp: string;
+  alamatTinggal?: string | undefined;
+  alamatKoresponden?: string | undefined;
+}
+
+export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {
+  fileKtp?: string | undefined;
+  fileKk?: string | undefined;
+  fileNpwp?: string | undefined;
+  userId?: number | undefined;
+  dokumenLainnya?: any;
+}
+export interface CustomerResponseDTO {
+  id: number;
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email: string | null;
+  pekerjaan: string | null;
+  perusahaan: string | null;
+  bank: string | null;
+  alamatKtp: string;
+  alamatTinggal: string | null;
+  alamatKoresponden: string | null;
+  fileKtp: string | null;
+  fileKk: string | null;
+  fileNpwp: string | null;
+
+  dokumenLainnya?: any;
+
+  hasAccount: boolean;
+  createdAt: Date;
+}
+
+export type CustomerFilterDTO = BaseFilterDTO;
+</file>
+
 <file path="src/domain/dtos/TagihanDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { PaymentStatus } from "@prisma/client";
@@ -10538,127 +10605,27 @@ export async function seedUser(prisma: PrismaClient) {
 </file>
 
 <file path="prisma/seed.ts">
-import {
-  PrismaClient,
-  Role,
-  UnitStatus,
-  PaymentMethod,
-  PenjualanStatus,
-} from "@prisma/client";
-import * as fs from "fs";
+import { PrismaClient } from "@prisma/client";
+import { seedPenjualanReal } from "./seeds/penjualanSeed.ts";
+import { seedUser } from "./seeds/userSeed.ts";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const perumahan = await prisma.perumahan.upsert({
-    where: { nama: "Puri Safana Cikeas" },
-    update: {},
-    create: {
-      nama: "Puri Safana Cikeas",
-      logo: "logo-safana.png",
-      alamat: "Cikeas, Bogor",
-    },
-  });
+  console.log("Memulai proses seeding...");
+  await seedUser(prisma);
 
-  const rawData = fs.readFileSync("cleaned_data.json", "utf-8");
-  const data = JSON.parse(rawData);
-
-  console.log(`Memulai migrasi ${data.length} data...`);
-
-  for (const item of data) {
-    try {
-      await prisma.$transaction(async (tx) => {
-        const agent = await tx.agent.upsert({
-          where: {
-            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
-          },
-          update: {},
-          create: {
-            nik: `AGENT-${item.agent.nama.toUpperCase().replace(/\s+/g, "")}`,
-            nama: item.agent.nama,
-            noHp: "0",
-          },
-        });
-
-        const customer = await tx.customer.create({
-          data: {
-            nama: item.customer.nama,
-            alamatKtp: item.customer.alamatKtp,
-            alamatTinggal: item.customer.alamatTinggal,
-            noHp: item.customer.noHp,
-            nikKtp: `TEMP-${Math.random().toString(36).substr(2, 9)}`,
-            pekerjaan: item.customer.pekerjaan,
-            bank: item.customer.bank,
-          },
-        });
-
-        const kavling = await tx.kavling.create({
-          data: {
-            perumahanId: perumahan.id,
-            blok: item.kavling.blok,
-            nomorUnit: item.kavling.nomorUnit,
-            namaTipe: item.kavling.namaTipe,
-            luasTanah: item.kavling.luasTanah,
-            luasBangunan: item.kavling.luasBangunan,
-            hargaDasar: item.kavling.hargaDasar,
-            status: UnitStatus.TERJUAL,
-          },
-        });
-
-        const penjualan = await tx.penjualan.create({
-          data: {
-            noTransaksi: item.penjualan.noTransaksi,
-            tanggal: new Date(item.penjualan.tanggal),
-            customerId: customer.id,
-            kavlingId: kavling.id,
-            agentId: agent.id,
-            caraPembayaran: item.penjualan.caraPembayaran as PaymentMethod,
-            hargaJual: item.penjualan.hargaJual,
-            bookingFee: item.penjualan.bookingFee,
-            status: PenjualanStatus.PROSES,
-          },
-        });
-
-        await tx.detailKavlingPajak.create({
-          data: {
-            penjualanId: penjualan.id,
-            lantai: item.detailPajak.lantai,
-            tanggalAkadPpjb: item.detailPajak.tanggalAkadPpjb
-              ? new Date(item.detailPajak.tanggalAkadPpjb)
-              : null,
-            akadPpjb: item.detailPajak.akadPpjb,
-            lebihTanah: item.detailPajak.lebihTanah,
-            biayaStrategis: item.detailPajak.biayaStrategis,
-            nrNilaiPenyerahan: item.detailPajak.nrNilaiPenyerahan,
-            pjNilaiPenyerahan: item.detailPajak.pjNilaiPenyerahan,
-            ajbNjopTotal: item.detailPajak.ajbNjopTotal,
-          },
-        });
-
-        if (item.feeAgent.closingNominal > 0) {
-          await tx.feeAgent.create({
-            data: {
-              agentId: agent.id,
-              penjualanId: penjualan.id,
-              closingNominal: item.feeAgent.closingNominal,
-              closingTanggal: item.feeAgent.closingTanggal
-                ? new Date(item.feeAgent.closingTanggal)
-                : null,
-            },
-          });
-        }
-      });
-    } catch (error) {
-      console.error(`Gagal memproses baris: ${item.customer.nama}`, error);
-    }
-  }
-
-  console.log("Migrasi selesai!");
+  await seedPenjualanReal(prisma);
 }
 
 main()
-  .catch((e) => console.error(e))
-  .finally(async () => await prisma.$disconnect());
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
 </file>
 
 <file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
@@ -12763,6 +12730,7 @@ model Customer {
   fileKtp           String?     @map("file_ktp") @db.VarChar(255)
   fileKk            String?     @map("file_kk") @db.VarChar(255)
   fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
+  dokumenLainnya    Json?     @map("dokumen_lainnya") 
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 

@@ -232,6 +232,33 @@ export class UpdatePenjualanUseCase {
         where: { noTransaksi },
         data: updateData,
       });
+      if (currentBookingFee > 0) {
+        const existingBf = await tx.tagihan.findFirst({
+          where: {
+            penjualanId: old.id,
+            pembayaran: { contains: "Booking" },
+          },
+        });
+
+        if (!existingBf) {
+          await tx.tagihan.create({
+            data: {
+              noTagihan: `INV-BF-${noTransaksi}`,
+              customerId: old.customerId,
+              penjualanId: old.id,
+              pembayaran: "Booking Fee",
+              nominal: currentBookingFee,
+              jatuhTempo: new Date(old.tanggal),
+              status: "BELUM_BAYAR",
+            },
+          });
+        } else if (Number(existingBf.nominal) !== currentBookingFee) {
+          await tx.tagihan.update({
+            where: { id: existingBf.id },
+            data: { nominal: currentBookingFee },
+          });
+        }
+      }
 
       if (
         dp > 0 &&
