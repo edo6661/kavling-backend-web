@@ -1,26 +1,30 @@
 import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-export default async function clearDatabase() {
-  const tablenames = await prisma.$queryRaw<Array<{ TABLE_NAME: string }>>`
-    SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA = 'kavling_backend_web_db'
-  `;
-
+export default async function clearDatabase(prisma: PrismaClient) {
   console.log("Sedang mengosongkan database...");
-
-  await prisma.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 0;`);
-
-  for (const { TABLE_NAME } of tablenames) {
-    if (TABLE_NAME !== "_prisma_migrations") {
-      await prisma.$executeRawUnsafe(`TRUNCATE TABLE \`${TABLE_NAME}\`;`);
+  try {
+    await prisma.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 0;`);
+    const tables = [
+      "progress_proyek",
+      "riwayat_ganti_kavling",
+      "riwayat_spr",
+      "detail_kavling_pajak",
+      "fee_agent",
+      "pengajuan_batal",
+      "tagihan",
+      "penjualan",
+      "kavling",
+      "bank_rekening_pt",
+      "perumahan",
+      "customers",
+      "agents",
+    ];
+    for (const table of tables) {
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE \`${table}\`;`);
     }
+  } catch (error) {
+    console.error("Gagal mengosongkan database:", error);
+  } finally {
+    await prisma.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 1;`);
   }
-
-  await prisma.$executeRawUnsafe(`SET FOREIGN_KEY_CHECKS = 1;`);
-  console.log("Database berhasil dikosongkan.");
+  console.log("Database berhasil dikosongkan!");
 }
-
-clearDatabase()
-  .catch((e) => console.error(e))
-  .finally(async () => await prisma.$disconnect());

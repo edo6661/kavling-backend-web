@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log("Memulai proses seeding...");
-  await clearDatabase();
+  await clearDatabase(prisma);
   await seedUser(prisma);
 
   await seedPenjualanReal(prisma);
