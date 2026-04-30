@@ -221,15 +221,32 @@ export async function seedPenjualanReal(prisma: PrismaClient) {
     const emailValid = parseString(row[5]);
     const pekerjaanValid = parseString(row[6]);
     const bankKprValid = parseString(row[7]);
+    const statusValid = parseString(row[9]);
+
     let caraPembayaranEnum: any = null;
 
-    if (bankKprValid) {
-      const bankKprLower = bankKprValid.toLowerCase();
-      if (bankKprLower.includes("cash bertahap")) {
+    if (statusValid && statusValid !== "-") {
+      const statusLower = statusValid.toLowerCase();
+      if (
+        statusLower.includes("cash tah") ||
+        statusLower.includes("bertahap")
+      ) {
         caraPembayaranEnum = "CASH_BERTAHAP";
-      } else if (bankKprLower.includes("cash keras")) {
+      } else if (statusLower.includes("keras")) {
+        caraPembayaranEnum = "CASH_KERAS";
+      } else if (statusLower.includes("kpr")) {
+        caraPembayaranEnum = "KPR";
+      }
+    }
+
+    if (!caraPembayaranEnum && bankKprValid && bankKprValid !== "-") {
+      const bankKprLower = bankKprValid.toLowerCase();
+      if (bankKprLower.includes("bertahap")) {
+        caraPembayaranEnum = "CASH_BERTAHAP";
+      } else if (bankKprLower.includes("keras")) {
         caraPembayaranEnum = "CASH_KERAS";
       } else {
+        // Jika diisi nama Bank (BSI, BRI, BTN, dll) maka asumsikan KPR
         caraPembayaranEnum = "KPR";
       }
     }
