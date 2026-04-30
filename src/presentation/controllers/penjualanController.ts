@@ -30,6 +30,7 @@ import type {
   PenjualanFilterDTO,
 } from "../../domain/dtos/PenjualanDTO.js";
 import { NotFoundError } from "../../domain/errors/NotFoundError.js";
+import type { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
 
 export class PenjualanController {
   constructor(
@@ -44,6 +45,7 @@ export class PenjualanController {
     private readonly approveGantiKavlingUseCase: ApproveGantiKavlingUseCase,
     private readonly getPengajuanBatalUseCase: GetPengajuanBatalUseCase,
     private readonly getPengajuanGantiKavlingUseCase: GetPengajuanGantiKavlingUseCase,
+    private readonly regenerateSprUseCase: RegenerateSprUseCase,
   ) {}
 
   create = async (
@@ -295,5 +297,22 @@ export class PenjualanController {
       ? "Ganti Kavling berhasil disetujui dan dieksekusi"
       : "Pengajuan ganti kavling ditolak";
     sendResponse(res, StatusCodes.OK, msg, result);
+  };
+  regenerateSpr = async (
+    req: TypedRequest<
+      typeof approveSchema.body,
+      any,
+      typeof approveSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const result = await this.regenerateSprUseCase.execute(id);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Dokumen SPR berhasil di-generate ulang dengan aman.",
+      result,
+    );
   };
 }

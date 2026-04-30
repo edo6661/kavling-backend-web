@@ -143,17 +143,41 @@ export class GenerateSprPdfUseCase {
         };
 
         // --- CUSTOMER INFO ---
+        let phoneStr = customer.noHp || "";
+        if (phoneStr.startsWith("8")) {
+          phoneStr = "0" + phoneStr;
+        }
+
+        // 2. Format Email (Sembunyikan jika kosong atau '-')
+        const emailStr =
+          customer.email && customer.email !== "-"
+            ? `      Email: ${customer.email}`
+            : "";
+
+        // 3. Perbaiki NIK (Hilangkan prefix DUMMY- jika ada)
+        let nikStr = customer.nikKtp || "";
+        if (nikStr.startsWith("DUMMY-")) {
+          nikStr = nikStr.replace("DUMMY-", "");
+        }
         drawField("Nama", customer.nama);
         drawField("Alamat", customer.alamatKtp);
-        drawField(
-          "No. Telepon / HP",
-          `${customer.noHp}      Email: ${customer.email ?? "-"}`,
-        );
-        drawField("No. Identitas", customer.nikKtp);
-        drawField("Perusahaan", customer.perusahaan ?? "-");
-        // extraMargin dibesarkan sedikit khusus baris terakhir dari blok ini
-        drawField("Alamat Korespondensi", customer.alamatKoresponden ?? "-", 8);
+        drawField("No. Telepon / HP", `${phoneStr}${emailStr}`);
 
+        // Render opsional jika data tersedia
+        if (nikStr && nikStr !== "-") {
+          drawField("No. Identitas", nikStr);
+        }
+
+        if (customer.perusahaan && customer.perusahaan !== "-") {
+          drawField("Perusahaan", customer.perusahaan);
+        }
+
+        if (customer.alamatKoresponden && customer.alamatKoresponden !== "-") {
+          // extraMargin dibesarkan sedikit khusus baris terakhir dari blok ini
+          drawField("Alamat Korespondensi", customer.alamatKoresponden, 8);
+        } else {
+          y += 8; // Tetap berikan jarak jika field ini tidak dirender
+        }
         checkY(15);
         doc
           .font("Helvetica")

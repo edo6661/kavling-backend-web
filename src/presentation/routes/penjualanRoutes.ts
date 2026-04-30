@@ -87,6 +87,11 @@ export const createPenjualanRoutes = (
     validate(gantiKavlingSchema),
     controller.gantiKavling,
   );
+  router.post(
+    "/:id/generate-spr",
+    requireRole(["ADMIN", "MARKETING"]),
+    controller.regenerateSpr,
+  );
 
   return router;
 };
