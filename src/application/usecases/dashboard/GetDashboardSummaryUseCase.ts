@@ -49,7 +49,7 @@ export class GetDashboardSummaryUseCase {
     const recentTransactions = recentPenjualan.map((p) => ({
       id: p.noTransaksi,
       customer: p.customer.nama,
-      kavling: `Blok ${p.kavling.blok} - ${p.kavling.nomorUnit}`,
+      kavling: `${p.kavling.blok} - ${p.kavling.nomorUnit}`,
       type: p.caraPembayaran,
       amount: Number(p.hargaJual),
       status: p.status,
