@@ -15,6 +15,18 @@ export class KavlingRepository implements IKavlingRepository {
   constructor(private readonly db: PrismaClient) {}
   async create(data: CreateKavlingDTO): Promise<KavlingEntity> {
     try {
+      const existing = await this.db.kavling.findFirst({
+        where: {
+          perumahanId: data.perumahanId,
+          blok: data.blok,
+          nomorUnit: data.nomorUnit,
+        },
+      });
+      if (existing) {
+        throw new ConflictError(
+          `Kavling Blok ${data.blok} Nomor ${data.nomorUnit} sudah terdaftar di perumahan ini.`,
+        );
+      }
       const createData: Prisma.KavlingUncheckedCreateInput = {
         perumahanId: data.perumahanId,
         blok: data.blok,
@@ -37,6 +49,14 @@ export class KavlingRepository implements IKavlingRepository {
       });
       return KavlingMapper.toDomain(result);
     } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError(
+          `Kavling Blok ${data.blok} Nomor ${data.nomorUnit} sudah terdaftar di perumahan ini.`,
+        );
+      }
       console.error(error);
       throw error;
     }
@@ -52,6 +72,7 @@ export class KavlingRepository implements IKavlingRepository {
   async update(id: number, data: UpdateKavlingDTO): Promise<KavlingEntity> {
     const existing = await this.findById(id);
     if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
+
     const updateData: Prisma.KavlingUncheckedUpdateInput = {};
     if (data.perumahanId !== undefined)
       updateData.perumahanId = data.perumahanId;
@@ -70,12 +91,25 @@ export class KavlingRepository implements IKavlingRepository {
       updateData.fileSertifikatTanah = data.fileSertifikatTanah ?? null;
     if (data.fileNopPbb !== undefined)
       updateData.fileNopPbb = data.fileNopPbb ?? null;
-    const result = await this.db.kavling.update({
-      where: { id },
-      data: updateData,
-      include: { perumahan: true, rekeningTujuan: true },
-    });
-    return KavlingMapper.toDomain(result);
+
+    try {
+      const result = await this.db.kavling.update({
+        where: { id },
+        data: updateData,
+        include: { perumahan: true, rekeningTujuan: true },
+      });
+      return KavlingMapper.toDomain(result);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError(
+          "Gagal memperbarui: Kombinasi Blok dan Nomor Unit tersebut sudah digunakan oleh kavling lain.",
+        );
+      }
+      throw error;
+    }
   }
   async findWithCursorPagination(
     page: number,
@@ -92,13 +126,11 @@ export class KavlingRepository implements IKavlingRepository {
         { namaTipe: { contains: filters.search } },
       ];
     }
-
     let orderByClause: Prisma.KavlingOrderByWithRelationInput[] = [
       { blok: "asc" },
       { nomorUnit: "asc" },
       { id: "desc" },
     ];
-
     if (filters?.orderBy) {
       const { field, direction } = filters.orderBy;
       const validFields = ["blok", "hargaDasar", "luasBangunan", "luasTanah"];

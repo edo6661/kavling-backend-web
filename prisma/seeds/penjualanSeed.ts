@@ -367,8 +367,19 @@ export async function seedPenjualanReal(prisma: PrismaClient) {
         bank: bankKprValid,
       },
     });
-    const kavling = await prisma.kavling.create({
-      data: {
+    const kavling = await prisma.kavling.upsert({
+      where: {
+        perumahanId_blok_nomorUnit: {
+          perumahanId: perumahan.id,
+          blok: finalBlok,
+          nomorUnit: finalUnit,
+        },
+      },
+      update: {
+        status: UnitStatus.TERJUAL,
+        hargaDasar: hargaJual,
+      },
+      create: {
         perumahanId: perumahan.id,
         blok: finalBlok,
         nomorUnit: finalUnit,

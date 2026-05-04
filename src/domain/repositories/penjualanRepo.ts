@@ -100,6 +100,20 @@ export class PenjualanRepository implements IPenjualanRepository {
           },
         });
       } else {
+        const existingKavling = await tx.kavling.findFirst({
+          where: {
+            perumahanId: perumahan.id,
+            blok: data.blok,
+            nomorUnit: data.nomorUnit,
+          },
+        });
+
+        if (existingKavling) {
+          throw new ConflictError(
+            `Kavling Blok ${data.blok} Nomor ${data.nomorUnit} sudah terdaftar. Silakan pilih dari kavling yang tersedia.`,
+          );
+        }
+
         kavling = await tx.kavling.create({
           data: {
             perumahanId: perumahan.id,
@@ -384,9 +398,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       ).length;
       const totalCicilan = daftarCicilan.length;
       const progressCicilan =
-        totalCicilan > 0
-          ? `${cicilanTerbayar} / ${totalCicilan} Kali`
-          : "Belum Ada Cicilan";
+        totalCicilan > 0 ? `${cicilanTerbayar} / ${totalCicilan} Kali` : "-";
 
       let currentStatus = item.status;
       if (item.status === "BOOKED" && bfTagihan?.status === "LUNAS") {
