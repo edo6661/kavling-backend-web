@@ -81,3 +81,10 @@ export const getKavlingPaginatedSchema = {
     status: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
   }),
 };
+
+export const uploadKavlingDocumentSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+    docType: z.enum(["filePbg", "fileSertifikatTanah", "fileNopPbb"]),
+  }),
+};

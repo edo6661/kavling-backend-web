@@ -14,9 +14,11 @@ import type {
 import type {
   createKavlingSchema,
   updateKavlingSchema,
+  uploadKavlingDocumentSchema,
 } from "../../validations/kavlingSchema.js";
 import { getKavlingPaginatedSchema } from "../../validations/kavlingSchema.js";
 import type { KavlingFilterDTO } from "../../domain/dtos/KavlingDTO.js";
+import type { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
 
 export class KavlingController {
   constructor(
@@ -25,6 +27,7 @@ export class KavlingController {
     private readonly getByIdUseCase: GetKavlingByIdUseCase,
     private readonly getPaginatedUseCase: GetKavlingsPaginatedUseCase,
     private readonly deleteUseCase: DeleteKavlingUseCase,
+    private readonly uploadDocumentUseCase: UploadKavlingDocumentUseCase,
   ) {}
 
   create = async (
@@ -88,5 +91,29 @@ export class KavlingController {
     const id = parseInt(req.params.id, 10);
     await this.deleteUseCase.execute(id);
     sendResponse(res, StatusCodes.OK, "Kavling berhasil dihapus");
+  };
+  uploadDocument = async (
+    req: TypedRequest<any, any, typeof uploadKavlingDocumentSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const docType = req.params.docType;
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadDocumentUseCase.execute(
+      id,
+      req.file.buffer,
+      docType,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Dokumen ${docType} berhasil diunggah`,
+      result,
+    );
   };
 }

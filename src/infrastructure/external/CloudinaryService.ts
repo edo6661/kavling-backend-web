@@ -37,42 +37,52 @@ export class CloudinaryService {
   }
 
   async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
-    const compressedBuffer = await sharp(buffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .flatten({ background: "#ffffff" })
-      .jpeg({ quality: 80 })
-      .toBuffer();
+    try {
+      const compressedBuffer = await sharp(buffer)
+        .resize({ width: 800, withoutEnlargement: true })
+        .flatten({ background: "#ffffff" })
+        .jpeg({ quality: 80 })
+        .toBuffer();
 
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error) {
-            console.error("Cloudinary Upload Error:", error);
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mengunggah gambar ke penyimpanan cloud.",
-              ),
-            );
-          }
-          if (!result) {
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mendapatkan respon dari penyimpanan cloud.",
-              ),
-            );
-          }
-          resolve(result.secure_url);
-        },
+      return await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: folder,
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error) {
+              console.error("Cloudinary Upload Error:", error);
+              return reject(
+                new AppError(
+                  StatusCodes.INTERNAL_SERVER_ERROR,
+                  "Gagal mengunggah gambar ke penyimpanan cloud.",
+                ),
+              );
+            }
+            if (!result) {
+              return reject(
+                new AppError(
+                  StatusCodes.INTERNAL_SERVER_ERROR,
+                  "Gagal mendapatkan respon dari penyimpanan cloud.",
+                ),
+              );
+            }
+            resolve(result.secure_url);
+          },
+        );
+
+        uploadStream.end(compressedBuffer);
+      });
+    } catch (error: any) {
+      console.error("Sharp Image Processing Error:");
+      console.error(error);
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Format file tidak didukung atau file rusak. Khusus unggahan ini, pastikan Anda menggunakan file gambar (JPG/PNG) yang valid.",
+        true,
       );
-
-      uploadStream.end(compressedBuffer);
-    });
+    }
   }
   async deleteImageByUrl(imageUrl: string): Promise<void> {
     try {

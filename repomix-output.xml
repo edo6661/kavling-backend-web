@@ -1,450 +1,3 @@
-kode frontend:
-<file path="src/application/usecases/progressPenjualan/ProgressPenjualanUseCases.ts">
-import type { IProgressPenjualanRepository } from "../../../domain/repositories/IProgressPenjualanRepo.js";
-import type {
-  UpdateProgressPenjualanDTO,
-  ProgressPenjualanResponseDTO,
-} from "../../../domain/dtos/ProgressPenjualanDTO.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-export class GetProgressPenjualanUseCase {
-  constructor(private readonly repo: IProgressPenjualanRepository) {}
-
-  async execute(penjualanId: number): Promise<ProgressPenjualanResponseDTO> {
-    let progress = await this.repo.findByPenjualanId(penjualanId);
-
-    progress ??= await this.repo.create({ penjualanId });
-    return progress;
-  }
-}
-
-export class UpdateProgressPenjualanUseCase {
-  constructor(private readonly repo: IProgressPenjualanRepository) {}
-
-  async execute(
-    penjualanId: number,
-    data: UpdateProgressPenjualanDTO,
-  ): Promise<ProgressPenjualanResponseDTO> {
-    const existing = await this.repo.findByPenjualanId(penjualanId);
-    if (!existing) {
-      await this.repo.create({ penjualanId });
-    }
-
-    return await this.repo.update(penjualanId, data);
-  }
-}
-
-export class UploadProgressDocumentUseCase {
-  constructor(
-    private readonly repo: IProgressPenjualanRepository,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
-
-  async execute(
-    penjualanId: number,
-    fileBuffer: Buffer,
-    docType:
-      | "fileSp3k"
-      | "fileSalinanAjb"
-      | "filePpjb"
-      | "fileAjb"
-      | "fileBast",
-  ): Promise<ProgressPenjualanResponseDTO> {
-    let existing = await this.repo.findByPenjualanId(penjualanId);
-    existing ??= await this.repo.create({ penjualanId });
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing[docType]) {
-      await this.cloudinaryService.deleteImageByUrl(existing[docType]);
-    }
-
-    const fileUrl = await this.cloudinaryService.uploadFile(
-      fileBuffer,
-      `bumantara/progress_penjualan/${docType}`,
-    );
-
-    const updateData: UpdateProgressPenjualanDTO = { [docType]: fileUrl };
-    return await this.repo.update(penjualanId, updateData);
-  }
-}
-</file>
-
-<file path="src/domain/dtos/ProgressPenjualanDTO.ts">
-import type { ChecklistBastType } from "../entities/ProgressPenjualan.js";
-export interface CreateProgressPenjualanDTO {
-  penjualanId: number;
-}
-export interface UpdateProgressPenjualanDTO {
-  berkasCustomerValid?: boolean | undefined;
-  fileSp3k?: string | undefined;
-  fileSalinanAjb?: string | undefined;
-  filePpjb?: string | undefined;
-  nilaiAjb?: number | undefined;
-  fileAjb?: string | undefined;
-  fileBast?: string | undefined;
-  checklistBast?: ChecklistBastType | null | undefined;
-}
-export interface ProgressPenjualanResponseDTO {
-  id: number;
-  penjualanId: number;
-  berkasCustomerValid: boolean;
-  fileSp3k: string | null;
-  fileSalinanAjb: string | null;
-  filePpjb: string | null;
-  nilaiAjb: number | null;
-  biayaBphtb: number | null;
-  biayaPph: number | null;
-  fileAjb: string | null;
-  fileBast: string | null;
-  checklistBast: ChecklistBastType | null;
-}
-</file>
-
-<file path="src/domain/entities/ProgressPenjualan.ts">
-export type ChecklistBastType = Record<
-  string,
-  string | boolean | number | null
->;
-
-export interface ProgressPenjualanEntity {
-  id: number;
-  penjualanId: number;
-  berkasCustomerValid: boolean;
-  fileSp3k: string | null;
-  fileSalinanAjb: string | null;
-  filePpjb: string | null;
-  nilaiAjb: number | null;
-  biayaBphtb: number | null;
-  biayaPph: number | null;
-  fileAjb: string | null;
-  fileBast: string | null;
-  checklistBast: ChecklistBastType | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-</file>
-
-<file path="src/domain/repositories/IProgressPenjualanRepo.ts">
-import type {
-  ProgressPenjualanResponseDTO,
-  CreateProgressPenjualanDTO,
-  UpdateProgressPenjualanDTO,
-} from "../dtos/ProgressPenjualanDTO.js";
-
-export interface IProgressPenjualanRepository {
-  create(
-    data: CreateProgressPenjualanDTO,
-  ): Promise<ProgressPenjualanResponseDTO>;
-  findByPenjualanId(
-    penjualanId: number,
-  ): Promise<ProgressPenjualanResponseDTO | null>;
-  update(
-    penjualanId: number,
-    data: UpdateProgressPenjualanDTO,
-  ): Promise<ProgressPenjualanResponseDTO>;
-}
-</file>
-
-<file path="src/domain/repositories/progressPenjualanRepo.ts">
-import type { PrismaClient } from "@prisma/client";
-import { Prisma } from "@prisma/client";
-import type { IProgressPenjualanRepository } from "./IProgressPenjualanRepo.js";
-import type {
-  CreateProgressPenjualanDTO,
-  UpdateProgressPenjualanDTO,
-  ProgressPenjualanResponseDTO,
-} from "../dtos/ProgressPenjualanDTO.js";
-import { ProgressPenjualanMapper } from "../../infrastructure/mapper/ProgressPenjualanMapper.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-
-export class ProgressPenjualanRepository implements IProgressPenjualanRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(
-    data: CreateProgressPenjualanDTO,
-  ): Promise<ProgressPenjualanResponseDTO> {
-    const existing = await this.findByPenjualanId(data.penjualanId);
-    if (existing) {
-      throw new ConflictError(
-        "Progress Penjualan untuk transaksi ini sudah ada.",
-      );
-    }
-
-    const result = await this.db.progressPenjualan.create({
-      data: { penjualanId: data.penjualanId },
-    });
-
-    return ProgressPenjualanMapper.toDomain(result);
-  }
-
-  async findByPenjualanId(
-    penjualanId: number,
-  ): Promise<ProgressPenjualanResponseDTO | null> {
-    const result = await this.db.progressPenjualan.findUnique({
-      where: { penjualanId },
-    });
-    if (!result) return null;
-    return ProgressPenjualanMapper.toDomain(result);
-  }
-
-  async update(
-    penjualanId: number,
-    data: UpdateProgressPenjualanDTO,
-  ): Promise<ProgressPenjualanResponseDTO> {
-    const existing = await this.findByPenjualanId(penjualanId);
-    if (!existing) {
-      throw new NotFoundError("Progress Penjualan tidak ditemukan.");
-    }
-
-    const updateData: Prisma.ProgressPenjualanUpdateInput = {};
-
-    if (data.berkasCustomerValid !== undefined)
-      updateData.berkasCustomerValid = data.berkasCustomerValid;
-    if (data.fileSp3k !== undefined) updateData.fileSp3k = data.fileSp3k;
-    if (data.fileSalinanAjb !== undefined)
-      updateData.fileSalinanAjb = data.fileSalinanAjb;
-    if (data.filePpjb !== undefined) updateData.filePpjb = data.filePpjb;
-
-    if (data.nilaiAjb !== undefined) {
-      updateData.nilaiAjb = data.nilaiAjb ?? null;
-      if (data.nilaiAjb) {
-        updateData.biayaBphtb = data.nilaiAjb * 0.05;
-        updateData.biayaPph = data.nilaiAjb * 0.025;
-      } else {
-        updateData.biayaBphtb = null;
-        updateData.biayaPph = null;
-      }
-    }
-
-    if (data.fileAjb !== undefined) updateData.fileAjb = data.fileAjb;
-    if (data.fileBast !== undefined) updateData.fileBast = data.fileBast;
-    if (data.checklistBast !== undefined) {
-      updateData.checklistBast =
-        data.checklistBast === null
-          ? Prisma.DbNull
-          : (data.checklistBast as Prisma.InputJsonValue);
-    }
-
-    const result = await this.db.progressPenjualan.update({
-      where: { penjualanId },
-      data: updateData,
-    });
-
-    return ProgressPenjualanMapper.toDomain(result);
-  }
-}
-</file>
-
-<file path="src/infrastructure/mapper/ProgressPenjualanMapper.ts">
-import type { ProgressPenjualan as PrismaProgress } from "@prisma/client";
-import type { ProgressPenjualanResponseDTO } from "../../domain/dtos/ProgressPenjualanDTO.js";
-import type { ChecklistBastType } from "../../domain/entities/ProgressPenjualan.js";
-
-export class ProgressPenjualanMapper {
-  static toDomain(
-    prismaProgress: PrismaProgress,
-  ): ProgressPenjualanResponseDTO {
-    return {
-      id: prismaProgress.id,
-      penjualanId: prismaProgress.penjualanId,
-      berkasCustomerValid: prismaProgress.berkasCustomerValid,
-      fileSp3k: prismaProgress.fileSp3k,
-      fileSalinanAjb: prismaProgress.fileSalinanAjb,
-      filePpjb: prismaProgress.filePpjb,
-      nilaiAjb: prismaProgress.nilaiAjb
-        ? Number(prismaProgress.nilaiAjb)
-        : null,
-      biayaBphtb: prismaProgress.biayaBphtb
-        ? Number(prismaProgress.biayaBphtb)
-        : null,
-      biayaPph: prismaProgress.biayaPph
-        ? Number(prismaProgress.biayaPph)
-        : null,
-      fileAjb: prismaProgress.fileAjb,
-      fileBast: prismaProgress.fileBast,
-      checklistBast: prismaProgress.checklistBast
-        ? (prismaProgress.checklistBast as ChecklistBastType)
-        : null,
-    };
-  }
-}
-</file>
-
-<file path="src/presentation/controllers/progressPenjualanController.ts">
-import type { Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type {
-  GetProgressPenjualanUseCase,
-  UpdateProgressPenjualanUseCase,
-  UploadProgressDocumentUseCase,
-} from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
-
-import type {
-  updateProgressPenjualanSchema,
-  uploadProgressDocumentSchema,
-  getProgressPenjualanSchema,
-} from "../../validations/progressPenjualanSchema.js";
-
-export class ProgressPenjualanController {
-  constructor(
-    private readonly getUseCase: GetProgressPenjualanUseCase,
-    private readonly updateUseCase: UpdateProgressPenjualanUseCase,
-    private readonly uploadUseCase: UploadProgressDocumentUseCase,
-  ) {}
-
-  getByPenjualanId = async (
-    req: TypedRequest<any, any, typeof getProgressPenjualanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const penjualanId = parseInt(req.params.id, 10);
-    const result = await this.getUseCase.execute(penjualanId);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data progress penjualan berhasil diambil",
-      result,
-    );
-  };
-
-  update = async (
-    req: TypedRequest<
-      typeof updateProgressPenjualanSchema.body,
-      any,
-      typeof updateProgressPenjualanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const penjualanId = parseInt(req.params.id, 10);
-    const result = await this.updateUseCase.execute(penjualanId, req.body);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data progress penjualan berhasil diperbarui",
-      result,
-    );
-  };
-
-  uploadDocument = async (
-    req: TypedRequest<any, any, typeof uploadProgressDocumentSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const penjualanId = parseInt(req.params.id, 10);
-    const docType = req.params.docType;
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const result = await this.uploadUseCase.execute(
-      penjualanId,
-      req.file.buffer,
-      docType,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      `Dokumen ${docType} berhasil diunggah`,
-      result,
-    );
-  };
-}
-</file>
-
-<file path="src/presentation/routes/progressPenjualanRoutes.ts">
-import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import { upload } from "../../middlewares/upload.js";
-import {
-  getProgressPenjualanSchema,
-  updateProgressPenjualanSchema,
-  uploadProgressDocumentSchema,
-} from "../../validations/progressPenjualanSchema.js";
-import type { ProgressPenjualanController } from "../controllers/progressPenjualanController.js";
-export const createProgressPenjualanRoutes = (
-  controller: ProgressPenjualanController,
-): Router => {
-  const router = Router();
-  router.use(authenticate);
-  router.get(
-    "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(getProgressPenjualanSchema),
-    controller.getByPenjualanId,
-  );
-  router.patch(
-    "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
-    validate(updateProgressPenjualanSchema),
-    controller.update,
-  );
-  router.patch(
-    "/:id/upload/:docType",
-    requireRole(["ADMIN", "MARKETING"]),
-    upload.single("file"),
-    validate(uploadProgressDocumentSchema),
-    controller.uploadDocument,
-  );
-  return router;
-};
-</file>
-
-<file path="src/validations/progressPenjualanSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-
-export const getProgressPenjualanSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
-  }),
-};
-
-export const updateProgressPenjualanSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
-  }),
-  body: z.object({
-    berkasCustomerValid: emptyAsUndefined(z.boolean().optional()),
-    nilaiAjb: emptyAsUndefined(z.coerce.number().min(0).optional()),
-
-    checklistBast: emptyAsUndefined(
-      z
-        .record(
-          z.string(),
-          z.union([z.string(), z.number(), z.boolean(), z.null()]),
-        )
-        .nullable()
-        .optional(),
-    ),
-  }),
-};
-
-export const uploadProgressDocumentSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
-    docType: z.enum([
-      "fileSp3k",
-      "fileSalinanAjb",
-      "filePpjb",
-      "fileAjb",
-      "fileBast",
-    ]),
-  }),
-};
-</file>
 
 <file path="prisma/seeds/detailKavlingPajakSeed.ts">
 import { PrismaClient, SP3R } from "@prisma/client";
@@ -3261,6 +2814,84 @@ export class DeletePerumahanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/progressPenjualan/ProgressPenjualanUseCases.ts">
+import type { IProgressPenjualanRepository } from "../../../domain/repositories/IProgressPenjualanRepo.js";
+import type {
+  UpdateProgressPenjualanDTO,
+  ProgressPenjualanResponseDTO,
+} from "../../../domain/dtos/ProgressPenjualanDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class GetProgressPenjualanUseCase {
+  constructor(private readonly repo: IProgressPenjualanRepository) {}
+
+  async execute(penjualanId: number): Promise<ProgressPenjualanResponseDTO> {
+    let progress = await this.repo.findByPenjualanId(penjualanId);
+
+    progress ??= await this.repo.create({ penjualanId });
+    return progress;
+  }
+}
+
+export class UpdateProgressPenjualanUseCase {
+  constructor(private readonly repo: IProgressPenjualanRepository) {}
+
+  async execute(
+    penjualanId: number,
+    data: UpdateProgressPenjualanDTO,
+  ): Promise<ProgressPenjualanResponseDTO> {
+    const existing = await this.repo.findByPenjualanId(penjualanId);
+    if (!existing) {
+      await this.repo.create({ penjualanId });
+    }
+
+    return await this.repo.update(penjualanId, data);
+  }
+}
+
+export class UploadProgressDocumentUseCase {
+  constructor(
+    private readonly repo: IProgressPenjualanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    penjualanId: number,
+    fileBuffer: Buffer,
+    docType:
+      | "fileSp3k"
+      | "fileSalinanAjb"
+      | "filePpjb"
+      | "fileAjb"
+      | "fileBast",
+  ): Promise<ProgressPenjualanResponseDTO> {
+    let existing = await this.repo.findByPenjualanId(penjualanId);
+    existing ??= await this.repo.create({ penjualanId });
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing[docType]) {
+      await this.cloudinaryService.deleteImageByUrl(existing[docType]);
+    }
+
+    const fileUrl = await this.cloudinaryService.uploadFile(
+      fileBuffer,
+      `bumantara/progress_penjualan/${docType}`,
+    );
+
+    const updateData: UpdateProgressPenjualanDTO = { [docType]: fileUrl };
+    return await this.repo.update(penjualanId, updateData);
+  }
+}
+</file>
+
 <file path="src/application/usecases/tagihan/SaveTagihanSignatureUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -3715,6 +3346,37 @@ export interface PerumahanResponseDTO {
 export type PerumahanFilterDTO = BaseFilterDTO;
 </file>
 
+<file path="src/domain/dtos/ProgressPenjualanDTO.ts">
+import type { ChecklistBastType } from "../entities/ProgressPenjualan.js";
+export interface CreateProgressPenjualanDTO {
+  penjualanId: number;
+}
+export interface UpdateProgressPenjualanDTO {
+  berkasCustomerValid?: boolean | undefined;
+  fileSp3k?: string | undefined;
+  fileSalinanAjb?: string | undefined;
+  filePpjb?: string | undefined;
+  nilaiAjb?: number | undefined;
+  fileAjb?: string | undefined;
+  fileBast?: string | undefined;
+  checklistBast?: ChecklistBastType | null | undefined;
+}
+export interface ProgressPenjualanResponseDTO {
+  id: number;
+  penjualanId: number;
+  berkasCustomerValid: boolean;
+  fileSp3k: string | null;
+  fileSalinanAjb: string | null;
+  filePpjb: string | null;
+  nilaiAjb: number | null;
+  biayaBphtb: number | null;
+  biayaPph: number | null;
+  fileAjb: string | null;
+  fileBast: string | null;
+  checklistBast: ChecklistBastType | null;
+}
+</file>
+
 <file path="src/domain/dtos/UserDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { Role } from "@prisma/client";
@@ -3896,6 +3558,30 @@ export interface PerumahanEntity {
   nama: string;
   logo: string;
   alamat: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
+<file path="src/domain/entities/ProgressPenjualan.ts">
+export type ChecklistBastType = Record<
+  string,
+  string | boolean | number | null
+>;
+
+export interface ProgressPenjualanEntity {
+  id: number;
+  penjualanId: number;
+  berkasCustomerValid: boolean;
+  fileSp3k: string | null;
+  fileSalinanAjb: string | null;
+  filePpjb: string | null;
+  nilaiAjb: number | null;
+  biayaBphtb: number | null;
+  biayaPph: number | null;
+  fileAjb: string | null;
+  fileBast: string | null;
+  checklistBast: ChecklistBastType | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -4404,6 +4090,27 @@ export interface IPerumahanRepository {
 }
 </file>
 
+<file path="src/domain/repositories/IProgressPenjualanRepo.ts">
+import type {
+  ProgressPenjualanResponseDTO,
+  CreateProgressPenjualanDTO,
+  UpdateProgressPenjualanDTO,
+} from "../dtos/ProgressPenjualanDTO.js";
+
+export interface IProgressPenjualanRepository {
+  create(
+    data: CreateProgressPenjualanDTO,
+  ): Promise<ProgressPenjualanResponseDTO>;
+  findByPenjualanId(
+    penjualanId: number,
+  ): Promise<ProgressPenjualanResponseDTO | null>;
+  update(
+    penjualanId: number,
+    data: UpdateProgressPenjualanDTO,
+  ): Promise<ProgressPenjualanResponseDTO>;
+}
+</file>
+
 <file path="src/domain/repositories/ITagihanRepo.ts">
 import type {
   TagihanResponseDTO,
@@ -4587,6 +4294,100 @@ export class PerumahanRepository implements IPerumahanRepository {
       }
       throw error;
     }
+  }
+}
+</file>
+
+<file path="src/domain/repositories/progressPenjualanRepo.ts">
+import type { PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { IProgressPenjualanRepository } from "./IProgressPenjualanRepo.js";
+import type {
+  CreateProgressPenjualanDTO,
+  UpdateProgressPenjualanDTO,
+  ProgressPenjualanResponseDTO,
+} from "../dtos/ProgressPenjualanDTO.js";
+import { ProgressPenjualanMapper } from "../../infrastructure/mapper/ProgressPenjualanMapper.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+
+export class ProgressPenjualanRepository implements IProgressPenjualanRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(
+    data: CreateProgressPenjualanDTO,
+  ): Promise<ProgressPenjualanResponseDTO> {
+    const existing = await this.findByPenjualanId(data.penjualanId);
+    if (existing) {
+      throw new ConflictError(
+        "Progress Penjualan untuk transaksi ini sudah ada.",
+      );
+    }
+
+    const result = await this.db.progressPenjualan.create({
+      data: { penjualanId: data.penjualanId },
+    });
+
+    return ProgressPenjualanMapper.toDomain(result);
+  }
+
+  async findByPenjualanId(
+    penjualanId: number,
+  ): Promise<ProgressPenjualanResponseDTO | null> {
+    const result = await this.db.progressPenjualan.findUnique({
+      where: { penjualanId },
+    });
+    if (!result) return null;
+    return ProgressPenjualanMapper.toDomain(result);
+  }
+
+  async update(
+    penjualanId: number,
+    data: UpdateProgressPenjualanDTO,
+  ): Promise<ProgressPenjualanResponseDTO> {
+    const existing = await this.findByPenjualanId(penjualanId);
+    if (!existing) {
+      throw new NotFoundError("Progress Penjualan tidak ditemukan.");
+    }
+
+    const updateData: Prisma.ProgressPenjualanUpdateInput = {};
+
+    if (data.berkasCustomerValid !== undefined)
+      updateData.berkasCustomerValid = data.berkasCustomerValid;
+    if (data.fileSp3k !== undefined) updateData.fileSp3k = data.fileSp3k;
+    if (data.fileSalinanAjb !== undefined)
+      updateData.fileSalinanAjb = data.fileSalinanAjb;
+    if (data.filePpjb !== undefined) updateData.filePpjb = data.filePpjb;
+
+    if (data.nilaiAjb !== undefined) {
+      updateData.nilaiAjb = data.nilaiAjb ?? null;
+
+      if (data.nilaiAjb) {
+        updateData.biayaPph = data.nilaiAjb * 0.025;
+
+        const dppBphtb = Math.max(0, data.nilaiAjb - 80000000);
+        updateData.biayaBphtb = dppBphtb * 0.05;
+      } else {
+        updateData.biayaBphtb = null;
+        updateData.biayaPph = null;
+      }
+    }
+
+    if (data.fileAjb !== undefined) updateData.fileAjb = data.fileAjb;
+    if (data.fileBast !== undefined) updateData.fileBast = data.fileBast;
+    if (data.checklistBast !== undefined) {
+      updateData.checklistBast =
+        data.checklistBast === null
+          ? Prisma.DbNull
+          : (data.checklistBast as Prisma.InputJsonValue);
+    }
+
+    const result = await this.db.progressPenjualan.update({
+      where: { penjualanId },
+      data: updateData,
+    });
+
+    return ProgressPenjualanMapper.toDomain(result);
   }
 }
 </file>
@@ -4900,6 +4701,41 @@ export class PerumahanMapper {
 }
 </file>
 
+<file path="src/infrastructure/mapper/ProgressPenjualanMapper.ts">
+import type { ProgressPenjualan as PrismaProgress } from "@prisma/client";
+import type { ProgressPenjualanResponseDTO } from "../../domain/dtos/ProgressPenjualanDTO.js";
+import type { ChecklistBastType } from "../../domain/entities/ProgressPenjualan.js";
+
+export class ProgressPenjualanMapper {
+  static toDomain(
+    prismaProgress: PrismaProgress,
+  ): ProgressPenjualanResponseDTO {
+    return {
+      id: prismaProgress.id,
+      penjualanId: prismaProgress.penjualanId,
+      berkasCustomerValid: prismaProgress.berkasCustomerValid,
+      fileSp3k: prismaProgress.fileSp3k,
+      fileSalinanAjb: prismaProgress.fileSalinanAjb,
+      filePpjb: prismaProgress.filePpjb,
+      nilaiAjb: prismaProgress.nilaiAjb
+        ? Number(prismaProgress.nilaiAjb)
+        : null,
+      biayaBphtb: prismaProgress.biayaBphtb
+        ? Number(prismaProgress.biayaBphtb)
+        : null,
+      biayaPph: prismaProgress.biayaPph
+        ? Number(prismaProgress.biayaPph)
+        : null,
+      fileAjb: prismaProgress.fileAjb,
+      fileBast: prismaProgress.fileBast,
+      checklistBast: prismaProgress.checklistBast
+        ? (prismaProgress.checklistBast as ChecklistBastType)
+        : null,
+    };
+  }
+}
+</file>
+
 <file path="src/infrastructure/mapper/UserMapper.ts">
 import type { User as PrismaUser } from "@prisma/client";
 import type { UserEntity } from "../../domain/entities/User";
@@ -5057,36 +4893,6 @@ export const globalErrorHandler = (
         : undefined),
   );
 };
-</file>
-
-<file path="src/middlewares/upload.ts">
-import multer from "multer";
-import { AppError } from "../domain/errors/AppError";
-import { StatusCodes } from "http-status-codes";
-
-const storage = multer.memoryStorage();
-export const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-  fileFilter: (_req, file, cb) => {
-    if (
-      file.mimetype.startsWith("image/") ||
-      file.mimetype === "application/pdf"
-    ) {
-      cb(null, true);
-    } else {
-      cb(
-        new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Hanya file gambar dan PDF yang diperbolehkan!",
-          true,
-        ),
-      );
-    }
-  },
-});
 </file>
 
 <file path="src/middlewares/validate.ts">
@@ -5779,6 +5585,90 @@ export class PerumahanController {
 }
 </file>
 
+<file path="src/presentation/controllers/progressPenjualanController.ts">
+import type { Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type {
+  GetProgressPenjualanUseCase,
+  UpdateProgressPenjualanUseCase,
+  UploadProgressDocumentUseCase,
+} from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
+
+import type {
+  updateProgressPenjualanSchema,
+  uploadProgressDocumentSchema,
+  getProgressPenjualanSchema,
+} from "../../validations/progressPenjualanSchema.js";
+
+export class ProgressPenjualanController {
+  constructor(
+    private readonly getUseCase: GetProgressPenjualanUseCase,
+    private readonly updateUseCase: UpdateProgressPenjualanUseCase,
+    private readonly uploadUseCase: UploadProgressDocumentUseCase,
+  ) {}
+
+  getByPenjualanId = async (
+    req: TypedRequest<any, any, typeof getProgressPenjualanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const penjualanId = parseInt(req.params.id, 10);
+    const result = await this.getUseCase.execute(penjualanId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data progress penjualan berhasil diambil",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateProgressPenjualanSchema.body,
+      any,
+      typeof updateProgressPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const penjualanId = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(penjualanId, req.body);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data progress penjualan berhasil diperbarui",
+      result,
+    );
+  };
+
+  uploadDocument = async (
+    req: TypedRequest<any, any, typeof uploadProgressDocumentSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const penjualanId = parseInt(req.params.id, 10);
+    const docType = req.params.docType;
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadUseCase.execute(
+      penjualanId,
+      req.file.buffer,
+      docType,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Dokumen ${docType} berhasil diunggah`,
+      result,
+    );
+  };
+}
+</file>
+
 <file path="src/presentation/controllers/userController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -6381,6 +6271,45 @@ export const createPerumahanRoutes = (
 };
 </file>
 
+<file path="src/presentation/routes/progressPenjualanRoutes.ts">
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  getProgressPenjualanSchema,
+  updateProgressPenjualanSchema,
+  uploadProgressDocumentSchema,
+} from "../../validations/progressPenjualanSchema.js";
+import type { ProgressPenjualanController } from "../controllers/progressPenjualanController.js";
+export const createProgressPenjualanRoutes = (
+  controller: ProgressPenjualanController,
+): Router => {
+  const router = Router();
+  router.use(authenticate);
+  router.get(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(getProgressPenjualanSchema),
+    controller.getByPenjualanId,
+  );
+  router.patch(
+    "/:id",
+    requireRole(["ADMIN", "MARKETING"]),
+    validate(updateProgressPenjualanSchema),
+    controller.update,
+  );
+  router.patch(
+    "/:id/upload/:docType",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("file"),
+    validate(uploadProgressDocumentSchema),
+    controller.uploadDocument,
+  );
+  return router;
+};
+</file>
+
 <file path="src/presentation/routes/userRoutes.ts">
 import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
@@ -6757,6 +6686,50 @@ import { z } from "zod";
 
 export const ocrExtractSchema = {
   body: z.object({}),
+};
+</file>
+
+<file path="src/validations/progressPenjualanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+
+export const getProgressPenjualanSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
+  }),
+};
+
+export const updateProgressPenjualanSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
+  }),
+  body: z.object({
+    berkasCustomerValid: emptyAsUndefined(z.boolean().optional()),
+    nilaiAjb: emptyAsUndefined(z.coerce.number().min(0).optional()),
+
+    checklistBast: emptyAsUndefined(
+      z
+        .record(
+          z.string(),
+          z.union([z.string(), z.number(), z.boolean(), z.null()]),
+        )
+        .nullable()
+        .optional(),
+    ),
+  }),
+};
+
+export const uploadProgressDocumentSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
+    docType: z.enum([
+      "fileSp3k",
+      "fileSalinanAjb",
+      "filePpjb",
+      "fileAjb",
+      "fileBast",
+    ]),
+  }),
 };
 </file>
 
@@ -8354,6 +8327,36 @@ export class AgentMapper {
     };
   }
 }
+</file>
+
+<file path="src/middlewares/upload.ts">
+import multer from "multer";
+import { AppError } from "../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+const storage = multer.memoryStorage();
+export const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (
+      file.mimetype.startsWith("image/") ||
+      file.mimetype === "application/pdf"
+    ) {
+      cb(null, true);
+    } else {
+      cb(
+        new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Hanya file gambar dan PDF yang diperbolehkan!",
+          true,
+        ),
+      );
+    }
+  },
+});
 </file>
 
 <file path="src/presentation/controllers/customerController.ts">
@@ -12459,99 +12462,6 @@ export interface TagihanFilterDTO extends BaseFilterDTO {
 }
 </file>
 
-<file path="src/infrastructure/external/CloudinaryService.ts">
-import { v2 as cloudinary } from "cloudinary";
-import { env } from "../../config/env";
-import { AppError } from "../../domain/errors/AppError";
-import { StatusCodes } from "http-status-codes";
-import sharp from "sharp";
-
-export class CloudinaryService {
-  constructor() {
-    cloudinary.config({
-      cloud_name: env.CLOUDINARY_CLOUD_NAME,
-      api_key: env.CLOUDINARY_API_KEY,
-      api_secret: env.CLOUDINARY_API_SECRET,
-    });
-  }
-
-  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "auto",
-        },
-        (error, result) => {
-          if (error)
-            return reject(
-              new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Gagal upload"),
-            );
-          resolve(result!.secure_url);
-        },
-      );
-      uploadStream.end(buffer);
-    });
-  }
-
-  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
-    const compressedBuffer = await sharp(buffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .flatten({ background: "#ffffff" })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error) {
-            console.error("Cloudinary Upload Error:", error);
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mengunggah gambar ke penyimpanan cloud.",
-              ),
-            );
-          }
-          if (!result) {
-            return reject(
-              new AppError(
-                StatusCodes.INTERNAL_SERVER_ERROR,
-                "Gagal mendapatkan respon dari penyimpanan cloud.",
-              ),
-            );
-          }
-          resolve(result.secure_url);
-        },
-      );
-
-      uploadStream.end(compressedBuffer);
-    });
-  }
-  async deleteImageByUrl(imageUrl: string): Promise<void> {
-    try {
-      const urlParts = imageUrl.split("/");
-      const filenameWithExt = urlParts.pop();
-      const folder = urlParts.pop();
-
-      if (!filenameWithExt || !folder) return;
-
-      const filename = filenameWithExt.split(".")[0];
-      const publicId = `${folder}/${filename}`;
-
-      await cloudinary.uploader.destroy(publicId);
-      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
-    } catch (error) {
-      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
-    }
-  }
-}
-</file>
-
 <file path="src/infrastructure/mapper/TagihanMapper.ts">
 import type { Prisma } from "@prisma/client";
 import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
@@ -12675,6 +12585,103 @@ export async function seedUser(prisma: PrismaClient) {
       },
     ],
   });
+}
+</file>
+
+<file path="src/infrastructure/external/CloudinaryService.ts">
+import { v2 as cloudinary } from "cloudinary";
+import { env } from "../../config/env";
+import { AppError } from "../../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import sharp from "sharp";
+
+export class CloudinaryService {
+  constructor() {
+    cloudinary.config({
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
+    });
+  }
+  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "auto",
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary Upload Error Details:", error);
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                `Gagal upload file: ${error.message || "Unknown Cloudinary Error"}`,
+              ),
+            );
+          }
+          resolve(result!.secure_url);
+        },
+      );
+      uploadStream.end(buffer);
+    });
+  }
+
+  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
+    const compressedBuffer = await sharp(buffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folder,
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary Upload Error:", error);
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mengunggah gambar ke penyimpanan cloud.",
+              ),
+            );
+          }
+          if (!result) {
+            return reject(
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                "Gagal mendapatkan respon dari penyimpanan cloud.",
+              ),
+            );
+          }
+          resolve(result.secure_url);
+        },
+      );
+
+      uploadStream.end(compressedBuffer);
+    });
+  }
+  async deleteImageByUrl(imageUrl: string): Promise<void> {
+    try {
+      const urlParts = imageUrl.split("/");
+      const filenameWithExt = urlParts.pop();
+      const folder = urlParts.pop();
+
+      if (!filenameWithExt || !folder) return;
+
+      const filename = filenameWithExt.split(".")[0];
+      const publicId = `${folder}/${filename}`;
+
+      await cloudinary.uploader.destroy(publicId);
+      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
+    } catch (error) {
+      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
+    }
+  }
 }
 </file>
 
@@ -14174,67 +14181,6 @@ export class PenjualanController {
 }
 </file>
 
-<file path="src/presentation/routes/index.ts">
-import { Router } from "express";
-import { checkHealth } from "../controllers/healthController.js";
-import { createAuthRoutes } from "./authRoutes.js";
-import { createUserRoutes } from "./userRoutes.js";
-import { createOcrRoutes } from "./ocrRoutes.js";
-import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
-import { createCustomerRoutes } from "./customerRoutes.js";
-import { container } from "../../infrastructure/di/container.js";
-import { createPerumahanRoutes } from "./perumahanRoutes.js";
-import { createDashboardRoutes } from "./dashboardRoutes.js";
-import { createAgentRoutes } from "./agentRoutes.js";
-import { createNotarisRoutes } from "./notarisRoutes.js";
-import { createKavlingRoutes } from "./kavlingRoutes.js";
-import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
-import { createTagihanRoutes } from "./tagihanRoutes.js";
-import { createPenjualanRoutes } from "./penjualanRoutes.js";
-import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
-import { createVerifyRoutes } from "./verifyRoutes.js";
-import { createAuditLogRoutes } from "./auditLogRoutes.js";
-import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
-export const createMainRouter = (deps: typeof container): Router => {
-  const router = Router();
-
-  router.get("/health", checkHealth);
-  router.use("/verify", createVerifyRoutes(deps.verifyController));
-
-  router.use("/auth", createAuthRoutes(deps.authController));
-  router.use("/users", createUserRoutes(deps.userController));
-  router.use("/ocr", createOcrRoutes(deps.ocrController));
-
-  router.use(
-    "/bank-rekening",
-    createBankRekeningPtRoutes(deps.bankRekeningPtController),
-  );
-
-  router.use("/customers", createCustomerRoutes(deps.customerController));
-  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
-  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
-  router.use("/agents", createAgentRoutes(deps.agentController));
-  router.use("/notaris", createNotarisRoutes(deps.notarisController));
-  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
-  router.use(
-    "/customer-kavling",
-    createCustomerKavlingRoutes(deps.customerKavlingController),
-  );
-  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
-  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
-  router.use(
-    "/progress-penjualan",
-    createProgressPenjualanRoutes(deps.progressPenjualanController),
-  );
-  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
-  router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
-  return router;
-};
-
-const router = createMainRouter(container);
-export default router;
-</file>
-
 <file path="src/application/usecases/penjualan/UpdatePenjualanUseCase.ts">
 import { Prisma } from "@prisma/client";
 import { type PrismaClient } from "@prisma/client";
@@ -14670,6 +14616,67 @@ export class UpdatePenjualanUseCase {
     return transactionResult;
   }
 }
+</file>
+
+<file path="src/presentation/routes/index.ts">
+import { Router } from "express";
+import { checkHealth } from "../controllers/healthController.js";
+import { createAuthRoutes } from "./authRoutes.js";
+import { createUserRoutes } from "./userRoutes.js";
+import { createOcrRoutes } from "./ocrRoutes.js";
+import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
+import { createCustomerRoutes } from "./customerRoutes.js";
+import { container } from "../../infrastructure/di/container.js";
+import { createPerumahanRoutes } from "./perumahanRoutes.js";
+import { createDashboardRoutes } from "./dashboardRoutes.js";
+import { createAgentRoutes } from "./agentRoutes.js";
+import { createNotarisRoutes } from "./notarisRoutes.js";
+import { createKavlingRoutes } from "./kavlingRoutes.js";
+import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
+import { createTagihanRoutes } from "./tagihanRoutes.js";
+import { createPenjualanRoutes } from "./penjualanRoutes.js";
+import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
+import { createVerifyRoutes } from "./verifyRoutes.js";
+import { createAuditLogRoutes } from "./auditLogRoutes.js";
+import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
+export const createMainRouter = (deps: typeof container): Router => {
+  const router = Router();
+
+  router.get("/health", checkHealth);
+  router.use("/verify", createVerifyRoutes(deps.verifyController));
+
+  router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/users", createUserRoutes(deps.userController));
+  router.use("/ocr", createOcrRoutes(deps.ocrController));
+
+  router.use(
+    "/bank-rekening",
+    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  );
+
+  router.use("/customers", createCustomerRoutes(deps.customerController));
+  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
+  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/agents", createAgentRoutes(deps.agentController));
+  router.use("/notaris", createNotarisRoutes(deps.notarisController));
+  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
+  router.use(
+    "/customer-kavling",
+    createCustomerKavlingRoutes(deps.customerKavlingController),
+  );
+  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
+  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use(
+    "/progress-penjualan",
+    createProgressPenjualanRoutes(deps.progressPenjualanController),
+  );
+  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
+  router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
+  return router;
+};
+
+const router = createMainRouter(container);
+export default router;
 </file>
 
 <file path="src/application/usecases/penjualan/GenerateSprPdfUseCase.ts">
@@ -15202,6 +15209,8 @@ export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
 }>;
 export interface PenjualanPaginatedItem {
   id: string;
+  dbId: number;
+  noTransaksi: string;
   tanggal: string;
   nama: string;
   alamat: string;
@@ -15245,6 +15254,7 @@ export interface PenjualanPaginatedItem {
   } | null;
   riwayatGantiKavling?: any[];
   tagihan?: any[];
+  progressPenjualan?: any;
 
   createdBy?: string;
   isPendingBatal?: boolean;
@@ -16810,6 +16820,8 @@ export class PenjualanRepository implements IPenjualanRepository {
 
       return {
         id: item.noTransaksi,
+        dbId: item.id,
+        noTransaksi: item.noTransaksi,
         tanggal: item.tanggal.toISOString(),
         nama: item.customer.nama,
         alamat: item.customer.alamatKtp,
@@ -16862,6 +16874,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         riwayatGantiKavling: item.riwayatGantiKavling || [],
         tagihan: item.tagihan || [],
         riwayatSpr: item.riwayatSpr || [],
+        progressPenjualan: item.progressPenjualan ?? null,
         createdBy: item.createdBy ?? "Admin",
         isPendingBatal,
         createdAt: item.createdAt.toISOString(),

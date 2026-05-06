@@ -5,8 +5,10 @@ import {
   createKavlingSchema,
   updateKavlingSchema,
   getKavlingPaginatedSchema,
+  uploadKavlingDocumentSchema,
 } from "../../validations/kavlingSchema.js";
 import type { KavlingController } from "../controllers/kavlingController.js";
+import { upload } from "../../middlewares/upload.js";
 
 export const createKavlingRoutes = (controller: KavlingController): Router => {
   const router = Router();
@@ -46,6 +48,13 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
     requireRole(["ADMIN"]),
     validate({ params: updateKavlingSchema.params }),
     controller.delete,
+  );
+  router.patch(
+    "/:id/upload/:docType",
+    requireRole(["ADMIN", "MARKETING"]),
+    upload.single("file"),
+    validate(uploadKavlingDocumentSchema),
+    controller.uploadDocument,
   );
 
   return router;

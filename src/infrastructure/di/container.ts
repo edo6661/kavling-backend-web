@@ -135,6 +135,7 @@ import {
   UploadProgressDocumentUseCase,
 } from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
 import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
+import { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -222,12 +223,18 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const deleteKavlingUseCase = new DeleteKavlingUseCase(kavlingRepo);
 
+  const uploadKavlingDocumentUseCase = new UploadKavlingDocumentUseCase(
+    kavlingRepo,
+    cloudinaryService,
+  );
+
   const kavlingController = new KavlingController(
     createKavlingUseCase,
     updateKavlingUseCase,
     getKavlingByIdUseCase,
     getKavlingsPaginatedUseCase,
     deleteKavlingUseCase,
+    uploadKavlingDocumentUseCase,
   );
 
   const detailKavlingPajakRepo = new DetailKavlingPajakRepository(dbClient);
