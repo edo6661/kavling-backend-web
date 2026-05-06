@@ -267,6 +267,7 @@ model Penjualan {
   tagihan           Tagihan[]
   detailKavlingPajak DetailKavlingPajak?
   feeAgent          FeeAgent?
+  progressPenjualan   ProgressPenjualan?
   pengajuanBatal PengajuanBatal[]
   riwayatSpr          RiwayatSpr[]
 
@@ -490,3 +491,32 @@ model RiwayatSpr {
 
   @@map("riwayat_spr")
 }
+
+model ProgressPenjualan {
+  id                  Int       @id @default(autoincrement())
+  penjualanId         Int       @unique @map("penjualan_id")
+  
+  // Tahap KPR
+  berkasCustomerValid Boolean   @default(false) @map("berkas_customer_valid")
+  fileSp3k            String?   @map("file_sp3k") @db.VarChar(255)
+  fileSalinanAjb      String?   @map("file_salinan_ajb") @db.VarChar(255)
+  
+  // Tahap Cash Bertahap
+  filePpjb            String?   @map("file_ppjb") @db.VarChar(255)
+  
+  // Umum (Semua Skema)
+  nilaiAjb            Decimal?  @map("nilai_ajb") @db.Decimal(15, 2)
+  biayaBphtb          Decimal?  @map("biaya_bphtb") @db.Decimal(15, 2)
+  biayaPph            Decimal?  @map("biaya_pph") @db.Decimal(15, 2)
+  fileAjb             String?   @map("file_ajb") @db.VarChar(255)
+  fileBast            String?   @map("file_bast") @db.VarChar(255)
+  checklistBast       Json?     @map("checklist_bast") // Menyimpan key dynamic & value dynamic
+
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+
+  @@map("progress_penjualan")
+}
+

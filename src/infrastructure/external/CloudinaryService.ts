@@ -12,7 +12,6 @@ export class CloudinaryService {
       api_secret: env.CLOUDINARY_API_SECRET,
     });
   }
-
   async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -21,10 +20,15 @@ export class CloudinaryService {
           resource_type: "auto",
         },
         (error, result) => {
-          if (error)
+          if (error) {
+            console.error("Cloudinary Upload Error Details:", error);
             return reject(
-              new AppError(StatusCodes.INTERNAL_SERVER_ERROR, "Gagal upload"),
+              new AppError(
+                StatusCodes.INTERNAL_SERVER_ERROR,
+                `Gagal upload file: ${error.message || "Unknown Cloudinary Error"}`,
+              ),
             );
+          }
           resolve(result!.secure_url);
         },
       );

@@ -128,7 +128,13 @@ import { GetAuditLogsPaginatedUseCase } from "../../application/usecases/auditLo
 import { AuditLogController } from "../../presentation/controllers/auditLogController.js";
 import { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
 import { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
-
+import { ProgressPenjualanRepository } from "../../domain/repositories/progressPenjualanRepo.js";
+import {
+  GetProgressPenjualanUseCase,
+  UpdateProgressPenjualanUseCase,
+  UploadProgressDocumentUseCase,
+} from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
+import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -402,6 +408,23 @@ export const createContainer = (dbClient: PrismaClient) => {
   const auditLogController = new AuditLogController(
     getAuditLogsPaginatedUseCase,
   );
+  const progressPenjualanRepo = new ProgressPenjualanRepository(dbClient);
+  const getProgressPenjualanUseCase = new GetProgressPenjualanUseCase(
+    progressPenjualanRepo,
+  );
+  const updateProgressPenjualanUseCase = new UpdateProgressPenjualanUseCase(
+    progressPenjualanRepo,
+  );
+  const uploadProgressDocumentUseCase = new UploadProgressDocumentUseCase(
+    progressPenjualanRepo,
+    cloudinaryService,
+  );
+
+  const progressPenjualanController = new ProgressPenjualanController(
+    getProgressPenjualanUseCase,
+    updateProgressPenjualanUseCase,
+    uploadProgressDocumentUseCase,
+  );
   return {
     authController,
     userRepo,
@@ -423,6 +446,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     feeAgentController,
     verifyController,
     auditLogController,
+    progressPenjualanController,
   };
 };
 

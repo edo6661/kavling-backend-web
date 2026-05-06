@@ -345,6 +345,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         orderBy: orderByClause,
         include: {
           customer: true,
+          progressPenjualan: true,
           kavling: { include: { perumahan: true, rekeningTujuan: true } },
           agent: true,
           tagihan: true,
@@ -409,6 +410,8 @@ export class PenjualanRepository implements IPenjualanRepository {
 
       return {
         id: item.noTransaksi,
+        dbId: item.id,
+        noTransaksi: item.noTransaksi,
         tanggal: item.tanggal.toISOString(),
         nama: item.customer.nama,
         alamat: item.customer.alamatKtp,
@@ -461,6 +464,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         riwayatGantiKavling: item.riwayatGantiKavling || [],
         tagihan: item.tagihan || [],
         riwayatSpr: item.riwayatSpr || [],
+        progressPenjualan: item.progressPenjualan ?? null,
         createdBy: item.createdBy ?? "Admin",
         isPendingBatal,
         createdAt: item.createdAt.toISOString(),
@@ -486,6 +490,7 @@ export class PenjualanRepository implements IPenjualanRepository {
     return await this.db.penjualan.findUnique({
       where: { id },
       include: {
+        progressPenjualan: true,
         customer: true,
         kavling: { include: { perumahan: true, rekeningTujuan: true } },
         rekeningTujuan: true,

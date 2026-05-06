@@ -32,6 +32,8 @@ export type PenjualanWithRelations = Prisma.PenjualanGetPayload<{
 }>;
 export interface PenjualanPaginatedItem {
   id: string;
+  dbId: number;
+  noTransaksi: string;
   tanggal: string;
   nama: string;
   alamat: string;
@@ -75,6 +77,7 @@ export interface PenjualanPaginatedItem {
   } | null;
   riwayatGantiKavling?: any[];
   tagihan?: any[];
+  progressPenjualan?: any;
 
   createdBy?: string;
   isPendingBatal?: boolean;

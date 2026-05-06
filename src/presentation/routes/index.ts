@@ -17,6 +17,7 @@ import { createPenjualanRoutes } from "./penjualanRoutes.js";
 import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
 import { createVerifyRoutes } from "./verifyRoutes.js";
 import { createAuditLogRoutes } from "./auditLogRoutes.js";
+import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -44,6 +45,10 @@ export const createMainRouter = (deps: typeof container): Router => {
   );
   router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
   router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use(
+    "/progress-penjualan",
+    createProgressPenjualanRoutes(deps.progressPenjualanController),
+  );
   router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
   router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
   return router;
