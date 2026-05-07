@@ -217,6 +217,9 @@ export class UpdatePenjualanUseCase {
       updateData.dp = dp > 0 ? dp : null;
       updateData.hargaJual = hargaJual;
 
+      updateData.diskonPenjualan = currentDiskon > 0 ? currentDiskon : null;
+      updateData.bookingFee = currentBookingFee > 0 ? currentBookingFee : null;
+
       if (data.biayaTambahanKpr !== undefined) {
         updateData.tambahanKpr = data.biayaTambahanKpr
           ? (data.biayaTambahanKpr as any)

@@ -203,7 +203,7 @@ export class GenerateSprPdfUseCase {
         drawField("Perumahan", kavling.perumahan.nama);
         drawField(
           "Blok/Type",
-          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe}`,
+          `Blok ${kavling.blok} No. ${kavling.nomorUnit} / ${kavling.namaTipe} / LT: ${kavling.luasTanah?.toString()} / LB: ${kavling.luasBangunan?.toString()}`,
         );
         drawField("Harga Jual", formatRp(penjualan.hargaJual!));
 
