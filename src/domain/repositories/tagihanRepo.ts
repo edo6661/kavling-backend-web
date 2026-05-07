@@ -149,4 +149,12 @@ export class TagihanRepository implements ITagihanRepository {
     if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
     await this.db.tagihan.delete({ where: { id } });
   }
+  async findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null> {
+    const result = await this.db.tagihan.findUnique({
+      where: { noTagihan },
+      include: tagihanIncludeRelations,
+    });
+    if (!result) return null;
+    return TagihanMapper.toDomain(result);
+  }
 }

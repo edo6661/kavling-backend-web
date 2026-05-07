@@ -19,6 +19,7 @@ const envSchema = z.object({
   CLOUDINARY_URL: z.string().min(1),
   SENTRY_DSN: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
+  TELEGRAM_BOT_TOKEN: z.string().min(5).default("supersecretbotkey"),
 });
 
 const _env = envSchema.safeParse(process.env);

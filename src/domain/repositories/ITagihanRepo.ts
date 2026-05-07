@@ -20,4 +20,5 @@ export interface ITagihanRepository {
     filters?: TagihanFilterDTO,
   ): Promise<CursorPaginatedData<TagihanResponseDTO>>;
   count(): Promise<number>;
+  findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null>;
 }

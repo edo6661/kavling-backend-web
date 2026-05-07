@@ -15,6 +15,7 @@ import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagih
 import type {
   createTagihanSchema,
   updateTagihanSchema,
+  uploadBuktiByNoTagihanSchema,
 } from "../../validations/tagihanSchema.js";
 import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
 import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
@@ -162,6 +163,32 @@ export class TagihanController {
       res,
       StatusCodes.OK,
       `Tanda tangan untuk kwitansi berhasil disimpan`,
+      result,
+    );
+  };
+  uploadBuktiByNoTagihan = async (
+    req: TypedRequest<any, any, typeof uploadBuktiByNoTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const { noTagihan } = req.params;
+
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File gambar bukti wajib diunggah",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      noTagihan,
+      req.file.buffer,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti pembayaran dari Telegram berhasil diunggah",
       result,
     );
   };

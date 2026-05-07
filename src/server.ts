@@ -2,12 +2,15 @@ import app from "./app";
 import { env } from "./config/env";
 import { prisma } from "./infrastructure/database/prisma";
 import { logger } from "./utils/logger";
+import { container } from "./infrastructure/di/container";
 const PORT = env.PORT;
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  container.telegramBotService.launch();
 });
 const shutdown = (signal: string) => {
   console.log(`\n${signal} received. Closing resources...`);
+  container.telegramBotService.stop(signal);
   server.close(async () => {
     await prisma.$disconnect();
     console.log("HTTP server and Database connection closed.");

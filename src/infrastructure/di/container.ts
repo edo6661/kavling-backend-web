@@ -136,6 +136,7 @@ import {
 } from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
 import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
 import { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
+import { TelegramBotService } from "../telegram/TelegramBotService.js";
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -432,6 +433,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     updateProgressPenjualanUseCase,
     uploadProgressDocumentUseCase,
   );
+  const telegramBotService = new TelegramBotService(uploadBuktiTagihanUseCase);
   return {
     authController,
     userRepo,
@@ -454,6 +456,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     verifyController,
     auditLogController,
     progressPenjualanController,
+    telegramBotService,
   };
 };
 

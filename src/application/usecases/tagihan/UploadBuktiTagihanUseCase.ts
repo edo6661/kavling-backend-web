@@ -16,9 +16,15 @@ export class UploadBuktiTagihanUseCase {
     private readonly penjualanRepo: IPenjualanRepository,
     private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
   ) {}
+  async execute(
+    identifier: number | string,
+    fileBuffer: Buffer,
+  ): Promise<TagihanResponseDTO> {
+    const existing =
+      typeof identifier === "number"
+        ? await this.repo.findById(identifier)
+        : await this.repo.findByNoTagihan(identifier);
 
-  async execute(id: number, fileBuffer: Buffer): Promise<TagihanResponseDTO> {
-    const existing = await this.repo.findById(id);
     if (!existing) {
       throw new NotFoundError("Tagihan tidak ditemukan");
     }
@@ -44,7 +50,7 @@ export class UploadBuktiTagihanUseCase {
       status: "LUNAS" as const,
     };
 
-    const updatedTagihan = await this.repo.update(id, updateData);
+    const updatedTagihan = await this.repo.update(existing.id, updateData);
 
     if (existing.pembayaran.toLowerCase().includes("booking")) {
       try {

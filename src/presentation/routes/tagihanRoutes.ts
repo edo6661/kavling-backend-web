@@ -6,6 +6,7 @@ import {
   createTagihanSchema,
   updateTagihanSchema,
   getTagihansPaginatedSchema,
+  uploadBuktiByNoTagihanSchema,
 } from "../../validations/tagihanSchema.js";
 import type { TagihanController } from "../controllers/tagihanController.js";
 import { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
@@ -64,6 +65,21 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
     validate(uploadSignatureSchema),
     controller.uploadSignature,
   );
-
+  router.patch(
+    "/bot/upload-bukti/:noTagihan",
+    upload.single("fileBukti"),
+    validate(uploadBuktiByNoTagihanSchema),
+    (req, res, next) => {
+      const botSecret = req.headers["x-telegram-bot-secret"];
+      if (botSecret !== process.env.TELEGRAM_BOT_SECRET) {
+        res
+          .status(401)
+          .json({ success: false, message: "Unauthorized Bot API Key" });
+        return;
+      }
+      next();
+    },
+    controller.uploadBuktiByNoTagihan,
+  );
   return router;
 };

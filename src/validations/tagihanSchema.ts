@@ -39,3 +39,9 @@ export const getTagihansPaginatedSchema = {
     status: emptyAsUndefined(z.nativeEnum(PaymentStatus).optional()),
   }),
 };
+
+export const uploadBuktiByNoTagihanSchema = {
+  params: z.object({
+    noTagihan: z.string().min(1, "Nomor Tagihan wajib diisi"),
+  }),
+};
