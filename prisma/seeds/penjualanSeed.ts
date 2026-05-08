@@ -1,449 +1,377 @@
-import { PenjualanStatus, PrismaClient, UnitStatus } from "@prisma/client";
+import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
 import * as xlsx from "xlsx";
 import path from "path";
 import fs from "fs";
-const KAVLING_DATA: Record<string, { lb: number; lt: number[] }> = {
-  Asvara: {
-    lb: 48,
-    lt: [
-      60, 61, 62, 64, 67, 68, 72, 76, 79, 80, 81, 96, 100, 120, 123, 127, 132,
-      134, 135,
-    ],
-  },
-  Adara: {
-    lb: 52,
-    lt: [60, 61, 65, 70, 75, 82, 85, 87, 114, 120, 121, 133, 148],
-  },
-  Aruna: { lb: 73, lt: [60, 62, 63, 67, 71, 91, 109, 154] },
-  Ansara: { lb: 36, lt: [60, 103, 120, 122, 132, 143] },
-};
-const KAVLING_REKENING_MAP: Record<string, number> = {
-  "AA1-1": 2,
-  "AA1-3": 2,
-  "AA1-6": 2,
-  "AA1-8": 2,
-  "AA1-10": 2,
-  "AA1-12": 2,
-  "AA2-1": 2,
-  "AA2-3": 2,
-  "AA3-1": 2,
-  "AA3-3": 2,
-  "AA3-5": 2,
-  "AA3-6": 2,
-  "AA3-7": 2,
-  "AA5-1": 2,
-  "AA5-3": 2,
-  "AA5-6": 2,
-  "AA5-8": 2,
-  "AA5-11": 2,
-  "AA5-20": 2,
-  "AA5-22": 2,
-  "AA6-1": 2,
-  "AA6-2": 2,
-  "AA6-3": 2,
-  "AA6-5": 2,
-  "AA6-6": 2,
-  "AA6-7": 2,
-  "AA6-8": 2,
-  "AA6-9": 2,
-  "AA6-10": 2,
-  "AA7-1": 2,
-  "AA7-2": 2,
-  "AA8-1": 2,
-  "AA8-3": 2,
-  "AA8-6": 2,
-  "AA8-8": 1,
-  "AA8-10": 1,
-  "AA8-12": 1,
-  "AA8-15": 2,
-  "AA8-18": 2,
-  "AA9-1": 1,
-  "AA9-2": 1,
-  "AA9-3": 1,
-  "AA9-5": 1,
-  "AA9-6": 1,
-  "AA9-7": 1,
-  "AA9-8": 1,
-  "AA9-9": 1,
-  "AA14-2": 1,
-  "AA14-3": 1,
-  "AA14-5": 1,
-  "AA14-6": 1,
-  "AA14-7": 1,
-  "AA14-8": 1,
-  "AA14-9": 1,
-  "AA14-12": 1,
-  "AA14-14": 1,
-  "AA14-16": 1,
-  "AA14-23": 1,
-  "AA14-25": 1,
-  "AA14-27": 1,
-  "AA14-33": 1,
-  "AA15-2": 2,
-  "AA15-9": 2,
-  "AA17-1": 1,
-  "AA17-6": 1,
-  "AA17-10": 1,
-  "AA17-14": 1,
-  "AA17-15": 1,
-  "AA17-16": 1,
-  "AA17-17": 1,
-  "AA17-18": 1,
-  "AA17-20": 1,
-  "AA17-21": 1,
-  "AA17-22": 1,
-  "AA17-23": 1,
-  "AA17-24": 1,
-  "AA17-27": 1,
-  "AA17-29": 1,
-  "AA17-31": 1,
-  "AA17-35": 1,
-  "AA18-11": 1,
-  "AA19-7": 1,
-  "AA19-8": 1,
-  "AA21-3": 2,
-  "AA21-8": 2,
-  "AA22-3": 2,
-  "AA22-6": 2,
-  "AA22-12": 1,
-  "AA23-10": 1,
-  "AA23-12": 1,
-  "AA23-15": 1,
-  "AA24-1": 1,
-  "AA24-2": 1,
-  "AA24-5": 1,
-  "AA24-9": 1,
-  "AA26-3": 2,
-  "AA26-5": 2,
-  "AA26-7": 2,
-  "AA27-1": 2,
-  "AA27-3": 2,
-  "AA28-6": 1,
-  "AA28-9": 1,
-  "AA28-10": 1,
-  "AA28-11": 1,
-  "AA28-12": 1,
-  "AA29-2": 1,
-  "AA29-3": 1,
-  "AA29-5": 1,
-  "AA29-6": 1,
-  "AA29-7": 1,
-  "AA29-8": 1,
-  "AA29-12": 1,
-  "AA29-16": 1,
-  "AA29-17": 1,
-  "AA29-18": 1,
-  "AA29-19": 1,
-  "AA29-20": 1,
-  "AA29-21": 1,
-  "AA29-22": 1,
-  "AA29-23": 1,
-  "AA29-24": 1,
-  "AA29-25": 1,
-  "AA29-26": 1,
-  "AA30-3": 1,
-  "AA30-5": 1,
-  "AA30-6": 1,
-  "AA30-8": 1,
-  "AA31-6": 1,
-  "AA32-6": 1,
-  "AA32-8": 1,
-};
-function getTipe(lb: number, lt: number): string {
-  for (const [namaTipe, data] of Object.entries(KAVLING_DATA)) {
-    if (data.lb === lb && data.lt.includes(lt)) {
-      return namaTipe;
-    }
+function getTipe(lb: number): string {
+  if (lb === 48) return "Asvara";
+  if (lb === 52) return "Adara";
+  if (lb === 73) return "Aruna";
+  if (lb === 36) return "Ansara";
+  return `Tipe ${lb}`;
+}
+function parseExcelDate(serial: number): Date | null {
+  if (!serial || isNaN(serial)) return null;
+  const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  return date;
+}
+function formatRp(num: number | null | undefined): string {
+  if (num == null) return "null";
+  return `Rp ${Number(num).toLocaleString("id-ID")}`;
+}
+export async function seedPenjualan(prisma: PrismaClient) {
+  console.log("==========================================================");
+  console.log("  MEMULAI SEED PENJUALAN dari Detil_Pembelian_Unit.xls");
+  console.log("==========================================================");
+  const excelPath = path.resolve(process.cwd(), "Detil_Pembelian_Unit.xls");
+  if (!fs.existsSync(excelPath)) {
+    console.error(
+      "❌ File Detil_Pembelian_Unit.xls tidak ditemukan di root folder!",
+    );
+    return;
   }
-  return `${lb}/${lt}`;
-}
-function parseString(val: any): string | null {
-  if (val === undefined || val === null) return null;
-  const str = String(val).trim();
-  return str === "" ? null : str;
-}
-export async function seedPenjualanReal(prisma: PrismaClient) {
-  console.log("Memulai proses Bulk Insert dari penjualan.xlsx...");
-  const perumahan = await prisma.perumahan.create({
-    data: {
-      nama: "Puri Safana",
-      alamat: "Test Alamat",
-      logo: "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
-    },
-  });
-  await prisma.bankRekeningPt.createMany({
-    data: [
-      {
-        perumahanId: perumahan.id,
-        namaBank: "BSI",
-        noRekening: "7326575644",
-        atasNama: "PT. Bintang Safana Gajah",
-      },
-      {
-        perumahanId: perumahan.id,
-        namaBank: "BSI",
-        noRekening: "7326573692",
-        atasNama: "PT. Bintang Safana Mahligai",
-      },
-    ],
-  });
-  const excelPath = path.resolve(process.cwd(), "penjualan.xlsx");
   const fileBuffer = fs.readFileSync(excelPath);
-  const workbook = xlsx.read(fileBuffer, { type: "buffer", cellDates: true });
-  const sheetName = workbook.SheetNames[0];
-  const dataPenjualan: any[] = xlsx.utils.sheet_to_json(
-    workbook.Sheets[sheetName],
-    { header: 1 },
-  );
-  console.log(`Ditemukan ${dataPenjualan.length} baris. Memulai import...\n`);
-  for (let index = 4; index < dataPenjualan.length; index++) {
-    const row = dataPenjualan[index];
-    const namaKonsumenRaw = row[1];
-    if (!namaKonsumenRaw || String(namaKonsumenRaw).trim() === "") {
+  const workbook = xlsx.read(fileBuffer, { type: "buffer" });
+  const sheetName = "LENGKAP";
+  const worksheet = workbook.Sheets[sheetName];
+  if (!worksheet) {
+    console.error(`❌ Sheet '${sheetName}' tidak ditemukan!`);
+    return;
+  }
+  const range = xlsx.utils.decode_range(worksheet["!ref"] || "A1:AT1000");
+  const maxRow = range.e.r + 1;
+  console.log(`\n>>> Sheet ditemukan: '${sheetName}', total baris: ${maxRow}`);
+  let successCount = 0;
+  let skipCount = 0;
+  let errorCount = 0;
+  for (let i = 3; i <= maxRow; i++) {
+    const getCell = (col: string) => {
+      const cell = worksheet[`${col}${i}`];
+      return cell ? cell.v : undefined;
+    };
+    const rawBlok = getCell("E");
+    if (rawBlok === undefined || String(rawBlok).trim() === "") {
+      console.log(`\n[Baris ${i}] ⚠️  Kolom E kosong — baris dilewati.`);
+      skipCount++;
       continue;
     }
-    const namaKonsumen = String(namaKonsumenRaw).trim();
-    const namaAgent = row[8] ? String(row[8]).trim() : "Tanpa Agen";
-    let agent = await prisma.agent.findFirst({ where: { nama: namaAgent } });
-    if (!agent) {
-      agent = await prisma.agent.create({
-        data: {
-          nik: `DUMMY-NIK-${index}`,
-          kodeSales: `AGT-${index}`,
-          nama: namaAgent,
-          noHp: "",
+    console.log(`\n========================================================`);
+    console.log(`[BARIS EXCEL ${i}] RAW VALUES`);
+    console.log(`========================================================`);
+    const rawKso = getCell("C");
+    console.log(`C${i} (KSO)         : ${rawKso}`);
+    let rekeningTujuanId: number | null = null;
+    if (rawKso !== undefined) {
+      const ksoStr = String(rawKso).trim().toLowerCase();
+      if (ksoStr.includes("gajah")) {
+        rekeningTujuanId = 1;
+      } else if (ksoStr.includes("mahligai")) {
+        rekeningTujuanId = 2;
+      }
+    }
+    console.log(`  → rekeningTujuanId : ${rekeningTujuanId}`);
+    const rawBank = getCell("D");
+    console.log(`D${i} (Bank/Bayar)   : ${rawBank}`);
+    let caraPembayaran: PaymentMethod | null = null;
+    let bankField: string | null = null;
+    if (rawBank !== undefined) {
+      const bankStr = String(rawBank).trim().toUpperCase();
+      if (bankStr === "CASH TAHAP" || bankStr === "CASH KERAS") {
+        caraPembayaran =
+          bankStr === "CASH TAHAP"
+            ? PaymentMethod.CASH_BERTAHAP
+            : PaymentMethod.CASH_KERAS;
+      } else {
+        caraPembayaran = PaymentMethod.KPR;
+        bankField = String(rawBank).trim();
+      }
+    }
+    console.log(`  → caraPembayaran   : ${caraPembayaran}`);
+    console.log(`  → bank             : ${bankField}`);
+    const blokRaw = String(rawBlok).trim();
+    const dashIdx = blokRaw.lastIndexOf("-");
+    const blok = dashIdx !== -1 ? blokRaw.substring(0, dashIdx) : blokRaw;
+    const nomorUnit = dashIdx !== -1 ? blokRaw.substring(dashIdx + 1) : "";
+    console.log(`E${i} (Blok Unit)    : ${blokRaw}`);
+    console.log(`  → blok             : ${blok}`);
+    console.log(`  → nomorUnit        : ${nomorUnit}`);
+    const rawCustomerNama = getCell("F");
+    console.log(`F${i} (Customer)     : ${rawCustomerNama}`);
+    const rawAgentNama = getCell("G");
+    console.log(`G${i} (Agent)        : ${rawAgentNama}`);
+    const rawTipe = getCell("H");
+    console.log(`H${i} (LB/LT)       : ${rawTipe}`);
+    let lb = 0;
+    let lt = 0;
+    if (rawTipe !== undefined) {
+      const parts = String(rawTipe).split("/");
+      lb = parseInt(parts[0]) || 0;
+      lt = parseInt(parts[1]) || 0;
+    }
+    const namaTipe = getTipe(lb);
+    console.log(`  → lb: ${lb}, lt: ${lt}, namaTipe: ${namaTipe}`);
+    const rawHargaJual = getCell("I");
+    console.log(`I${i} (Harga Jual)  : ${rawHargaJual}`);
+    const hargaJual = rawHargaJual !== undefined ? Number(rawHargaJual) : null;
+    const rawDiskon = getCell("J");
+    console.log(`J${i} (Diskon)      : ${rawDiskon}`);
+    const diskonPenjualan = rawDiskon !== undefined ? Number(rawDiskon) : null;
+    const rawPpn = getCell("N");
+    console.log(`N${i} (nrPpn)       : ${rawPpn}`);
+    const nrPpn = rawPpn !== undefined ? Number(rawPpn) : null;
+    const rawBphtb = getCell("O");
+    console.log(`O${i} (nrBphtb)     : ${rawBphtb}`);
+    const nrBiayaBphtb = rawBphtb !== undefined ? Number(rawBphtb) : null;
+    const rawLainLain = getCell("Q");
+    console.log(`Q${i} (nrLainLain)  : ${rawLainLain}`);
+    const nrLainLain = rawLainLain !== undefined ? Number(rawLainLain) : null;
+    const rawNotarisAjb = getCell("R");
+    console.log(`R${i} (nrBiayaNotarisAjb): ${rawNotarisAjb}`);
+    const nrBiayaNotarisAjb =
+      rawNotarisAjb !== undefined ? Number(rawNotarisAjb) : null;
+    const rawAkadPpjb = getCell("V");
+    console.log(`V${i} (akadPpjb)    : ${rawAkadPpjb}`);
+    const akadPpjb =
+      rawAkadPpjb !== undefined ? String(rawAkadPpjb).trim() : null;
+    const rawTglAkad = getCell("W");
+    console.log(`W${i} (tanggalAkad) : ${rawTglAkad}`);
+    const tanggalAkadPpjb =
+      rawTglAkad !== undefined ? parseExcelDate(Number(rawTglAkad)) : null;
+    console.log(`  → tanggalAkadPpjb : ${tanggalAkadPpjb}`);
+    const rawPph = getCell("X");
+    console.log(`X${i} (nrPph)       : ${rawPph}`);
+    const nrPph = rawPph !== undefined ? Number(rawPph) : null;
+    const rawBiayaKpr = getCell("Y");
+    console.log(`Y${i} (biayaKpr)    : ${rawBiayaKpr}`);
+    const biayaKpr = rawBiayaKpr !== undefined ? Number(rawBiayaKpr) : null;
+    const rawPlafonAcc = getCell("AB");
+    console.log(`AB${i} (plafonAcc)  : ${rawPlafonAcc}`);
+    const plafonAcc = rawPlafonAcc !== undefined ? Number(rawPlafonAcc) : null;
+    const rawNamaNotaris = getCell("AR");
+    console.log(`AR${i} (Notaris)    : ${rawNamaNotaris}`);
+    const rawBiayaPpjb = getCell("AS");
+    console.log(`AS${i} (biayaPpjb)  : ${rawBiayaPpjb}`);
+    const biayaPpjb = rawBiayaPpjb !== undefined ? Number(rawBiayaPpjb) : null;
+    const rawBiayaAjb = getCell("AT");
+    console.log(`AT${i} (biayaAjb)   : ${rawBiayaAjb}`);
+    const biayaAjb = rawBiayaAjb !== undefined ? Number(rawBiayaAjb) : null;
+    console.log(`\n[Baris ${i}] MAPPED SUMMARY`);
+    console.log(`  Blok/Unit          : ${blok} / ${nomorUnit}`);
+    console.log(`  Nama Tipe          : ${namaTipe} (${lb}/${lt})`);
+    console.log(`  Customer           : ${rawCustomerNama}`);
+    console.log(`  Agent              : ${rawAgentNama}`);
+    console.log(`  Cara Pembayaran    : ${caraPembayaran}`);
+    console.log(`  Bank               : ${bankField}`);
+    console.log(`  rekeningTujuanId   : ${rekeningTujuanId}`);
+    console.log(`  Harga Jual         : ${formatRp(hargaJual)}`);
+    console.log(`  Diskon             : ${formatRp(diskonPenjualan)}`);
+    console.log(`  nrPpn              : ${formatRp(nrPpn)}`);
+    console.log(`  nrBiayaBphtb       : ${formatRp(nrBiayaBphtb)}`);
+    console.log(`  nrLainLain         : ${formatRp(nrLainLain)}`);
+    console.log(`  nrBiayaNotarisAjb  : ${formatRp(nrBiayaNotarisAjb)}`);
+    console.log(`  akadPpjb           : ${akadPpjb}`);
+    console.log(`  tanggalAkadPpjb    : ${tanggalAkadPpjb}`);
+    console.log(`  nrPph              : ${formatRp(nrPph)}`);
+    console.log(`  biayaKpr           : ${formatRp(biayaKpr)}`);
+    console.log(`  plafonAcc          : ${formatRp(plafonAcc)}`);
+    console.log(`  Notaris            : ${rawNamaNotaris}`);
+    console.log(`  biayaPpjb          : ${formatRp(biayaPpjb)}`);
+    console.log(`  biayaAjb           : ${formatRp(biayaAjb)}`);
+    try {
+      console.log(
+        `\n[Baris ${i}] 🔍 Mencari kavling: blok=${blok}, nomorUnit=${nomorUnit}`,
+      );
+      let kavling = await prisma.kavling.findFirst({
+        where: {
+          perumahanId: 1,
+          blok: blok,
+          nomorUnit: nomorUnit,
         },
       });
-    }
-    const alamatKtpValid = parseString(row[2]);
-    const alamatTinggalValid = parseString(row[3]);
-    const noHpValid = parseString(row[4]);
-    const emailValid = parseString(row[5]);
-    const pekerjaanValid = parseString(row[6]);
-    const bankKprValid = parseString(row[7]);
-    const statusValid = parseString(row[9]);
-
-    let caraPembayaranEnum: any = null;
-
-    if (statusValid && statusValid !== "-") {
-      const statusLower = statusValid.toLowerCase();
-      if (
-        statusLower.includes("cash tah") ||
-        statusLower.includes("bertahap")
-      ) {
-        caraPembayaranEnum = "CASH_BERTAHAP";
-      } else if (statusLower.includes("keras")) {
-        caraPembayaranEnum = "CASH_KERAS";
-      } else if (statusLower.includes("kpr")) {
-        caraPembayaranEnum = "KPR";
-      }
-    }
-
-    if (!caraPembayaranEnum && bankKprValid && bankKprValid !== "-") {
-      const bankKprLower = bankKprValid.toLowerCase();
-      if (bankKprLower.includes("bertahap")) {
-        caraPembayaranEnum = "CASH_BERTAHAP";
-      } else if (bankKprLower.includes("keras")) {
-        caraPembayaranEnum = "CASH_KERAS";
+      if (!kavling) {
+        console.log(`  ⚠️  Kavling tidak ditemukan. Membuat baru...`);
+        kavling = await prisma.kavling.create({
+          data: {
+            perumahanId: 1,
+            blok: blok,
+            nomorUnit: nomorUnit,
+            namaTipe: namaTipe,
+            luasBangunan: lb,
+            luasTanah: lt,
+            hargaDasar: hargaJual ?? 0,
+            rekeningTujuanId: rekeningTujuanId,
+            status: "TERJUAL",
+          },
+        });
+        console.log(`  ✅ Kavling baru dibuat: ID ${kavling.id}`);
       } else {
-        // Jika diisi nama Bank (BSI, BRI, BTN, dll) maka asumsikan KPR
-        caraPembayaranEnum = "KPR";
+        console.log(
+          `  ✅ Kavling ditemukan: ID ${kavling.id}, hargaDasar=${formatRp(Number(kavling.hargaDasar))}`,
+        );
       }
+      const namaCustomer = rawCustomerNama
+        ? String(rawCustomerNama).trim()
+        : null;
+      if (!namaCustomer) {
+        console.log(`  ❌ Nama customer kosong — baris dilewati.`);
+        skipCount++;
+        continue;
+      }
+      console.log(`\n[Baris ${i}] 🔍 Mencari customer: ${namaCustomer}`);
+      let customer = await prisma.customer.findFirst({
+        where: { nama: namaCustomer },
+      });
+      if (!customer) {
+        console.log(`  ⚠️  Customer tidak ditemukan. Membuat baru...`);
+        customer = await prisma.customer.create({
+          data: {
+            nikKtp: `IMP-${i}-${Date.now() % 100000}`,
+            nama: namaCustomer,
+            noHp: "-",
+            alamatKtp: "-",
+          },
+        });
+        console.log(`  ✅ Customer baru dibuat: ID ${customer.id}`);
+      } else {
+        console.log(`  ✅ Customer ditemukan: ID ${customer.id}`);
+      }
+      const namaAgent = rawAgentNama ? String(rawAgentNama).trim() : null;
+      let agent = null;
+      if (namaAgent) {
+        console.log(`\n[Baris ${i}] 🔍 Mencari agent: ${namaAgent}`);
+        agent = await prisma.agent.findFirst({
+          where: { nama: namaAgent },
+        });
+        if (!agent) {
+          console.log(`  ⚠️  Agent tidak ditemukan. Membuat baru...`);
+          agent = await prisma.agent.create({
+            data: {
+              nik: `IMP-${i}-${Date.now() % 100000}`,
+              nama: namaAgent,
+              noHp: "-",
+              status: "AKTIF",
+            },
+          });
+          console.log(`  ✅ Agent baru dibuat: ID ${agent.id}`);
+        } else {
+          console.log(`  ✅ Agent ditemukan: ID ${agent.id}`);
+        }
+      }
+      const namaNotaris = rawNamaNotaris ? String(rawNamaNotaris).trim() : null;
+      let notaris = null;
+      if (namaNotaris) {
+        console.log(`\n[Baris ${i}] 🔍 Mencari notaris: ${namaNotaris}`);
+        notaris = await prisma.notaris.findFirst({
+          where: { nama: namaNotaris },
+        });
+        if (!notaris) {
+          console.log(`  ⚠️  Notaris tidak ditemukan. Membuat baru...`);
+          notaris = await prisma.notaris.create({
+            data: {
+              nama: namaNotaris,
+              biayaPpjb: biayaPpjb,
+              biayaAjb: biayaAjb,
+            },
+          });
+          console.log(`  ✅ Notaris baru dibuat: ID ${notaris.id}`);
+        } else {
+          console.log(`  ✅ Notaris ditemukan: ID ${notaris.id}`);
+          if (!notaris.biayaPpjb || !notaris.biayaAjb) {
+            await prisma.notaris.update({
+              where: { id: notaris.id },
+              data: {
+                biayaPpjb: notaris.biayaPpjb ?? biayaPpjb,
+                biayaAjb: notaris.biayaAjb ?? biayaAjb,
+              },
+            });
+            console.log(
+              `  🔄 Notaris diupdate biaya: ppjb=${formatRp(biayaPpjb)}, ajb=${formatRp(biayaAjb)}`,
+            );
+          }
+        }
+      }
+      const noTransaksi = `IMPORT-${blok}-${nomorUnit}-${i}`;
+      console.log(`\n[Baris ${i}] 📝 noTransaksi: ${noTransaksi}`);
+      const existingPenjualan = await prisma.penjualan.findFirst({
+        where: { kavlingId: kavling.id },
+      });
+      let penjualan;
+      if (existingPenjualan) {
+        console.log(
+          `  ⚠️  Penjualan sudah ada untuk kavling ini (ID: ${existingPenjualan.id}). Update data...`,
+        );
+        penjualan = await prisma.penjualan.update({
+          where: { id: existingPenjualan.id },
+          data: {
+            customerId: customer.id,
+            agentId: agent?.id ?? null,
+            rekeningTujuanId: rekeningTujuanId,
+            caraPembayaran: caraPembayaran,
+            bank: bankField,
+            hargaDasar: Number(kavling.hargaDasar),
+            hargaJual: hargaJual,
+            diskonPenjualan: diskonPenjualan,
+            plafonAcc: plafonAcc,
+            biayaKpr: biayaKpr,
+            status: PenjualanStatus.LUNAS,
+          },
+        });
+        console.log(`  ✅ Penjualan diupdate: ID ${penjualan.id}`);
+      } else {
+        penjualan = await prisma.penjualan.create({
+          data: {
+            noTransaksi: noTransaksi,
+            tanggal: tanggalAkadPpjb ?? new Date(),
+            customerId: customer.id,
+            kavlingId: kavling.id,
+            agentId: agent?.id ?? null,
+            rekeningTujuanId: rekeningTujuanId,
+            caraPembayaran: caraPembayaran,
+            bank: bankField,
+            hargaDasar: Number(kavling.hargaDasar),
+            hargaJual: hargaJual,
+            diskonPenjualan: diskonPenjualan,
+            plafonAcc: plafonAcc,
+            biayaKpr: biayaKpr,
+            status: PenjualanStatus.LUNAS,
+          },
+        });
+        console.log(`  ✅ Penjualan baru dibuat: ID ${penjualan.id}`);
+      }
+      console.log(`\n[Baris ${i}] 📋 Upsert DetailKavlingPajak...`);
+      const detailData = {
+        notarisId: notaris?.id ?? null,
+        akadPpjb: akadPpjb,
+        tanggalAkadPpjb: tanggalAkadPpjb,
+        nrPpn: nrPpn,
+        nrBiayaBphtb: nrBiayaBphtb,
+        nrLainLain: nrLainLain,
+        nrBiayaNotarisAjb: nrBiayaNotarisAjb,
+        nrPph: nrPph,
+      };
+      await prisma.detailKavlingPajak.upsert({
+        where: { penjualanId: penjualan.id },
+        create: { penjualanId: penjualan.id, ...detailData },
+        update: detailData,
+      });
+      console.log(`  ✅ DetailKavlingPajak upserted.`);
+      await prisma.kavling.update({
+        where: { id: kavling.id },
+        data: { status: "TERJUAL" },
+      });
+      console.log(`  ✅ Status kavling diupdate → TERJUAL`);
+      successCount++;
+      console.log(
+        `\n✅ [Baris ${i}] SUKSES — ${blok}/${nomorUnit} (${namaCustomer})`,
+      );
+    } catch (err: any) {
+      errorCount++;
+      console.error(`\n❌ [Baris ${i}] ERROR: ${err.message}`);
     }
-    const rawBlok = row[11];
-    let rawUnit = row[12];
-    if (rawUnit instanceof Date) {
-      rawUnit = `${rawUnit.getDate()}-${rawUnit.getMonth() + 1}`;
-    }
-    let finalBlok = rawBlok ? String(rawBlok).trim() : "-";
-    let finalUnit = rawUnit ? String(rawUnit).trim() : "-";
-    if (finalUnit.includes("-")) {
-      const parts = finalUnit.split("-");
-      finalBlok = finalBlok + parts[0].trim();
-      finalUnit = parts[1].trim();
-    } else if (finalUnit.includes("/")) {
-      const parts = finalUnit.split("/");
-      finalBlok = finalBlok + parts[0].trim();
-      finalUnit = parts[1].trim();
-    }
-    finalUnit = finalUnit.substring(0, 10);
-    const lt = Number(row[14]) || 0;
-    const lb = Number(row[15]) || 0;
-    const namaTipeValid = getTipe(lb, lt);
-    const bookingFee = Number(row[17]) || 0;
-    const hargaJual = Number(row[26]) || 0;
-    const lookupKey = `${finalBlok}-${finalUnit}`;
-    const rekeningTujuanIdValid = KAVLING_REKENING_MAP[lookupKey] || 1;
-    const formatRp = (num: number) =>
-      `Rp ${Number(num || 0).toLocaleString("id-ID")}`;
-
-    console.log(
-      `\n========================================================================`,
-    );
-    console.log(`[BARIS ${index + 1}] PREVIEW FULL DATA INSERT`);
-    console.log(
-      `========================================================================`,
-    );
-
-    console.log(`[1. DATA CUSTOMER & AGENT]`);
-    console.log(`Nama Konsumen  : ${namaKonsumen}`);
-    console.log(`No HP          : ${noHpValid ?? "NULL"}`);
-    console.log(`Email          : ${emailValid ?? "NULL"}`);
-    console.log(`Alamat KTP     : ${alamatKtpValid ?? "NULL"}`);
-    console.log(`Alamat Tinggal : ${alamatTinggalValid ?? "NULL"}`);
-    console.log(`Pekerjaan      : ${pekerjaanValid ?? "NULL"}`);
-    console.log(`Bank KPR       : ${bankKprValid ?? "NULL"}`);
-    console.log(`Agent          : ${namaAgent}`);
-    console.log(
-      `------------------------------------------------------------------------`,
-    );
-
-    console.log(`[2. DATA KAVLING & PENJUALAN]`);
-    console.log(`Blok / Unit    : ${finalBlok} / ${finalUnit}`);
-    console.log(`Tipe Kavling   : ${namaTipeValid} (LB: ${lb}, LT: ${lt})`);
-    console.log(
-      `Cara Bayar     : ${caraPembayaranEnum ?? "NULL (Akan diset NULL di DB)"}`,
-    );
-    console.log(`Rekening Tujuan: ID ${rekeningTujuanIdValid}`);
-    console.log(`Harga Jual     : ${formatRp(hargaJual)}`);
-    console.log(`Booking Fee    : ${formatRp(bookingFee)}`);
-    console.log(`Diskon Penjualan: ${formatRp(Number(row[32]) || 0)}`);
-    console.log(
-      `------------------------------------------------------------------------`,
-    );
-
-    console.log(`[3. DETAIL PAJAK - NILAI RUMAH (Subsidi & Bonus)]`);
-    console.log(`Diskon Cash (nr)      : ${formatRp(Number(row[32]) || 0)}`);
-    console.log(`BPHTB (nr)            : ${formatRp(Number(row[36]) || 0)}`);
-    console.log(`Nilai Penyerahan (nr) : ${formatRp(Number(row[39]) || 0)}`);
-    console.log(`PPN (nr)              : ${formatRp(Number(row[40]) || 0)}`);
-    console.log(`PPh (nr)              : ${formatRp(Number(row[42]) || 0)}`);
-    console.log(
-      `------------------------------------------------------------------------`,
-    );
-
-    console.log(`[4. DETAIL PAJAK - PAJAK (Subsidi & Bonus)]`);
-    console.log(`Biaya KPR (pj)        : ${formatRp(Number(row[43]) || 0)}`);
-    console.log(`Biaya Asuransi (pj)   : ${formatRp(Number(row[44]) || 0)}`);
-    console.log(`Diskon Angsuran (pj)  : ${formatRp(Number(row[45]) || 0)}`);
-    console.log(`Biaya BBN (pj)        : ${formatRp(Number(row[46]) || 0)}`);
-    console.log(`Biaya AJB (pj)        : ${formatRp(Number(row[47]) || 0)}`);
-    console.log(`Biaya Appraisal (pj)  : ${formatRp(Number(row[48]) || 0)}`);
-    console.log(`BPHTB (pj)            : ${formatRp(Number(row[49]) || 0)}`);
-    console.log(`Lain-lain (pj)        : ${formatRp(Number(row[50]) || 0)}`);
-    console.log(`Nilai Penyerahan (pj) : ${formatRp(Number(row[52]) || 0)}`);
-    console.log(`PPN (pj)              : ${formatRp(Number(row[53]) || 0)}`);
-    console.log(`BPHTB Pajak (pj)      : ${formatRp(Number(row[54]) || 0)}`);
-    console.log(`PPh (pj)              : ${formatRp(Number(row[55]) || 0)}`);
-    console.log(`Total BPHTB+PPh (pj)  : ${formatRp(Number(row[56]) || 0)}`);
-    console.log(
-      `------------------------------------------------------------------------`,
-    );
-
-    console.log(`[5. DETAIL PAJAK - KEPERLUAN AJB (NJOP)]`);
-    console.log(`NJOP Tanah/m2 (ajb)   : ${formatRp(Number(row[57]) || 0)}`);
-    console.log(`NJOP Tanah (ajb)      : ${formatRp(Number(row[58]) || 0)}`);
-    console.log(`NJOP Bangunan/m2 (ajb): ${formatRp(Number(row[59]) || 0)}`);
-    console.log(`NJOP Bangunan (ajb)   : ${formatRp(Number(row[60]) || 0)}`);
-    console.log(`NJOP Total (ajb)      : ${formatRp(Number(row[61]) || 0)}`);
-    console.log(`PPN (ajb)             : ${formatRp(Number(row[62]) || 0)}`);
-    console.log(`BPHTB (ajb)           : ${formatRp(Number(row[63]) || 0)}`);
-    console.log(`PPh (ajb)             : ${formatRp(Number(row[64]) || 0)}`);
-    console.log(`Total BPHTB+PPh (ajb) : ${formatRp(Number(row[65]) || 0)}`);
-    console.log(`Selisih Pajak PBB (ajb): ${formatRp(Number(row[66]) || 0)}`);
-    console.log(`Uping (ajb)           : ${formatRp(Number(row[67]) || 0)}`);
-    console.log(
-      `========================================================================\n`,
-    );
-    const customer = await prisma.customer.create({
-      data: {
-        nama: namaKonsumen,
-        nikKtp: `DUMMY-${index}123456`,
-        noHp: noHpValid ?? "",
-        alamatKtp: alamatKtpValid ?? "",
-        alamatTinggal: alamatTinggalValid,
-        email: emailValid,
-        pekerjaan: pekerjaanValid,
-        bank: bankKprValid,
-      },
-    });
-    const kavling = await prisma.kavling.upsert({
-      where: {
-        perumahanId_blok_nomorUnit: {
-          perumahanId: perumahan.id,
-          blok: finalBlok,
-          nomorUnit: finalUnit,
-        },
-      },
-      update: {
-        status: UnitStatus.TERJUAL,
-        hargaDasar: hargaJual,
-      },
-      create: {
-        perumahanId: perumahan.id,
-        blok: finalBlok,
-        nomorUnit: finalUnit,
-        luasBangunan: lb,
-        luasTanah: lt,
-        namaTipe: namaTipeValid,
-        hargaDasar: hargaJual,
-        rekeningTujuanId: rekeningTujuanIdValid,
-        status: UnitStatus.TERJUAL,
-      },
-    });
-    const penjualan = await prisma.penjualan.create({
-      data: {
-        noTransaksi: `TRX-SAFANA-${1000 + index}`,
-        tanggal: row[18] instanceof Date ? row[18] : new Date(),
-        customerId: customer.id,
-        kavlingId: kavling.id,
-        agentId: agent.id,
-        caraPembayaran: caraPembayaranEnum as any,
-        hargaJual: hargaJual,
-        diskonPenjualan: Number(row[32]) || 0,
-        bookingFee: bookingFee,
-        rekeningTujuanId: rekeningTujuanIdValid,
-        status: PenjualanStatus.PROSES,
-        hargaDasar: hargaJual,
-      },
-    });
-    await prisma.detailKavlingPajak.create({
-      data: {
-        penjualanId: penjualan.id,
-        nrDiskonCash: Number(row[32]) || 0,
-        nrBiayaBphtb: Number(row[36]) || 0,
-        nrBphtb: Number(row[41]) || 0,
-        nrNilaiPenyerahan: Number(row[39]) || 0,
-        nrPpn: Number(row[40]) || 0,
-        nrPph: Number(row[42]) || 0,
-        pjBiayaKpr: Number(row[43]) || 0,
-        pjBiayaAsuransi: Number(row[44]) || 0,
-        pjDiskonAngsuran: Number(row[45]) || 0,
-        pjBiayaBbn: Number(row[46]) || 0,
-        pjBiayaAjb: Number(row[47]) || 0,
-        pjBiayaAppraisal: Number(row[48]) || 0,
-        pjBphtb: Number(row[49]) || 0,
-        pjLainLain: Number(row[50]) || 0,
-        pjNilaiPenyerahan: Number(row[52]) || 0,
-        pjPpn: Number(row[53]) || 0,
-        pjBphtbPajak: Number(row[54]) || 0,
-        pjPph: Number(row[55]) || 0,
-        pjTotalBphtbPph: Number(row[56]) || 0,
-        ajbNjopTanahPerMeter: Number(row[57]) || 0,
-        ajbNjopTanah: Number(row[58]) || 0,
-        ajbNjopBangunanPerMeter: Number(row[59]) || 0,
-        ajbNjopBangunan: Number(row[60]) || 0,
-        ajbNjopTotal: Number(row[61]) || 0,
-        ajbPpn: Number(row[62]) || 0,
-        ajbBphtb: Number(row[63]) || 0,
-        ajbPph: Number(row[64]) || 0,
-        ajbTotalBphtbPph: Number(row[65]) || 0,
-        ajbSelisihPajakPbb: Number(row[66]) || 0,
-        ajbUping: Number(row[67]) || 0,
-      },
-    });
   }
-  console.log(
-    "✅ BOOM! Semua data beserta Detail Pajaknya berhasil di-seed masuk ke database!",
-  );
+  console.log(`\n==========================================================`);
+  console.log(`  SELESAI SEED PENJUALAN`);
+  console.log(`  ✅ Sukses : ${successCount}`);
+  console.log(`  ⏭️  Skip   : ${skipCount}`);
+  console.log(`  ❌ Error  : ${errorCount}`);
+  console.log(`==========================================================`);
 }
