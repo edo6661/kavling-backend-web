@@ -428,6 +428,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         nomorUnit: item.kavling.nomorUnit,
 
         plafonAwal: item.plafonAwal ? Number(item.plafonAwal) : null,
+        plafonAcc: item.plafonAcc ? Number(item.plafonAcc) : null,
         plafonKredit: item.plafonKredit ? Number(item.plafonKredit) : null,
         dpTidakDibayar: item.dpTidakDibayar
           ? Number(item.dpTidakDibayar)

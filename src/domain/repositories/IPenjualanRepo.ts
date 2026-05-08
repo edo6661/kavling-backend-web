@@ -48,6 +48,7 @@ export interface PenjualanPaginatedItem {
   luasTanah: number;
 
   plafonAwal: number | null;
+  plafonAcc?: number | null;
   biayaKpr?: number | null;
   plafonKredit?: number | null;
   dpTidakDibayar?: number | null;

@@ -259,6 +259,7 @@ model DetailKavlingPajak {
   nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
   nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
   nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
+  nrBiayaNotarisPpjb       Decimal?  @map("nr_biaya_notaris_ppjb") @db.Decimal(15, 2)
   nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
   nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
   nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
