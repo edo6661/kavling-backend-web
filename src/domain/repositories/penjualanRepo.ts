@@ -198,15 +198,16 @@ export class PenjualanRepository implements IPenjualanRepository {
             dp = data.dp ? Number(data.dp) : 0;
           }
         } else if (data.caraPembayaran === "KPR") {
-          biayaKpr = plafonAwal * 0.06;
-          plafonKredit = plafonAwal + biayaKpr;
+          biayaKpr = data.biayaKpr ?? Math.round(plafonAwal * 0.06);
+          plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
 
           nilaiPengajuanKpr =
             data.nilaiPengajuanKpr ?? plafonKredit - totalBiayaTambahan;
 
           const baseHargaJual = plafonKredit / 0.9;
-          dp = data.dp ? Number(data.dp) : baseHargaJual * 0.1;
-          hargaJual = baseHargaJual + diskon;
+          hargaJual = data.hargaJual ?? baseHargaJual + diskon;
+          dp =
+            data.dp ?? data.dpTidakDibayar ?? Math.round(baseHargaJual * 0.1);
         }
       }
       const penjualan = await tx.penjualan.create({

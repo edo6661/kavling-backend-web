@@ -191,16 +191,18 @@ export class UpdatePenjualanUseCase {
           dp = data.dp ?? 0;
         }
       } else if (currentCaraPembayaran === "KPR") {
-        biayaKpr = data.biayaKpr ?? plafonAwal * 0.06;
+        biayaKpr = data.biayaKpr ?? Math.round(plafonAwal * 0.06);
         plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
         const baseHargaJual = plafonKredit / 0.9;
         hargaJual =
-          data.hargaJual ?? baseHargaJual + currentDiskon + totalTambahanKpr;
+          data.hargaJual ??
+          Math.round(baseHargaJual + currentDiskon + totalTambahanKpr);
         nilaiPengajuanKpr =
           data.nilaiPengajuanKpr ??
           plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
         dpTidakDibayar =
-          data.dpTidakDibayar ?? baseHargaJual * 0.1 - currentBookingFee;
+          data.dpTidakDibayar ??
+          Math.round(baseHargaJual * 0.1 - currentBookingFee);
         nilaiPengajuanKpr =
           data.nilaiPengajuanKpr ??
           plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;

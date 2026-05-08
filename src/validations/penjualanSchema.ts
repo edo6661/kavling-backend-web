@@ -99,6 +99,9 @@ export const updatePenjualanSchema = {
 
       // TAMBAHAN: Diizinkan menerima input manual untuk kalkulasi
       plafonAwal: emptyAsUndefined(z.coerce.number().optional()),
+      plafonKredit: emptyAsUndefined(z.coerce.number().optional()),
+      dpTidakDibayar: emptyAsUndefined(z.coerce.number().optional()),
+      cicilanPerBulan: emptyAsUndefined(z.coerce.number().optional()),
       biayaKpr: emptyAsUndefined(z.coerce.number().optional()),
       nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().optional()),
       dp: emptyAsUndefined(z.coerce.number().optional()),
