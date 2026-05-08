@@ -3,6 +3,7 @@ import * as bcrypt from "bcrypt";
 
 export async function seedUser(prisma: PrismaClient) {
   const defaultPassword = await bcrypt.hash("password", 10);
+
   await prisma.user.createMany({
     data: [
       {
@@ -14,19 +15,19 @@ export async function seedUser(prisma: PrismaClient) {
       {
         username: "Arga",
         email: "arga@gmail.com",
-        password: "arga123",
+        password: await bcrypt.hash("arga123", 10),
         role: Role.ADMIN,
       },
       {
         username: "Wiwi",
         email: "wiwi@gmail.com",
-        password: "wiwi123",
+        password: await bcrypt.hash("wiwi123", 10),
         role: Role.MARKETING,
       },
       {
         username: "Eva",
         email: "eva@gmail.com",
-        password: "eva123",
+        password: await bcrypt.hash("eva123", 10),
         role: Role.MARKETING,
       },
     ],
