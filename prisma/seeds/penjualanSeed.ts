@@ -212,7 +212,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
           }
         }
       }
-      const noTransaksi = `IMPORT-${blok}-${nomorUnit}-${i}`;
+      const noTransaksi = `TRX-${blok}-${nomorUnit}-${i}`;
       const calcDiskon = diskonPenjualan ?? 0;
       const calcBookingFee = 5000000;
       let calcPlafonAwal: number | null = null;
@@ -255,6 +255,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
         dpTidakDibayar: calcDpTidakDibayar,
         dp: calcDp,
         plafonAcc: plafonAcc,
+        bookingFee: calcBookingFee,
         status: PenjualanStatus.PROSES,
       };
       let penjualan;
@@ -276,6 +277,52 @@ export async function seedPenjualan(prisma: PrismaClient) {
             tanggal: tanggalAkadPpjb ?? new Date(),
             kavlingId: kavling.id,
             ...payloadPenjualan,
+          },
+        });
+      }
+      const noTagihanBf = `INV-BF-${noTransaksi}`;
+
+      await prisma.tagihan.upsert({
+        where: { noTagihan: noTagihanBf },
+        update: {
+          nominal: calcBookingFee,
+          jatuhTempo: tanggalAkadPpjb ?? new Date(),
+        },
+        create: {
+          noTagihan: noTagihanBf,
+          customerId: customer.id,
+          penjualanId: penjualan.id,
+          pembayaran: "Booking Fee",
+          nominal: calcBookingFee,
+          jatuhTempo: tanggalAkadPpjb ?? new Date(),
+          status: "BELUM_BAYAR",
+        },
+      });
+
+      if (
+        calcDp &&
+        calcDp > 0 &&
+        (caraPembayaran === PaymentMethod.KPR ||
+          caraPembayaran === PaymentMethod.CASH_BERTAHAP)
+      ) {
+        const noTagihanDp = `INV-DP-${noTransaksi}`;
+        const dpDueDate = new Date(tanggalAkadPpjb ?? new Date());
+        dpDueDate.setDate(dpDueDate.getDate() + 14);
+
+        await prisma.tagihan.upsert({
+          where: { noTagihan: noTagihanDp },
+          update: {
+            nominal: calcDp,
+            jatuhTempo: dpDueDate,
+          },
+          create: {
+            noTagihan: noTagihanDp,
+            customerId: customer.id,
+            penjualanId: penjualan.id,
+            pembayaran: "Down Payment (DP)",
+            nominal: calcDp,
+            jatuhTempo: dpDueDate,
+            status: "BELUM_BAYAR",
           },
         });
       }
