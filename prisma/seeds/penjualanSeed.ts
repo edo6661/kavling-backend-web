@@ -2,7 +2,6 @@ import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
 import * as xlsx from "xlsx";
 import path from "path";
 import fs from "fs";
-
 function getTipe(lb: number): string {
   if (lb === 48) return "Asvara";
   if (lb === 52) return "Adara";
@@ -10,24 +9,19 @@ function getTipe(lb: number): string {
   if (lb === 36) return "Ansara";
   return `Tipe ${lb}`;
 }
-
 function parseExcelDate(serial: number): Date | null {
   if (!serial || isNaN(serial)) return null;
-  // xlsx epoch: Dec 30, 1899
   const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
   return date;
 }
-
 function formatRp(num: number | null | undefined): string {
   if (num == null) return "null";
   return `Rp ${Number(num).toLocaleString("id-ID")}`;
 }
-
 export async function seedPenjualan(prisma: PrismaClient) {
   console.log("==========================================================");
   console.log("  MEMULAI SEED PENJUALAN dari Detil_Pembelian_Unit.xls");
   console.log("==========================================================");
-
   const excelPath = path.resolve(process.cwd(), "Detil_Pembelian_Unit.xls");
   if (!fs.existsSync(excelPath)) {
     console.error(
@@ -35,47 +29,35 @@ export async function seedPenjualan(prisma: PrismaClient) {
     );
     return;
   }
-
   const fileBuffer = fs.readFileSync(excelPath);
   const workbook = xlsx.read(fileBuffer, { type: "buffer" });
-
   const sheetName = "LENGKAP";
   const worksheet = workbook.Sheets[sheetName];
   if (!worksheet) {
     console.error(`❌ Sheet '${sheetName}' tidak ditemukan!`);
     return;
   }
-
   const range = xlsx.utils.decode_range(worksheet["!ref"] || "A1:AT1000");
   const maxRow = range.e.r + 1;
-
   console.log(`\n>>> Sheet ditemukan: '${sheetName}', total baris: ${maxRow}`);
-
   let successCount = 0;
   let skipCount = 0;
   let errorCount = 0;
-
   for (let i = 3; i <= maxRow; i++) {
     const getCell = (col: string) => {
       const cell = worksheet[`${col}${i}`];
       return cell ? cell.v : undefined;
     };
-
-    // ── Baris kosong? Skip ──
     const rawBlok = getCell("E");
     if (rawBlok === undefined || String(rawBlok).trim() === "") {
       console.log(`\n[Baris ${i}] ⚠️  Kolom E kosong — baris dilewati.`);
       skipCount++;
       continue;
     }
-
     console.log(`\n========================================================`);
     console.log(`[BARIS EXCEL ${i}] RAW VALUES`);
     console.log(`========================================================`);
-
-    // ── C3: KSO → rekeningTujuanId ──
     const rawKso = getCell("C");
-    console.log(`C${i} (KSO)         : ${rawKso}`);
     let rekeningTujuanId: number | null = null;
     if (rawKso !== undefined) {
       const ksoStr = String(rawKso).trim().toLowerCase();
@@ -85,11 +67,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
         rekeningTujuanId = 2;
       }
     }
-    console.log(`  → rekeningTujuanId : ${rekeningTujuanId}`);
-
-    // ── D3: Bank / Cara Pembayaran ──
     const rawBank = getCell("D");
-    console.log(`D${i} (Bank/Bayar)   : ${rawBank}`);
     let caraPembayaran: PaymentMethod | null = null;
     let bankField: string | null = null;
     if (rawBank !== undefined && String(rawBank).trim() !== "") {
@@ -99,38 +77,20 @@ export async function seedPenjualan(prisma: PrismaClient) {
       } else if (bankStr === "CASH KERAS") {
         caraPembayaran = PaymentMethod.CASH_KERAS;
       } else {
-        // Nama bank (BJBS, BSI, BRI, BTNS, dll) → KPR
         caraPembayaran = PaymentMethod.KPR;
         bankField = String(rawBank).trim();
       }
     } else {
-      // Kolom D kosong → KPR tanpa info bank
       caraPembayaran = PaymentMethod.KPR;
       bankField = null;
     }
-    console.log(`  → caraPembayaran   : ${caraPembayaran}`);
-    console.log(`  → bank             : ${bankField}`);
-
-    // ── E3: Blok & Nomor Unit ──
-    const blokRaw = String(rawBlok).trim(); // e.g. "AA28-3"
+    const blokRaw = String(rawBlok).trim();
     const dashIdx = blokRaw.lastIndexOf("-");
     const blok = dashIdx !== -1 ? blokRaw.substring(0, dashIdx) : blokRaw;
     const nomorUnit = dashIdx !== -1 ? blokRaw.substring(dashIdx + 1) : "";
-    console.log(`E${i} (Blok Unit)    : ${blokRaw}`);
-    console.log(`  → blok             : ${blok}`);
-    console.log(`  → nomorUnit        : ${nomorUnit}`);
-
-    // ── F3: Nama Customer ──
     const rawCustomerNama = getCell("F");
-    console.log(`F${i} (Customer)     : ${rawCustomerNama}`);
-
-    // ── G3: Nama Agent ──
     const rawAgentNama = getCell("G");
-    console.log(`G${i} (Agent)        : ${rawAgentNama}`);
-
-    // ── H3: LB/LT → nama tipe ──
     const rawTipe = getCell("H");
-    console.log(`H${i} (LB/LT)       : ${rawTipe}`);
     let lb = 0;
     let lt = 0;
     if (rawTipe !== undefined) {
@@ -139,120 +99,41 @@ export async function seedPenjualan(prisma: PrismaClient) {
       lt = parseInt(parts[1]) || 0;
     }
     const namaTipe = getTipe(lb);
-    console.log(`  → lb: ${lb}, lt: ${lt}, namaTipe: ${namaTipe}`);
-
-    // ── I3: Harga Jual & Harga Dasar ──
     const rawHargaJual = getCell("I");
-    console.log(`I${i} (Harga Jual)  : ${rawHargaJual}`);
     const hargaJual = rawHargaJual !== undefined ? Number(rawHargaJual) : null;
-
-    // ── J3: Diskon Penjualan ──
     const rawDiskon = getCell("J");
-    console.log(`J${i} (Diskon)      : ${rawDiskon}`);
     const diskonPenjualan = rawDiskon !== undefined ? Number(rawDiskon) : null;
-
-    // ── N3: nrPpn ──
     const rawPpn = getCell("N");
-    console.log(`N${i} (nrPpn)       : ${rawPpn}`);
     const nrPpn = rawPpn !== undefined ? Number(rawPpn) : null;
-
-    // ── O3: nrBiayaBphtb ──
     const rawBphtb = getCell("O");
-    console.log(`O${i} (nrBphtb)     : ${rawBphtb}`);
     const nrBiayaBphtb = rawBphtb !== undefined ? Number(rawBphtb) : null;
-
-    // ── Q3: nrLainLain ──
     const rawLainLain = getCell("Q");
-    console.log(`Q${i} (nrLainLain)  : ${rawLainLain}`);
     const nrLainLain = rawLainLain !== undefined ? Number(rawLainLain) : null;
-
-    // ── R3: nrBiayaNotarisAjb ──
     const rawNotarisAjb = getCell("R");
-    console.log(`R${i} (nrBiayaNotarisAjb): ${rawNotarisAjb}`);
     const nrBiayaNotarisAjb =
       rawNotarisAjb !== undefined ? Number(rawNotarisAjb) : null;
-
-    // ── V3: akadPpjb ──
     const rawAkadPpjb = getCell("V");
-    console.log(`V${i} (akadPpjb)    : ${rawAkadPpjb}`);
     const akadPpjb =
       rawAkadPpjb !== undefined ? String(rawAkadPpjb).trim() : null;
-
-    // ── W3: tanggalAkadPpjb ──
     const rawTglAkad = getCell("W");
-    console.log(`W${i} (tanggalAkad) : ${rawTglAkad}`);
     const tanggalAkadPpjb =
       rawTglAkad !== undefined ? parseExcelDate(Number(rawTglAkad)) : null;
-    console.log(`  → tanggalAkadPpjb : ${tanggalAkadPpjb}`);
-
-    // ── X3: nrPph ──
     const rawPph = getCell("X");
-    console.log(`X${i} (nrPph)       : ${rawPph}`);
     const nrPph = rawPph !== undefined ? Number(rawPph) : null;
-
-    // ── Y3: biayaKpr ──
     const rawBiayaKpr = getCell("Y");
-    console.log(`Y${i} (biayaKpr)    : ${rawBiayaKpr}`);
     const biayaKpr = rawBiayaKpr !== undefined ? Number(rawBiayaKpr) : null;
-
-    // ── AB3: plafonAcc ──
     const rawPlafonAcc = getCell("AB");
-    console.log(`AB${i} (plafonAcc)  : ${rawPlafonAcc}`);
     const plafonAcc = rawPlafonAcc !== undefined ? Number(rawPlafonAcc) : null;
-
-    // ── AR3: Nama Notaris ──
     const rawNamaNotaris = getCell("AR");
-    console.log(`AR${i} (Notaris)    : ${rawNamaNotaris}`);
-
-    // ── AS3: biayaPpjb ──
     const rawBiayaPpjb = getCell("AS");
-    console.log(`AS${i} (biayaPpjb)  : ${rawBiayaPpjb}`);
     const biayaPpjb = rawBiayaPpjb !== undefined ? Number(rawBiayaPpjb) : null;
-
-    // ── AT3: biayaAjb ──
     const rawBiayaAjb = getCell("AT");
-    console.log(`AT${i} (biayaAjb)   : ${rawBiayaAjb}`);
     const biayaAjb = rawBiayaAjb !== undefined ? Number(rawBiayaAjb) : null;
-
-    console.log(`\n[Baris ${i}] MAPPED SUMMARY`);
-    console.log(`  Blok/Unit          : ${blok} / ${nomorUnit}`);
-    console.log(`  Nama Tipe          : ${namaTipe} (${lb}/${lt})`);
-    console.log(`  Customer           : ${rawCustomerNama}`);
-    console.log(`  Agent              : ${rawAgentNama}`);
-    console.log(`  Cara Pembayaran    : ${caraPembayaran}`);
-    console.log(`  Bank               : ${bankField}`);
-    console.log(`  rekeningTujuanId   : ${rekeningTujuanId}`);
-    console.log(`  Harga Jual         : ${formatRp(hargaJual)}`);
-    console.log(`  Diskon             : ${formatRp(diskonPenjualan)}`);
-    console.log(`  nrPpn              : ${formatRp(nrPpn)}`);
-    console.log(`  nrBiayaBphtb       : ${formatRp(nrBiayaBphtb)}`);
-    console.log(`  nrLainLain         : ${formatRp(nrLainLain)}`);
-    console.log(`  nrBiayaNotarisAjb  : ${formatRp(nrBiayaNotarisAjb)}`);
-    console.log(`  akadPpjb           : ${akadPpjb}`);
-    console.log(`  tanggalAkadPpjb    : ${tanggalAkadPpjb}`);
-    console.log(`  nrPph              : ${formatRp(nrPph)}`);
-    console.log(`  biayaKpr           : ${formatRp(biayaKpr)}`);
-    console.log(`  plafonAcc          : ${formatRp(plafonAcc)}`);
-    console.log(`  Notaris            : ${rawNamaNotaris}`);
-    console.log(`  biayaPpjb          : ${formatRp(biayaPpjb)}`);
-    console.log(`  biayaAjb           : ${formatRp(biayaAjb)}`);
-
     try {
-      // ── 1. Find or create Kavling ──
-      console.log(
-        `\n[Baris ${i}] 🔍 Mencari kavling: blok=${blok}, nomorUnit=${nomorUnit}`,
-      );
       let kavling = await prisma.kavling.findFirst({
-        where: {
-          perumahanId: 1,
-          blok: blok,
-          nomorUnit: nomorUnit,
-        },
+        where: { perumahanId: 1, blok: blok, nomorUnit: nomorUnit },
       });
-
       if (!kavling) {
-        console.log(`  ⚠️  Kavling tidak ditemukan. Membuat baru...`);
-        // Harga dasar dari harga jual (fallback jika tidak ada di kavling seed)
         kavling = await prisma.kavling.create({
           data: {
             perumahanId: 1,
@@ -266,14 +147,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
             status: "TERJUAL",
           },
         });
-        console.log(`  ✅ Kavling baru dibuat: ID ${kavling.id}`);
-      } else {
-        console.log(
-          `  ✅ Kavling ditemukan: ID ${kavling.id}, hargaDasar=${formatRp(Number(kavling.hargaDasar))}`,
-        );
       }
-
-      // ── 2. Find or create Customer ──
       const namaCustomer = rawCustomerNama
         ? String(rawCustomerNama).trim()
         : null;
@@ -282,35 +156,26 @@ export async function seedPenjualan(prisma: PrismaClient) {
         skipCount++;
         continue;
       }
-      console.log(`\n[Baris ${i}] 🔍 Mencari customer: ${namaCustomer}`);
       let customer = await prisma.customer.findFirst({
         where: { nama: namaCustomer },
       });
       if (!customer) {
-        console.log(`  ⚠️  Customer tidak ditemukan. Membuat baru...`);
         customer = await prisma.customer.create({
           data: {
-            nikKtp: `IMP-${i}-${Date.now() % 100000}`, // placeholder
+            nikKtp: `IMP-${i}-${Date.now() % 100000}`,
             nama: namaCustomer,
             noHp: "-",
             alamatKtp: "-",
           },
         });
-        console.log(`  ✅ Customer baru dibuat: ID ${customer.id}`);
-      } else {
-        console.log(`  ✅ Customer ditemukan: ID ${customer.id}`);
       }
-
-      // ── 3. Find or create Agent ──
       const namaAgent = rawAgentNama ? String(rawAgentNama).trim() : null;
       let agent = null;
       if (namaAgent) {
-        console.log(`\n[Baris ${i}] 🔍 Mencari agent: ${namaAgent}`);
         agent = await prisma.agent.findFirst({
           where: { nama: namaAgent },
         });
         if (!agent) {
-          console.log(`  ⚠️  Agent tidak ditemukan. Membuat baru...`);
           agent = await prisma.agent.create({
             data: {
               nik: `IMP-${i}-${Date.now() % 100000}`,
@@ -319,22 +184,15 @@ export async function seedPenjualan(prisma: PrismaClient) {
               status: "AKTIF",
             },
           });
-          console.log(`  ✅ Agent baru dibuat: ID ${agent.id}`);
-        } else {
-          console.log(`  ✅ Agent ditemukan: ID ${agent.id}`);
         }
       }
-
-      // ── 4. Find or create Notaris ──
       const namaNotaris = rawNamaNotaris ? String(rawNamaNotaris).trim() : null;
       let notaris = null;
       if (namaNotaris) {
-        console.log(`\n[Baris ${i}] 🔍 Mencari notaris: ${namaNotaris}`);
         notaris = await prisma.notaris.findFirst({
           where: { nama: namaNotaris },
         });
         if (!notaris) {
-          console.log(`  ⚠️  Notaris tidak ditemukan. Membuat baru...`);
           notaris = await prisma.notaris.create({
             data: {
               nama: namaNotaris,
@@ -342,10 +200,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
               biayaAjb: biayaAjb,
             },
           });
-          console.log(`  ✅ Notaris baru dibuat: ID ${notaris.id}`);
         } else {
-          console.log(`  ✅ Notaris ditemukan: ID ${notaris.id}`);
-          // Update biaya jika belum ada
           if (!notaris.biayaPpjb || !notaris.biayaAjb) {
             await prisma.notaris.update({
               where: { id: notaris.id },
@@ -354,22 +209,54 @@ export async function seedPenjualan(prisma: PrismaClient) {
                 biayaAjb: notaris.biayaAjb ?? biayaAjb,
               },
             });
-            console.log(
-              `  🔄 Notaris diupdate biaya: ppjb=${formatRp(biayaPpjb)}, ajb=${formatRp(biayaAjb)}`,
-            );
           }
         }
       }
-
-      // ── 5. Generate noTransaksi ──
       const noTransaksi = `IMPORT-${blok}-${nomorUnit}-${i}`;
-      console.log(`\n[Baris ${i}] 📝 noTransaksi: ${noTransaksi}`);
+      const calcDiskon = diskonPenjualan ?? 0;
+      const calcBookingFee = 5000000;
+      let calcPlafonAwal: number | null = null;
+      let calcBiayaKpr: number | null = biayaKpr;
+      let calcPlafonKredit: number | null = null;
+      let calcNilaiPengajuanKpr: number | null = null;
+      let calcDpTidakDibayar: number | null = null;
+      let calcDp: number | null = null;
+      calcDpTidakDibayar = Math.round(
+        (Number(kavling.hargaDasar) - Number(diskonPenjualan)) * 0.1 -
+          Number(calcBookingFee),
+      );
+      calcDp = calcDpTidakDibayar;
 
-      // ── 6. Cek apakah penjualan sudah ada ──
+      if (caraPembayaran === PaymentMethod.KPR) {
+        calcPlafonAwal =
+          Number(kavling.hargaDasar) - calcDiskon - calcBookingFee;
+        if (calcBiayaKpr == null || calcBiayaKpr === 0) {
+          calcBiayaKpr = Math.round(calcPlafonAwal * 0.06);
+        }
+        calcPlafonKredit = calcPlafonAwal + calcBiayaKpr;
+        calcNilaiPengajuanKpr = calcPlafonKredit;
+      }
       const existingPenjualan = await prisma.penjualan.findFirst({
         where: { kavlingId: kavling.id },
       });
-
+      const payloadPenjualan = {
+        customerId: customer.id,
+        agentId: agent?.id ?? null,
+        rekeningTujuanId: rekeningTujuanId,
+        caraPembayaran: caraPembayaran,
+        bank: bankField,
+        hargaDasar: kavling.hargaDasar,
+        diskonPenjualan: calcDiskon > 0 ? calcDiskon : null,
+        hargaJual: kavling.hargaDasar,
+        plafonAwal: calcPlafonAwal,
+        biayaKpr: calcBiayaKpr,
+        plafonKredit: calcPlafonKredit,
+        nilaiPengajuanKpr: calcNilaiPengajuanKpr,
+        dpTidakDibayar: calcDpTidakDibayar,
+        dp: calcDp,
+        plafonAcc: plafonAcc,
+        status: PenjualanStatus.PROSES,
+      };
       let penjualan;
       if (existingPenjualan) {
         console.log(
@@ -378,44 +265,20 @@ export async function seedPenjualan(prisma: PrismaClient) {
         penjualan = await prisma.penjualan.update({
           where: { id: existingPenjualan.id },
           data: {
-            customerId: customer.id,
-            agentId: agent?.id ?? null,
-            rekeningTujuanId: rekeningTujuanId,
-            caraPembayaran: caraPembayaran,
-            bank: bankField,
-            hargaDasar: Number(kavling.hargaDasar),
-            hargaJual: hargaJual,
-            diskonPenjualan: diskonPenjualan,
-            plafonAcc: plafonAcc,
-            biayaKpr: biayaKpr,
-            status: PenjualanStatus.PROSES,
+            ...payloadPenjualan,
+            fileBuktiBooking: "",
           },
         });
-        console.log(`  ✅ Penjualan diupdate: ID ${penjualan.id}`);
       } else {
         penjualan = await prisma.penjualan.create({
           data: {
             noTransaksi: noTransaksi,
             tanggal: tanggalAkadPpjb ?? new Date(),
-            customerId: customer.id,
             kavlingId: kavling.id,
-            agentId: agent?.id ?? null,
-            rekeningTujuanId: rekeningTujuanId,
-            caraPembayaran: caraPembayaran,
-            bank: bankField,
-            hargaDasar: Number(kavling.hargaDasar),
-            hargaJual: hargaJual,
-            diskonPenjualan: diskonPenjualan,
-            plafonAcc: plafonAcc,
-            biayaKpr: biayaKpr,
-            status: PenjualanStatus.PROSES,
+            ...payloadPenjualan,
           },
         });
-        console.log(`  ✅ Penjualan baru dibuat: ID ${penjualan.id}`);
       }
-
-      // ── 7. Upsert DetailKavlingPajak ──
-      console.log(`\n[Baris ${i}] 📋 Upsert DetailKavlingPajak...`);
       const detailData = {
         notarisId: notaris?.id ?? null,
         akadPpjb: akadPpjb,
@@ -432,15 +295,10 @@ export async function seedPenjualan(prisma: PrismaClient) {
         create: { penjualanId: penjualan.id, ...detailData },
         update: detailData,
       });
-      console.log(`  ✅ DetailKavlingPajak upserted.`);
-
-      // ── 8. Update status kavling ──
       await prisma.kavling.update({
         where: { id: kavling.id },
         data: { status: "TERJUAL" },
       });
-      console.log(`  ✅ Status kavling diupdate → TERJUAL`);
-
       successCount++;
       console.log(
         `\n✅ [Baris ${i}] SUKSES — ${blok}/${nomorUnit} (${namaCustomer})`,
@@ -450,7 +308,6 @@ export async function seedPenjualan(prisma: PrismaClient) {
       console.error(`\n❌ [Baris ${i}] ERROR: ${err.message}`);
     }
   }
-
   console.log(`\n==========================================================`);
   console.log(`  SELESAI SEED PENJUALAN`);
   console.log(`  ✅ Sukses : ${successCount}`);

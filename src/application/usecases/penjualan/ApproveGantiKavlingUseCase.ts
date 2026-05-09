@@ -57,17 +57,6 @@ export class ApproveGantiKavlingUseCase {
 
       const plafonAwal = hargaDasarBaru - diskon - bookingFee;
 
-      const existingTambahan = await tx.tagihan.findMany({
-        where: {
-          penjualanId: riwayat.penjualanId,
-          noTagihan: { startsWith: "INV-ADD-" },
-        },
-      });
-      const totalBiayaTambahan = existingTambahan.reduce(
-        (sum, t) => sum + Number(t.nominal),
-        0,
-      );
-
       let biayaKpr = 0;
       let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
@@ -83,7 +72,7 @@ export class ApproveGantiKavlingUseCase {
         biayaKpr = plafonAwal * 0.06;
         plafonKredit = plafonAwal + biayaKpr;
 
-        nilaiPengajuanKpr = plafonKredit - totalBiayaTambahan;
+        nilaiPengajuanKpr = plafonKredit;
 
         const baseHargaJual = plafonKredit / 0.9;
         dp = oldPenjualan.dp ? Number(oldPenjualan.dp) : baseHargaJual * 0.1;

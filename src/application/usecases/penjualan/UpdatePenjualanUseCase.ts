@@ -197,12 +197,10 @@ export class UpdatePenjualanUseCase {
         hargaJual =
           data.hargaJual ??
           Math.round(baseHargaJual + currentDiskon + totalTambahanKpr);
-        nilaiPengajuanKpr =
-          data.nilaiPengajuanKpr ??
-          plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
+
         dpTidakDibayar =
           data.dpTidakDibayar ??
-          Math.round(baseHargaJual * 0.1 - currentBookingFee);
+          Math.round((hargaJual - currentDiskon) * 0.1 - currentBookingFee);
         nilaiPengajuanKpr =
           data.nilaiPengajuanKpr ??
           plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;

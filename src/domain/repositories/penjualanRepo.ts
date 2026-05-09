@@ -171,14 +171,6 @@ export class PenjualanRepository implements IPenjualanRepository {
       const diskon = Number(data.diskonPenjualan ?? 0);
       const bookingFee = Number(data.bookingFee ?? 0);
 
-      const listBiayaTambahan = data.biayaTambahan;
-      const totalBiayaTambahan = Array.isArray(listBiayaTambahan)
-        ? listBiayaTambahan.reduce(
-            (sum, b) => sum + (Number(b.nominal) || 0),
-            0,
-          )
-        : 0;
-
       let plafonAwal: number | null = null;
       let biayaKpr = 0;
       let plafonKredit = 0;
@@ -201,13 +193,14 @@ export class PenjualanRepository implements IPenjualanRepository {
           biayaKpr = data.biayaKpr ?? Math.round(plafonAwal * 0.06);
           plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
 
-          nilaiPengajuanKpr =
-            data.nilaiPengajuanKpr ?? plafonKredit - totalBiayaTambahan;
+          nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? plafonKredit;
 
           const baseHargaJual = plafonKredit / 0.9;
           hargaJual = data.hargaJual ?? baseHargaJual + diskon;
           dp =
-            data.dp ?? data.dpTidakDibayar ?? Math.round(baseHargaJual * 0.1);
+            data.dp ??
+            data.dpTidakDibayar ??
+            Math.round((hargaJual - diskon) * 0.1 - bookingFee);
         }
       }
       const penjualan = await tx.penjualan.create({
