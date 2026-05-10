@@ -220,6 +220,10 @@ export class UpdatePenjualanUseCase {
       updateData.diskonPenjualan = currentDiskon > 0 ? currentDiskon : null;
       updateData.bookingFee = currentBookingFee > 0 ? currentBookingFee : null;
 
+      if (data.plafonAcc !== undefined) {
+        updateData.plafonAcc = data.plafonAcc ?? null;
+      }
+
       if (data.biayaTambahanKpr !== undefined) {
         updateData.tambahanKpr = data.biayaTambahanKpr
           ? (data.biayaTambahanKpr as any)
