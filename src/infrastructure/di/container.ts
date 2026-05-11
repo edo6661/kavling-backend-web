@@ -147,6 +147,9 @@ import {
   DeleteRolePermissionUseCase,
 } from "../../application/usecases/rolePermission/RolePermissionUseCases.js";
 import { RolePermissionController } from "../../presentation/controllers/rolePermissionController.js";
+import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
+import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
+import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -161,6 +164,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const registerUseCase = new RegisterUserUseCase(userRepo);
   const loginUseCase = new LoginUserUseCase(userRepo, dbClient);
   const getProfileUseCase = new GetProfileUseCase(userRepo, dbClient);
+  const customerLoginUseCase = new CustomerLoginUseCase(userRepo, dbClient);
 
   const getAllUsersUseCase = new GetAllUsersUseCase(userRepo);
   const updateUserUseCase = new UpdateUserUseCase(userRepo);
@@ -184,6 +188,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerRepo,
     cloudinaryService,
   );
+  const getCustomerDashboardUseCase = new GetCustomerDashboardUseCase(dbClient);
   const getCustomerByIdUseCase = new GetCustomerByIdUseCase(customerRepo);
   const getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
     customerRepo,
@@ -292,6 +297,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     registerUseCase,
     loginUseCase,
     getProfileUseCase,
+    customerLoginUseCase,
   );
   const createUserUseCase = new CreateUserUseCase(userRepo);
   const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);
@@ -312,17 +318,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     getBanksPaginatedUseCase,
     deleteBankUseCase,
   );
-  const customerController = new CustomerController(
-    createCustomerUseCase,
-    updateCustomerUseCase,
-    getCustomerByIdUseCase,
-    getCustomersPaginatedUseCase,
-    deleteCustomerUseCase,
-    uploadCustomerDocumentUseCase,
-    generateCustomerAccountUseCase,
-    exportCustomersUseCase,
-    exportCustomersPdfUseCase,
-  );
+
   const tagihanRepo = new TagihanRepository(dbClient);
   const createTagihanUseCase = new CreateTagihanUseCase(tagihanRepo);
   const updateTagihanUseCase = new UpdateTagihanUseCase(tagihanRepo);
@@ -398,6 +394,12 @@ export const createContainer = (dbClient: PrismaClient) => {
     dbClient,
     cloudinaryService,
   );
+  const approveBuktiTagihanUseCase = new ApproveBuktiTagihanUseCase(
+    tagihanRepo,
+    cloudinaryService,
+    penjualanRepo,
+    generateSprPdfUseCase,
+  );
 
   const tagihanController = new TagihanController(
     createTagihanUseCase,
@@ -408,6 +410,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     uploadBuktiTagihanUseCase,
     uploadBuktiRefundUseCase,
     saveTagihanSignatureUseCase,
+    approveBuktiTagihanUseCase,
   );
   const feeAgentRepo = new FeeAgentRepository(dbClient);
   const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
@@ -429,6 +432,19 @@ export const createContainer = (dbClient: PrismaClient) => {
   const auditLogRepo = new AuditLogRepository(dbClient);
   const getAuditLogsPaginatedUseCase = new GetAuditLogsPaginatedUseCase(
     auditLogRepo,
+  );
+  const customerController = new CustomerController(
+    createCustomerUseCase,
+    updateCustomerUseCase,
+    getCustomerByIdUseCase,
+    getCustomersPaginatedUseCase,
+    deleteCustomerUseCase,
+    uploadCustomerDocumentUseCase,
+    generateCustomerAccountUseCase,
+    exportCustomersUseCase,
+    exportCustomersPdfUseCase,
+    getCustomerDashboardUseCase,
+    uploadBuktiTagihanUseCase,
   );
   const auditLogController = new AuditLogController(
     getAuditLogsPaginatedUseCase,

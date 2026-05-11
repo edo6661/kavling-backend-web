@@ -12,13 +12,14 @@ export class UploadBuktiTagihanUseCase {
   constructor(
     private readonly repo: ITagihanRepository,
     private readonly cloudinaryService: CloudinaryService,
-
     private readonly penjualanRepo: IPenjualanRepository,
     private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
   ) {}
+
   async execute(
     identifier: number | string,
     fileBuffer: Buffer,
+    isCustomer = false,
   ): Promise<TagihanResponseDTO> {
     const existing =
       typeof identifier === "number"
@@ -45,14 +46,16 @@ export class UploadBuktiTagihanUseCase {
       "bumantara/tagihan",
     );
 
+    const newStatus = isCustomer ? "MENUNGGU_KONFIRMASI" : "LUNAS";
+
     const updateData = {
       fileBukti: imageUrl,
-      status: "LUNAS" as const,
+      status: newStatus as any,
     };
 
     const updatedTagihan = await this.repo.update(existing.id, updateData);
 
-    if (existing.pembayaran.toLowerCase().includes("booking")) {
+    if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
       try {
         const pdfBuffer = await this.generateSprPdfUseCase.execute(
           existing.penjualanId,

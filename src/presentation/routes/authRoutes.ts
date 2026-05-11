@@ -10,6 +10,11 @@ export const createAuthRoutes = (authController: AuthController): Router => {
   router.post("/register", validate(registerSchema), authController.register);
 
   router.post("/login", validate(loginSchema), authController.login);
+  router.post(
+    "/login/customer",
+    validate(loginSchema),
+    authController.loginCustomer,
+  );
 
   router.get("/profile", authenticate, authController.getProfile);
 

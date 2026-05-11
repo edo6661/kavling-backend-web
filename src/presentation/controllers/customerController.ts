@@ -19,6 +19,9 @@ import { getCustomersPaginatedSchema } from "../../validations/customerSchema.js
 import type { CustomerFilterDTO } from "../../domain/dtos/CustomerDTO.js";
 import type { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
 import type { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
+import type { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
+import { AppError } from "../../domain/errors/AppError.js";
+import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
 
 export class CustomerController {
   constructor(
@@ -31,6 +34,8 @@ export class CustomerController {
     private readonly generateAccountUseCase: GenerateCustomerAccountUseCase,
     private readonly exportCustomersUseCase: ExportCustomersUseCase,
     private readonly exportCustomersPdfUseCase: ExportCustomersPdfUseCase,
+    private readonly getCustomerDashboardUseCase: GetCustomerDashboardUseCase,
+    private readonly uploadBuktiTagihanUseCase: UploadBuktiTagihanUseCase,
   ) {}
 
   create = async (
@@ -169,5 +174,80 @@ export class CustomerController {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
     res.status(StatusCodes.OK).send(pdfBuffer);
+  };
+  getMyDashboard = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId)
+      throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+
+    const result = await this.getCustomerDashboardUseCase.execute(userId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data Dashboard Customer berhasil diambil",
+      result,
+    );
+  };
+
+  uploadMyDocument = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId)
+      throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+
+    const docType = req.params.docType as string;
+    const { namaDokumen } = req.body;
+
+    if (!["fileKtp", "fileKk", "fileNpwp", "lainnya"].includes(docType)) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "Parameter docType tidak valid",
+      );
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const dashboardData =
+      await this.getCustomerDashboardUseCase.execute(userId);
+    const customerId = dashboardData.profil.id;
+
+    const result = await this.uploadDocumentUseCase.execute(
+      customerId,
+      req.file.buffer,
+      docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
+      namaDokumen,
+    );
+
+    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
+  };
+  uploadMyTagihan = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(req.params.id as string, 10);
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File bukti pembayaran wajib diunggah",
+      );
+      return;
+    }
+    const result = await this.uploadBuktiTagihanUseCase.execute(
+      id,
+      req.file.buffer,
+      true,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti berhasil diunggah dan menunggu verifikasi Admin",
+      result,
+    );
   };
 }

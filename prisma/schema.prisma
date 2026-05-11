@@ -24,8 +24,9 @@ enum ActionType {
   DELETE
 }
 enum PaymentStatus {
-  BELUM_BAYAR @map("Belum Bayar")
-  LUNAS       @map("Lunas")
+  BELUM_BAYAR         @map("Belum Bayar")
+  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi") 
+  LUNAS               @map("Lunas")
 }
 enum PaymentMethod {
   CASH_KERAS    @map("CASH KERAS")

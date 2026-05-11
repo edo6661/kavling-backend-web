@@ -68,7 +68,11 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
     validate(uploadSignatureSchema),
     controller.uploadSignature,
   );
-
+  router.post(
+    "/:id/approve",
+    requirePermission("TAGIHAN", "update"),
+    controller.approveBukti,
+  );
   router.patch(
     "/bot/upload-bukti/:noTagihan",
     upload.single("fileBukti"),
@@ -85,5 +89,6 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
     },
     controller.uploadBuktiByNoTagihan,
   );
+
   return router;
 };

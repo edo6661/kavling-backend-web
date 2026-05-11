@@ -22,6 +22,7 @@ import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
 import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
 import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
 import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
+import type { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
 
 export class TagihanController {
   constructor(
@@ -33,6 +34,7 @@ export class TagihanController {
     private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
     private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
     private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
+    private readonly approveBuktiTagihanUseCase: ApproveBuktiTagihanUseCase,
   ) {}
 
   create = async (
@@ -189,6 +191,20 @@ export class TagihanController {
       res,
       StatusCodes.OK,
       "Bukti pembayaran dari Telegram berhasil diunggah",
+      result,
+    );
+  };
+  approveBukti = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(req.params.id as string, 10);
+    const { isApproved } = req.body;
+    const result = await this.approveBuktiTagihanUseCase.execute(
+      id,
+      isApproved,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      isApproved ? "Bukti disetujui" : "Bukti ditolak",
       result,
     );
   };
