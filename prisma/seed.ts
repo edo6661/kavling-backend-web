@@ -12,18 +12,6 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log("Memulai proses seeding...");
-
-  // Beri komentar (//) pada seeder yang tidak ingin dijalankan
-  // await clearDatabase(prisma);
-  // await seedUser(prisma);
-  // await seedPerumahan(prisma);
-  // await seedBankRekeningPt(prisma);
-  // await seedAgent(prisma);
-  // await seedKavling(prisma);
-  // await seedPenjualan(prisma);
-
-  // Sisakan HANYA ini yang menyala
-  await seedRolePermission(prisma);
 }
 
 main()
