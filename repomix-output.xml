@@ -1,138 +1,48 @@
-tolong simpan kode backend ini:
+best practice nya notifikasi nya di jadikan table tidak sih?
+menurut kamu gimana?
+<file path="src/infrastructure/websocket/SocketService.ts">
+import { Server as SocketIOServer } from "socket.io";
+import type { Server } from "http";
+import { env } from "../../config/env.js";
 
-<file path="src/application/usecases/auth/CustomerLoginUseCase.ts">
-import jwt from "jsonwebtoken";
-import type { SignOptions } from "jsonwebtoken";
-import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
-import { comparePassword } from "../../../utils/hashing.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { env } from "../../../config/env.js";
-import { StatusCodes } from "http-status-codes";
-import type { PrismaClient } from "@prisma/client";
-import type {
-  JwtUserPayload,
-  LoginUserDTO,
-} from "../../../domain/dtos/UserDTO.js";
-
-export class CustomerLoginUseCase {
-  constructor(
-    private readonly userRepo: IUserRepository,
-    private readonly db: PrismaClient,
-  ) {}
-
-  async execute(data: LoginUserDTO) {
-    const user = await this.userRepo.findByEmail(data.email);
-    const invalidCredentialsError = new AppError(
-      StatusCodes.UNAUTHORIZED,
-      "Email atau Password salah",
-    );
-
-    if (!user?.password || user.role !== "CUSTOMER") {
-      throw invalidCredentialsError;
-    }
-
-    const isPasswordValid = await comparePassword(data.password, user.password);
-    if (!isPasswordValid) {
-      throw invalidCredentialsError;
-    }
-
-    const customerProfile = await this.db.customer.findFirst({
-      where: { userId: user.id },
-    });
-
-    const payload: JwtUserPayload = {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    };
-
-    const jwtOptions: SignOptions = { expiresIn: "7d" };
-    const token = jwt.sign(payload, env.JWT_SECRET, jwtOptions);
-
-    return {
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
-      customerProfile: customerProfile
-        ? {
-            id: customerProfile.id,
-            nama: customerProfile.nama,
-            nikKtp: customerProfile.nikKtp,
-          }
-        : null,
-    };
-  }
+export interface AdminNotificationPayload {
+  type: "UPLOAD_BUKTI" | "GANTI_KAVLING";
+  title: string;
+  message: string;
+  data?: Record<string, unknown>;
 }
-</file>
 
-<file path="src/application/usecases/customer/GetCustomerDashboardUseCase.ts">
-import type { PrismaClient } from "@prisma/client";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
+export class SocketService {
+  private io: SocketIOServer | null = null;
 
-export class GetCustomerDashboardUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(userId: number) {
-    const customer = await this.db.customer.findFirst({
-      where: { userId },
-      include: {
-        penjualan: {
-          include: {
-            kavling: {
-              include: { perumahan: true },
-            },
-            tagihan: {
-              orderBy: { jatuhTempo: "asc" },
-            },
-          },
-        },
+  // Method ini akan dipanggil di server.ts SETELAH httpServer dibuat
+  public initialize(server: Server) {
+    this.io = new SocketIOServer(server, {
+      cors: {
+        origin: env.CORS_ORIGINS,
+        credentials: true,
       },
     });
 
-    if (!customer) {
-      throw new AppError(
-        StatusCodes.NOT_FOUND,
-        "Data profil Customer tidak ditemukan",
+    this.io.on("connection", (socket) => {
+      socket.on("join-admin", async () => {
+        try {
+          await socket.join("admin-room");
+        } catch (error) {
+          console.error(`Socket ${socket.id} gagal masuk admin-room:`, error);
+        }
+      });
+    });
+  }
+
+  public notifyAdmin(event: string, data: AdminNotificationPayload) {
+    if (this.io) {
+      this.io.to("admin-room").emit(event, data);
+    } else {
+      console.warn(
+        "SocketService: Ingin mengirim notif tapi socket server belum diinisialisasi.",
       );
     }
-
-    return {
-      profil: {
-        id: customer.id,
-        nama: customer.nama,
-        nikKtp: customer.nikKtp,
-        noHp: customer.noHp,
-        email: customer.email,
-        pekerjaan: customer.pekerjaan,
-        alamatKtp: customer.alamatKtp,
-        fileKtp: customer.fileKtp,
-        fileKk: customer.fileKk,
-        fileNpwp: customer.fileNpwp,
-        dokumenLainnya: customer.dokumenLainnya,
-      },
-      // Mengambil semua transaksi pembelian dan cicilan (tagihan) mereka
-      transaksi: customer.penjualan.map((p) => ({
-        noTransaksi: p.noTransaksi,
-        kavling: `Blok ${p.kavling.blok} No ${p.kavling.nomorUnit}`,
-        perumahan: p.kavling.perumahan.nama,
-        statusPenjualan: p.status,
-        hargaJual: p.hargaJual,
-        tagihan: p.tagihan.map((t) => ({
-          noTagihan: t.noTagihan,
-          pembayaran: t.pembayaran,
-          nominal: t.nominal,
-          jatuhTempo: t.jatuhTempo,
-          status: t.status,
-          fileBukti: t.fileBukti,
-        })),
-      })),
-    };
   }
 }
 </file>
@@ -7072,6 +6982,76 @@ export class GetAuditLogsPaginatedUseCase {
 }
 </file>
 
+<file path="src/application/usecases/auth/CustomerLoginUseCase.ts">
+import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { comparePassword } from "../../../utils/hashing.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { env } from "../../../config/env.js";
+import { StatusCodes } from "http-status-codes";
+import type { PrismaClient } from "@prisma/client";
+import type {
+  JwtUserPayload,
+  LoginUserDTO,
+} from "../../../domain/dtos/UserDTO.js";
+
+export class CustomerLoginUseCase {
+  constructor(
+    private readonly userRepo: IUserRepository,
+    private readonly db: PrismaClient,
+  ) {}
+
+  async execute(data: LoginUserDTO) {
+    const user = await this.userRepo.findByEmail(data.email);
+    const invalidCredentialsError = new AppError(
+      StatusCodes.UNAUTHORIZED,
+      "Email atau Password salah",
+    );
+
+    if (!user?.password || user.role !== "CUSTOMER") {
+      throw invalidCredentialsError;
+    }
+
+    const isPasswordValid = await comparePassword(data.password, user.password);
+    if (!isPasswordValid) {
+      throw invalidCredentialsError;
+    }
+
+    const customerProfile = await this.db.customer.findFirst({
+      where: { userId: user.id },
+    });
+
+    const payload: JwtUserPayload = {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    };
+
+    const jwtOptions: SignOptions = { expiresIn: "7d" };
+    const token = jwt.sign(payload, env.JWT_SECRET, jwtOptions);
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+      customerProfile: customerProfile
+        ? {
+            id: customerProfile.id,
+            nama: customerProfile.nama,
+            nikKtp: customerProfile.nikKtp,
+          }
+        : null,
+    };
+  }
+}
+</file>
+
 <file path="src/application/usecases/auth/RegisterUserUseCase.ts">
 import type {
   RegisterUserDTO,
@@ -7364,6 +7344,74 @@ export class GetCustomerByIdUseCase {
       throw new NotFoundError("Customer tidak ditemukan");
     }
     return CustomerMapper.toDomain(customer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/GetCustomerDashboardUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class GetCustomerDashboardUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(userId: number) {
+    const customer = await this.db.customer.findFirst({
+      where: { userId },
+      include: {
+        penjualan: {
+          include: {
+            kavling: {
+              include: { perumahan: true },
+            },
+            tagihan: {
+              orderBy: { jatuhTempo: "asc" },
+            },
+          },
+        },
+      },
+    });
+
+    if (!customer) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Data profil Customer tidak ditemukan",
+      );
+    }
+
+    return {
+      profil: {
+        id: customer.id,
+        nama: customer.nama,
+        nikKtp: customer.nikKtp,
+        noHp: customer.noHp,
+        email: customer.email,
+        pekerjaan: customer.pekerjaan,
+        alamatKtp: customer.alamatKtp,
+        fileKtp: customer.fileKtp,
+        fileKk: customer.fileKk,
+        fileNpwp: customer.fileNpwp,
+        dokumenLainnya: customer.dokumenLainnya,
+      },
+      // Mengambil semua transaksi pembelian dan cicilan (tagihan) mereka
+      transaksi: customer.penjualan.map((p) => ({
+        noTransaksi: p.noTransaksi,
+        kavling: `Blok ${p.kavling.blok} No ${p.kavling.nomorUnit}`,
+        perumahan: p.kavling.perumahan.nama,
+        statusPenjualan: p.status,
+        hargaJual: p.hargaJual,
+        tagihan: p.tagihan.map((t) => ({
+          id: t.id, // 👇 TAMBAHKAN BARIS INI 👇
+          noTagihan: t.noTagihan,
+          pembayaran: t.pembayaran,
+          nominal: t.nominal,
+          jatuhTempo: t.jatuhTempo,
+          status: t.status,
+          fileBukti: t.fileBukti,
+        })),
+      })),
+    };
   }
 }
 </file>
@@ -8004,6 +8052,61 @@ export class DeleteRolePermissionUseCase {
   constructor(private readonly repo: IRolePermissionRepository) {}
   async execute(id: number): Promise<void> {
     await this.repo.delete(id);
+  }
+}
+</file>
+
+<file path="src/application/usecases/tagihan/ApproveBuktiTagihanUseCase.ts">
+import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+
+export class ApproveBuktiTagihanUseCase {
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly penjualanRepo: IPenjualanRepository,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+  ) {}
+
+  async execute(id: number, isApproved: boolean) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
+
+    if (!isApproved) {
+      if (existing.fileBukti) {
+        await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
+      }
+      return await this.repo.update(id, {
+        status: "BELUM_BAYAR",
+        fileBukti: null,
+      });
+    }
+
+    const updatedTagihan = await this.repo.update(id, {
+      status: "LUNAS",
+    });
+
+    if (existing.pembayaran.toLowerCase().includes("booking")) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          existing.penjualanId,
+        );
+        const pdfUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+        await this.penjualanRepo.update(existing.penjualanId, {
+          fileSpr: pdfUrl,
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR setelah approve:", error);
+      }
+    }
+
+    return updatedTagihan;
   }
 }
 </file>
@@ -9930,14 +10033,6 @@ export class TelegramBotService {
       console.log(
         `✅ Ping sukses! Terhubung sebagai Bot: @${data.result?.username}`,
       );
-      console.log("⏳ 2. Memulai proses sinkronisasi pesan (Polling)...");
-
-      this.bot
-        .launch({ dropPendingUpdates: true })
-        .then(() => console.log("✅ 🤖 Telegram Bot Bumantara Running..."))
-        .catch((err) =>
-          console.error("❌ Gagal menjalankan Polling Bot:", err),
-        );
     } catch (error: unknown) {
       console.error("\n❌ ======================================");
       console.error("GAGAL MENGHUBUNGI SERVER TELEGRAM!");
@@ -10190,54 +10285,6 @@ export class AuditLogController {
       "Data audit log berhasil diambil",
       result,
     );
-  };
-}
-</file>
-
-<file path="src/presentation/controllers/authController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response";
-import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase";
-import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
-import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
-import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
-
-export class AuthController {
-  constructor(
-    private readonly registerUseCase: RegisterUserUseCase,
-    private readonly loginUseCase: LoginUserUseCase,
-    private readonly getProfileUseCase: GetProfileUseCase,
-    private readonly customerLoginUseCase: CustomerLoginUseCase,
-  ) {}
-
-  register = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.registerUseCase.execute(req.body);
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "User registered successfully",
-      result,
-    );
-  };
-
-  login = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.loginUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.OK, "Login Sukses", result);
-  };
-
-  getProfile = async (req: Request, res: Response): Promise<void> => {
-    if (!req.user?.userId) {
-      sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
-      return;
-    }
-
-    const user = await this.getProfileUseCase.execute(req.user.userId);
-    sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
-  };
-  loginCustomer = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.customerLoginUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.OK, "Login Customer Sukses", result);
   };
 }
 </file>
@@ -10893,31 +10940,6 @@ export class VerifyController {
     );
   };
 }
-</file>
-
-<file path="src/presentation/routes/authRoutes.ts">
-import { Router } from "express";
-import { validate } from "../../middlewares/validate";
-import { authenticate } from "../../middlewares/authMiddleware";
-import { registerSchema, loginSchema } from "../../validations/authSchema";
-import type { AuthController } from "../controllers/authController";
-
-export const createAuthRoutes = (authController: AuthController): Router => {
-  const router = Router();
-
-  router.post("/register", validate(registerSchema), authController.register);
-
-  router.post("/login", validate(loginSchema), authController.login);
-  router.post(
-    "/login/customer",
-    validate(loginSchema),
-    authController.loginCustomer,
-  );
-
-  router.get("/profile", authenticate, authController.getProfile);
-
-  return router;
-};
 </file>
 
 <file path="src/presentation/routes/ocrRoutes.ts">
@@ -12179,9 +12201,13 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
 
 export class GantiKavlingUseCase {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly socketService: SocketService,
+  ) {}
 
   async execute(
     noTransaksi: string,
@@ -12224,7 +12250,7 @@ export class GantiKavlingUseCase {
         data: { status: "HOLD" },
       });
 
-      return await tx.riwayatGantiKavling.create({
+      const riwayat = await tx.riwayatGantiKavling.create({
         data: {
           penjualanId: penjualan.id,
           kavlingLamaId: penjualan.kavlingId,
@@ -12234,6 +12260,15 @@ export class GantiKavlingUseCase {
           requestedById: requestedById,
         },
       });
+
+      this.socketService.notifyAdmin("notifikasi-admin", {
+        type: "GANTI_KAVLING",
+        title: "Pengajuan Ganti Kavling",
+        message: `Terdapat pengajuan ganti kavling untuk transaksi ${noTransaksi} yang memerlukan persetujuan.`,
+        data: { riwayatId: riwayat.id, noTransaksi },
+      });
+
+      return riwayat;
     });
   }
 }
@@ -13383,230 +13418,50 @@ export const upload = multer({
 });
 </file>
 
-<file path="src/presentation/controllers/customerController.ts">
+<file path="src/presentation/controllers/authController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
+import { sendResponse } from "../../utils/response";
+import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase";
+import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
+import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
+import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
 
-import type { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
-import type { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
-import type { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
-import type { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
-import type { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
-import type { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
-import type { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
-import type { generateAccountSchema } from "../../validations/customerSchema.js";
-import type {
-  createCustomerSchema,
-  updateCustomerSchema,
-} from "../../validations/customerSchema.js";
-import { getCustomersPaginatedSchema } from "../../validations/customerSchema.js";
-import type { CustomerFilterDTO } from "../../domain/dtos/CustomerDTO.js";
-import type { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
-import type { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
-import type { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
-import { AppError } from "../../domain/errors/AppError.js";
-
-export class CustomerController {
+export class AuthController {
   constructor(
-    private readonly createCustomerUseCase: CreateCustomerUseCase,
-    private readonly updateCustomerUseCase: UpdateCustomerUseCase,
-    private readonly getCustomerByIdUseCase: GetCustomerByIdUseCase,
-    private readonly getCustomersPaginatedUseCase: GetCustomersPaginatedUseCase,
-    private readonly deleteCustomerUseCase: DeleteCustomerUseCase,
-    private readonly uploadDocumentUseCase: UploadCustomerDocumentUseCase,
-    private readonly generateAccountUseCase: GenerateCustomerAccountUseCase,
-    private readonly exportCustomersUseCase: ExportCustomersUseCase,
-    private readonly exportCustomersPdfUseCase: ExportCustomersPdfUseCase,
-    private readonly getCustomerDashboardUseCase: GetCustomerDashboardUseCase,
+    private readonly registerUseCase: RegisterUserUseCase,
+    private readonly loginUseCase: LoginUserUseCase,
+    private readonly getProfileUseCase: GetProfileUseCase,
+    private readonly customerLoginUseCase: CustomerLoginUseCase,
   ) {}
 
-  create = async (
-    req: TypedRequest<typeof createCustomerSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createCustomerUseCase.execute(req.body);
+  register = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.registerUseCase.execute(req.body);
     sendResponse(
       res,
       StatusCodes.CREATED,
-      "Customer berhasil ditambahkan",
+      "User registered successfully",
       result,
     );
   };
 
-  update = async (
-    req: TypedRequest<
-      typeof updateCustomerSchema.body,
-      any,
-      typeof updateCustomerSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.updateCustomerUseCase.execute(id, req.body);
-    sendResponse(res, StatusCodes.OK, "Customer berhasil diperbarui", result);
+  login = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.loginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Sukses", result);
   };
 
-  getById = async (
-    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.getCustomerByIdUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Data customer berhasil diambil", result);
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getCustomersPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getCustomersPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as CustomerFilterDTO,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar customer berhasil diambil",
-      result,
-    );
-  };
-
-  delete = async (
-    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    await this.deleteCustomerUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Customer berhasil dihapus");
-  };
-
-  uploadDocument = async (req: Request, res: Response): Promise<void> => {
-    const id = parseInt(req.params.id as string, 10);
-    const docType = req.params.docType as string;
-    const { namaDokumen } = req.body;
-
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+  getProfile = async (req: Request, res: Response): Promise<void> => {
+    if (!req.user?.userId) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
       return;
     }
 
-    if (!["fileKtp", "fileKk", "fileNpwp", "lainnya"].includes(docType)) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "Parameter docType tidak valid",
-      );
-      return;
-    }
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const result = await this.uploadDocumentUseCase.execute(
-      id,
-      req.file.buffer,
-      docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
-      namaDokumen,
-    );
-
-    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
+    const user = await this.getProfileUseCase.execute(req.user.userId);
+    sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
   };
-  generateAccount = async (
-    req: TypedRequest<
-      typeof generateAccountSchema.body,
-      any,
-      typeof generateAccountSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const { password } = req.body;
-
-    const result = await this.generateAccountUseCase.execute(id, password);
-
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "Akun portal customer berhasil di-generate",
-      result,
-    );
-  };
-  exportExcel = async (_req: Request, res: Response): Promise<void> => {
-    const excelBuffer = await this.exportCustomersUseCase.execute();
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `Data_Customer_${timestamp}.xlsx`;
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
-    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
-    res.status(StatusCodes.OK).send(excelBuffer);
-  };
-
-  exportPdf = async (_req: Request, res: Response): Promise<void> => {
-    const pdfBuffer = await this.exportCustomersPdfUseCase.execute();
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `Data_Customer_${timestamp}.pdf`;
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
-    res.status(StatusCodes.OK).send(pdfBuffer);
-  };
-  getMyDashboard = async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
-    if (!userId)
-      throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
-
-    const result = await this.getCustomerDashboardUseCase.execute(userId);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data Dashboard Customer berhasil diambil",
-      result,
-    );
-  };
-
-  uploadMyDocument = async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
-    if (!userId)
-      throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
-
-    const docType = req.params.docType as string;
-    const { namaDokumen } = req.body;
-
-    if (!["fileKtp", "fileKk", "fileNpwp", "lainnya"].includes(docType)) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "Parameter docType tidak valid",
-      );
-      return;
-    }
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const dashboardData =
-      await this.getCustomerDashboardUseCase.execute(userId);
-    const customerId = dashboardData.profil.id;
-
-    const result = await this.uploadDocumentUseCase.execute(
-      customerId,
-      req.file.buffer,
-      docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
-      namaDokumen,
-    );
-
-    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
+  loginCustomer = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.customerLoginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Customer Sukses", result);
   };
 }
 </file>
@@ -13791,6 +13646,31 @@ export const createAuditLogRoutes = (
 };
 </file>
 
+<file path="src/presentation/routes/authRoutes.ts">
+import { Router } from "express";
+import { validate } from "../../middlewares/validate";
+import { authenticate } from "../../middlewares/authMiddleware";
+import { registerSchema, loginSchema } from "../../validations/authSchema";
+import type { AuthController } from "../controllers/authController";
+
+export const createAuthRoutes = (authController: AuthController): Router => {
+  const router = Router();
+
+  router.post("/register", validate(registerSchema), authController.register);
+
+  router.post("/login", validate(loginSchema), authController.login);
+  router.post(
+    "/login/customer",
+    validate(loginSchema),
+    authController.loginCustomer,
+  );
+
+  router.get("/profile", authenticate, authController.getProfile);
+
+  return router;
+};
+</file>
+
 <file path="src/presentation/routes/bankRekeningPtRoutes.ts">
 import { Router } from "express";
 import {
@@ -13885,106 +13765,6 @@ export const createCustomerKavlingRoutes = (
     controller.update,
   );
 
-  return router;
-};
-</file>
-
-<file path="src/presentation/routes/customerRoutes.ts">
-import { Router } from "express";
-import {
-  authenticate,
-  requirePermission,
-  requireRole,
-} from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import { upload } from "../../middlewares/upload.js";
-import {
-  createCustomerSchema,
-  updateCustomerSchema,
-  getCustomersPaginatedSchema,
-  generateAccountSchema,
-} from "../../validations/customerSchema.js";
-import type { CustomerController } from "../controllers/customerController.js";
-
-export const createCustomerRoutes = (
-  customerController: CustomerController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.post(
-    "/",
-    requirePermission("CUSTOMER", "create"),
-    validate(createCustomerSchema),
-    customerController.create,
-  );
-
-  router.get(
-    "/",
-    requirePermission("CUSTOMER", "read"),
-    validate(getCustomersPaginatedSchema),
-    customerController.getPaginated,
-  );
-
-  router.get(
-    "/export/excel",
-    requirePermission("CUSTOMER", "read"),
-    customerController.exportExcel,
-  );
-
-  router.get(
-    "/export/pdf",
-    requirePermission("CUSTOMER", "read"),
-    customerController.exportPdf,
-  );
-
-  router.get(
-    "/:id",
-    requirePermission("CUSTOMER", "read"),
-    validate({ params: updateCustomerSchema.params }),
-    customerController.getById,
-  );
-
-  router.patch(
-    "/:id",
-    requirePermission("CUSTOMER", "update"),
-    validate(updateCustomerSchema),
-    customerController.update,
-  );
-
-  router.patch(
-    "/:id/upload/:docType",
-    requirePermission("CUSTOMER", "update"),
-    upload.single("file"),
-    customerController.uploadDocument,
-  );
-
-  router.delete(
-    "/:id",
-    requirePermission("CUSTOMER", "delete"),
-    validate({ params: updateCustomerSchema.params }),
-    customerController.delete,
-  );
-
-  router.post(
-    "/:id/generate-account",
-    requirePermission("CUSTOMER", "update"),
-    validate(generateAccountSchema),
-    customerController.generateAccount,
-  );
-  router.get(
-    "/me/dashboard",
-    requireRole(["CUSTOMER"]),
-    customerController.getMyDashboard,
-  );
-
-  router.patch(
-    "/me/upload/:docType",
-    requireRole(["CUSTOMER"]),
-    upload.single("file"),
-    customerController.uploadMyDocument,
-  );
   return router;
 };
 </file>
@@ -14261,10 +14041,16 @@ import { env } from "./config/env";
 import { prisma } from "./infrastructure/database/prisma";
 import { logger } from "./utils/logger";
 import { container } from "./infrastructure/di/container";
+import { createServer } from "http";
 const PORT = env.PORT;
-const server = app.listen(PORT, () => {
+
+const httpServer = createServer(app);
+container.socketService.initialize(httpServer);
+const server = httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  container.telegramBotService.launch();
+  container.telegramBotService.launch().catch((err: unknown) => {
+    console.error("❌ Terjadi kesalahan saat meluncurkan Telegram Bot:", err);
+  });
 });
 const shutdown = (signal: string) => {
   console.log(`\n${signal} received. Closing resources...`);
@@ -14660,85 +14446,6 @@ export class UploadCustomerDocumentUseCase {
       [documentType]: imageUrl,
     });
     return CustomerMapper.toDomain(result);
-  }
-}
-</file>
-
-<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
-import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
-
-export class UploadBuktiTagihanUseCase {
-  constructor(
-    private readonly repo: ITagihanRepository,
-    private readonly cloudinaryService: CloudinaryService,
-
-    private readonly penjualanRepo: IPenjualanRepository,
-    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
-  ) {}
-  async execute(
-    identifier: number | string,
-    fileBuffer: Buffer,
-  ): Promise<TagihanResponseDTO> {
-    const existing =
-      typeof identifier === "number"
-        ? await this.repo.findById(identifier)
-        : await this.repo.findByNoTagihan(identifier);
-
-    if (!existing) {
-      throw new NotFoundError("Tagihan tidak ditemukan");
-    }
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing.fileBukti) {
-      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
-    }
-
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      "bumantara/tagihan",
-    );
-
-    const updateData = {
-      fileBukti: imageUrl,
-      status: "LUNAS" as const,
-    };
-
-    const updatedTagihan = await this.repo.update(existing.id, updateData);
-
-    if (existing.pembayaran.toLowerCase().includes("booking")) {
-      try {
-        const pdfBuffer = await this.generateSprPdfUseCase.execute(
-          existing.penjualanId,
-        );
-
-        const pdfUrl = await this.cloudinaryService.uploadFile(
-          pdfBuffer,
-          "bumantara/spr",
-        );
-
-        await this.penjualanRepo.update(existing.penjualanId, {
-          fileSpr: pdfUrl,
-        });
-      } catch (error) {
-        console.error("Gagal auto-generate SPR:", error);
-      }
-    }
-
-    return updatedTagihan;
   }
 }
 </file>
@@ -15698,6 +15405,262 @@ export class NotarisMapper {
 }
 </file>
 
+<file path="src/presentation/controllers/customerController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
+import type { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
+import type { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
+import type { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
+import type { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
+import type { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
+import type { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
+import type { generateAccountSchema } from "../../validations/customerSchema.js";
+import type {
+  createCustomerSchema,
+  updateCustomerSchema,
+} from "../../validations/customerSchema.js";
+import { getCustomersPaginatedSchema } from "../../validations/customerSchema.js";
+import type { CustomerFilterDTO } from "../../domain/dtos/CustomerDTO.js";
+import type { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
+import type { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
+import type { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
+import { AppError } from "../../domain/errors/AppError.js";
+import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+
+export class CustomerController {
+  constructor(
+    private readonly createCustomerUseCase: CreateCustomerUseCase,
+    private readonly updateCustomerUseCase: UpdateCustomerUseCase,
+    private readonly getCustomerByIdUseCase: GetCustomerByIdUseCase,
+    private readonly getCustomersPaginatedUseCase: GetCustomersPaginatedUseCase,
+    private readonly deleteCustomerUseCase: DeleteCustomerUseCase,
+    private readonly uploadDocumentUseCase: UploadCustomerDocumentUseCase,
+    private readonly generateAccountUseCase: GenerateCustomerAccountUseCase,
+    private readonly exportCustomersUseCase: ExportCustomersUseCase,
+    private readonly exportCustomersPdfUseCase: ExportCustomersPdfUseCase,
+    private readonly getCustomerDashboardUseCase: GetCustomerDashboardUseCase,
+    private readonly uploadBuktiTagihanUseCase: UploadBuktiTagihanUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createCustomerSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createCustomerUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Customer berhasil ditambahkan",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateCustomerSchema.body,
+      any,
+      typeof updateCustomerSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateCustomerUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Customer berhasil diperbarui", result);
+  };
+
+  getById = async (
+    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getCustomerByIdUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Data customer berhasil diambil", result);
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getCustomersPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getCustomersPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as CustomerFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar customer berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updateCustomerSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteCustomerUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Customer berhasil dihapus");
+  };
+
+  uploadDocument = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(req.params.id as string, 10);
+    const docType = req.params.docType as string;
+    const { namaDokumen } = req.body;
+
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+
+    if (!["fileKtp", "fileKk", "fileNpwp", "lainnya"].includes(docType)) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "Parameter docType tidak valid",
+      );
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadDocumentUseCase.execute(
+      id,
+      req.file.buffer,
+      docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
+      namaDokumen,
+    );
+
+    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
+  };
+  generateAccount = async (
+    req: TypedRequest<
+      typeof generateAccountSchema.body,
+      any,
+      typeof generateAccountSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { password } = req.body;
+
+    const result = await this.generateAccountUseCase.execute(id, password);
+
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Akun portal customer berhasil di-generate",
+      result,
+    );
+  };
+  exportExcel = async (_req: Request, res: Response): Promise<void> => {
+    const excelBuffer = await this.exportCustomersUseCase.execute();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Customer_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(excelBuffer);
+  };
+
+  exportPdf = async (_req: Request, res: Response): Promise<void> => {
+    const pdfBuffer = await this.exportCustomersPdfUseCase.execute();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Customer_${timestamp}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(pdfBuffer);
+  };
+  getMyDashboard = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId)
+      throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+
+    const result = await this.getCustomerDashboardUseCase.execute(userId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data Dashboard Customer berhasil diambil",
+      result,
+    );
+  };
+
+  uploadMyDocument = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId)
+      throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+
+    const docType = req.params.docType as string;
+    const { namaDokumen } = req.body;
+
+    if (!["fileKtp", "fileKk", "fileNpwp", "lainnya"].includes(docType)) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "Parameter docType tidak valid",
+      );
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const dashboardData =
+      await this.getCustomerDashboardUseCase.execute(userId);
+    const customerId = dashboardData.profil.id;
+
+    const result = await this.uploadDocumentUseCase.execute(
+      customerId,
+      req.file.buffer,
+      docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
+      namaDokumen,
+    );
+
+    sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
+  };
+  uploadMyTagihan = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(req.params.id as string, 10);
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File bukti pembayaran wajib diunggah",
+      );
+      return;
+    }
+    const result = await this.uploadBuktiTagihanUseCase.execute(
+      id,
+      req.file.buffer,
+      true,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti berhasil diunggah dan menunggu verifikasi Admin",
+      result,
+    );
+  };
+}
+</file>
+
 <file path="src/presentation/controllers/dashboardController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -15841,6 +15804,122 @@ export class KavlingController {
     );
   };
 }
+</file>
+
+<file path="src/presentation/routes/customerRoutes.ts">
+// src/presentation/routes/customerRoutes.ts
+import { Router } from "express";
+import {
+  authenticate,
+  requirePermission,
+  requireRole,
+} from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+  getCustomersPaginatedSchema,
+  generateAccountSchema,
+} from "../../validations/customerSchema.js";
+import type { CustomerController } from "../controllers/customerController.js";
+
+export const createCustomerRoutes = (
+  customerController: CustomerController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  // ==========================================
+  // ROUTE PORTAL CUSTOMER (Harus Paling Atas!)
+  // ==========================================
+  router.get(
+    "/me/dashboard",
+    requireRole(["CUSTOMER"]),
+    customerController.getMyDashboard,
+  );
+
+  router.patch(
+    "/me/upload/:docType",
+    requireRole(["CUSTOMER"]),
+    upload.single("file"),
+    customerController.uploadMyDocument,
+  );
+
+  router.patch(
+    "/me/tagihan/:id/upload-bukti",
+    requireRole(["CUSTOMER"]),
+    upload.single("fileBukti"),
+    customerController.uploadMyTagihan,
+  );
+
+  // ==========================================
+  // ROUTE INTERNAL ADMIN (Bawah)
+  // ==========================================
+  router.post(
+    "/",
+    requirePermission("CUSTOMER", "create"),
+    validate(createCustomerSchema),
+    customerController.create,
+  );
+
+  router.get(
+    "/",
+    requirePermission("CUSTOMER", "read"),
+    validate(getCustomersPaginatedSchema),
+    customerController.getPaginated,
+  );
+
+  router.get(
+    "/export/excel",
+    requirePermission("CUSTOMER", "read"),
+    customerController.exportExcel,
+  );
+
+  router.get(
+    "/export/pdf",
+    requirePermission("CUSTOMER", "read"),
+    customerController.exportPdf,
+  );
+
+  router.get(
+    "/:id",
+    requirePermission("CUSTOMER", "read"),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.getById,
+  );
+
+  router.patch(
+    "/:id",
+    requirePermission("CUSTOMER", "update"),
+    validate(updateCustomerSchema),
+    customerController.update,
+  );
+
+  router.patch(
+    "/:id/upload/:docType",
+    requirePermission("CUSTOMER", "update"),
+    upload.single("file"),
+    customerController.uploadDocument,
+  );
+
+  router.delete(
+    "/:id",
+    requirePermission("CUSTOMER", "delete"),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.delete,
+  );
+
+  router.post(
+    "/:id/generate-account",
+    requirePermission("CUSTOMER", "update"),
+    validate(generateAccountSchema),
+    customerController.generateAccount,
+  );
+
+  return router;
+};
 </file>
 
 <file path="src/presentation/routes/kavlingRoutes.ts">
@@ -16287,6 +16366,100 @@ export class CancelPenjualanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
+import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
+import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
+
+export class UploadBuktiTagihanUseCase {
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly penjualanRepo: IPenjualanRepository,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+
+    private readonly socketService: SocketService,
+  ) {}
+
+  async execute(
+    identifier: number | string,
+    fileBuffer: Buffer,
+    isCustomer = false,
+  ): Promise<TagihanResponseDTO> {
+    const existing =
+      typeof identifier === "number"
+        ? await this.repo.findById(identifier)
+        : await this.repo.findByNoTagihan(identifier);
+
+    if (!existing) {
+      throw new NotFoundError("Tagihan tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing.fileBukti) {
+      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      "bumantara/tagihan",
+    );
+
+    const newStatus = isCustomer ? "MENUNGGU_KONFIRMASI" : "LUNAS";
+
+    const updateData = {
+      fileBukti: imageUrl,
+      status: newStatus as any,
+    };
+
+    const updatedTagihan = await this.repo.update(existing.id, updateData);
+
+    if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          existing.penjualanId,
+        );
+
+        const pdfUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        await this.penjualanRepo.update(existing.penjualanId, {
+          fileSpr: pdfUrl,
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR:", error);
+      }
+    }
+
+    if (isCustomer) {
+      this.socketService.notifyAdmin("notifikasi-admin", {
+        type: "UPLOAD_BUKTI",
+        title: "Bukti Pembayaran Baru",
+        message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
+        data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
+      });
+    }
+
+    return updatedTagihan;
+  }
+}
+</file>
+
 <file path="src/domain/dtos/CustomerDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 
@@ -16607,204 +16780,6 @@ export class TagihanMapper {
       updatedAt: prismaTagihan.updatedAt,
     };
   }
-}
-</file>
-
-<file path="src/presentation/controllers/tagihanController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type {
-  CreateTagihanUseCase,
-  UpdateTagihanUseCase,
-  GetTagihanByIdUseCase,
-  GetTagihansPaginatedUseCase,
-  DeleteTagihanUseCase,
-} from "../../application/usecases/tagihan/TagihanUseCases.js";
-import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
-
-import type {
-  createTagihanSchema,
-  updateTagihanSchema,
-  uploadBuktiByNoTagihanSchema,
-} from "../../validations/tagihanSchema.js";
-import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
-import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
-import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
-import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
-import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
-
-export class TagihanController {
-  constructor(
-    private readonly createUseCase: CreateTagihanUseCase,
-    private readonly updateUseCase: UpdateTagihanUseCase,
-    private readonly getByIdUseCase: GetTagihanByIdUseCase,
-    private readonly getPaginatedUseCase: GetTagihansPaginatedUseCase,
-    private readonly deleteUseCase: DeleteTagihanUseCase,
-    private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
-    private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
-    private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createTagihanSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.CREATED, "Tagihan berhasil dibuat", result);
-  };
-
-  update = async (
-    req: TypedRequest<
-      typeof updateTagihanSchema.body,
-      any,
-      typeof updateTagihanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.updateUseCase.execute(id, req.body);
-    sendResponse(res, StatusCodes.OK, "Tagihan berhasil diperbarui", result);
-  };
-
-  getById = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.getByIdUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Data tagihan berhasil diambil", result);
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getTagihansPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as TagihanFilterDTO,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar tagihan berhasil diambil",
-      result,
-    );
-  };
-
-  delete = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    await this.deleteUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Tagihan berhasil dihapus");
-  };
-
-  uploadBukti = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
-      return;
-    }
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(id, req.file.buffer);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Bukti pembayaran berhasil diunggah",
-      result,
-    );
-  };
-  uploadBuktiRefund = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
-      return;
-    }
-    if (!req.file?.buffer) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "File bukti refund wajib diunggah",
-      );
-      return;
-    }
-
-    const result = await this.uploadBuktiRefundUseCase.execute(
-      id,
-      req.file.buffer,
-    );
-    sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
-  };
-  uploadSignature = async (
-    req: TypedRequest<
-      typeof uploadSignatureSchema.body,
-      any,
-      typeof uploadSignatureSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const { signatureBase64, nama, peran, tanggal } = req.body;
-
-    const result = await this.saveSignatureUseCase.execute(
-      id,
-      signatureBase64,
-      nama,
-      peran,
-      tanggal,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      `Tanda tangan untuk kwitansi berhasil disimpan`,
-      result,
-    );
-  };
-  uploadBuktiByNoTagihan = async (
-    req: TypedRequest<any, any, typeof uploadBuktiByNoTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const { noTagihan } = req.params;
-
-    if (!req.file?.buffer) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "File gambar bukti wajib diunggah",
-      );
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(
-      noTagihan,
-      req.file.buffer,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Bukti pembayaran dari Telegram berhasil diunggah",
-      result,
-    );
-  };
 }
 </file>
 
@@ -17242,96 +17217,218 @@ export class ApproveGantiKavlingUseCase {
 }
 </file>
 
-<file path="src/presentation/routes/tagihanRoutes.ts">
-import { Router } from "express";
-import {
-  authenticate,
-  requirePermission,
-} from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import { upload } from "../../middlewares/upload.js";
-import {
+<file path="src/presentation/controllers/tagihanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type {
+  CreateTagihanUseCase,
+  UpdateTagihanUseCase,
+  GetTagihanByIdUseCase,
+  GetTagihansPaginatedUseCase,
+  DeleteTagihanUseCase,
+} from "../../application/usecases/tagihan/TagihanUseCases.js";
+import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+
+import type {
   createTagihanSchema,
   updateTagihanSchema,
-  getTagihansPaginatedSchema,
   uploadBuktiByNoTagihanSchema,
 } from "../../validations/tagihanSchema.js";
-import type { TagihanController } from "../controllers/tagihanController.js";
-import { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
+import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
+import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
+import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
+import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
+import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
+import type { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
 
-export const createTagihanRoutes = (controller: TagihanController): Router => {
-  const router = Router();
+export class TagihanController {
+  constructor(
+    private readonly createUseCase: CreateTagihanUseCase,
+    private readonly updateUseCase: UpdateTagihanUseCase,
+    private readonly getByIdUseCase: GetTagihanByIdUseCase,
+    private readonly getPaginatedUseCase: GetTagihansPaginatedUseCase,
+    private readonly deleteUseCase: DeleteTagihanUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
+    private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
+    private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
+    private readonly approveBuktiTagihanUseCase: ApproveBuktiTagihanUseCase,
+  ) {}
 
-  router.use(authenticate);
+  create = async (
+    req: TypedRequest<typeof createTagihanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.CREATED, "Tagihan berhasil dibuat", result);
+  };
 
-  router.post(
-    "/",
-    requirePermission("TAGIHAN", "create"),
-    validate(createTagihanSchema),
-    controller.create,
-  );
-  router.get(
-    "/",
-    requirePermission("TAGIHAN", "read"),
-    validate(getTagihansPaginatedSchema),
-    controller.getPaginated,
-  );
-  router.get(
-    "/:id",
-    requirePermission("TAGIHAN", "read"),
-    validate({ params: updateTagihanSchema.params }),
-    controller.getById,
-  );
-  router.patch(
-    "/:id",
-    requirePermission("TAGIHAN", "update"),
-    validate(updateTagihanSchema),
-    controller.update,
-  );
-  router.delete(
-    "/:id",
-    requirePermission("TAGIHAN", "delete"),
-    validate({ params: updateTagihanSchema.params }),
-    controller.delete,
-  );
+  update = async (
+    req: TypedRequest<
+      typeof updateTagihanSchema.body,
+      any,
+      typeof updateTagihanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Tagihan berhasil diperbarui", result);
+  };
 
-  router.patch(
-    "/:id/upload-bukti",
-    requirePermission("TAGIHAN", "update"),
-    upload.single("fileBukti"),
-    controller.uploadBukti,
-  );
-  router.patch(
-    "/:id/refund",
-    requirePermission("TAGIHAN", "update"),
-    upload.single("fileBuktiRefund"),
-    controller.uploadBuktiRefund,
-  );
-  router.post(
-    "/:id/signature",
-    requirePermission("TAGIHAN", "update"),
-    validate(uploadSignatureSchema),
-    controller.uploadSignature,
-  );
+  getById = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getByIdUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Data tagihan berhasil diambil", result);
+  };
 
-  router.patch(
-    "/bot/upload-bukti/:noTagihan",
-    upload.single("fileBukti"),
-    validate(uploadBuktiByNoTagihanSchema),
-    (req, res, next) => {
-      const botSecret = req.headers["x-telegram-bot-secret"];
-      if (botSecret !== process.env.TELEGRAM_BOT_SECRET) {
-        res
-          .status(401)
-          .json({ success: false, message: "Unauthorized Bot API Key" });
-        return;
-      }
-      next();
-    },
-    controller.uploadBuktiByNoTagihan,
-  );
-  return router;
-};
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getTagihansPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as TagihanFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar tagihan berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Tagihan berhasil dihapus");
+  };
+
+  uploadBukti = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(id, req.file.buffer);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti pembayaran berhasil diunggah",
+      result,
+    );
+  };
+  uploadBuktiRefund = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File bukti refund wajib diunggah",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiRefundUseCase.execute(
+      id,
+      req.file.buffer,
+    );
+    sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
+  };
+  uploadSignature = async (
+    req: TypedRequest<
+      typeof uploadSignatureSchema.body,
+      any,
+      typeof uploadSignatureSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { signatureBase64, nama, peran, tanggal } = req.body;
+
+    const result = await this.saveSignatureUseCase.execute(
+      id,
+      signatureBase64,
+      nama,
+      peran,
+      tanggal,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Tanda tangan untuk kwitansi berhasil disimpan`,
+      result,
+    );
+  };
+  uploadBuktiByNoTagihan = async (
+    req: TypedRequest<any, any, typeof uploadBuktiByNoTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const { noTagihan } = req.params;
+
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File gambar bukti wajib diunggah",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      noTagihan,
+      req.file.buffer,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti pembayaran dari Telegram berhasil diunggah",
+      result,
+    );
+  };
+  approveBukti = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(req.params.id as string, 10);
+    const { isApproved } = req.body;
+    const result = await this.approveBuktiTagihanUseCase.execute(
+      id,
+      isApproved,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      isApproved ? "Bukti disetujui" : "Bukti ditolak",
+      result,
+    );
+  };
+}
 </file>
 
 <file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
@@ -17589,6 +17686,103 @@ export class CloudinaryService {
 }
 </file>
 
+<file path="src/presentation/routes/tagihanRoutes.ts">
+import { Router } from "express";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  createTagihanSchema,
+  updateTagihanSchema,
+  getTagihansPaginatedSchema,
+  uploadBuktiByNoTagihanSchema,
+} from "../../validations/tagihanSchema.js";
+import type { TagihanController } from "../controllers/tagihanController.js";
+import { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
+
+export const createTagihanRoutes = (controller: TagihanController): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.post(
+    "/",
+    requirePermission("TAGIHAN", "create"),
+    validate(createTagihanSchema),
+    controller.create,
+  );
+  router.get(
+    "/",
+    requirePermission("TAGIHAN", "read"),
+    validate(getTagihansPaginatedSchema),
+    controller.getPaginated,
+  );
+  router.get(
+    "/:id",
+    requirePermission("TAGIHAN", "read"),
+    validate({ params: updateTagihanSchema.params }),
+    controller.getById,
+  );
+  router.patch(
+    "/:id",
+    requirePermission("TAGIHAN", "update"),
+    validate(updateTagihanSchema),
+    controller.update,
+  );
+  router.delete(
+    "/:id",
+    requirePermission("TAGIHAN", "delete"),
+    validate({ params: updateTagihanSchema.params }),
+    controller.delete,
+  );
+
+  router.patch(
+    "/:id/upload-bukti",
+    requirePermission("TAGIHAN", "update"),
+    upload.single("fileBukti"),
+    controller.uploadBukti,
+  );
+  router.patch(
+    "/:id/refund",
+    requirePermission("TAGIHAN", "update"),
+    upload.single("fileBuktiRefund"),
+    controller.uploadBuktiRefund,
+  );
+  router.post(
+    "/:id/signature",
+    requirePermission("TAGIHAN", "update"),
+    validate(uploadSignatureSchema),
+    controller.uploadSignature,
+  );
+  router.post(
+    "/:id/approve",
+    requirePermission("TAGIHAN", "update"),
+    controller.approveBukti,
+  );
+  router.patch(
+    "/bot/upload-bukti/:noTagihan",
+    upload.single("fileBukti"),
+    validate(uploadBuktiByNoTagihanSchema),
+    (req, res, next) => {
+      const botSecret = req.headers["x-telegram-bot-secret"];
+      if (botSecret !== process.env.TELEGRAM_BOT_SECRET) {
+        res
+          .status(401)
+          .json({ success: false, message: "Unauthorized Bot API Key" });
+        return;
+      }
+      next();
+    },
+    controller.uploadBuktiByNoTagihan,
+  );
+
+  return router;
+};
+</file>
+
 <file path="package.json">
 {
   "name": "bumantara",
@@ -17636,6 +17830,7 @@ export class CloudinaryService {
     "pino-http": "^11.0.0",
     "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
     "telegraf": "^4.16.3",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
@@ -20266,8 +20461,9 @@ enum ActionType {
   DELETE
 }
 enum PaymentStatus {
-  BELUM_BAYAR @map("Belum Bayar")
-  LUNAS       @map("Lunas")
+  BELUM_BAYAR         @map("Belum Bayar")
+  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi") 
+  LUNAS               @map("Lunas")
 }
 enum PaymentMethod {
   CASH_KERAS    @map("CASH KERAS")
@@ -20703,512 +20899,6 @@ model RolePermission {
   @@unique([role, resource]) 
   @@map("role_permissions")
 }
-</file>
-
-<file path="src/infrastructure/di/container.ts">
-import { UserRepository } from "../../domain/repositories/userRepo.js";
-import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
-import { CustomerRepository } from "../../domain/repositories/customerRepo.js";
-
-import { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
-import { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
-import { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
-import { AuthController } from "../../presentation/controllers/authController.js";
-import { prisma } from "../../infrastructure/database/prisma.js";
-import type { PrismaClient } from "@prisma/client/extension";
-
-import { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersUseCase.js";
-import { UserController } from "../../presentation/controllers/userController.js";
-import { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
-import { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
-import { CreateUserUseCase } from "../../application/usecases/user/CreateUserUseCase.js";
-import { GetUserByIdUseCase } from "../../application/usecases/user/GetUserByIdUseCase.js";
-import { DeleteUserUseCase } from "../../application/usecases/user/DeleteUserUseCase.js";
-
-import {
-  CreateAgentUseCase,
-  UpdateAgentUseCase,
-  GetAgentByIdUseCase,
-  GetAgentsPaginatedUseCase,
-  DeleteAgentUseCase,
-} from "../../application/usecases/agent/AgentUseCases.js";
-
-import { GoogleVisionService } from "../external/GoogleVisionService.js";
-import { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
-import { OcrController } from "../../presentation/controllers/ocrController.js";
-
-import {
-  CreateBankRekeningPtUseCase,
-  UpdateBankRekeningPtUseCase,
-  GetBankRekeningPtByIdUseCase,
-  GetBankRekeningPtPaginatedUseCase,
-  DeleteBankRekeningPtUseCase,
-} from "../../application/usecases/bankRekeningPt/BankRekeningPtUseCases.js";
-import { BankRekeningPtController } from "../../presentation/controllers/bankRekeningPtController.js";
-
-import { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
-import { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
-import { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
-import { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
-import { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
-import { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
-import { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
-import { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
-import { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
-import { CustomerController } from "../../presentation/controllers/customerController.js";
-import { PerumahanRepository } from "../../domain/repositories/perumahanRepo.js";
-import {
-  CreatePerumahanUseCase,
-  UpdatePerumahanUseCase,
-  GetPerumahanByIdUseCase,
-  GetPerumahanPaginatedUseCase,
-  DeletePerumahanUseCase,
-} from "../../application/usecases/perumahan/PerumahanUseCases.js";
-import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
-import { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
-import { DashboardController } from "../../presentation/controllers/dashboardController.js";
-import { CloudinaryService } from "../external/CloudinaryService.js";
-
-import { AgentRepository } from "../../domain/repositories/agentRepo.js";
-import { AgentController } from "../../presentation/controllers/agentController.js";
-
-import { NotarisRepository } from "../../domain/repositories/notarisRepo.js";
-import {
-  CreateNotarisUseCase,
-  UpdateNotarisUseCase,
-  GetNotarisByIdUseCase,
-  GetNotarisPaginatedUseCase,
-  DeleteNotarisUseCase,
-} from "../../application/usecases/notaris/NotarisUseCases.js";
-import { NotarisController } from "../../presentation/controllers/notarisController.js";
-
-import { KavlingRepository } from "../../domain/repositories/kavlingRepo.js";
-import {
-  CreateKavlingUseCase,
-  UpdateKavlingUseCase,
-  GetKavlingByIdUseCase,
-  GetKavlingsPaginatedUseCase,
-  DeleteKavlingUseCase,
-} from "../../application/usecases/kavling/KavlingUseCases.js";
-import { KavlingController } from "../../presentation/controllers/kavlingController.js";
-
-import { DetailKavlingPajakRepository } from "../../domain/repositories/detailKavlingPajakRepo.js";
-import {
-  GetCustomerKavlingsPaginatedUseCase,
-  UpdateCustomerKavlingUseCase,
-} from "../../application/usecases/customerKavling/CustomerKavlingUseCases.js";
-import { CustomerKavlingController } from "../../presentation/controllers/customerKavlingController.js";
-
-import { TagihanRepository } from "../../domain/repositories/tagihanRepo.js";
-import {
-  CreateTagihanUseCase,
-  UpdateTagihanUseCase,
-  GetTagihanByIdUseCase,
-  GetTagihansPaginatedUseCase,
-  DeleteTagihanUseCase,
-} from "../../application/usecases/tagihan/TagihanUseCases.js";
-import { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
-import { TagihanController } from "../../presentation/controllers/tagihanController.js";
-
-import { PenjualanRepository } from "../../domain/repositories/penjualanRepo.js";
-import { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
-import { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
-import { PenjualanController } from "../../presentation/controllers/penjualanController.js";
-import { FeeAgentRepository } from "../../domain/repositories/feeAgentRepo.js";
-import {
-  GetFeeAgentsPaginatedUseCase,
-  UpdateFeeAgentUseCase,
-  UploadBuktiFeeUseCase,
-} from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
-import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
-import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
-import { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
-import { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
-import { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
-import { VerifyDocumentUseCase } from "../../application/usecases/verify/VerifyDocumentUseCase.js";
-import { VerifyController } from "../../presentation/controllers/verifyController.js";
-import { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
-import { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
-import { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
-import { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
-import { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
-import { GetPengajuanBatalUseCase } from "../../application/usecases/penjualan/GetPengajuanBatalUseCase.js";
-import { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penjualan/GetPengajuanGantiKavlingUseCase.js";
-import { AuditLogRepository } from "../../domain/repositories/auditLogRepo.js";
-import { GetAuditLogsPaginatedUseCase } from "../../application/usecases/auditLog/GetAuditLogsPaginatedUseCase.js";
-import { AuditLogController } from "../../presentation/controllers/auditLogController.js";
-import { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
-import { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
-import { ProgressPenjualanRepository } from "../../domain/repositories/progressPenjualanRepo.js";
-import {
-  GetProgressPenjualanUseCase,
-  UpdateProgressPenjualanUseCase,
-  UploadProgressDocumentUseCase,
-} from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
-import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
-import { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
-import { TelegramBotService } from "../telegram/TelegramBotService.js";
-import { RolePermissionRepository } from "../../domain/repositories/rolePermissionRepo.js";
-import {
-  UpsertRolePermissionUseCase,
-  GetRolePermissionsUseCase,
-  DeleteRolePermissionUseCase,
-} from "../../application/usecases/rolePermission/RolePermissionUseCases.js";
-import { RolePermissionController } from "../../presentation/controllers/rolePermissionController.js";
-import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
-import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
-
-export const createContainer = (dbClient: PrismaClient) => {
-  const googleVisionService = new GoogleVisionService();
-  const cloudinaryService = new CloudinaryService();
-
-  const userRepo = new UserRepository(dbClient);
-  const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
-  const customerRepo = new CustomerRepository(dbClient);
-
-  const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
-
-  const registerUseCase = new RegisterUserUseCase(userRepo);
-  const loginUseCase = new LoginUserUseCase(userRepo, dbClient);
-  const getProfileUseCase = new GetProfileUseCase(userRepo, dbClient);
-  const customerLoginUseCase = new CustomerLoginUseCase(userRepo, dbClient);
-
-  const getAllUsersUseCase = new GetAllUsersUseCase(userRepo);
-  const updateUserUseCase = new UpdateUserUseCase(userRepo);
-  const getUsersPaginatedUseCase = new GetUsersPaginatedUseCase(userRepo);
-
-  const createBankUseCase = new CreateBankRekeningPtUseCase(bankRekeningPtRepo);
-  const updateBankUseCase = new UpdateBankRekeningPtUseCase(bankRekeningPtRepo);
-  const getBankByIdUseCase = new GetBankRekeningPtByIdUseCase(
-    bankRekeningPtRepo,
-  );
-  const getBanksPaginatedUseCase = new GetBankRekeningPtPaginatedUseCase(
-    bankRekeningPtRepo,
-  );
-  const deleteBankUseCase = new DeleteBankRekeningPtUseCase(bankRekeningPtRepo);
-
-  const exportCustomersUseCase = new ExportCustomersUseCase(dbClient);
-  const exportCustomersPdfUseCase = new ExportCustomersPdfUseCase(dbClient);
-  const createCustomerUseCase = new CreateCustomerUseCase(customerRepo);
-  const updateCustomerUseCase = new UpdateCustomerUseCase(customerRepo);
-  const uploadCustomerDocumentUseCase = new UploadCustomerDocumentUseCase(
-    customerRepo,
-    cloudinaryService,
-  );
-  const getCustomerDashboardUseCase = new GetCustomerDashboardUseCase(dbClient);
-  const getCustomerByIdUseCase = new GetCustomerByIdUseCase(customerRepo);
-  const getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
-    customerRepo,
-  );
-  const deleteCustomerUseCase = new DeleteCustomerUseCase(customerRepo);
-  const generateCustomerAccountUseCase = new GenerateCustomerAccountUseCase(
-    customerRepo,
-    userRepo,
-  );
-
-  const perumahanRepo = new PerumahanRepository(dbClient);
-
-  const agentRepo = new AgentRepository(dbClient);
-
-  const createAgentUseCase = new CreateAgentUseCase(agentRepo);
-  const updateAgentUseCase = new UpdateAgentUseCase(agentRepo);
-  const getAgentByIdUseCase = new GetAgentByIdUseCase(agentRepo);
-  const getAgentsPaginatedUseCase = new GetAgentsPaginatedUseCase(agentRepo);
-  const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
-
-  const agentController = new AgentController(
-    createAgentUseCase,
-    updateAgentUseCase,
-    getAgentByIdUseCase,
-    getAgentsPaginatedUseCase,
-    deleteAgentUseCase,
-  );
-  const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
-  const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
-  const getPerumahanByIdUseCase = new GetPerumahanByIdUseCase(perumahanRepo);
-  const getPerumahanPaginatedUseCase = new GetPerumahanPaginatedUseCase(
-    perumahanRepo,
-  );
-  const deletePerumahanUseCase = new DeletePerumahanUseCase(perumahanRepo);
-
-  const perumahanController = new PerumahanController(
-    createPerumahanUseCase,
-    updatePerumahanUseCase,
-    getPerumahanByIdUseCase,
-    getPerumahanPaginatedUseCase,
-    deletePerumahanUseCase,
-  );
-  const kavlingRepo = new KavlingRepository(dbClient);
-  const createKavlingUseCase = new CreateKavlingUseCase(kavlingRepo);
-  const updateKavlingUseCase = new UpdateKavlingUseCase(kavlingRepo);
-  const getKavlingByIdUseCase = new GetKavlingByIdUseCase(kavlingRepo);
-  const getKavlingsPaginatedUseCase = new GetKavlingsPaginatedUseCase(
-    kavlingRepo,
-  );
-  const deleteKavlingUseCase = new DeleteKavlingUseCase(kavlingRepo);
-
-  const uploadKavlingDocumentUseCase = new UploadKavlingDocumentUseCase(
-    kavlingRepo,
-    cloudinaryService,
-  );
-
-  const kavlingController = new KavlingController(
-    createKavlingUseCase,
-    updateKavlingUseCase,
-    getKavlingByIdUseCase,
-    getKavlingsPaginatedUseCase,
-    deleteKavlingUseCase,
-    uploadKavlingDocumentUseCase,
-  );
-
-  const detailKavlingPajakRepo = new DetailKavlingPajakRepository(dbClient);
-
-  const getCustomerKavlingsPaginatedUseCase =
-    new GetCustomerKavlingsPaginatedUseCase(dbClient);
-  const updateCustomerKavlingUseCase = new UpdateCustomerKavlingUseCase(
-    dbClient,
-    kavlingRepo,
-    detailKavlingPajakRepo,
-  );
-
-  const customerKavlingController = new CustomerKavlingController(
-    getCustomerKavlingsPaginatedUseCase,
-    updateCustomerKavlingUseCase,
-  );
-
-  const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
-
-  const notarisRepo = new NotarisRepository(dbClient);
-  const createNotarisUseCase = new CreateNotarisUseCase(notarisRepo);
-  const updateNotarisUseCase = new UpdateNotarisUseCase(notarisRepo);
-  const getNotarisByIdUseCase = new GetNotarisByIdUseCase(notarisRepo);
-  const getNotarisPaginatedUseCase = new GetNotarisPaginatedUseCase(
-    notarisRepo,
-  );
-  const deleteNotarisUseCase = new DeleteNotarisUseCase(notarisRepo);
-
-  const notarisController = new NotarisController(
-    createNotarisUseCase,
-    updateNotarisUseCase,
-    getNotarisByIdUseCase,
-    getNotarisPaginatedUseCase,
-    deleteNotarisUseCase,
-  );
-
-  const dashboardController = new DashboardController(
-    getDashboardSummaryUseCase,
-  );
-
-  const ocrController = new OcrController(extractKtpDataUseCase);
-  const authController = new AuthController(
-    registerUseCase,
-    loginUseCase,
-    getProfileUseCase,
-    customerLoginUseCase,
-  );
-  const createUserUseCase = new CreateUserUseCase(userRepo);
-  const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);
-  const deleteUserUseCase = new DeleteUserUseCase(userRepo);
-  const userController = new UserController(
-    getAllUsersUseCase,
-    updateUserUseCase,
-    getUsersPaginatedUseCase,
-    createUserUseCase,
-    getUserByIdUseCase,
-    deleteUserUseCase,
-  );
-
-  const bankRekeningPtController = new BankRekeningPtController(
-    createBankUseCase,
-    updateBankUseCase,
-    getBankByIdUseCase,
-    getBanksPaginatedUseCase,
-    deleteBankUseCase,
-  );
-  const customerController = new CustomerController(
-    createCustomerUseCase,
-    updateCustomerUseCase,
-    getCustomerByIdUseCase,
-    getCustomersPaginatedUseCase,
-    deleteCustomerUseCase,
-    uploadCustomerDocumentUseCase,
-    generateCustomerAccountUseCase,
-    exportCustomersUseCase,
-    exportCustomersPdfUseCase,
-    getCustomerDashboardUseCase,
-  );
-  const tagihanRepo = new TagihanRepository(dbClient);
-  const createTagihanUseCase = new CreateTagihanUseCase(tagihanRepo);
-  const updateTagihanUseCase = new UpdateTagihanUseCase(tagihanRepo);
-  const getTagihanByIdUseCase = new GetTagihanByIdUseCase(tagihanRepo);
-  const getTagihansPaginatedUseCase = new GetTagihansPaginatedUseCase(
-    tagihanRepo,
-  );
-  const deleteTagihanUseCase = new DeleteTagihanUseCase(tagihanRepo);
-
-  const penjualanRepo = new PenjualanRepository(dbClient);
-  const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);
-  const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
-  const updatePenjualanUseCase = new UpdatePenjualanUseCase(
-    dbClient,
-    cloudinaryService,
-    generateSprPdfUseCase,
-  );
-  const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
-    penjualanRepo,
-  );
-  const cancelPenjualanUseCase = new CancelPenjualanUseCase(dbClient);
-  const uploadBuktiPenjualanUseCase = new UploadBuktiPenjualanUseCase(
-    dbClient,
-    cloudinaryService,
-    generateSprPdfUseCase,
-  );
-  const saveSignatureUseCase = new SaveSignatureUseCase(
-    dbClient,
-    cloudinaryService,
-    generateSprPdfUseCase,
-  );
-  const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient);
-  const approveBatalUseCase = new ApproveBatalUseCase(dbClient);
-  const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(
-    dbClient,
-    cloudinaryService,
-    generateSprPdfUseCase,
-  );
-  const getPengajuanBatalUseCase = new GetPengajuanBatalUseCase(dbClient);
-  const getPengajuanGantiKavlingUseCase = new GetPengajuanGantiKavlingUseCase(
-    dbClient,
-  );
-  const regenerateSprUseCase = new RegenerateSprUseCase(
-    dbClient,
-    cloudinaryService,
-    generateSprPdfUseCase,
-  );
-  const penjualanController = new PenjualanController(
-    createPenjualanUseCase,
-    getPenjualanPaginatedUseCase,
-    cancelPenjualanUseCase,
-    uploadBuktiPenjualanUseCase,
-    saveSignatureUseCase,
-    updatePenjualanUseCase,
-    gantiKavlingUseCase,
-    approveBatalUseCase,
-    approveGantiKavlingUseCase,
-    getPengajuanBatalUseCase,
-    getPengajuanGantiKavlingUseCase,
-    regenerateSprUseCase,
-  );
-  const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
-    tagihanRepo,
-    cloudinaryService,
-    penjualanRepo,
-    generateSprPdfUseCase,
-  );
-  const uploadBuktiRefundUseCase = new UploadBuktiRefundUseCase(
-    dbClient,
-    cloudinaryService,
-  );
-  const saveTagihanSignatureUseCase = new SaveTagihanSignatureUseCase(
-    dbClient,
-    cloudinaryService,
-  );
-
-  const tagihanController = new TagihanController(
-    createTagihanUseCase,
-    updateTagihanUseCase,
-    getTagihanByIdUseCase,
-    getTagihansPaginatedUseCase,
-    deleteTagihanUseCase,
-    uploadBuktiTagihanUseCase,
-    uploadBuktiRefundUseCase,
-    saveTagihanSignatureUseCase,
-  );
-  const feeAgentRepo = new FeeAgentRepository(dbClient);
-  const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
-    feeAgentRepo,
-  );
-  const updateFeeAgentUseCase = new UpdateFeeAgentUseCase(feeAgentRepo);
-  const uploadBuktiFeeUseCase = new UploadBuktiFeeUseCase(
-    feeAgentRepo,
-    cloudinaryService,
-  );
-
-  const feeAgentController = new FeeAgentController(
-    getFeeAgentsPaginatedUseCase,
-    updateFeeAgentUseCase,
-    uploadBuktiFeeUseCase,
-  );
-  const verifyDocumentUseCase = new VerifyDocumentUseCase(dbClient);
-  const verifyController = new VerifyController(verifyDocumentUseCase);
-  const auditLogRepo = new AuditLogRepository(dbClient);
-  const getAuditLogsPaginatedUseCase = new GetAuditLogsPaginatedUseCase(
-    auditLogRepo,
-  );
-  const auditLogController = new AuditLogController(
-    getAuditLogsPaginatedUseCase,
-  );
-  const progressPenjualanRepo = new ProgressPenjualanRepository(dbClient);
-  const getProgressPenjualanUseCase = new GetProgressPenjualanUseCase(
-    progressPenjualanRepo,
-  );
-  const updateProgressPenjualanUseCase = new UpdateProgressPenjualanUseCase(
-    progressPenjualanRepo,
-  );
-  const uploadProgressDocumentUseCase = new UploadProgressDocumentUseCase(
-    progressPenjualanRepo,
-    cloudinaryService,
-  );
-
-  const progressPenjualanController = new ProgressPenjualanController(
-    getProgressPenjualanUseCase,
-    updateProgressPenjualanUseCase,
-    uploadProgressDocumentUseCase,
-  );
-  const telegramBotService = new TelegramBotService(uploadBuktiTagihanUseCase);
-  const rolePermissionRepo = new RolePermissionRepository(dbClient);
-  const upsertRolePermissionUseCase = new UpsertRolePermissionUseCase(
-    rolePermissionRepo,
-  );
-  const getRolePermissionsUseCase = new GetRolePermissionsUseCase(
-    rolePermissionRepo,
-  );
-  const deleteRolePermissionUseCase = new DeleteRolePermissionUseCase(
-    rolePermissionRepo,
-  );
-
-  const rolePermissionController = new RolePermissionController(
-    upsertRolePermissionUseCase,
-    getRolePermissionsUseCase,
-    deleteRolePermissionUseCase,
-  );
-  return {
-    authController,
-    userRepo,
-    bankRekeningPtRepo,
-    customerRepo,
-    userController,
-    ocrController,
-    bankRekeningPtController,
-    customerController,
-    perumahanRepo,
-    perumahanController,
-    dashboardController,
-    agentController,
-    notarisController,
-    kavlingController,
-    customerKavlingController,
-    tagihanController,
-    penjualanController,
-    feeAgentController,
-    verifyController,
-    auditLogController,
-    progressPenjualanController,
-    telegramBotService,
-    rolePermissionController,
-  };
-};
-
-export const container = createContainer(prisma as any);
 </file>
 
 <file path="src/domain/repositories/penjualanRepo.ts">
@@ -21709,6 +21399,527 @@ export class PenjualanRepository implements IPenjualanRepository {
     });
   }
 }
+</file>
+
+<file path="src/infrastructure/di/container.ts">
+import { UserRepository } from "../../domain/repositories/userRepo.js";
+import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
+import { CustomerRepository } from "../../domain/repositories/customerRepo.js";
+
+import { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
+import { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
+import { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
+import { AuthController } from "../../presentation/controllers/authController.js";
+import { prisma } from "../../infrastructure/database/prisma.js";
+import type { PrismaClient } from "@prisma/client/extension";
+
+import { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersUseCase.js";
+import { UserController } from "../../presentation/controllers/userController.js";
+import { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
+import { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
+import { CreateUserUseCase } from "../../application/usecases/user/CreateUserUseCase.js";
+import { GetUserByIdUseCase } from "../../application/usecases/user/GetUserByIdUseCase.js";
+import { DeleteUserUseCase } from "../../application/usecases/user/DeleteUserUseCase.js";
+
+import {
+  CreateAgentUseCase,
+  UpdateAgentUseCase,
+  GetAgentByIdUseCase,
+  GetAgentsPaginatedUseCase,
+  DeleteAgentUseCase,
+} from "../../application/usecases/agent/AgentUseCases.js";
+
+import { GoogleVisionService } from "../external/GoogleVisionService.js";
+import { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
+import { OcrController } from "../../presentation/controllers/ocrController.js";
+
+import {
+  CreateBankRekeningPtUseCase,
+  UpdateBankRekeningPtUseCase,
+  GetBankRekeningPtByIdUseCase,
+  GetBankRekeningPtPaginatedUseCase,
+  DeleteBankRekeningPtUseCase,
+} from "../../application/usecases/bankRekeningPt/BankRekeningPtUseCases.js";
+import { BankRekeningPtController } from "../../presentation/controllers/bankRekeningPtController.js";
+
+import { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase.js";
+import { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase.js";
+import { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase.js";
+import { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase.js";
+import { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase.js";
+import { UploadCustomerDocumentUseCase } from "../../application/usecases/customer/UploadCustomerDocumentUseCase.js";
+import { GenerateCustomerAccountUseCase } from "../../application/usecases/customer/GenerateCustomerAccountUseCase.js";
+import { ExportCustomersUseCase } from "../../application/usecases/customer/ExportCustomersUseCase.js";
+import { ExportCustomersPdfUseCase } from "../../application/usecases/customer/ExportCustomersPdfUseCase.js";
+import { CustomerController } from "../../presentation/controllers/customerController.js";
+import { PerumahanRepository } from "../../domain/repositories/perumahanRepo.js";
+import {
+  CreatePerumahanUseCase,
+  UpdatePerumahanUseCase,
+  GetPerumahanByIdUseCase,
+  GetPerumahanPaginatedUseCase,
+  DeletePerumahanUseCase,
+} from "../../application/usecases/perumahan/PerumahanUseCases.js";
+import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
+import { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
+import { DashboardController } from "../../presentation/controllers/dashboardController.js";
+import { CloudinaryService } from "../external/CloudinaryService.js";
+
+import { AgentRepository } from "../../domain/repositories/agentRepo.js";
+import { AgentController } from "../../presentation/controllers/agentController.js";
+
+import { NotarisRepository } from "../../domain/repositories/notarisRepo.js";
+import {
+  CreateNotarisUseCase,
+  UpdateNotarisUseCase,
+  GetNotarisByIdUseCase,
+  GetNotarisPaginatedUseCase,
+  DeleteNotarisUseCase,
+} from "../../application/usecases/notaris/NotarisUseCases.js";
+import { NotarisController } from "../../presentation/controllers/notarisController.js";
+
+import { KavlingRepository } from "../../domain/repositories/kavlingRepo.js";
+import {
+  CreateKavlingUseCase,
+  UpdateKavlingUseCase,
+  GetKavlingByIdUseCase,
+  GetKavlingsPaginatedUseCase,
+  DeleteKavlingUseCase,
+} from "../../application/usecases/kavling/KavlingUseCases.js";
+import { KavlingController } from "../../presentation/controllers/kavlingController.js";
+
+import { DetailKavlingPajakRepository } from "../../domain/repositories/detailKavlingPajakRepo.js";
+import {
+  GetCustomerKavlingsPaginatedUseCase,
+  UpdateCustomerKavlingUseCase,
+} from "../../application/usecases/customerKavling/CustomerKavlingUseCases.js";
+import { CustomerKavlingController } from "../../presentation/controllers/customerKavlingController.js";
+
+import { TagihanRepository } from "../../domain/repositories/tagihanRepo.js";
+import {
+  CreateTagihanUseCase,
+  UpdateTagihanUseCase,
+  GetTagihanByIdUseCase,
+  GetTagihansPaginatedUseCase,
+  DeleteTagihanUseCase,
+} from "../../application/usecases/tagihan/TagihanUseCases.js";
+import { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+import { TagihanController } from "../../presentation/controllers/tagihanController.js";
+
+import { PenjualanRepository } from "../../domain/repositories/penjualanRepo.js";
+import { CreatePenjualanUseCase } from "../../application/usecases/penjualan/CreatePenjualanUseCase.js";
+import { GetPenjualanPaginatedUseCase } from "../../application/usecases/penjualan/GetPenjualanPaginatedUseCase.js";
+import { PenjualanController } from "../../presentation/controllers/penjualanController.js";
+import { FeeAgentRepository } from "../../domain/repositories/feeAgentRepo.js";
+import {
+  GetFeeAgentsPaginatedUseCase,
+  UpdateFeeAgentUseCase,
+  UploadBuktiFeeUseCase,
+} from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
+import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
+import { GenerateSprPdfUseCase } from "../../application/usecases/penjualan/GenerateSprPdfUseCase.js";
+import { CancelPenjualanUseCase } from "../../application/usecases/penjualan/CancelPenjualanUseCase.js";
+import { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
+import { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
+import { VerifyDocumentUseCase } from "../../application/usecases/verify/VerifyDocumentUseCase.js";
+import { VerifyController } from "../../presentation/controllers/verifyController.js";
+import { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
+import { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
+import { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
+import { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
+import { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
+import { GetPengajuanBatalUseCase } from "../../application/usecases/penjualan/GetPengajuanBatalUseCase.js";
+import { GetPengajuanGantiKavlingUseCase } from "../../application/usecases/penjualan/GetPengajuanGantiKavlingUseCase.js";
+import { AuditLogRepository } from "../../domain/repositories/auditLogRepo.js";
+import { GetAuditLogsPaginatedUseCase } from "../../application/usecases/auditLog/GetAuditLogsPaginatedUseCase.js";
+import { AuditLogController } from "../../presentation/controllers/auditLogController.js";
+import { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
+import { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
+import { ProgressPenjualanRepository } from "../../domain/repositories/progressPenjualanRepo.js";
+import {
+  GetProgressPenjualanUseCase,
+  UpdateProgressPenjualanUseCase,
+  UploadProgressDocumentUseCase,
+} from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
+import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
+import { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
+import { TelegramBotService } from "../telegram/TelegramBotService.js";
+import { RolePermissionRepository } from "../../domain/repositories/rolePermissionRepo.js";
+import {
+  UpsertRolePermissionUseCase,
+  GetRolePermissionsUseCase,
+  DeleteRolePermissionUseCase,
+} from "../../application/usecases/rolePermission/RolePermissionUseCases.js";
+import { RolePermissionController } from "../../presentation/controllers/rolePermissionController.js";
+import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
+import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
+import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
+import { SocketService } from "../websocket/SocketService.js";
+
+export const createContainer = (dbClient: PrismaClient) => {
+  const googleVisionService = new GoogleVisionService();
+  const cloudinaryService = new CloudinaryService();
+  const socketService = new SocketService();
+
+  const userRepo = new UserRepository(dbClient);
+  const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
+  const customerRepo = new CustomerRepository(dbClient);
+
+  const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
+
+  const registerUseCase = new RegisterUserUseCase(userRepo);
+  const loginUseCase = new LoginUserUseCase(userRepo, dbClient);
+  const getProfileUseCase = new GetProfileUseCase(userRepo, dbClient);
+  const customerLoginUseCase = new CustomerLoginUseCase(userRepo, dbClient);
+
+  const getAllUsersUseCase = new GetAllUsersUseCase(userRepo);
+  const updateUserUseCase = new UpdateUserUseCase(userRepo);
+  const getUsersPaginatedUseCase = new GetUsersPaginatedUseCase(userRepo);
+
+  const createBankUseCase = new CreateBankRekeningPtUseCase(bankRekeningPtRepo);
+  const updateBankUseCase = new UpdateBankRekeningPtUseCase(bankRekeningPtRepo);
+  const getBankByIdUseCase = new GetBankRekeningPtByIdUseCase(
+    bankRekeningPtRepo,
+  );
+  const getBanksPaginatedUseCase = new GetBankRekeningPtPaginatedUseCase(
+    bankRekeningPtRepo,
+  );
+  const deleteBankUseCase = new DeleteBankRekeningPtUseCase(bankRekeningPtRepo);
+
+  const exportCustomersUseCase = new ExportCustomersUseCase(dbClient);
+  const exportCustomersPdfUseCase = new ExportCustomersPdfUseCase(dbClient);
+  const createCustomerUseCase = new CreateCustomerUseCase(customerRepo);
+  const updateCustomerUseCase = new UpdateCustomerUseCase(customerRepo);
+  const uploadCustomerDocumentUseCase = new UploadCustomerDocumentUseCase(
+    customerRepo,
+    cloudinaryService,
+  );
+  const getCustomerDashboardUseCase = new GetCustomerDashboardUseCase(dbClient);
+  const getCustomerByIdUseCase = new GetCustomerByIdUseCase(customerRepo);
+  const getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
+    customerRepo,
+  );
+  const deleteCustomerUseCase = new DeleteCustomerUseCase(customerRepo);
+  const generateCustomerAccountUseCase = new GenerateCustomerAccountUseCase(
+    customerRepo,
+    userRepo,
+  );
+
+  const perumahanRepo = new PerumahanRepository(dbClient);
+
+  const agentRepo = new AgentRepository(dbClient);
+
+  const createAgentUseCase = new CreateAgentUseCase(agentRepo);
+  const updateAgentUseCase = new UpdateAgentUseCase(agentRepo);
+  const getAgentByIdUseCase = new GetAgentByIdUseCase(agentRepo);
+  const getAgentsPaginatedUseCase = new GetAgentsPaginatedUseCase(agentRepo);
+  const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
+
+  const agentController = new AgentController(
+    createAgentUseCase,
+    updateAgentUseCase,
+    getAgentByIdUseCase,
+    getAgentsPaginatedUseCase,
+    deleteAgentUseCase,
+  );
+  const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
+  const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
+  const getPerumahanByIdUseCase = new GetPerumahanByIdUseCase(perumahanRepo);
+  const getPerumahanPaginatedUseCase = new GetPerumahanPaginatedUseCase(
+    perumahanRepo,
+  );
+  const deletePerumahanUseCase = new DeletePerumahanUseCase(perumahanRepo);
+
+  const perumahanController = new PerumahanController(
+    createPerumahanUseCase,
+    updatePerumahanUseCase,
+    getPerumahanByIdUseCase,
+    getPerumahanPaginatedUseCase,
+    deletePerumahanUseCase,
+  );
+  const kavlingRepo = new KavlingRepository(dbClient);
+  const createKavlingUseCase = new CreateKavlingUseCase(kavlingRepo);
+  const updateKavlingUseCase = new UpdateKavlingUseCase(kavlingRepo);
+  const getKavlingByIdUseCase = new GetKavlingByIdUseCase(kavlingRepo);
+  const getKavlingsPaginatedUseCase = new GetKavlingsPaginatedUseCase(
+    kavlingRepo,
+  );
+  const deleteKavlingUseCase = new DeleteKavlingUseCase(kavlingRepo);
+
+  const uploadKavlingDocumentUseCase = new UploadKavlingDocumentUseCase(
+    kavlingRepo,
+    cloudinaryService,
+  );
+
+  const kavlingController = new KavlingController(
+    createKavlingUseCase,
+    updateKavlingUseCase,
+    getKavlingByIdUseCase,
+    getKavlingsPaginatedUseCase,
+    deleteKavlingUseCase,
+    uploadKavlingDocumentUseCase,
+  );
+
+  const detailKavlingPajakRepo = new DetailKavlingPajakRepository(dbClient);
+
+  const getCustomerKavlingsPaginatedUseCase =
+    new GetCustomerKavlingsPaginatedUseCase(dbClient);
+  const updateCustomerKavlingUseCase = new UpdateCustomerKavlingUseCase(
+    dbClient,
+    kavlingRepo,
+    detailKavlingPajakRepo,
+  );
+
+  const customerKavlingController = new CustomerKavlingController(
+    getCustomerKavlingsPaginatedUseCase,
+    updateCustomerKavlingUseCase,
+  );
+
+  const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
+
+  const notarisRepo = new NotarisRepository(dbClient);
+  const createNotarisUseCase = new CreateNotarisUseCase(notarisRepo);
+  const updateNotarisUseCase = new UpdateNotarisUseCase(notarisRepo);
+  const getNotarisByIdUseCase = new GetNotarisByIdUseCase(notarisRepo);
+  const getNotarisPaginatedUseCase = new GetNotarisPaginatedUseCase(
+    notarisRepo,
+  );
+  const deleteNotarisUseCase = new DeleteNotarisUseCase(notarisRepo);
+
+  const notarisController = new NotarisController(
+    createNotarisUseCase,
+    updateNotarisUseCase,
+    getNotarisByIdUseCase,
+    getNotarisPaginatedUseCase,
+    deleteNotarisUseCase,
+  );
+
+  const dashboardController = new DashboardController(
+    getDashboardSummaryUseCase,
+  );
+
+  const ocrController = new OcrController(extractKtpDataUseCase);
+  const authController = new AuthController(
+    registerUseCase,
+    loginUseCase,
+    getProfileUseCase,
+    customerLoginUseCase,
+  );
+  const createUserUseCase = new CreateUserUseCase(userRepo);
+  const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);
+  const deleteUserUseCase = new DeleteUserUseCase(userRepo);
+  const userController = new UserController(
+    getAllUsersUseCase,
+    updateUserUseCase,
+    getUsersPaginatedUseCase,
+    createUserUseCase,
+    getUserByIdUseCase,
+    deleteUserUseCase,
+  );
+
+  const bankRekeningPtController = new BankRekeningPtController(
+    createBankUseCase,
+    updateBankUseCase,
+    getBankByIdUseCase,
+    getBanksPaginatedUseCase,
+    deleteBankUseCase,
+  );
+
+  const tagihanRepo = new TagihanRepository(dbClient);
+  const createTagihanUseCase = new CreateTagihanUseCase(tagihanRepo);
+  const updateTagihanUseCase = new UpdateTagihanUseCase(tagihanRepo);
+  const getTagihanByIdUseCase = new GetTagihanByIdUseCase(tagihanRepo);
+  const getTagihansPaginatedUseCase = new GetTagihansPaginatedUseCase(
+    tagihanRepo,
+  );
+  const deleteTagihanUseCase = new DeleteTagihanUseCase(tagihanRepo);
+
+  const penjualanRepo = new PenjualanRepository(dbClient);
+  const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);
+  const createPenjualanUseCase = new CreatePenjualanUseCase(penjualanRepo);
+  const updatePenjualanUseCase = new UpdatePenjualanUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
+  const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
+    penjualanRepo,
+  );
+  const cancelPenjualanUseCase = new CancelPenjualanUseCase(dbClient);
+  const uploadBuktiPenjualanUseCase = new UploadBuktiPenjualanUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
+  const saveSignatureUseCase = new SaveSignatureUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
+  const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient, socketService);
+  const approveBatalUseCase = new ApproveBatalUseCase(dbClient);
+  const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
+  const getPengajuanBatalUseCase = new GetPengajuanBatalUseCase(dbClient);
+  const getPengajuanGantiKavlingUseCase = new GetPengajuanGantiKavlingUseCase(
+    dbClient,
+  );
+  const regenerateSprUseCase = new RegenerateSprUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSprPdfUseCase,
+  );
+  const penjualanController = new PenjualanController(
+    createPenjualanUseCase,
+    getPenjualanPaginatedUseCase,
+    cancelPenjualanUseCase,
+    uploadBuktiPenjualanUseCase,
+    saveSignatureUseCase,
+    updatePenjualanUseCase,
+    gantiKavlingUseCase,
+    approveBatalUseCase,
+    approveGantiKavlingUseCase,
+    getPengajuanBatalUseCase,
+    getPengajuanGantiKavlingUseCase,
+    regenerateSprUseCase,
+  );
+
+  const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
+    tagihanRepo,
+    cloudinaryService,
+    penjualanRepo,
+    generateSprPdfUseCase,
+    socketService,
+  );
+  const uploadBuktiRefundUseCase = new UploadBuktiRefundUseCase(
+    dbClient,
+    cloudinaryService,
+  );
+  const saveTagihanSignatureUseCase = new SaveTagihanSignatureUseCase(
+    dbClient,
+    cloudinaryService,
+  );
+  const approveBuktiTagihanUseCase = new ApproveBuktiTagihanUseCase(
+    tagihanRepo,
+    cloudinaryService,
+    penjualanRepo,
+    generateSprPdfUseCase,
+  );
+
+  const tagihanController = new TagihanController(
+    createTagihanUseCase,
+    updateTagihanUseCase,
+    getTagihanByIdUseCase,
+    getTagihansPaginatedUseCase,
+    deleteTagihanUseCase,
+    uploadBuktiTagihanUseCase,
+    uploadBuktiRefundUseCase,
+    saveTagihanSignatureUseCase,
+    approveBuktiTagihanUseCase,
+  );
+  const feeAgentRepo = new FeeAgentRepository(dbClient);
+  const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
+    feeAgentRepo,
+  );
+  const updateFeeAgentUseCase = new UpdateFeeAgentUseCase(feeAgentRepo);
+  const uploadBuktiFeeUseCase = new UploadBuktiFeeUseCase(
+    feeAgentRepo,
+    cloudinaryService,
+  );
+
+  const feeAgentController = new FeeAgentController(
+    getFeeAgentsPaginatedUseCase,
+    updateFeeAgentUseCase,
+    uploadBuktiFeeUseCase,
+  );
+  const verifyDocumentUseCase = new VerifyDocumentUseCase(dbClient);
+  const verifyController = new VerifyController(verifyDocumentUseCase);
+  const auditLogRepo = new AuditLogRepository(dbClient);
+  const getAuditLogsPaginatedUseCase = new GetAuditLogsPaginatedUseCase(
+    auditLogRepo,
+  );
+  const customerController = new CustomerController(
+    createCustomerUseCase,
+    updateCustomerUseCase,
+    getCustomerByIdUseCase,
+    getCustomersPaginatedUseCase,
+    deleteCustomerUseCase,
+    uploadCustomerDocumentUseCase,
+    generateCustomerAccountUseCase,
+    exportCustomersUseCase,
+    exportCustomersPdfUseCase,
+    getCustomerDashboardUseCase,
+    uploadBuktiTagihanUseCase,
+  );
+  const auditLogController = new AuditLogController(
+    getAuditLogsPaginatedUseCase,
+  );
+  const progressPenjualanRepo = new ProgressPenjualanRepository(dbClient);
+  const getProgressPenjualanUseCase = new GetProgressPenjualanUseCase(
+    progressPenjualanRepo,
+  );
+  const updateProgressPenjualanUseCase = new UpdateProgressPenjualanUseCase(
+    progressPenjualanRepo,
+  );
+  const uploadProgressDocumentUseCase = new UploadProgressDocumentUseCase(
+    progressPenjualanRepo,
+    cloudinaryService,
+  );
+
+  const progressPenjualanController = new ProgressPenjualanController(
+    getProgressPenjualanUseCase,
+    updateProgressPenjualanUseCase,
+    uploadProgressDocumentUseCase,
+  );
+  const telegramBotService = new TelegramBotService(uploadBuktiTagihanUseCase);
+  const rolePermissionRepo = new RolePermissionRepository(dbClient);
+  const upsertRolePermissionUseCase = new UpsertRolePermissionUseCase(
+    rolePermissionRepo,
+  );
+  const getRolePermissionsUseCase = new GetRolePermissionsUseCase(
+    rolePermissionRepo,
+  );
+  const deleteRolePermissionUseCase = new DeleteRolePermissionUseCase(
+    rolePermissionRepo,
+  );
+
+  const rolePermissionController = new RolePermissionController(
+    upsertRolePermissionUseCase,
+    getRolePermissionsUseCase,
+    deleteRolePermissionUseCase,
+  );
+  return {
+    authController,
+    userRepo,
+    bankRekeningPtRepo,
+    customerRepo,
+    userController,
+    ocrController,
+    bankRekeningPtController,
+    customerController,
+    perumahanRepo,
+    perumahanController,
+    dashboardController,
+    agentController,
+    notarisController,
+    kavlingController,
+    customerKavlingController,
+    tagihanController,
+    penjualanController,
+    feeAgentController,
+    verifyController,
+    auditLogController,
+    progressPenjualanController,
+    telegramBotService,
+    rolePermissionController,
+    socketService,
+  };
+};
+
+export const container = createContainer(prisma as any);
 </file>
 
 </files>

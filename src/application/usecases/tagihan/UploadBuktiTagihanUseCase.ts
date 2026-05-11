@@ -7,6 +7,7 @@ import { StatusCodes } from "http-status-codes";
 
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
 import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
+import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
 
 export class UploadBuktiTagihanUseCase {
   constructor(
@@ -14,6 +15,8 @@ export class UploadBuktiTagihanUseCase {
     private readonly cloudinaryService: CloudinaryService,
     private readonly penjualanRepo: IPenjualanRepository,
     private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+
+    private readonly socketService: SocketService,
   ) {}
 
   async execute(
@@ -72,6 +75,15 @@ export class UploadBuktiTagihanUseCase {
       } catch (error) {
         console.error("Gagal auto-generate SPR:", error);
       }
+    }
+
+    if (isCustomer) {
+      this.socketService.notifyAdmin("notifikasi-admin", {
+        type: "UPLOAD_BUKTI",
+        title: "Bukti Pembayaran Baru",
+        message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
+        data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
+      });
     }
 
     return updatedTagihan;

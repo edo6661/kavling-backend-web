@@ -119,14 +119,6 @@ export class TelegramBotService {
       console.log(
         `✅ Ping sukses! Terhubung sebagai Bot: @${data.result?.username}`,
       );
-      console.log("⏳ 2. Memulai proses sinkronisasi pesan (Polling)...");
-
-      this.bot
-        .launch({ dropPendingUpdates: true })
-        .then(() => console.log("✅ 🤖 Telegram Bot Bumantara Running..."))
-        .catch((err) =>
-          console.error("❌ Gagal menjalankan Polling Bot:", err),
-        );
     } catch (error: unknown) {
       console.error("\n❌ ======================================");
       console.error("GAGAL MENGHUBUNGI SERVER TELEGRAM!");

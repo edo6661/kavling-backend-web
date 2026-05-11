@@ -3,9 +3,13 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
 
 export class GantiKavlingUseCase {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly socketService: SocketService,
+  ) {}
 
   async execute(
     noTransaksi: string,
@@ -48,7 +52,7 @@ export class GantiKavlingUseCase {
         data: { status: "HOLD" },
       });
 
-      return await tx.riwayatGantiKavling.create({
+      const riwayat = await tx.riwayatGantiKavling.create({
         data: {
           penjualanId: penjualan.id,
           kavlingLamaId: penjualan.kavlingId,
@@ -58,6 +62,15 @@ export class GantiKavlingUseCase {
           requestedById: requestedById,
         },
       });
+
+      this.socketService.notifyAdmin("notifikasi-admin", {
+        type: "GANTI_KAVLING",
+        title: "Pengajuan Ganti Kavling",
+        message: `Terdapat pengajuan ganti kavling untuk transaksi ${noTransaksi} yang memerlukan persetujuan.`,
+        data: { riwayatId: riwayat.id, noTransaksi },
+      });
+
+      return riwayat;
     });
   }
 }

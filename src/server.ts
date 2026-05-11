@@ -3,10 +3,16 @@ import { env } from "./config/env";
 import { prisma } from "./infrastructure/database/prisma";
 import { logger } from "./utils/logger";
 import { container } from "./infrastructure/di/container";
+import { createServer } from "http";
 const PORT = env.PORT;
-const server = app.listen(PORT, () => {
+
+const httpServer = createServer(app);
+container.socketService.initialize(httpServer);
+const server = httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  container.telegramBotService.launch();
+  container.telegramBotService.launch().catch((err: unknown) => {
+    console.error("❌ Terjadi kesalahan saat meluncurkan Telegram Bot:", err);
+  });
 });
 const shutdown = (signal: string) => {
   console.log(`\n${signal} received. Closing resources...`);

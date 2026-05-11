@@ -150,10 +150,12 @@ import { RolePermissionController } from "../../presentation/controllers/rolePer
 import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
 import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
 import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
+import { SocketService } from "../websocket/SocketService.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
+  const socketService = new SocketService();
 
   const userRepo = new UserRepository(dbClient);
   const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
@@ -350,7 +352,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
     generateSprPdfUseCase,
   );
-  const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient);
+  const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient, socketService);
   const approveBatalUseCase = new ApproveBatalUseCase(dbClient);
   const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(
     dbClient,
@@ -380,11 +382,13 @@ export const createContainer = (dbClient: PrismaClient) => {
     getPengajuanGantiKavlingUseCase,
     regenerateSprUseCase,
   );
+
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,
     cloudinaryService,
     penjualanRepo,
     generateSprPdfUseCase,
+    socketService,
   );
   const uploadBuktiRefundUseCase = new UploadBuktiRefundUseCase(
     dbClient,
@@ -507,6 +511,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressPenjualanController,
     telegramBotService,
     rolePermissionController,
+    socketService,
   };
 };
 
