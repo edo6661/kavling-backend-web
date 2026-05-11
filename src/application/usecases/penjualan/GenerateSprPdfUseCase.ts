@@ -342,7 +342,7 @@ export class GenerateSprPdfUseCase {
           penjualan.caraPembayaran === "CASH_BERTAHAP" &&
           penjualan.keteranganAngsuran
         ) {
-          const ketText = `Keterangan Angsuran: ${penjualan.keteranganAngsuran}`;
+          const ketText = `Keterangan: ${penjualan.keteranganAngsuran}`;
           doc.font("Helvetica-Bold").fontSize(9);
 
           // Hitung tinggi teks aktual berdasarkan batas lebarnya

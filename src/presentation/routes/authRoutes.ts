@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { validate } from "../../middlewares/validate";
 import { authenticate } from "../../middlewares/authMiddleware";
-import { registerSchema, loginSchema } from "../../validations/authSchema";
+import {
+  registerSchema,
+  loginSchema,
+  updateSelfSchema,
+} from "../../validations/authSchema";
 import type { AuthController } from "../controllers/authController";
 
 export const createAuthRoutes = (authController: AuthController): Router => {
@@ -17,6 +21,12 @@ export const createAuthRoutes = (authController: AuthController): Router => {
   );
 
   router.get("/profile", authenticate, authController.getProfile);
+  router.patch(
+    "/update-me",
+    authenticate,
+    validate(updateSelfSchema),
+    authController.updateSelf,
+  );
 
   return router;
 };

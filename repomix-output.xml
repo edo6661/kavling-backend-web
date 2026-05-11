@@ -1,18 +1,58 @@
-ada penambahan fitur tapi saya bingung gimana:
-intinya gini:
-nanti kan customer yang kpr kan perlu di acc oleh bank ya pengajuan kpr nya, otomatis bank bank itu butuh lampiran lampiran customer yang sudah di upload di table customer seperti kk, npwp, ktp, dan dokumen lainnya.
-sebaiknya gimana ya?
-apakah akan ada login untuk akun bank?
-soalnya masa kita missal WhatsApp an dengan orang bank, dan ngirim url yang isinya file file customer yang lumayan sensitive seperti npwp, ktp, dll, itu tuh tidak ada kredensial untuk mengakses file file tersebut.
-atau mending nanti bank nya kasih kredensial customer nya aja ya terus bank nya login pakai kredensial customer, kan ada tuh lampiran customer customer disitu.
+kode backend:
+<file path="src/application/usecases/auth/UpdateCustomerSelfUseCase.ts">
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import { hashPassword } from "../../../utils/hashing.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
 
+export interface UpdateSelfDTO {
+  email?: string;
+  password?: string;
+}
 
-tolong buatkan sesuai dengan yang saya mau.
-tolong lakukan perlahan, bertahap, best practice.
+export class UpdateCustomerSelfUseCase {
+  constructor(
+    private readonly userRepo: IUserRepository,
+    private readonly customerRepo: ICustomerRepository,
+  ) {}
 
-cukup berikan saya kode yang perlu di tambah atau di modifikasi, tapi jagan lupa untuk memberitahu saya lokasi kode nya mana yang diubah dan di tambah.
+  async execute(userId: number, data: UpdateSelfDTO) {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundError("User tidak ditemukan");
 
+    const updateData: UpdateUserDTO = {};
 
+    if (data.email) {
+      const existing = await this.userRepo.findByEmail(data.email);
+      if (existing && existing.id !== userId) {
+        throw new ConflictError("Email sudah digunakan oleh akun lain");
+      }
+      updateData.email = data.email;
+    }
+
+    if (data.password) {
+      updateData.password = await hashPassword(data.password);
+    }
+
+    const updatedUser = await this.userRepo.update(userId, updateData);
+
+    if (data.email) {
+      const customer = await this.customerRepo.findByUserId(userId);
+      if (customer) {
+        await this.customerRepo.update(customer.id, { email: data.email });
+      }
+    }
+
+    return {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+    };
+  }
+}
+</file>
 
 <file path=".dockerignore">
 node_modules
@@ -11109,6 +11149,17 @@ export const loginSchema = {
     password: z.string().min(1, "Password wajib diisi"),
   }),
 };
+
+export const updateSelfSchema = {
+  body: z
+    .object({
+      email: z.string().email("Format email tidak valid").optional(),
+      password: z.string().min(6, "Password minimal 6 karakter").optional(),
+    })
+    .refine((data) => data.email ?? data.password, {
+      message: "Minimal salah satu data (email atau password) harus diisi",
+    }),
+};
 </file>
 
 <file path="src/validations/emptySchema.ts">
@@ -13195,134 +13246,6 @@ export class TelegramBotService {
 }
 </file>
 
-<file path="src/middlewares/authMiddleware.ts">
-import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { StatusCodes } from "http-status-codes";
-import { env } from "../config/env";
-import { sendResponse } from "../utils/response";
-import type { JwtUserPayload } from "../domain/dtos/UserDTO";
-import { prisma } from "../infrastructure/database/prisma.js";
-
-export const authenticate = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader?.startsWith("Bearer ")) {
-    sendResponse(
-      res,
-      StatusCodes.UNAUTHORIZED,
-      "Access denied. No token provided.",
-    );
-    return;
-  }
-
-  const token = authHeader.split(" ").pop()?.trim();
-
-  if (!token) {
-    sendResponse(
-      res,
-      StatusCodes.UNAUTHORIZED,
-      "Access denied. Invalid token format.",
-    );
-    return;
-  }
-
-  try {
-    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtUserPayload;
-    req.user = decoded;
-    next();
-  } catch (error) {
-    let message = "Invalid token.";
-    if (error instanceof jwt.TokenExpiredError) {
-      message = "Token expired.";
-    }
-    sendResponse(res, StatusCodes.UNAUTHORIZED, message);
-  }
-};
-
-export const requireRole = (allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      sendResponse(res, StatusCodes.UNAUTHORIZED, "User not authenticated");
-      return;
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      sendResponse(
-        res,
-        StatusCodes.FORBIDDEN,
-        "You do not have permission to access this resource",
-      );
-      return;
-    }
-
-    next();
-  };
-};
-
-export const requirePermission = (
-  resource: string,
-  action: "create" | "read" | "update" | "delete",
-) => {
-  return async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    if (!req.user) {
-      sendResponse(res, StatusCodes.UNAUTHORIZED, "User not authenticated");
-      return;
-    }
-
-    // Bypass jika SUPERADMIN agar tidak perlu setting permission satu-satu (Opsional, tapi best practice)
-    if (req.user.role === "SUPERADMIN") {
-      return next();
-    }
-
-    try {
-      const permission = await prisma.rolePermission.findUnique({
-        where: {
-          role_resource: {
-            role: req.user.role,
-            resource: resource.toUpperCase(),
-          },
-        },
-      });
-
-      // Pengecekan Action
-      let isAllowed = false;
-      if (permission) {
-        if (action === "create") isAllowed = permission.canCreate;
-        if (action === "read") isAllowed = permission.canRead;
-        if (action === "update") isAllowed = permission.canUpdate;
-        if (action === "delete") isAllowed = permission.canDelete;
-      }
-
-      if (!isAllowed) {
-        sendResponse(
-          res,
-          StatusCodes.FORBIDDEN,
-          `Role Anda (${req.user.role}) tidak memiliki akses untuk ${action.toUpperCase()} data pada modul ${resource.toUpperCase()}`,
-        );
-        return;
-      }
-
-      next();
-    } catch (_) {
-      sendResponse(
-        res,
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Gagal memverifikasi hak akses",
-      );
-    }
-  };
-};
-</file>
-
 <file path="src/middlewares/upload.ts">
 import multer from "multer";
 import { AppError } from "../domain/errors/AppError";
@@ -13356,11 +13279,12 @@ export const upload = multer({
 <file path="src/presentation/controllers/authController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response";
-import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase";
+import { sendResponse } from "../../utils/response.js";
+import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
 import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
 import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
 import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
+import type { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
 
 export class AuthController {
   constructor(
@@ -13368,6 +13292,7 @@ export class AuthController {
     private readonly loginUseCase: LoginUserUseCase,
     private readonly getProfileUseCase: GetProfileUseCase,
     private readonly customerLoginUseCase: CustomerLoginUseCase,
+    private readonly updateCustomerSelfUseCase: UpdateCustomerSelfUseCase,
   ) {}
 
   register = async (req: Request, res: Response): Promise<void> => {
@@ -13390,13 +13315,27 @@ export class AuthController {
       sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
       return;
     }
-
     const user = await this.getProfileUseCase.execute(req.user.userId);
     sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
   };
+
   loginCustomer = async (req: Request, res: Response): Promise<void> => {
     const result = await this.customerLoginUseCase.execute(req.body);
     sendResponse(res, StatusCodes.OK, "Login Customer Sukses", result);
+  };
+
+  updateSelf = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "Sesi tidak valid");
+      return;
+    }
+
+    const result = await this.updateCustomerSelfUseCase.execute(
+      userId,
+      req.body,
+    );
+    sendResponse(res, StatusCodes.OK, "Data akun berhasil diperbarui", result);
   };
 }
 </file>
@@ -13585,7 +13524,11 @@ export const createAuditLogRoutes = (
 import { Router } from "express";
 import { validate } from "../../middlewares/validate";
 import { authenticate } from "../../middlewares/authMiddleware";
-import { registerSchema, loginSchema } from "../../validations/authSchema";
+import {
+  registerSchema,
+  loginSchema,
+  updateSelfSchema,
+} from "../../validations/authSchema";
 import type { AuthController } from "../controllers/authController";
 
 export const createAuthRoutes = (authController: AuthController): Router => {
@@ -13601,6 +13544,12 @@ export const createAuthRoutes = (authController: AuthController): Router => {
   );
 
   router.get("/profile", authenticate, authController.getProfile);
+  router.patch(
+    "/update-me",
+    authenticate,
+    validate(updateSelfSchema),
+    authController.updateSelf,
+  );
 
   return router;
 };
@@ -15378,6 +15327,135 @@ export class NotarisMapper {
 }
 </file>
 
+<file path="src/middlewares/authMiddleware.ts">
+import type { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { StatusCodes } from "http-status-codes";
+import { env } from "../config/env";
+import { sendResponse } from "../utils/response";
+import type { JwtUserPayload } from "../domain/dtos/UserDTO";
+import { prisma } from "../infrastructure/database/prisma.js";
+
+export const authenticate = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    sendResponse(
+      res,
+      StatusCodes.UNAUTHORIZED,
+      "Access denied. No token provided.",
+    );
+    return;
+  }
+
+  const token = authHeader.split(" ").pop()?.trim();
+
+  if (!token) {
+    sendResponse(
+      res,
+      StatusCodes.UNAUTHORIZED,
+      "Access denied. Invalid token format.",
+    );
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtUserPayload;
+    req.user = decoded;
+    next();
+  } catch (error) {
+    let message = "Invalid token.";
+    if (error instanceof jwt.TokenExpiredError) {
+      message = "Token expired.";
+    }
+    sendResponse(res, StatusCodes.UNAUTHORIZED, message);
+  }
+};
+
+export const requireRole = (allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "User not authenticated");
+      return;
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      sendResponse(
+        res,
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to access this resource",
+      );
+      return;
+    }
+
+    next();
+  };
+};
+export const requirePermission = (
+  resource: string | string[],
+  action: "create" | "read" | "update" | "delete",
+) => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    if (!req.user) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "User not authenticated");
+      return;
+    }
+
+    if (req.user.role === "SUPERADMIN") {
+      return next();
+    }
+
+    try {
+      const resourceArray = Array.isArray(resource) ? resource : [resource];
+
+      // 1. Ubah jadi findMany untuk menarik semua baris yang cocok
+      const permissions = await prisma.rolePermission.findMany({
+        where: {
+          role: req.user.role,
+          resource: { in: resourceArray.map((r) => r.toUpperCase()) },
+        },
+      });
+
+      // 2. Lakukan perulangan untuk mengecek apakah ada MINIMAL SATU yang true
+      let isAllowed = false;
+      for (const p of permissions) {
+        if (action === "create" && p.canCreate) isAllowed = true;
+        if (action === "read" && p.canRead) isAllowed = true;
+        if (action === "update" && p.canUpdate) isAllowed = true;
+        if (action === "delete" && p.canDelete) isAllowed = true;
+
+        if (isAllowed) break; // Jika sudah ketemu 1 yang true, hemat performa, hentikan loop
+      }
+
+      if (!isAllowed) {
+        sendResponse(
+          res,
+          StatusCodes.FORBIDDEN,
+          `Role Anda (${req.user.role}) tidak memiliki akses untuk ${action.toUpperCase()} data pada modul ini.`,
+        );
+        return;
+      }
+
+      next();
+    } catch (_) {
+      sendResponse(
+        res,
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Gagal memverifikasi hak akses",
+      );
+    }
+  };
+};
+</file>
+
 <file path="src/presentation/controllers/customerController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -15777,122 +15855,6 @@ export class KavlingController {
     );
   };
 }
-</file>
-
-<file path="src/presentation/routes/customerRoutes.ts">
-// src/presentation/routes/customerRoutes.ts
-import { Router } from "express";
-import {
-  authenticate,
-  requirePermission,
-  requireRole,
-} from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import { upload } from "../../middlewares/upload.js";
-import {
-  createCustomerSchema,
-  updateCustomerSchema,
-  getCustomersPaginatedSchema,
-  generateAccountSchema,
-} from "../../validations/customerSchema.js";
-import type { CustomerController } from "../controllers/customerController.js";
-
-export const createCustomerRoutes = (
-  customerController: CustomerController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  // ==========================================
-  // ROUTE PORTAL CUSTOMER (Harus Paling Atas!)
-  // ==========================================
-  router.get(
-    "/me/dashboard",
-    requireRole(["CUSTOMER"]),
-    customerController.getMyDashboard,
-  );
-
-  router.patch(
-    "/me/upload/:docType",
-    requireRole(["CUSTOMER"]),
-    upload.single("file"),
-    customerController.uploadMyDocument,
-  );
-
-  router.patch(
-    "/me/tagihan/:id/upload-bukti",
-    requireRole(["CUSTOMER"]),
-    upload.single("fileBukti"),
-    customerController.uploadMyTagihan,
-  );
-
-  // ==========================================
-  // ROUTE INTERNAL ADMIN (Bawah)
-  // ==========================================
-  router.post(
-    "/",
-    requirePermission("CUSTOMER", "create"),
-    validate(createCustomerSchema),
-    customerController.create,
-  );
-
-  router.get(
-    "/",
-    requirePermission("CUSTOMER", "read"),
-    validate(getCustomersPaginatedSchema),
-    customerController.getPaginated,
-  );
-
-  router.get(
-    "/export/excel",
-    requirePermission("CUSTOMER", "read"),
-    customerController.exportExcel,
-  );
-
-  router.get(
-    "/export/pdf",
-    requirePermission("CUSTOMER", "read"),
-    customerController.exportPdf,
-  );
-
-  router.get(
-    "/:id",
-    requirePermission("CUSTOMER", "read"),
-    validate({ params: updateCustomerSchema.params }),
-    customerController.getById,
-  );
-
-  router.patch(
-    "/:id",
-    requirePermission("CUSTOMER", "update"),
-    validate(updateCustomerSchema),
-    customerController.update,
-  );
-
-  router.patch(
-    "/:id/upload/:docType",
-    requirePermission("CUSTOMER", "update"),
-    upload.single("file"),
-    customerController.uploadDocument,
-  );
-
-  router.delete(
-    "/:id",
-    requirePermission("CUSTOMER", "delete"),
-    validate({ params: updateCustomerSchema.params }),
-    customerController.delete,
-  );
-
-  router.post(
-    "/:id/generate-account",
-    requirePermission("CUSTOMER", "update"),
-    validate(generateAccountSchema),
-    customerController.generateAccount,
-  );
-
-  return router;
-};
 </file>
 
 <file path="src/presentation/routes/kavlingRoutes.ts">
@@ -16701,6 +16663,122 @@ export class TagihanMapper {
     };
   }
 }
+</file>
+
+<file path="src/presentation/routes/customerRoutes.ts">
+// src/presentation/routes/customerRoutes.ts
+import { Router } from "express";
+import {
+  authenticate,
+  requirePermission,
+  requireRole,
+} from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+  getCustomersPaginatedSchema,
+  generateAccountSchema,
+} from "../../validations/customerSchema.js";
+import type { CustomerController } from "../controllers/customerController.js";
+
+export const createCustomerRoutes = (
+  customerController: CustomerController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  // ==========================================
+  // ROUTE PORTAL CUSTOMER (Harus Paling Atas!)
+  // ==========================================
+  router.get(
+    "/me/dashboard",
+    requireRole(["CUSTOMER"]),
+    customerController.getMyDashboard,
+  );
+
+  router.patch(
+    "/me/upload/:docType",
+    requireRole(["CUSTOMER"]),
+    upload.single("file"),
+    customerController.uploadMyDocument,
+  );
+
+  router.patch(
+    "/me/tagihan/:id/upload-bukti",
+    requireRole(["CUSTOMER"]),
+    upload.single("fileBukti"),
+    customerController.uploadMyTagihan,
+  );
+
+  // ==========================================
+  // ROUTE INTERNAL ADMIN (Bawah)
+  // ==========================================
+  router.post(
+    "/",
+    requirePermission("CUSTOMER", "create"),
+    validate(createCustomerSchema),
+    customerController.create,
+  );
+
+  router.get(
+    "/",
+    requirePermission("CUSTOMER", "read"),
+    validate(getCustomersPaginatedSchema),
+    customerController.getPaginated,
+  );
+
+  router.get(
+    "/export/excel",
+    requirePermission("CUSTOMER", "read"),
+    customerController.exportExcel,
+  );
+
+  router.get(
+    "/export/pdf",
+    requirePermission("CUSTOMER", "read"),
+    customerController.exportPdf,
+  );
+
+  router.get(
+    "/:id",
+    requirePermission(["CUSTOMER", "CUSTOMER_DETAIL"], "read"),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.getById,
+  );
+
+  router.patch(
+    "/:id",
+    requirePermission("CUSTOMER", "update"),
+    validate(updateCustomerSchema),
+    customerController.update,
+  );
+
+  router.patch(
+    "/:id/upload/:docType",
+    requirePermission("CUSTOMER", "update"),
+    upload.single("file"),
+    customerController.uploadDocument,
+  );
+
+  router.delete(
+    "/:id",
+    requirePermission("CUSTOMER", "delete"),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.delete,
+  );
+
+  router.post(
+    "/:id/generate-account",
+    requirePermission("CUSTOMER", "update"),
+    validate(generateAccountSchema),
+    customerController.generateAccount,
+  );
+
+  return router;
+};
 </file>
 
 <file path="src/presentation/routes/dashboardRoutes.ts">
@@ -19595,7 +19673,7 @@ export class GenerateSprPdfUseCase {
           penjualan.caraPembayaran === "CASH_BERTAHAP" &&
           penjualan.keteranganAngsuran
         ) {
-          const ketText = `Keterangan Angsuran: ${penjualan.keteranganAngsuran}`;
+          const ketText = `Keterangan: ${penjualan.keteranganAngsuran}`;
           doc.font("Helvetica-Bold").fontSize(9);
 
           // Hitung tinggi teks aktual berdasarkan batas lebarnya
@@ -20462,6 +20540,7 @@ enum Role {
   FINANCE    @map("finance")    
   MARKETING  @map("marketing")
   CUSTOMER   @map("customer")
+  BANK       @map("bank")
 }
 enum UnitStatus {
   AVAILABLE  @map("Available")
@@ -21569,6 +21648,7 @@ import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLo
 import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
 import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
 import { SocketService } from "../websocket/SocketService.js";
+import { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -21578,7 +21658,10 @@ export const createContainer = (dbClient: PrismaClient) => {
   const userRepo = new UserRepository(dbClient);
   const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
   const customerRepo = new CustomerRepository(dbClient);
-
+  const updateCustomerSelfUseCase = new UpdateCustomerSelfUseCase(
+    userRepo,
+    customerRepo,
+  );
   const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
 
   const registerUseCase = new RegisterUserUseCase(userRepo);
@@ -21718,6 +21801,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     loginUseCase,
     getProfileUseCase,
     customerLoginUseCase,
+    updateCustomerSelfUseCase,
   );
   const createUserUseCase = new CreateUserUseCase(userRepo);
   const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);

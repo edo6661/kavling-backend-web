@@ -151,6 +151,7 @@ import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLo
 import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
 import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
 import { SocketService } from "../websocket/SocketService.js";
+import { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -160,7 +161,10 @@ export const createContainer = (dbClient: PrismaClient) => {
   const userRepo = new UserRepository(dbClient);
   const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
   const customerRepo = new CustomerRepository(dbClient);
-
+  const updateCustomerSelfUseCase = new UpdateCustomerSelfUseCase(
+    userRepo,
+    customerRepo,
+  );
   const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
 
   const registerUseCase = new RegisterUserUseCase(userRepo);
@@ -300,6 +304,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     loginUseCase,
     getProfileUseCase,
     customerLoginUseCase,
+    updateCustomerSelfUseCase,
   );
   const createUserUseCase = new CreateUserUseCase(userRepo);
   const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);

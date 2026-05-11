@@ -16,3 +16,14 @@ export const loginSchema = {
     password: z.string().min(1, "Password wajib diisi"),
   }),
 };
+
+export const updateSelfSchema = {
+  body: z
+    .object({
+      email: z.string().email("Format email tidak valid").optional(),
+      password: z.string().min(6, "Password minimal 6 karakter").optional(),
+    })
+    .refine((data) => data.email ?? data.password, {
+      message: "Minimal salah satu data (email atau password) harus diisi",
+    }),
+};
