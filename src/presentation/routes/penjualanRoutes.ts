@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   cancelPenjualanSchema,
@@ -22,74 +25,74 @@ export const createPenjualanRoutes = (
 
   router.get(
     "/pengajuan-batal",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("BATAL_TRANSAKSI", "read"),
     controller.getPengajuanBatal,
   );
   router.get(
     "/pengajuan-ganti-kavling",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("GANTI_KAVLING", "read"),
     controller.getPengajuanGantiKavling,
   );
 
   router.post(
     "/pengajuan-batal/:id/approve",
-    requireRole(["ADMIN"]),
+    requirePermission("BATAL_TRANSAKSI", "update"),
     validate(approveSchema),
     controller.approveBatal,
   );
   router.post(
     "/pengajuan-ganti-kavling/:id/approve",
-    requireRole(["ADMIN"]),
+    requirePermission("GANTI_KAVLING", "update"),
     validate(approveSchema),
     controller.approveGantiKavling,
   );
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "read"),
     validate(getPenjualanPaginatedSchema),
     controller.getPaginated,
   );
   router.post(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "create"),
     validate(createPenjualanSchema),
     controller.create,
   );
 
   router.patch(
     "/:id/cancel",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "update"),
     validate(cancelPenjualanSchema),
     controller.cancel,
   );
   router.patch(
     "/:id/upload/:type",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "update"),
     upload.single("fileBukti"),
     controller.uploadBukti,
   );
   router.post(
     "/:id/signature",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "update"),
     validate(uploadSignatureSchema),
     controller.uploadSignature,
   );
   router.patch(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "update"),
     validate(updatePenjualanSchema),
     controller.update,
   );
   router.patch(
     "/:id/ganti-kavling",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "update"),
     validate(gantiKavlingSchema),
     controller.gantiKavling,
   );
   router.post(
     "/:id/generate-spr",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PENJUALAN", "update"),
     controller.regenerateSpr,
   );
 

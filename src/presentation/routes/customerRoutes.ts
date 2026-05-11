@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
@@ -19,60 +22,61 @@ export const createCustomerRoutes = (
 
   router.post(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "create"),
     validate(createCustomerSchema),
     customerController.create,
   );
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "read"),
     validate(getCustomersPaginatedSchema),
     customerController.getPaginated,
   );
 
   router.get(
     "/export/excel",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "read"),
     customerController.exportExcel,
   );
 
   router.get(
     "/export/pdf",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "read"),
     customerController.exportPdf,
   );
 
   router.get(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "read"),
     validate({ params: updateCustomerSchema.params }),
     customerController.getById,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "update"),
     validate(updateCustomerSchema),
     customerController.update,
   );
 
   router.patch(
     "/:id/upload/:docType",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "update"),
     upload.single("file"),
     customerController.uploadDocument,
   );
 
   router.delete(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("CUSTOMER", "delete"),
     validate({ params: updateCustomerSchema.params }),
     customerController.delete,
   );
+
   router.post(
     "/:id/generate-account",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER", "update"),
     validate(generateAccountSchema),
     customerController.generateAccount,
   );

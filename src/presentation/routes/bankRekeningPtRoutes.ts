@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   createBankRekeningPtSchema,
@@ -17,35 +20,35 @@ export const createBankRekeningPtRoutes = (
 
   router.post(
     "/",
-    requireRole(["ADMIN"]),
+    requirePermission("BANK", "create"),
     validate(createBankRekeningPtSchema),
     controller.create,
   );
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("BANK", "read"),
     validate(getBankRekeningPtPaginatedSchema),
     controller.getPaginated,
   );
 
   router.get(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("BANK", "read"),
     validate({ params: updateBankRekeningPtSchema.params }),
     controller.getById,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("BANK", "update"),
     validate(updateBankRekeningPtSchema),
     controller.update,
   );
 
   router.delete(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("BANK", "delete"),
     validate({ params: updateBankRekeningPtSchema.params }),
     controller.delete,
   );

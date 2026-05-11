@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   createNotarisSchema,
@@ -15,35 +18,35 @@ export const createNotarisRoutes = (controller: NotarisController): Router => {
 
   router.post(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("NOTARIS", "create"),
     validate(createNotarisSchema),
     controller.create,
   );
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("NOTARIS", "read"),
     validate(getNotarisPaginatedSchema),
     controller.getPaginated,
   );
 
   router.get(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("NOTARIS", "read"),
     validate({ params: updateNotarisSchema.params }),
     controller.getById,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("NOTARIS", "update"),
     validate(updateNotarisSchema),
     controller.update,
   );
 
   router.delete(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("NOTARIS", "delete"),
     validate({ params: updateNotarisSchema.params }),
     controller.delete,
   );

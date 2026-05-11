@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   createPerumahanSchema,
@@ -13,41 +16,38 @@ export const createPerumahanRoutes = (
 ): Router => {
   const router = Router();
 
-  // 1. Pindahkan endpoint GET / ke atas SEBELUM middleware authenticate
-  // agar bisa diakses oleh halaman Login secara publik.
   router.get(
     "/",
     validate(getPerumahanPaginatedSchema),
     controller.getPaginated,
   );
 
-  // 2. Aktifkan perlindungan token untuk semua route di bawah ini
   router.use(authenticate);
 
   router.post(
     "/",
-    requireRole(["ADMIN"]),
+    requirePermission("PERUMAHAN", "create"),
     validate(createPerumahanSchema),
     controller.create,
   );
 
   router.get(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("PERUMAHAN", "read"),
     validate({ params: updatePerumahanSchema.params }),
     controller.getById,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("PERUMAHAN", "update"),
     validate(updatePerumahanSchema),
     controller.update,
   );
 
   router.delete(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("PERUMAHAN", "delete"),
     validate({ params: updatePerumahanSchema.params }),
     controller.delete,
   );

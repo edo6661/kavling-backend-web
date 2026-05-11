@@ -1,6 +1,8 @@
-// src/presentation/routes/customerKavlingRoutes.ts
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   getCustomerKavlingsPaginatedSchema,
@@ -17,14 +19,14 @@ export const createCustomerKavlingRoutes = (
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("CUSTOMER_KAVLING", "read"),
     validate(getCustomerKavlingsPaginatedSchema),
     controller.getPaginated,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("CUSTOMER_KAVLING", "update"),
     validate(updateCustomerKavlingSchema),
     controller.update,
   );

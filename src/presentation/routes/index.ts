@@ -18,6 +18,7 @@ import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
 import { createVerifyRoutes } from "./verifyRoutes.js";
 import { createAuditLogRoutes } from "./auditLogRoutes.js";
 import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
+import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -51,6 +52,10 @@ export const createMainRouter = (deps: typeof container): Router => {
   );
   router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
   router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
+  router.use(
+    "/role-permissions",
+    createRolePermissionRoutes(deps.rolePermissionController),
+  );
   return router;
 };
 

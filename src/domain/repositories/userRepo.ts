@@ -140,4 +140,10 @@ export class UserRepository implements IUserRepository {
     });
     return results.map((u) => UserMapper.toDomain(u));
   }
+  async delete(id: number): Promise<void> {
+    const existing = await this.db.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("User tidak ditemukan");
+
+    await this.db.user.delete({ where: { id } });
+  }
 }

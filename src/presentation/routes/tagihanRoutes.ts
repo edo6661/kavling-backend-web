@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
@@ -18,53 +21,54 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
 
   router.post(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("TAGIHAN", "create"),
     validate(createTagihanSchema),
     controller.create,
   );
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("TAGIHAN", "read"),
     validate(getTagihansPaginatedSchema),
     controller.getPaginated,
   );
   router.get(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("TAGIHAN", "read"),
     validate({ params: updateTagihanSchema.params }),
     controller.getById,
   );
   router.patch(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("TAGIHAN", "update"),
     validate(updateTagihanSchema),
     controller.update,
   );
   router.delete(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("TAGIHAN", "delete"),
     validate({ params: updateTagihanSchema.params }),
     controller.delete,
   );
 
   router.patch(
     "/:id/upload-bukti",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("TAGIHAN", "update"),
     upload.single("fileBukti"),
     controller.uploadBukti,
   );
   router.patch(
     "/:id/refund",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("TAGIHAN", "update"),
     upload.single("fileBuktiRefund"),
     controller.uploadBuktiRefund,
   );
   router.post(
     "/:id/signature",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("TAGIHAN", "update"),
     validate(uploadSignatureSchema),
     controller.uploadSignature,
   );
+
   router.patch(
     "/bot/upload-bukti/:noTagihan",
     upload.single("fileBukti"),

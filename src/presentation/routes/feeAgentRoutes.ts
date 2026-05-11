@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
@@ -17,21 +20,21 @@ export const createFeeAgentRoutes = (
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("FEE_AGENT", "read"),
     validate(getFeeAgentsPaginatedSchema),
     controller.getPaginated,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("FEE_AGENT", "update"),
     validate(updateFeeAgentSchema),
     controller.update,
   );
 
   router.patch(
     "/:id/upload/:type",
-    requireRole(["ADMIN"]),
+    requirePermission("FEE_AGENT", "update"),
     upload.single("file"),
     controller.uploadBukti,
   );

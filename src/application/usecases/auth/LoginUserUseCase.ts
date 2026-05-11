@@ -1,10 +1,11 @@
 import jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
-import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
-import { comparePassword } from "../../../utils/hashing";
-import { AppError } from "../../../domain/errors/AppError";
-import { env } from "../../../config/env";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { comparePassword } from "../../../utils/hashing.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { env } from "../../../config/env.js";
 import { StatusCodes } from "http-status-codes";
+import type { PrismaClient } from "@prisma/client";
 import type {
   JwtUserPayload,
   LoginResponseDTO,
@@ -12,7 +13,10 @@ import type {
 } from "../../../domain/dtos/UserDTO.js";
 
 export class LoginUserUseCase {
-  constructor(private readonly userRepo: IUserRepository) {}
+  constructor(
+    private readonly userRepo: IUserRepository,
+    private readonly db: PrismaClient,
+  ) {}
 
   async execute(data: LoginUserDTO): Promise<LoginResponseDTO> {
     const user = await this.userRepo.findByEmail(data.email);
@@ -31,6 +35,17 @@ export class LoginUserUseCase {
       throw invalidCredentialsError;
     }
 
+    const permissions = await this.db.rolePermission.findMany({
+      where: { role: user.role },
+      select: {
+        resource: true,
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: true,
+      },
+    });
+
     const payload: JwtUserPayload = {
       userId: user.id,
       username: user.username,
@@ -47,6 +62,7 @@ export class LoginUserUseCase {
         username: user.username,
         email: user.email,
         role: user.role,
+        permissions,
       },
     };
   }

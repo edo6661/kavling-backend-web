@@ -13,11 +13,19 @@ export interface LoginUserDTO {
   password: string;
 }
 
+export interface PermissionDTO {
+  resource: string;
+  canCreate: boolean;
+  canRead: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+}
 export interface UserResponseDTO {
   id: number;
   username: string;
   email: string;
   role: Role;
+  permissions?: PermissionDTO[];
   createdAt: Date;
 }
 
@@ -27,7 +35,6 @@ export interface JwtUserPayload {
   email: string;
   role: Role;
 }
-
 export interface LoginResponseDTO {
   token: string;
   user: {
@@ -35,6 +42,7 @@ export interface LoginResponseDTO {
     username: string;
     email: string;
     role: Role;
+    permissions?: PermissionDTO[];
   };
 }
 

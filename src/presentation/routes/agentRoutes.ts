@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   createAgentSchema,
@@ -15,35 +19,35 @@ export const createAgentRoutes = (controller: AgentController): Router => {
 
   router.post(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("AGENT", "create"),
     validate(createAgentSchema),
     controller.create,
   );
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("AGENT", "read"),
     validate(getAgentsPaginatedSchema),
     controller.getPaginated,
   );
 
   router.get(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("AGENT", "read"),
     validate({ params: updateAgentSchema.params }),
     controller.getById,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("AGENT", "update"),
     validate(updateAgentSchema),
     controller.update,
   );
 
   router.delete(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("AGENT", "delete"),
     validate({ params: updateAgentSchema.params }),
     controller.delete,
   );

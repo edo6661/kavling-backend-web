@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import type { DashboardController } from "../controllers/dashboardController.js";
 
 export const createDashboardRoutes = (
@@ -10,7 +13,7 @@ export const createDashboardRoutes = (
   router.use(authenticate);
   router.get(
     "/summary",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("DASHBOARD", "read"),
     controller.getSummary,
   );
 

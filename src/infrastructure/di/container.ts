@@ -13,6 +13,9 @@ import { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersU
 import { UserController } from "../../presentation/controllers/userController.js";
 import { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase.js";
 import { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase.js";
+import { CreateUserUseCase } from "../../application/usecases/user/CreateUserUseCase.js";
+import { GetUserByIdUseCase } from "../../application/usecases/user/GetUserByIdUseCase.js";
+import { DeleteUserUseCase } from "../../application/usecases/user/DeleteUserUseCase.js";
 
 import {
   CreateAgentUseCase,
@@ -137,6 +140,14 @@ import {
 import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
 import { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
 import { TelegramBotService } from "../telegram/TelegramBotService.js";
+import { RolePermissionRepository } from "../../domain/repositories/rolePermissionRepo.js";
+import {
+  UpsertRolePermissionUseCase,
+  GetRolePermissionsUseCase,
+  DeleteRolePermissionUseCase,
+} from "../../application/usecases/rolePermission/RolePermissionUseCases.js";
+import { RolePermissionController } from "../../presentation/controllers/rolePermissionController.js";
+
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
@@ -148,8 +159,8 @@ export const createContainer = (dbClient: PrismaClient) => {
   const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
 
   const registerUseCase = new RegisterUserUseCase(userRepo);
-  const loginUseCase = new LoginUserUseCase(userRepo);
-  const getProfileUseCase = new GetProfileUseCase(userRepo);
+  const loginUseCase = new LoginUserUseCase(userRepo, dbClient);
+  const getProfileUseCase = new GetProfileUseCase(userRepo, dbClient);
 
   const getAllUsersUseCase = new GetAllUsersUseCase(userRepo);
   const updateUserUseCase = new UpdateUserUseCase(userRepo);
@@ -282,10 +293,16 @@ export const createContainer = (dbClient: PrismaClient) => {
     loginUseCase,
     getProfileUseCase,
   );
+  const createUserUseCase = new CreateUserUseCase(userRepo);
+  const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);
+  const deleteUserUseCase = new DeleteUserUseCase(userRepo);
   const userController = new UserController(
     getAllUsersUseCase,
     updateUserUseCase,
     getUsersPaginatedUseCase,
+    createUserUseCase,
+    getUserByIdUseCase,
+    deleteUserUseCase,
   );
 
   const bankRekeningPtController = new BankRekeningPtController(
@@ -434,6 +451,22 @@ export const createContainer = (dbClient: PrismaClient) => {
     uploadProgressDocumentUseCase,
   );
   const telegramBotService = new TelegramBotService(uploadBuktiTagihanUseCase);
+  const rolePermissionRepo = new RolePermissionRepository(dbClient);
+  const upsertRolePermissionUseCase = new UpsertRolePermissionUseCase(
+    rolePermissionRepo,
+  );
+  const getRolePermissionsUseCase = new GetRolePermissionsUseCase(
+    rolePermissionRepo,
+  );
+  const deleteRolePermissionUseCase = new DeleteRolePermissionUseCase(
+    rolePermissionRepo,
+  );
+
+  const rolePermissionController = new RolePermissionController(
+    upsertRolePermissionUseCase,
+    getRolePermissionsUseCase,
+    deleteRolePermissionUseCase,
+  );
   return {
     authController,
     userRepo,
@@ -457,6 +490,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     auditLogController,
     progressPenjualanController,
     telegramBotService,
+    rolePermissionController,
   };
 };
 

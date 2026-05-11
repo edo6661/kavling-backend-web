@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../../middlewares/authMiddleware.js";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
   createKavlingSchema,
@@ -17,41 +20,42 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
 
   router.post(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("KAVLING", "create"),
     validate(createKavlingSchema),
     controller.create,
   );
 
   router.get(
     "/",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("KAVLING", "read"),
     validate(getKavlingPaginatedSchema),
     controller.getPaginated,
   );
 
   router.get(
     "/:id",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("KAVLING", "read"),
     validate({ params: updateKavlingSchema.params }),
     controller.getById,
   );
 
   router.patch(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("KAVLING", "update"),
     validate(updateKavlingSchema),
     controller.update,
   );
 
   router.delete(
     "/:id",
-    requireRole(["ADMIN"]),
+    requirePermission("KAVLING", "delete"),
     validate({ params: updateKavlingSchema.params }),
     controller.delete,
   );
+
   router.patch(
     "/:id/upload/:docType",
-    requireRole(["ADMIN", "MARKETING"]),
+    requirePermission("KAVLING", "update"),
     upload.single("file"),
     validate(uploadKavlingDocumentSchema),
     controller.uploadDocument,

@@ -6,7 +6,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 enum Role {
+  SUPERADMIN @map("superadmin") 
   ADMIN      @map("admin")
+  FINANCE    @map("finance")    
   MARKETING  @map("marketing")
   CUSTOMER   @map("customer")
 }
@@ -442,4 +444,20 @@ model ProgressPenjualan {
   updatedAt           DateTime  @updatedAt @map("updated_at")
   penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
   @@map("progress_penjualan")
+}
+
+
+model RolePermission {
+  id        Int      @id @default(autoincrement())
+  role      Role     
+  resource  String   @db.VarChar(100) 
+  canCreate Boolean  @default(false)
+  canRead   Boolean  @default(false)
+  canUpdate Boolean  @default(false)
+  canDelete Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([role, resource]) 
+  @@map("role_permissions")
 }
