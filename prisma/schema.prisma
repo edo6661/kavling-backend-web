@@ -11,6 +11,7 @@ enum Role {
   FINANCE    @map("finance")    
   MARKETING  @map("marketing")
   CUSTOMER   @map("customer")
+  BANK       @map("bank")
 }
 enum UnitStatus {
   AVAILABLE  @map("Available")

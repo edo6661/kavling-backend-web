@@ -65,9 +65,8 @@ export const requireRole = (allowedRoles: string[]) => {
     next();
   };
 };
-
 export const requirePermission = (
-  resource: string,
+  resource: string | string[],
   action: "create" | "read" | "update" | "delete",
 ) => {
   return async (
@@ -80,35 +79,37 @@ export const requirePermission = (
       return;
     }
 
-    // Bypass jika SUPERADMIN agar tidak perlu setting permission satu-satu (Opsional, tapi best practice)
     if (req.user.role === "SUPERADMIN") {
       return next();
     }
 
     try {
-      const permission = await prisma.rolePermission.findUnique({
+      const resourceArray = Array.isArray(resource) ? resource : [resource];
+
+      // 1. Ubah jadi findMany untuk menarik semua baris yang cocok
+      const permissions = await prisma.rolePermission.findMany({
         where: {
-          role_resource: {
-            role: req.user.role,
-            resource: resource.toUpperCase(),
-          },
+          role: req.user.role,
+          resource: { in: resourceArray.map((r) => r.toUpperCase()) },
         },
       });
 
-      // Pengecekan Action
+      // 2. Lakukan perulangan untuk mengecek apakah ada MINIMAL SATU yang true
       let isAllowed = false;
-      if (permission) {
-        if (action === "create") isAllowed = permission.canCreate;
-        if (action === "read") isAllowed = permission.canRead;
-        if (action === "update") isAllowed = permission.canUpdate;
-        if (action === "delete") isAllowed = permission.canDelete;
+      for (const p of permissions) {
+        if (action === "create" && p.canCreate) isAllowed = true;
+        if (action === "read" && p.canRead) isAllowed = true;
+        if (action === "update" && p.canUpdate) isAllowed = true;
+        if (action === "delete" && p.canDelete) isAllowed = true;
+
+        if (isAllowed) break; // Jika sudah ketemu 1 yang true, hemat performa, hentikan loop
       }
 
       if (!isAllowed) {
         sendResponse(
           res,
           StatusCodes.FORBIDDEN,
-          `Role Anda (${req.user.role}) tidak memiliki akses untuk ${action.toUpperCase()} data pada modul ${resource.toUpperCase()}`,
+          `Role Anda (${req.user.role}) tidak memiliki akses untuk ${action.toUpperCase()} data pada modul ini.`,
         );
         return;
       }

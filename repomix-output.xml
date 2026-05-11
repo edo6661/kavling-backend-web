@@ -1,51 +1,18 @@
-best practice nya notifikasi nya di jadikan table tidak sih?
-menurut kamu gimana?
-<file path="src/infrastructure/websocket/SocketService.ts">
-import { Server as SocketIOServer } from "socket.io";
-import type { Server } from "http";
-import { env } from "../../config/env.js";
+ada penambahan fitur tapi saya bingung gimana:
+intinya gini:
+nanti kan customer yang kpr kan perlu di acc oleh bank ya pengajuan kpr nya, otomatis bank bank itu butuh lampiran lampiran customer yang sudah di upload di table customer seperti kk, npwp, ktp, dan dokumen lainnya.
+sebaiknya gimana ya?
+apakah akan ada login untuk akun bank?
+soalnya masa kita missal WhatsApp an dengan orang bank, dan ngirim url yang isinya file file customer yang lumayan sensitive seperti npwp, ktp, dll, itu tuh tidak ada kredensial untuk mengakses file file tersebut.
+atau mending nanti bank nya kasih kredensial customer nya aja ya terus bank nya login pakai kredensial customer, kan ada tuh lampiran customer customer disitu.
 
-export interface AdminNotificationPayload {
-  type: "UPLOAD_BUKTI" | "GANTI_KAVLING";
-  title: string;
-  message: string;
-  data?: Record<string, unknown>;
-}
 
-export class SocketService {
-  private io: SocketIOServer | null = null;
+tolong buatkan sesuai dengan yang saya mau.
+tolong lakukan perlahan, bertahap, best practice.
 
-  // Method ini akan dipanggil di server.ts SETELAH httpServer dibuat
-  public initialize(server: Server) {
-    this.io = new SocketIOServer(server, {
-      cors: {
-        origin: env.CORS_ORIGINS,
-        credentials: true,
-      },
-    });
+cukup berikan saya kode yang perlu di tambah atau di modifikasi, tapi jagan lupa untuk memberitahu saya lokasi kode nya mana yang diubah dan di tambah.
 
-    this.io.on("connection", (socket) => {
-      socket.on("join-admin", async () => {
-        try {
-          await socket.join("admin-room");
-        } catch (error) {
-          console.error(`Socket ${socket.id} gagal masuk admin-room:`, error);
-        }
-      });
-    });
-  }
 
-  public notifyAdmin(event: string, data: AdminNotificationPayload) {
-    if (this.io) {
-      this.io.to("admin-room").emit(event, data);
-    } else {
-      console.warn(
-        "SocketService: Ingin mengirim notif tapi socket server belum diinisialisasi.",
-      );
-    }
-  }
-}
-</file>
 
 <file path=".dockerignore">
 node_modules
@@ -9911,143 +9878,48 @@ export class UserMapper {
 }
 </file>
 
-<file path="src/infrastructure/telegram/TelegramBotService.ts">
-import { Telegraf } from "telegraf";
+<file path="src/infrastructure/websocket/SocketService.ts">
+import { Server as SocketIOServer } from "socket.io";
+import type { Server } from "http";
 import { env } from "../../config/env.js";
-import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
-import dns from "node:dns";
-// 1. Tambahkan import axios
-import axios from "axios";
 
-dns.setDefaultResultOrder("ipv4first");
+export interface AdminNotificationPayload {
+  type: "UPLOAD_BUKTI" | "GANTI_KAVLING";
+  title: string;
+  message: string;
+  data?: Record<string, unknown>;
+}
 
-export class TelegramBotService {
-  private bot: Telegraf;
+export class SocketService {
+  private io: SocketIOServer | null = null;
 
-  constructor(private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase) {
-    this.bot = new Telegraf(env.TELEGRAM_BOT_TOKEN || "");
-    this.setupBot();
-  }
+  // Method ini akan dipanggil di server.ts SETELAH httpServer dibuat
+  public initialize(server: Server) {
+    this.io = new SocketIOServer(server, {
+      cors: {
+        origin: env.CORS_ORIGINS,
+        credentials: true,
+      },
+    });
 
-  private setupBot() {
-    this.bot.on("photo", async (ctx) => {
-      try {
-        if (!ctx.message || !("photo" in ctx.message)) return;
-
-        const caption =
-          "caption" in ctx.message ? ctx.message.caption : undefined;
-
-        if (!caption) {
-          await ctx.reply(
-            "⚠️ Mohon sertakan *Nomor Invoice* pada caption foto.",
-            { parse_mode: "Markdown" },
-          );
-          return;
+    this.io.on("connection", (socket) => {
+      socket.on("join-admin", async () => {
+        try {
+          await socket.join("admin-room");
+        } catch (error) {
+          console.error(`Socket ${socket.id} gagal masuk admin-room:`, error);
         }
-
-        const noTagihan = caption.trim();
-        const processingMsg = await ctx.reply(
-          `⏳ Sedang memproses bukti pembayaran untuk *${noTagihan}*...`,
-          { parse_mode: "Markdown" },
-        );
-
-        const photos = ctx.message.photo;
-        const highestResPhoto = photos[photos.length - 1];
-
-        if (!highestResPhoto) {
-          await ctx.reply("❌ Gagal mendapatkan data foto dari Telegram.", {
-            parse_mode: "Markdown",
-          });
-          return;
-        }
-
-        const photoId = highestResPhoto.file_id;
-        const fileLink = await ctx.telegram.getFileLink(photoId);
-
-        // 2. MODIFIKASI: Gunakan Axios untuk download (Lebih stabil di Windows)
-        // Kita beri timeout 30 detik khusus untuk download file
-        const response = await axios.get(fileLink.href, {
-          responseType: "arraybuffer",
-          timeout: 30000,
-        });
-
-        const imageBuffer = Buffer.from(response.data);
-
-        // Eksekusi proses ke Database
-        await this.uploadBuktiUseCase.execute(noTagihan, imageBuffer);
-
-        await ctx.telegram.deleteMessage(ctx.chat.id, processingMsg.message_id);
-        await ctx.reply(
-          `✅ *BERHASIL!*\nBukti pembayaran untuk *${noTagihan}* berhasil diunggah ke sistem dan status tagihan menjadi LUNAS.`,
-          { parse_mode: "Markdown" },
-        );
-      } catch (error: unknown) {
-        console.error("Telegram Bot Error:", error);
-
-        let errorMsg =
-          "❌ Terjadi kesalahan pada server saat memproses gambar.";
-
-        // Cek jika error berasal dari Axios (Masalah koneksi download)
-        if (axios.isAxiosError(error)) {
-          errorMsg = `❌ *GAGAL DOWNLOAD:*\nKoneksi ke Telegram lambat atau terputus. Silakan coba kirim ulang foto.`;
-        } else if (error instanceof Error) {
-          errorMsg = `❌ *GAGAL:*\n${error.message}`;
-        }
-
-        await ctx.reply(errorMsg, { parse_mode: "Markdown" });
-      }
+      });
     });
   }
 
-  public async launch() {
-    if (!env.TELEGRAM_BOT_TOKEN) {
+  public notifyAdmin(event: string, data: AdminNotificationPayload) {
+    if (this.io) {
+      this.io.to("admin-room").emit(event, data);
+    } else {
       console.warn(
-        "⚠️ TELEGRAM_BOT_TOKEN tidak diset, Bot Telegram diabaikan.",
+        "SocketService: Ingin mengirim notif tapi socket server belum diinisialisasi.",
       );
-      return;
-    }
-
-    console.log("⏳ 1. Menguji koneksi raw ke Telegram API (Ping 10 detik)...");
-    try {
-      // Untuk PING awal tetap pakai fetch tidak apa-apa karena datanya kecil (JSON)
-      const response = await fetch(
-        `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getMe`,
-        { signal: AbortSignal.timeout(10000) },
-      );
-
-      interface TelegramResponse {
-        ok: boolean;
-        result?: { username: string };
-      }
-
-      const data = (await response.json()) as TelegramResponse;
-
-      if (!data.ok) {
-        console.error(
-          "❌ Ping gagal! Token salah atau ditolak Telegram:",
-          data,
-        );
-        return;
-      }
-
-      console.log(
-        `✅ Ping sukses! Terhubung sebagai Bot: @${data.result?.username}`,
-      );
-    } catch (error: unknown) {
-      console.error("\n❌ ======================================");
-      console.error("GAGAL MENGHUBUNGI SERVER TELEGRAM!");
-      if (error instanceof Error && error.name === "TimeoutError") {
-        console.error("Alasan: Koneksi Timeout (Melebihi 10 detik).");
-      } else if (error instanceof Error) {
-        console.error("Alasan:", error.message);
-      }
-      console.error("======================================\n");
-    }
-  }
-
-  public stop(signal: string) {
-    if (env.TELEGRAM_BOT_TOKEN) {
-      this.bot.stop(signal);
     }
   }
 }
@@ -12195,85 +12067,6 @@ export class ExtractKtpDataUseCase {
 }
 </file>
 
-<file path="src/application/usecases/penjualan/GantiKavlingUseCase.ts">
-import type { PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
-
-export class GantiKavlingUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly socketService: SocketService,
-  ) {}
-
-  async execute(
-    noTransaksi: string,
-    kavlingBaruId: number,
-    alasan: string,
-    requestedById: number,
-  ) {
-    return await this.db.$transaction(async (tx) => {
-      const penjualan = await tx.penjualan.findUnique({
-        where: { noTransaksi },
-        include: { riwayatGantiKavling: { where: { status: "PENDING" } } },
-      });
-
-      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
-      if (penjualan.status === "BATAL" || penjualan.status === "LUNAS") {
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Status penjualan tidak valid untuk ganti kavling",
-        );
-      }
-      if (penjualan.riwayatGantiKavling.length > 0) {
-        throw new ConflictError(
-          "Masih ada pengajuan ganti kavling yang menunggu persetujuan.",
-        );
-      }
-
-      const kavlingBaru = await tx.kavling.findUnique({
-        where: { id: kavlingBaruId },
-      });
-
-      if (!kavlingBaru) throw new NotFoundError("Kavling baru tidak ditemukan");
-      if (kavlingBaru.status !== "AVAILABLE") {
-        throw new ConflictError(
-          "Kavling baru sudah terisi atau tidak tersedia",
-        );
-      }
-
-      await tx.kavling.update({
-        where: { id: kavlingBaru.id },
-        data: { status: "HOLD" },
-      });
-
-      const riwayat = await tx.riwayatGantiKavling.create({
-        data: {
-          penjualanId: penjualan.id,
-          kavlingLamaId: penjualan.kavlingId,
-          kavlingBaruId: kavlingBaru.id,
-          alasan: alasan,
-          status: "PENDING",
-          requestedById: requestedById,
-        },
-      });
-
-      this.socketService.notifyAdmin("notifikasi-admin", {
-        type: "GANTI_KAVLING",
-        title: "Pengajuan Ganti Kavling",
-        message: `Terdapat pengajuan ganti kavling untuk transaksi ${noTransaksi} yang memerlukan persetujuan.`,
-        data: { riwayatId: riwayat.id, noTransaksi },
-      });
-
-      return riwayat;
-    });
-  }
-}
-</file>
-
 <file path="src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts">
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
 import type { PenjualanFilterDTO } from "../../../domain/dtos/PenjualanDTO.js";
@@ -13260,6 +13053,148 @@ export class AgentMapper {
 }
 </file>
 
+<file path="src/infrastructure/telegram/TelegramBotService.ts">
+import { Telegraf } from "telegraf";
+import { env } from "../../config/env.js";
+import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+import dns from "node:dns";
+// 1. Tambahkan import axios
+import axios from "axios";
+
+dns.setDefaultResultOrder("ipv4first");
+
+export class TelegramBotService {
+  private bot: Telegraf;
+
+  constructor(private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase) {
+    this.bot = new Telegraf(env.TELEGRAM_BOT_TOKEN || "");
+    this.setupBot();
+  }
+
+  private setupBot() {
+    this.bot.on("photo", async (ctx) => {
+      try {
+        if (!ctx.message || !("photo" in ctx.message)) return;
+
+        const caption =
+          "caption" in ctx.message ? ctx.message.caption : undefined;
+
+        if (!caption) {
+          await ctx.reply(
+            "⚠️ Mohon sertakan *Nomor Invoice* pada caption foto.",
+            { parse_mode: "Markdown" },
+          );
+          return;
+        }
+
+        const noTagihan = caption.trim();
+        const processingMsg = await ctx.reply(
+          `⏳ Sedang memproses bukti pembayaran untuk *${noTagihan}*...`,
+          { parse_mode: "Markdown" },
+        );
+
+        const photos = ctx.message.photo;
+        const highestResPhoto = photos[photos.length - 1];
+
+        if (!highestResPhoto) {
+          await ctx.reply("❌ Gagal mendapatkan data foto dari Telegram.", {
+            parse_mode: "Markdown",
+          });
+          return;
+        }
+
+        const photoId = highestResPhoto.file_id;
+        const fileLink = await ctx.telegram.getFileLink(photoId);
+
+        // 2. MODIFIKASI: Gunakan Axios untuk download (Lebih stabil di Windows)
+        // Kita beri timeout 30 detik khusus untuk download file
+        const response = await axios.get(fileLink.href, {
+          responseType: "arraybuffer",
+          timeout: 30000,
+        });
+
+        const imageBuffer = Buffer.from(response.data);
+
+        // Eksekusi proses ke Database
+        await this.uploadBuktiUseCase.execute(noTagihan, imageBuffer);
+
+        await ctx.telegram.deleteMessage(ctx.chat.id, processingMsg.message_id);
+        await ctx.reply(
+          `✅ *BERHASIL!*\nBukti pembayaran untuk *${noTagihan}* berhasil diunggah ke sistem dan status tagihan menjadi LUNAS.`,
+          { parse_mode: "Markdown" },
+        );
+      } catch (error: unknown) {
+        console.error("Telegram Bot Error:", error);
+
+        let errorMsg =
+          "❌ Terjadi kesalahan pada server saat memproses gambar.";
+
+        // Cek jika error berasal dari Axios (Masalah koneksi download)
+        if (axios.isAxiosError(error)) {
+          errorMsg = `❌ *GAGAL DOWNLOAD:*\nKoneksi ke Telegram lambat atau terputus. Silakan coba kirim ulang foto.`;
+        } else if (error instanceof Error) {
+          errorMsg = `❌ *GAGAL:*\n${error.message}`;
+        }
+
+        await ctx.reply(errorMsg, { parse_mode: "Markdown" });
+      }
+    });
+  }
+
+  public async launch() {
+    if (!env.TELEGRAM_BOT_TOKEN) {
+      console.warn(
+        "⚠️ TELEGRAM_BOT_TOKEN tidak diset, Bot Telegram diabaikan.",
+      );
+      return;
+    }
+
+    console.log("⏳ 1. Menguji koneksi raw ke Telegram API (Ping 10 detik)...");
+    try {
+      // Untuk PING awal tetap pakai fetch tidak apa-apa karena datanya kecil (JSON)
+      const response = await fetch(
+        `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getMe`,
+        { signal: AbortSignal.timeout(10000) },
+      );
+
+      interface TelegramResponse {
+        ok: boolean;
+        result?: { username: string };
+      }
+
+      const data = (await response.json()) as TelegramResponse;
+
+      if (!data.ok) {
+        console.error(
+          "❌ Ping gagal! Token salah atau ditolak Telegram:",
+          data,
+        );
+        return;
+      }
+
+      console.log(
+        `✅ Ping sukses! Terhubung sebagai Bot: @${data.result?.username}`,
+      );
+    } catch (error: unknown) {
+      console.error("\n❌ ======================================");
+      console.error("GAGAL MENGHUBUNGI SERVER TELEGRAM!");
+      if (error instanceof Error && error.name === "TimeoutError") {
+        console.error("Alasan: Koneksi Timeout (Melebihi 10 detik).");
+      } else if (error instanceof Error) {
+        console.error("Alasan:", error.message);
+      }
+      console.error("======================================\n");
+    }
+  }
+
+  public stop(signal: string) {
+    if (env.TELEGRAM_BOT_TOKEN) {
+      this.bot.stop(signal);
+    }
+  }
+}
+</file>
+
 <file path="src/middlewares/authMiddleware.ts">
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
@@ -14035,47 +13970,6 @@ export const createUserRoutes = (userController: UserController): Router => {
 };
 </file>
 
-<file path="src/server.ts">
-import app from "./app";
-import { env } from "./config/env";
-import { prisma } from "./infrastructure/database/prisma";
-import { logger } from "./utils/logger";
-import { container } from "./infrastructure/di/container";
-import { createServer } from "http";
-const PORT = env.PORT;
-
-const httpServer = createServer(app);
-container.socketService.initialize(httpServer);
-const server = httpServer.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  container.telegramBotService.launch().catch((err: unknown) => {
-    console.error("❌ Terjadi kesalahan saat meluncurkan Telegram Bot:", err);
-  });
-});
-const shutdown = (signal: string) => {
-  console.log(`\n${signal} received. Closing resources...`);
-  container.telegramBotService.stop(signal);
-  server.close(async () => {
-    await prisma.$disconnect();
-    console.log("HTTP server and Database connection closed.");
-    process.exit(0);
-  });
-};
-process.on("uncaughtException", (err) => {
-  logger.fatal(err, "Uncaught Exception terdeteksi. Mematikan server...");
-  process.exit(1);
-});
-
-process.on("unhandledRejection", async (reason) => {
-  logger.fatal({ reason }, "Unhandled Rejection");
-  await prisma.$disconnect();
-  server.close(() => process.exit(1));
-});
-process.on("SIGUSR2", () => shutdown("SIGUSR2"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
-</file>
-
 <file path="src/tests/factories/bankRekeningPtFactory.ts">
 import type { Prisma } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
@@ -14446,6 +14340,85 @@ export class UploadCustomerDocumentUseCase {
       [documentType]: imageUrl,
     });
     return CustomerMapper.toDomain(result);
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/GantiKavlingUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
+
+export class GantiKavlingUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly socketService: SocketService,
+  ) {}
+
+  async execute(
+    noTransaksi: string,
+    kavlingBaruId: number,
+    alasan: string,
+    requestedById: number,
+  ) {
+    return await this.db.$transaction(async (tx) => {
+      const penjualan = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: { riwayatGantiKavling: { where: { status: "PENDING" } } },
+      });
+
+      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
+      if (penjualan.status === "BATAL" || penjualan.status === "LUNAS") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Status penjualan tidak valid untuk ganti kavling",
+        );
+      }
+      if (penjualan.riwayatGantiKavling.length > 0) {
+        throw new ConflictError(
+          "Masih ada pengajuan ganti kavling yang menunggu persetujuan.",
+        );
+      }
+
+      const kavlingBaru = await tx.kavling.findUnique({
+        where: { id: kavlingBaruId },
+      });
+
+      if (!kavlingBaru) throw new NotFoundError("Kavling baru tidak ditemukan");
+      if (kavlingBaru.status !== "AVAILABLE") {
+        throw new ConflictError(
+          "Kavling baru sudah terisi atau tidak tersedia",
+        );
+      }
+
+      await tx.kavling.update({
+        where: { id: kavlingBaru.id },
+        data: { status: "HOLD" },
+      });
+
+      const riwayat = await tx.riwayatGantiKavling.create({
+        data: {
+          penjualanId: penjualan.id,
+          kavlingLamaId: penjualan.kavlingId,
+          kavlingBaruId: kavlingBaru.id,
+          alasan: alasan,
+          status: "PENDING",
+          requestedById: requestedById,
+        },
+      });
+
+      this.socketService.notifyAdmin("notifikasi-admin", {
+        type: "GANTI_KAVLING",
+        title: "Pengajuan Ganti Kavling",
+        message: `Terdapat pengajuan ganti kavling untuk transaksi ${noTransaksi} yang memerlukan persetujuan.`,
+        data: { riwayatId: riwayat.id, noTransaksi },
+      });
+
+      return riwayat;
+    });
   }
 }
 </file>
@@ -15990,6 +15963,47 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
 };
 </file>
 
+<file path="src/server.ts">
+import app from "./app";
+import { env } from "./config/env";
+import { prisma } from "./infrastructure/database/prisma";
+import { logger } from "./utils/logger";
+import { container } from "./infrastructure/di/container";
+import { createServer } from "http";
+const PORT = env.PORT;
+
+const httpServer = createServer(app);
+container.socketService.initialize(httpServer);
+const server = httpServer.listen(PORT, () => {
+  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  container.telegramBotService.launch().catch((err: unknown) => {
+    console.error("❌ Terjadi kesalahan saat meluncurkan Telegram Bot:", err);
+  });
+});
+const shutdown = (signal: string) => {
+  console.log(`\n${signal} received. Closing resources...`);
+  container.telegramBotService.stop(signal);
+  server.close(async () => {
+    await prisma.$disconnect();
+    console.log("HTTP server and Database connection closed.");
+    process.exit(0);
+  });
+};
+process.on("uncaughtException", (err) => {
+  logger.fatal(err, "Uncaught Exception terdeteksi. Mematikan server...");
+  process.exit(1);
+});
+
+process.on("unhandledRejection", async (reason) => {
+  logger.fatal({ reason }, "Unhandled Rejection");
+  await prisma.$disconnect();
+  server.close(() => process.exit(1));
+});
+process.on("SIGUSR2", () => shutdown("SIGUSR2"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+</file>
+
 <file path="src/validations/bankRekeningPtSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -16362,100 +16376,6 @@ export class CancelPenjualanUseCase {
         },
       });
     });
-  }
-}
-</file>
-
-<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
-import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
-import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
-
-export class UploadBuktiTagihanUseCase {
-  constructor(
-    private readonly repo: ITagihanRepository,
-    private readonly cloudinaryService: CloudinaryService,
-    private readonly penjualanRepo: IPenjualanRepository,
-    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
-
-    private readonly socketService: SocketService,
-  ) {}
-
-  async execute(
-    identifier: number | string,
-    fileBuffer: Buffer,
-    isCustomer = false,
-  ): Promise<TagihanResponseDTO> {
-    const existing =
-      typeof identifier === "number"
-        ? await this.repo.findById(identifier)
-        : await this.repo.findByNoTagihan(identifier);
-
-    if (!existing) {
-      throw new NotFoundError("Tagihan tidak ditemukan");
-    }
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing.fileBukti) {
-      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
-    }
-
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      "bumantara/tagihan",
-    );
-
-    const newStatus = isCustomer ? "MENUNGGU_KONFIRMASI" : "LUNAS";
-
-    const updateData = {
-      fileBukti: imageUrl,
-      status: newStatus as any,
-    };
-
-    const updatedTagihan = await this.repo.update(existing.id, updateData);
-
-    if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
-      try {
-        const pdfBuffer = await this.generateSprPdfUseCase.execute(
-          existing.penjualanId,
-        );
-
-        const pdfUrl = await this.cloudinaryService.uploadFile(
-          pdfBuffer,
-          "bumantara/spr",
-        );
-
-        await this.penjualanRepo.update(existing.penjualanId, {
-          fileSpr: pdfUrl,
-        });
-      } catch (error) {
-        console.error("Gagal auto-generate SPR:", error);
-      }
-    }
-
-    if (isCustomer) {
-      this.socketService.notifyAdmin("notifikasi-admin", {
-        type: "UPLOAD_BUKTI",
-        title: "Bukti Pembayaran Baru",
-        message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
-        data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
-      });
-    }
-
-    return updatedTagihan;
   }
 }
 </file>
@@ -17217,6 +17137,100 @@ export class ApproveGantiKavlingUseCase {
 }
 </file>
 
+<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
+import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
+import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
+
+export class UploadBuktiTagihanUseCase {
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly penjualanRepo: IPenjualanRepository,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+
+    private readonly socketService: SocketService,
+  ) {}
+
+  async execute(
+    identifier: number | string,
+    fileBuffer: Buffer,
+    isCustomer = false,
+  ): Promise<TagihanResponseDTO> {
+    const existing =
+      typeof identifier === "number"
+        ? await this.repo.findById(identifier)
+        : await this.repo.findByNoTagihan(identifier);
+
+    if (!existing) {
+      throw new NotFoundError("Tagihan tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing.fileBukti) {
+      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      "bumantara/tagihan",
+    );
+
+    const newStatus = isCustomer ? "MENUNGGU_KONFIRMASI" : "LUNAS";
+
+    const updateData = {
+      fileBukti: imageUrl,
+      status: newStatus as any,
+    };
+
+    const updatedTagihan = await this.repo.update(existing.id, updateData);
+
+    if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          existing.penjualanId,
+        );
+
+        const pdfUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        await this.penjualanRepo.update(existing.penjualanId, {
+          fileSpr: pdfUrl,
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR:", error);
+      }
+    }
+
+    if (isCustomer) {
+      this.socketService.notifyAdmin("notifikasi-admin", {
+        type: "UPLOAD_BUKTI",
+        title: "Bukti Pembayaran Baru",
+        message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
+        data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
+      });
+    }
+
+    return updatedTagihan;
+  }
+}
+</file>
+
 <file path="src/presentation/controllers/tagihanController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -17783,89 +17797,6 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
 };
 </file>
 
-<file path="package.json">
-{
-  "name": "bumantara",
-  "version": "1.0.0",
-  "description": "Bumantara",
-  "license": "ISC",
-  "author": "Edawg",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format esm --clean",
-    "start": "node dist/server.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "prisma:generate": "prisma generate",
-    "db:migrate:dev": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:push:test": "dotenv -e .env.test -- npx prisma db push",
-    "test": "dotenv -e .env.test -- vitest",
-    "test:ui": "dotenv -e .env.test -- vitest --ui",
-    "seed": "tsx prisma/seed.ts"
-  },
-  "dependencies": {
-    "@google-cloud/vision": "^5.3.4",
-    "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "^6.19.2",
-    "@sentry/node": "^10.42.0",
-    "axios": "^1.16.0",
-    "bcrypt": "^6.0.0",
-    "cloudinary": "^2.9.0",
-    "compression": "^1.8.1",
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "exceljs": "^4.4.0",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
-    "helmet": "^8.1.0",
-    "hpp": "^0.2.3",
-    "http-status-codes": "^2.3.0",
-    "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.0",
-    "pdfkit": "^0.18.0",
-    "pino": "^10.3.1",
-    "pino-http": "^11.0.0",
-    "qrcode": "^1.5.4",
-    "sharp": "^0.34.5",
-    "socket.io": "^4.8.3",
-    "telegraf": "^4.16.3",
-    "xlsx": "^0.18.5",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "@faker-js/faker": "^10.3.0",
-    "@types/bcrypt": "^6.0.0",
-    "@types/compression": "^1.8.1",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/hpp": "^0.2.7",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/multer": "^2.0.0",
-    "@types/node": "^25.3.0",
-    "@types/pdfkit": "^0.17.5",
-    "@types/pg": "^8.16.0",
-    "@types/qrcode": "^1.5.6",
-    "@types/supertest": "^7.2.0",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
-    "dotenv-cli": "^11.0.0",
-    "eslint": "^9.39.3",
-    "pino-pretty": "^13.1.3",
-    "prisma": "^6.19.2",
-    "supertest": "^7.2.2",
-    "tsup": "^8.5.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1",
-    "vitest": "^3.2.4",
-    "vitest-mock-extended": "^3.1.0"
-  }
-}
-</file>
-
 <file path="prisma/seeds/userSeed.ts">
 import { PrismaClient, Role } from "@prisma/client";
 import * as bcrypt from "bcrypt";
@@ -18108,6 +18039,89 @@ export class KavlingRepository implements IKavlingRepository {
       }
       throw error;
     }
+  }
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "bumantara",
+  "version": "1.0.0",
+  "description": "Bumantara",
+  "license": "ISC",
+  "author": "Edawg",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --clean",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prisma:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:push:test": "dotenv -e .env.test -- npx prisma db push",
+    "test": "dotenv -e .env.test -- vitest",
+    "test:ui": "dotenv -e .env.test -- vitest --ui",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^5.3.4",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.19.2",
+    "@sentry/node": "^10.42.0",
+    "axios": "^1.16.0",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "http-status-codes": "^2.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.0",
+    "pdfkit": "^0.18.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
+    "telegraf": "^4.16.3",
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.3.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/hpp": "^0.2.7",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.3.0",
+    "@types/pdfkit": "^0.17.5",
+    "@types/pg": "^8.16.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/supertest": "^7.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9.39.3",
+    "pino-pretty": "^13.1.3",
+    "prisma": "^6.19.2",
+    "supertest": "^7.2.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^3.2.4",
+    "vitest-mock-extended": "^3.1.0"
   }
 }
 </file>

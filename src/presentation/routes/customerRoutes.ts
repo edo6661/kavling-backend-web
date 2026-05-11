@@ -76,7 +76,7 @@ export const createCustomerRoutes = (
 
   router.get(
     "/:id",
-    requirePermission("CUSTOMER", "read"),
+    requirePermission(["CUSTOMER", "CUSTOMER_DETAIL"], "read"),
     validate({ params: updateCustomerSchema.params }),
     customerController.getById,
   );
