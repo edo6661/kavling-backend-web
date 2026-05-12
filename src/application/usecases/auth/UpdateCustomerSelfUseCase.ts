@@ -4,7 +4,6 @@ import { hashPassword } from "../../../utils/hashing.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
-
 export interface UpdateSelfDTO {
   username?: string;
   email?: string;
@@ -23,7 +22,10 @@ export class UpdateCustomerSelfUseCase {
 
     const updateData: UpdateUserDTO = {};
 
-    if (data.username) updateData.username = data.username;
+    if (data.username) {
+      updateData.username = data.username;
+    }
+
     if (data.email) {
       const existing = await this.userRepo.findByEmail(data.email);
       if (existing && existing.id !== userId) {

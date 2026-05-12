@@ -11,7 +11,7 @@ export class GenerateCustomerAccountUseCase {
     private readonly userRepo: IUserRepository,
   ) {}
 
-  async execute(customerId: number, passwordInput: string) {
+  async execute(customerId: number) {
     const customer = await this.customerRepo.findById(customerId);
     if (!customer) {
       throw new NotFoundError("Data profil Customer tidak ditemukan.");
@@ -23,23 +23,19 @@ export class GenerateCustomerAccountUseCase {
       );
     }
 
-    if (!customer.email) {
-      throw new ConflictError(
-        "Customer tidak memiliki email. Update profil customer dengan email terlebih dahulu.",
-      );
-    }
+    const hashedPassword = await hashPassword(customer.nikKtp);
+    const emailToUse = customer.email ?? `${customer.noHp}@customer.local`;
 
-    const existingUser = await this.userRepo.findByEmail(customer.email);
+    const existingUser = await this.userRepo.findByEmail(emailToUse);
     if (existingUser) {
       throw new ConflictError(
         "Email customer ini sudah terdaftar sebagai User di dalam sistem.",
       );
     }
 
-    const hashedPassword = await hashPassword(passwordInput);
     const newUser = await this.userRepo.create({
-      username: customer.nama,
-      email: customer.email,
+      username: customer.noHp,
+      email: emailToUse,
       password: hashedPassword,
       role: Role.CUSTOMER,
     });
@@ -49,7 +45,8 @@ export class GenerateCustomerAccountUseCase {
     });
 
     return {
-      message: "Akun portal customer berhasil dibuat dan ditautkan.",
+      message:
+        "Akun portal customer berhasil dibuat (Username: No HP, Password: NIK).",
       akun: {
         username: newUser.username,
         email: newUser.email,

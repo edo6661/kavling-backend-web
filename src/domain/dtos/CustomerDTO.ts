@@ -43,3 +43,8 @@ export interface CustomerResponseDTO {
 }
 
 export type CustomerFilterDTO = BaseFilterDTO;
+
+export interface CustomerLoginInput {
+  username: string;
+  password: string;
+}

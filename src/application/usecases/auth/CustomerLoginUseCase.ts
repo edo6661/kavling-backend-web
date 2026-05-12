@@ -6,32 +6,51 @@ import { AppError } from "../../../domain/errors/AppError.js";
 import { env } from "../../../config/env.js";
 import { StatusCodes } from "http-status-codes";
 import type { PrismaClient } from "@prisma/client";
-import type {
-  JwtUserPayload,
-  LoginUserDTO,
-} from "../../../domain/dtos/UserDTO.js";
+import type { JwtUserPayload } from "../../../domain/dtos/UserDTO.js";
 
+interface CustomerLoginInput {
+  username: string;
+  password: string;
+}
 export class CustomerLoginUseCase {
   constructor(
     private readonly userRepo: IUserRepository,
     private readonly db: PrismaClient,
   ) {}
 
-  async execute(data: LoginUserDTO) {
-    const user = await this.userRepo.findByEmail(data.email);
+  async execute(data: CustomerLoginInput) {
+    const user = await this.db.user.findFirst({
+      where: {
+        role: "CUSTOMER",
+        OR: [
+          { username: data.username },
+          { customers: { some: { noHp: data.username } } },
+        ],
+      },
+    });
+
     const invalidCredentialsError = new AppError(
       StatusCodes.UNAUTHORIZED,
-      "Username atau Password salah",
+      "Username (No. HP) atau Password (NIK) salah",
     );
 
-    if (!user?.password) throw invalidCredentialsError;
-
-    const isPasswordValid = await comparePassword(data.password, user.password);
-    if (!isPasswordValid) throw invalidCredentialsError;
+    if (!user) throw invalidCredentialsError;
 
     const customerProfile = await this.db.customer.findFirst({
       where: { userId: user.id },
     });
+
+    const isPasswordValid = user.password
+      ? await comparePassword(data.password, user.password)
+      : false;
+
+    const isNikValid = customerProfile
+      ? data.password === customerProfile.nikKtp
+      : false;
+
+    if (!isPasswordValid && !isNikValid) {
+      throw invalidCredentialsError;
+    }
 
     const payload: JwtUserPayload = {
       userId: user.id,

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { emptyAsUndefined } from "./emptySchema.js";
-
 export const registerSchema = {
   body: z.object({
     username: z.string().min(3, "Username minimal 3 karakter"),
@@ -17,6 +16,14 @@ export const loginSchema = {
     password: z.string().min(1, "Password wajib diisi"),
   }),
 };
+
+export const customerLoginSchema = {
+  body: z.object({
+    username: z.string().min(1, "Username (No HP) wajib diisi"),
+    password: z.string().min(1, "Password (NIK) wajib diisi"),
+  }),
+};
+
 export const registerAgentSchema = {
   body: z.object({
     nik: z.string().length(16, "NIK harus tepat 16 karakter"),
@@ -41,12 +48,6 @@ export const updateSelfSchema = {
     })
     .refine((data) => data.username ?? data.email ?? data.password, {
       message:
-        "Minimal salah satu data (username, email atau password) harus diisi",
+        "Minimal salah satu data (username, email, atau password) harus diisi",
     }),
-};
-export const customerLoginSchema = {
-  body: z.object({
-    username: z.string().min(1, "Username (No HP) wajib diisi"),
-    password: z.string().min(1, "Password (NIK) wajib diisi"),
-  }),
 };

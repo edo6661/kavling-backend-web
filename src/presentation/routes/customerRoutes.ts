@@ -11,7 +11,6 @@ import {
   createCustomerSchema,
   updateCustomerSchema,
   getCustomersPaginatedSchema,
-  generateAccountSchema,
 } from "../../validations/customerSchema.js";
 import type { CustomerController } from "../controllers/customerController.js";
 
@@ -105,7 +104,6 @@ export const createCustomerRoutes = (
   router.post(
     "/:id/generate-account",
     requirePermission("CUSTOMER", "update"),
-    validate(generateAccountSchema),
     customerController.generateAccount,
   );
 
