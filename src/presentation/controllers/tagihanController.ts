@@ -15,7 +15,6 @@ import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagih
 import type {
   createTagihanSchema,
   updateTagihanSchema,
-  uploadBuktiByNoTagihanSchema,
 } from "../../validations/tagihanSchema.js";
 import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
 import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
@@ -118,6 +117,7 @@ export class TagihanController {
       result,
     );
   };
+
   uploadBuktiRefund = async (
     req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
     res: Response,
@@ -142,6 +142,7 @@ export class TagihanController {
     );
     sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
   };
+
   uploadSignature = async (
     req: TypedRequest<
       typeof uploadSignatureSchema.body,
@@ -168,32 +169,7 @@ export class TagihanController {
       result,
     );
   };
-  uploadBuktiByNoTagihan = async (
-    req: TypedRequest<any, any, typeof uploadBuktiByNoTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const { noTagihan } = req.params;
 
-    if (!req.file?.buffer) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "File gambar bukti wajib diunggah",
-      );
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(
-      noTagihan,
-      req.file.buffer,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Bukti pembayaran dari Telegram berhasil diunggah",
-      result,
-    );
-  };
   approveBukti = async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(req.params.id as string, 10);
     const { isApproved } = req.body;

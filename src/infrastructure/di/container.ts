@@ -475,7 +475,15 @@ export const createContainer = (dbClient: PrismaClient) => {
     updateProgressPenjualanUseCase,
     uploadProgressDocumentUseCase,
   );
-  const telegramBotService = new TelegramBotService(uploadBuktiTagihanUseCase);
+  const telegramBotService = new TelegramBotService(
+    dbClient,
+    uploadBuktiTagihanUseCase,
+    uploadCustomerDocumentUseCase,
+    uploadKavlingDocumentUseCase,
+    uploadProgressDocumentUseCase,
+    uploadBuktiPenjualanUseCase,
+    uploadBuktiFeeUseCase,
+  );
   const rolePermissionRepo = new RolePermissionRepository(dbClient);
   const upsertRolePermissionUseCase = new UpsertRolePermissionUseCase(
     rolePermissionRepo,

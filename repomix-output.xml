@@ -1,58 +1,9 @@
-kode backend:
-<file path="src/application/usecases/auth/UpdateCustomerSelfUseCase.ts">
-import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
-import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
-import { hashPassword } from "../../../utils/hashing.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import type { UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
+untuk upload file tagihan lewat telegram itu jangan pakai nomor invoice nya atau id nya, dan juga ini bukan hanya nge upload tagihan saja, tapi untuk file file lain, missal:
+prefix nya administrasi_file ktp, nah itu upload ktp.
+kalau prefixnya tagihan_ ... itu upload tagihan.
 
-export interface UpdateSelfDTO {
-  email?: string;
-  password?: string;
-}
-
-export class UpdateCustomerSelfUseCase {
-  constructor(
-    private readonly userRepo: IUserRepository,
-    private readonly customerRepo: ICustomerRepository,
-  ) {}
-
-  async execute(userId: number, data: UpdateSelfDTO) {
-    const user = await this.userRepo.findById(userId);
-    if (!user) throw new NotFoundError("User tidak ditemukan");
-
-    const updateData: UpdateUserDTO = {};
-
-    if (data.email) {
-      const existing = await this.userRepo.findByEmail(data.email);
-      if (existing && existing.id !== userId) {
-        throw new ConflictError("Email sudah digunakan oleh akun lain");
-      }
-      updateData.email = data.email;
-    }
-
-    if (data.password) {
-      updateData.password = await hashPassword(data.password);
-    }
-
-    const updatedUser = await this.userRepo.update(userId, updateData);
-
-    if (data.email) {
-      const customer = await this.customerRepo.findByUserId(userId);
-      if (customer) {
-        await this.customerRepo.update(customer.id, { email: data.email });
-      }
-    }
-
-    return {
-      id: updatedUser.id,
-      username: updatedUser.username,
-      email: updatedUser.email,
-    };
-  }
-}
-</file>
+pokoknya boss saya pengen hal hal yang di upload seperti gambar atau pdf atau apa, itu ga perlu di web, dari telegram aja.
+yang diatas itu hanya saran saya, kalo kamu punya solusi yang best practice tolong lakukan saja.
 
 <file path=".dockerignore">
 node_modules
@@ -7100,6 +7051,61 @@ export class RegisterUserUseCase {
 }
 </file>
 
+<file path="src/application/usecases/auth/UpdateCustomerSelfUseCase.ts">
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import { hashPassword } from "../../../utils/hashing.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
+
+export interface UpdateSelfDTO {
+  email?: string;
+  password?: string;
+}
+
+export class UpdateCustomerSelfUseCase {
+  constructor(
+    private readonly userRepo: IUserRepository,
+    private readonly customerRepo: ICustomerRepository,
+  ) {}
+
+  async execute(userId: number, data: UpdateSelfDTO) {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundError("User tidak ditemukan");
+
+    const updateData: UpdateUserDTO = {};
+
+    if (data.email) {
+      const existing = await this.userRepo.findByEmail(data.email);
+      if (existing && existing.id !== userId) {
+        throw new ConflictError("Email sudah digunakan oleh akun lain");
+      }
+      updateData.email = data.email;
+    }
+
+    if (data.password) {
+      updateData.password = await hashPassword(data.password);
+    }
+
+    const updatedUser = await this.userRepo.update(userId, updateData);
+
+    if (data.email) {
+      const customer = await this.customerRepo.findByUserId(userId);
+      if (customer) {
+        await this.customerRepo.update(customer.id, { email: data.email });
+      }
+    }
+
+    return {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+    };
+  }
+}
+</file>
+
 <file path="src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.ts">
 import type { IBankRekeningPtRepository } from "../../../domain/repositories/IBankRekeningPtRepo.js";
 import type {
@@ -11130,38 +11136,6 @@ export const getAgentsPaginatedSchema = {
 };
 </file>
 
-<file path="src/validations/authSchema.ts">
-import { z } from "zod";
-import { Role } from "@prisma/client";
-
-export const registerSchema = {
-  body: z.object({
-    username: z.string().min(3, "Username minimal 3 karakter"),
-    email: z.string().email("Format email tidak valid"),
-    password: z.string().min(6, "Password minimal 6 karakter"),
-    role: z.nativeEnum(Role).default(Role.CUSTOMER),
-  }),
-};
-
-export const loginSchema = {
-  body: z.object({
-    email: z.string().email("Format email tidak valid"),
-    password: z.string().min(1, "Password wajib diisi"),
-  }),
-};
-
-export const updateSelfSchema = {
-  body: z
-    .object({
-      email: z.string().email("Format email tidak valid").optional(),
-      password: z.string().min(6, "Password minimal 6 karakter").optional(),
-    })
-    .refine((data) => data.email ?? data.password, {
-      message: "Minimal salah satu data (email atau password) harus diisi",
-    }),
-};
-</file>
-
 <file path="src/validations/emptySchema.ts">
 import { z } from "zod";
 
@@ -13276,70 +13250,6 @@ export const upload = multer({
 });
 </file>
 
-<file path="src/presentation/controllers/authController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
-import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
-import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
-import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
-import type { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
-
-export class AuthController {
-  constructor(
-    private readonly registerUseCase: RegisterUserUseCase,
-    private readonly loginUseCase: LoginUserUseCase,
-    private readonly getProfileUseCase: GetProfileUseCase,
-    private readonly customerLoginUseCase: CustomerLoginUseCase,
-    private readonly updateCustomerSelfUseCase: UpdateCustomerSelfUseCase,
-  ) {}
-
-  register = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.registerUseCase.execute(req.body);
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "User registered successfully",
-      result,
-    );
-  };
-
-  login = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.loginUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.OK, "Login Sukses", result);
-  };
-
-  getProfile = async (req: Request, res: Response): Promise<void> => {
-    if (!req.user?.userId) {
-      sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
-      return;
-    }
-    const user = await this.getProfileUseCase.execute(req.user.userId);
-    sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
-  };
-
-  loginCustomer = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.customerLoginUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.OK, "Login Customer Sukses", result);
-  };
-
-  updateSelf = async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
-    if (!userId) {
-      sendResponse(res, StatusCodes.UNAUTHORIZED, "Sesi tidak valid");
-      return;
-    }
-
-    const result = await this.updateCustomerSelfUseCase.execute(
-      userId,
-      req.body,
-    );
-    sendResponse(res, StatusCodes.OK, "Data akun berhasil diperbarui", result);
-  };
-}
-</file>
-
 <file path="src/presentation/controllers/userController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -13514,41 +13424,6 @@ export const createAuditLogRoutes = (
     requirePermission("AUDIT_LOG", "read"),
     validate({ query: cursorPaginationQuerySchema }),
     controller.getPaginated,
-  );
-
-  return router;
-};
-</file>
-
-<file path="src/presentation/routes/authRoutes.ts">
-import { Router } from "express";
-import { validate } from "../../middlewares/validate";
-import { authenticate } from "../../middlewares/authMiddleware";
-import {
-  registerSchema,
-  loginSchema,
-  updateSelfSchema,
-} from "../../validations/authSchema";
-import type { AuthController } from "../controllers/authController";
-
-export const createAuthRoutes = (authController: AuthController): Router => {
-  const router = Router();
-
-  router.post("/register", validate(registerSchema), authController.register);
-
-  router.post("/login", validate(loginSchema), authController.login);
-  router.post(
-    "/login/customer",
-    validate(loginSchema),
-    authController.loginCustomer,
-  );
-
-  router.get("/profile", authenticate, authController.getProfile);
-  router.patch(
-    "/update-me",
-    authenticate,
-    validate(updateSelfSchema),
-    authController.updateSelf,
   );
 
   return router;
@@ -14015,6 +13890,38 @@ export interface OffsetPaginatedData<T> {
   items: T[];
   meta: OffsetPaginationMeta;
 }
+</file>
+
+<file path="src/validations/authSchema.ts">
+import { z } from "zod";
+import { Role } from "@prisma/client";
+
+export const registerSchema = {
+  body: z.object({
+    username: z.string().min(3, "Username minimal 3 karakter"),
+    email: z.string().email("Format email tidak valid"),
+    password: z.string().min(6, "Password minimal 6 karakter"),
+    role: z.nativeEnum(Role).default(Role.CUSTOMER),
+  }),
+};
+
+export const loginSchema = {
+  body: z.object({
+    email: z.string().email("Format email tidak valid"),
+    password: z.string().min(1, "Password wajib diisi"),
+  }),
+};
+
+export const updateSelfSchema = {
+  body: z
+    .object({
+      email: z.string().email("Format email tidak valid").optional(),
+      password: z.string().min(6, "Password minimal 6 karakter").optional(),
+    })
+    .refine((data) => data.email ?? data.password, {
+      message: "Minimal salah satu data (email atau password) harus diisi",
+    }),
+};
 </file>
 
 <file path="src/validations/perumahanSchema.ts">
@@ -15456,6 +15363,70 @@ export const requirePermission = (
 };
 </file>
 
+<file path="src/presentation/controllers/authController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
+import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
+import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
+import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
+import type { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
+
+export class AuthController {
+  constructor(
+    private readonly registerUseCase: RegisterUserUseCase,
+    private readonly loginUseCase: LoginUserUseCase,
+    private readonly getProfileUseCase: GetProfileUseCase,
+    private readonly customerLoginUseCase: CustomerLoginUseCase,
+    private readonly updateCustomerSelfUseCase: UpdateCustomerSelfUseCase,
+  ) {}
+
+  register = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.registerUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "User registered successfully",
+      result,
+    );
+  };
+
+  login = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.loginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Sukses", result);
+  };
+
+  getProfile = async (req: Request, res: Response): Promise<void> => {
+    if (!req.user?.userId) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
+      return;
+    }
+    const user = await this.getProfileUseCase.execute(req.user.userId);
+    sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
+  };
+
+  loginCustomer = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.customerLoginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Customer Sukses", result);
+  };
+
+  updateSelf = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "Sesi tidak valid");
+      return;
+    }
+
+    const result = await this.updateCustomerSelfUseCase.execute(
+      userId,
+      req.body,
+    );
+    sendResponse(res, StatusCodes.OK, "Data akun berhasil diperbarui", result);
+  };
+}
+</file>
+
 <file path="src/presentation/controllers/customerController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -15855,6 +15826,41 @@ export class KavlingController {
     );
   };
 }
+</file>
+
+<file path="src/presentation/routes/authRoutes.ts">
+import { Router } from "express";
+import { validate } from "../../middlewares/validate";
+import { authenticate } from "../../middlewares/authMiddleware";
+import {
+  registerSchema,
+  loginSchema,
+  updateSelfSchema,
+} from "../../validations/authSchema";
+import type { AuthController } from "../controllers/authController";
+
+export const createAuthRoutes = (authController: AuthController): Router => {
+  const router = Router();
+
+  router.post("/register", validate(registerSchema), authController.register);
+
+  router.post("/login", validate(loginSchema), authController.login);
+  router.post(
+    "/login/customer",
+    validate(loginSchema),
+    authController.loginCustomer,
+  );
+
+  router.get("/profile", authenticate, authController.getProfile);
+  router.patch(
+    "/update-me",
+    authenticate,
+    validate(updateSelfSchema),
+    authController.updateSelf,
+  );
+
+  return router;
+};
 </file>
 
 <file path="src/presentation/routes/kavlingRoutes.ts">
