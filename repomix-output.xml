@@ -192,72 +192,63 @@ export class AgentLoginUseCase {
 }
 </file>
 
-<file path="src/application/usecases/auth/CustomerLoginUseCase.ts">
-import jwt from "jsonwebtoken";
-import type { SignOptions } from "jsonwebtoken";
-import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
-import { comparePassword } from "../../../utils/hashing.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { env } from "../../../config/env.js";
-import { StatusCodes } from "http-status-codes";
+<file path="src/application/usecases/auth/AgentRegisterUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
-import type {
-  JwtUserPayload,
-  LoginUserDTO,
-} from "../../../domain/dtos/UserDTO.js";
+import { Role, AgentStatus, AgentType } from "@prisma/client";
+import { hashPassword } from "../../../utils/hashing.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { RegisterAgentDTO } from "../../../domain/dtos/AgentDTO.js";
 
-export class CustomerLoginUseCase {
-  constructor(
-    private readonly userRepo: IUserRepository,
-    private readonly db: PrismaClient,
-  ) {}
+export class RegisterAgentUseCase {
+  constructor(private readonly db: PrismaClient) {}
 
-  async execute(data: LoginUserDTO) {
-    const user = await this.userRepo.findByEmail(data.email);
-    const invalidCredentialsError = new AppError(
-      StatusCodes.UNAUTHORIZED,
-      "Email atau Password salah",
-    );
+  async execute(data: RegisterAgentDTO) {
+    return await this.db.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { email: data.email },
+      });
+      if (existingUser)
+        throw new ConflictError("Email sudah terdaftar di sistem");
 
-    if (!user?.password || user.role !== "CUSTOMER") {
-      throw invalidCredentialsError;
-    }
+      const existingAgent = await tx.agent.findUnique({
+        where: { nik: data.nik },
+      });
+      if (existingAgent) throw new ConflictError("NIK Agent sudah terdaftar");
 
-    const isPasswordValid = await comparePassword(data.password, user.password);
-    if (!isPasswordValid) {
-      throw invalidCredentialsError;
-    }
+      const hashedPassword = await hashPassword(data.password);
 
-    const customerProfile = await this.db.customer.findFirst({
-      where: { userId: user.id },
-    });
+      const user = await tx.user.create({
+        data: {
+          username: data.nama,
+          email: data.email,
+          password: hashedPassword,
+          role: Role.AGENT,
+        },
+      });
 
-    const payload: JwtUserPayload = {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    };
+      await tx.agent.create({
+        data: {
+          userId: user.id,
+          nik: data.nik,
+          nama: data.nama,
+          noHp: data.noHp,
+          email: data.email,
+          alamat: data.alamat ?? null,
+          status: AgentStatus.AKTIF,
+          type: data.type ?? AgentType.PRIBADI,
+          namaBank: data.namaBank ?? null,
+          noRekening: data.noRekening ?? null,
+          atasNamaRekening: data.atasNamaRekening ?? null,
+        },
+      });
 
-    const jwtOptions: SignOptions = { expiresIn: "7d" };
-    const token = jwt.sign(payload, env.JWT_SECRET, jwtOptions);
-
-    return {
-      token,
-      user: {
+      return {
         id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
-      },
-      customerProfile: customerProfile
-        ? {
-            id: customerProfile.id,
-            nama: customerProfile.nama,
-            nikKtp: customerProfile.nikKtp,
-          }
-        : null,
-    };
+      };
+    });
   }
 }
 </file>
@@ -298,61 +289,6 @@ export class RegisterUserUseCase {
       email: newUser.email,
       role: newUser.role,
       createdAt: newUser.createdAt,
-    };
-  }
-}
-</file>
-
-<file path="src/application/usecases/auth/UpdateCustomerSelfUseCase.ts">
-import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
-import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
-import { hashPassword } from "../../../utils/hashing.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import type { UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
-
-export interface UpdateSelfDTO {
-  email?: string;
-  password?: string;
-}
-
-export class UpdateCustomerSelfUseCase {
-  constructor(
-    private readonly userRepo: IUserRepository,
-    private readonly customerRepo: ICustomerRepository,
-  ) {}
-
-  async execute(userId: number, data: UpdateSelfDTO) {
-    const user = await this.userRepo.findById(userId);
-    if (!user) throw new NotFoundError("User tidak ditemukan");
-
-    const updateData: UpdateUserDTO = {};
-
-    if (data.email) {
-      const existing = await this.userRepo.findByEmail(data.email);
-      if (existing && existing.id !== userId) {
-        throw new ConflictError("Email sudah digunakan oleh akun lain");
-      }
-      updateData.email = data.email;
-    }
-
-    if (data.password) {
-      updateData.password = await hashPassword(data.password);
-    }
-
-    const updatedUser = await this.userRepo.update(userId, updateData);
-
-    if (data.email) {
-      const customer = await this.customerRepo.findByUserId(userId);
-      if (customer) {
-        await this.customerRepo.update(customer.id, { email: data.email });
-      }
-    }
-
-    return {
-      id: updatedUser.id,
-      username: updatedUser.username,
-      email: updatedUser.email,
     };
   }
 }
@@ -426,24 +362,6 @@ export class DeleteBankRekeningPtUseCase {
   constructor(private readonly repo: IBankRekeningPtRepository) {}
   async execute(id: number): Promise<void> {
     await this.repo.delete(id);
-  }
-}
-</file>
-
-<file path="src/application/usecases/customer/CreateCustomerUseCase.ts">
-import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
-import type {
-  CreateCustomerDTO,
-  CustomerResponseDTO,
-} from "../../../domain/dtos/CustomerDTO.js";
-import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
-
-export class CreateCustomerUseCase {
-  constructor(private readonly customerRepo: ICustomerRepository) {}
-
-  async execute(data: CreateCustomerDTO): Promise<CustomerResponseDTO> {
-    const customer = await this.customerRepo.create(data);
-    return CustomerMapper.toDomain(customer);
   }
 }
 </file>
@@ -4132,365 +4050,6 @@ export default defineConfig({
 });
 </file>
 
-<file path="prisma/seeds/agentSeed.ts">
-import { PrismaClient, AgentStatus } from "@prisma/client";
-
-export async function seedAgent(prisma: PrismaClient) {
-  await prisma.agent.createMany({
-    data: [
-      {
-        nik: "NIK-001",
-        nama: "Afiat Ahan",
-        noHp: "080000000001",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-002",
-        nama: "Afiat Habibah",
-        noHp: "080000000002",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-003",
-        nama: "Afiat Ika",
-        noHp: "080000000003",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-004",
-        nama: "Agen Ayu",
-        noHp: "080000000004",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-005",
-        nama: "Agen Chris",
-        noHp: "080000000005",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-006",
-        nama: "Agen Dian",
-        noHp: "080000000006",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-007",
-        nama: "Agen Dinda",
-        noHp: "080000000007",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-008",
-        nama: "Agen Endah",
-        noHp: "080000000008",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-009",
-        nama: "Agen Ida",
-        noHp: "080000000009",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-010",
-        nama: "Agen Iin",
-        noHp: "080000000010",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-011",
-        nama: "Agen Ikoh",
-        noHp: "080000000011",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-012",
-        nama: "Agen Indah",
-        noHp: "080000000012",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-013",
-        nama: "Agen Irene",
-        noHp: "080000000013",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-014",
-        nama: "Agen Irma",
-        noHp: "080000000014",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-015",
-        nama: "Agen Marzuki",
-        noHp: "080000000015",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-016",
-        nama: "Agen Mustangin",
-        noHp: "080000000016",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-017",
-        nama: "Agen Nurhalimah",
-        noHp: "080000000017",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-018",
-        nama: "Agen Renaldy",
-        noHp: "080000000018",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-019",
-        nama: "Agen Saeful",
-        noHp: "080000000019",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-020",
-        nama: "Agen Saeful Anwar",
-        noHp: "080000000020",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-021",
-        nama: "Agen Sugeng Riyadi",
-        noHp: "080000000021",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-022",
-        nama: "Agen Sugiono",
-        noHp: "080000000022",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-023",
-        nama: "Agen Unis",
-        noHp: "080000000023",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-024",
-        nama: "Arga",
-        noHp: "080000000024",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-025",
-        nama: "Astana Rian",
-        noHp: "080000000025",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-026",
-        nama: "Astana Zega",
-        noHp: "080000000026",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-027",
-        nama: "Benju Bayu",
-        noHp: "080000000027",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-028",
-        nama: "Benjuber Aji",
-        noHp: "080000000028",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-029",
-        nama: "Benjuber Bayu",
-        noHp: "080000000029",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-030",
-        nama: "Eva",
-        noHp: "080000000030",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-031",
-        nama: "Gas25",
-        noHp: "080000000031",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-032",
-        nama: "Rumascope Fajar",
-        noHp: "080000000032",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-033",
-        nama: "Weltown",
-        noHp: "080000000033",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-034",
-        nama: "Weltown Adit",
-        noHp: "080000000034",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-035",
-        nama: "Weltown Bella",
-        noHp: "080000000035",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-036",
-        nama: "Weltown Rico",
-        noHp: "080000000036",
-        status: AgentStatus.AKTIF,
-      },
-      {
-        nik: "NIK-037",
-        nama: "Wiwi",
-        noHp: "080000000037",
-        status: AgentStatus.AKTIF,
-      },
-    ],
-    skipDuplicates: true,
-  });
-}
-</file>
-
-<file path="prisma/seeds/bankRekeningPtSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedBankRekeningPt(prisma: PrismaClient) {
-  await prisma.bankRekeningPt.createMany({
-    data: [
-      {
-        perumahanId: 1,
-        namaBank: "BSI",
-        noRekening: "7326575644",
-        atasNama: "PT. Bintang Safana Gajah",
-      },
-      {
-        perumahanId: 1,
-        namaBank: "BSI",
-        noRekening: "7326573692",
-        atasNama: "PT. Bintang Safana Mahligai",
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/customerSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedCustomer(prisma: PrismaClient) {
-  await prisma.customer.createMany({
-    data: [
-      {
-        userId: 3,
-        nikKtp: "3671000011112222",
-        nama: "Budi Gunawan",
-        noHp: "081122334455",
-        alamatKtp: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
-        alamatTinggal: "Jl. Anggrek No. 15, RT 01/RW 02, Karawaci, Tangerang",
-        email: "budigunawan@example.com",
-        pekerjaan: "Pegawai Swasta",
-        perusahaan: "PT Maju Terus Pantang Mundur",
-        bank: "BCA",
-        alamatKoresponden: "Sama dengan KTP",
-      },
-      {
-        userId: null,
-        nikKtp: "3671000033334444",
-        nama: "Siti Rahmawati",
-        noHp: "081998877665",
-        alamatKtp: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
-        alamatTinggal: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
-        email: "sitirahma@example.com",
-        pekerjaan: "Wiraswasta",
-        perusahaan: "Toko Kelontong Rahma",
-        bank: "Mandiri",
-        alamatKoresponden: "Sama dengan KTP",
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/feeAgentSeed.ts">
-import { PrismaClient } from "@prisma/client";
-
-export async function seedFeeAgent(prisma: PrismaClient) {
-  await prisma.feeAgent.createMany({
-    data: [
-      {
-        agentId: 1,
-        penjualanId: 1,
-        bookingNominal: 1000000.0,
-        bookingTanggal: new Date("2026-04-06"),
-        bookingBukti: "bukti_tf_agus_booking_01.pdf",
-        closingNominal: null,
-        closingTanggal: null,
-        closingBukti: null,
-        marketingNominal: null,
-        marketingTanggal: null,
-        marketingBukti: null,
-      },
-    ],
-  });
-}
-</file>
-
-<file path="prisma/seeds/tagihanSeed.ts">
-import { PrismaClient, PaymentStatus } from "@prisma/client";
-
-export async function seedTagihan(prisma: PrismaClient) {
-  await prisma.tagihan.createMany({
-    data: [
-      {
-        noTagihan: "INV-2604-001",
-        customerId: 1,
-        penjualanId: 1,
-        pembayaran: "Pembayaran Booking Fee",
-        nominal: 5000000.0,
-        jatuhTempo: new Date("2026-04-06"),
-        status: PaymentStatus.LUNAS,
-        reminderBerikutnya: null,
-      },
-      {
-        noTagihan: "INV-2604-002",
-        customerId: 2,
-        penjualanId: 2,
-        pembayaran: "Pembayaran Booking Fee",
-        nominal: 5000000.0,
-        jatuhTempo: new Date("2026-04-09"),
-        status: PaymentStatus.LUNAS,
-        reminderBerikutnya: null,
-      },
-      {
-        noTagihan: "INV-2604-003",
-        customerId: 2,
-        penjualanId: 2,
-        pembayaran: "Pembayaran DP Cicilan 1",
-        nominal: 50000000.0,
-        jatuhTempo: new Date("2026-05-09"),
-        status: PaymentStatus.BELUM_BAYAR,
-        reminderBerikutnya: new Date("2026-05-15"),
-      },
-    ],
-  });
-}
-</file>
-
 <file path="src/app.ts">
 import { env } from "./config/env";
 import * as Sentry from "@sentry/node";
@@ -4748,65 +4307,40 @@ export class LoginUserUseCase {
 }
 </file>
 
-<file path="src/application/usecases/customer/GenerateCustomerAccountUseCase.ts">
+<file path="src/application/usecases/customer/CreateCustomerUseCase.ts">
 import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
 import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type {
+  CreateCustomerDTO,
+  CustomerResponseDTO,
+} from "../../../domain/dtos/CustomerDTO.js";
+import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
 import { hashPassword } from "../../../utils/hashing.js";
 import { Role } from "@prisma/client";
 
-export class GenerateCustomerAccountUseCase {
+export class CreateCustomerUseCase {
   constructor(
     private readonly customerRepo: ICustomerRepository,
     private readonly userRepo: IUserRepository,
   ) {}
 
-  async execute(customerId: number, passwordInput: string) {
-    const customer = await this.customerRepo.findById(customerId);
-    if (!customer) {
-      throw new NotFoundError("Data profil Customer tidak ditemukan.");
-    }
+  async execute(data: CreateCustomerDTO): Promise<CustomerResponseDTO> {
+    const hashedPassword = await hashPassword(data.nikKtp);
+    const dummyEmail = data.email ?? `${data.noHp}@customer.local`;
 
-    if (customer.userId) {
-      throw new ConflictError(
-        "Customer ini sudah memiliki akun portal yang tertaut.",
-      );
-    }
-
-    if (!customer.email) {
-      throw new ConflictError(
-        "Customer tidak memiliki email. Update profil customer dengan email terlebih dahulu.",
-      );
-    }
-
-    const existingUser = await this.userRepo.findByEmail(customer.email);
-    if (existingUser) {
-      throw new ConflictError(
-        "Email customer ini sudah terdaftar sebagai User di dalam sistem.",
-      );
-    }
-
-    const hashedPassword = await hashPassword(passwordInput);
     const newUser = await this.userRepo.create({
-      username: customer.nama,
-      email: customer.email,
+      username: data.noHp,
+      email: dummyEmail,
       password: hashedPassword,
       role: Role.CUSTOMER,
     });
 
-    await this.customerRepo.update(customerId, {
+    const customer = await this.customerRepo.create({
+      ...data,
       userId: newUser.id,
     });
 
-    return {
-      message: "Akun portal customer berhasil dibuat dan ditautkan.",
-      akun: {
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    };
+    return CustomerMapper.toDomain(customer);
   }
 }
 </file>
@@ -6845,38 +6379,6 @@ export interface OffsetPaginatedData<T> {
 }
 </file>
 
-<file path="src/validations/authSchema.ts">
-import { z } from "zod";
-import { Role } from "@prisma/client";
-
-export const registerSchema = {
-  body: z.object({
-    username: z.string().min(3, "Username minimal 3 karakter"),
-    email: z.string().email("Format email tidak valid"),
-    password: z.string().min(6, "Password minimal 6 karakter"),
-    role: z.nativeEnum(Role).default(Role.CUSTOMER),
-  }),
-};
-
-export const loginSchema = {
-  body: z.object({
-    email: z.string().email("Format email tidak valid"),
-    password: z.string().min(1, "Password wajib diisi"),
-  }),
-};
-
-export const updateSelfSchema = {
-  body: z
-    .object({
-      email: z.string().email("Format email tidak valid").optional(),
-      password: z.string().min(6, "Password minimal 6 karakter").optional(),
-    })
-    .refine((data) => data.email ?? data.password, {
-      message: "Minimal salah satu data (email atau password) harus diisi",
-    }),
-};
-</file>
-
 <file path="src/validations/perumahanSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -7122,19 +6624,207 @@ EXPOSE 3000
 CMD ["npm", "start"]
 </file>
 
-<file path="prisma/seeds/perumahanSeed.ts">
-import { PrismaClient } from "@prisma/client";
+<file path="src/application/usecases/auth/CustomerLoginUseCase.ts">
+import jwt from "jsonwebtoken";
+import type { SignOptions } from "jsonwebtoken";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { comparePassword } from "../../../utils/hashing.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { env } from "../../../config/env.js";
+import { StatusCodes } from "http-status-codes";
+import type { PrismaClient } from "@prisma/client";
+import type { JwtUserPayload } from "../../../domain/dtos/UserDTO.js";
 
-export async function seedPerumahan(prisma: PrismaClient) {
-  await prisma.perumahan.createMany({
-    data: [
-      {
-        nama: "Puri Safana",
-        alamat: "Test Alamat",
-        logo: "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
+interface CustomerLoginInput {
+  username: string;
+  password: string;
+}
+export class CustomerLoginUseCase {
+  constructor(
+    private readonly userRepo: IUserRepository,
+    private readonly db: PrismaClient,
+  ) {}
+
+  async execute(data: CustomerLoginInput) {
+    const user = await this.db.user.findFirst({
+      where: {
+        role: "CUSTOMER",
+        OR: [
+          { username: data.username },
+          { customers: { some: { noHp: data.username } } },
+        ],
       },
-    ],
-  });
+    });
+
+    const invalidCredentialsError = new AppError(
+      StatusCodes.UNAUTHORIZED,
+      "Username (No. HP) atau Password (NIK) salah",
+    );
+
+    if (!user) throw invalidCredentialsError;
+
+    const customerProfile = await this.db.customer.findFirst({
+      where: { userId: user.id },
+    });
+
+    const isPasswordValid = user.password
+      ? await comparePassword(data.password, user.password)
+      : false;
+
+    const isNikValid = customerProfile
+      ? data.password === customerProfile.nikKtp
+      : false;
+
+    if (!isPasswordValid && !isNikValid) {
+      throw invalidCredentialsError;
+    }
+
+    const payload: JwtUserPayload = {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    };
+
+    const jwtOptions: SignOptions = { expiresIn: "7d" };
+    const token = jwt.sign(payload, env.JWT_SECRET, jwtOptions);
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+      customerProfile: customerProfile
+        ? {
+            id: customerProfile.id,
+            nama: customerProfile.nama,
+            nikKtp: customerProfile.nikKtp,
+          }
+        : null,
+    };
+  }
+}
+</file>
+
+<file path="src/application/usecases/auth/UpdateCustomerSelfUseCase.ts">
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import { hashPassword } from "../../../utils/hashing.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
+export interface UpdateSelfDTO {
+  username?: string;
+  email?: string;
+  password?: string;
+}
+
+export class UpdateCustomerSelfUseCase {
+  constructor(
+    private readonly userRepo: IUserRepository,
+    private readonly customerRepo: ICustomerRepository,
+  ) {}
+
+  async execute(userId: number, data: UpdateSelfDTO) {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundError("User tidak ditemukan");
+
+    const updateData: UpdateUserDTO = {};
+
+    if (data.username) {
+      updateData.username = data.username;
+    }
+
+    if (data.email) {
+      const existing = await this.userRepo.findByEmail(data.email);
+      if (existing && existing.id !== userId) {
+        throw new ConflictError("Email sudah digunakan oleh akun lain");
+      }
+      updateData.email = data.email;
+    }
+
+    if (data.password) {
+      updateData.password = await hashPassword(data.password);
+    }
+
+    const updatedUser = await this.userRepo.update(userId, updateData);
+
+    if (data.email) {
+      const customer = await this.customerRepo.findByUserId(userId);
+      if (customer) {
+        await this.customerRepo.update(customer.id, { email: data.email });
+      }
+    }
+
+    return {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+    };
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/GenerateCustomerAccountUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import { hashPassword } from "../../../utils/hashing.js";
+import { Role } from "@prisma/client";
+
+export class GenerateCustomerAccountUseCase {
+  constructor(
+    private readonly customerRepo: ICustomerRepository,
+    private readonly userRepo: IUserRepository,
+  ) {}
+
+  async execute(customerId: number) {
+    const customer = await this.customerRepo.findById(customerId);
+    if (!customer) {
+      throw new NotFoundError("Data profil Customer tidak ditemukan.");
+    }
+
+    if (customer.userId) {
+      throw new ConflictError(
+        "Customer ini sudah memiliki akun portal yang tertaut.",
+      );
+    }
+
+    const hashedPassword = await hashPassword(customer.nikKtp);
+    const emailToUse = customer.email ?? `${customer.noHp}@customer.local`;
+
+    const existingUser = await this.userRepo.findByEmail(emailToUse);
+    if (existingUser) {
+      throw new ConflictError(
+        "Email customer ini sudah terdaftar sebagai User di dalam sistem.",
+      );
+    }
+
+    const newUser = await this.userRepo.create({
+      username: customer.noHp,
+      email: emailToUse,
+      password: hashedPassword,
+      role: Role.CUSTOMER,
+    });
+
+    await this.customerRepo.update(customerId, {
+      userId: newUser.id,
+    });
+
+    return {
+      message:
+        "Akun portal customer berhasil dibuat (Username: No HP, Password: NIK).",
+      akun: {
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+      },
+    };
+  }
 }
 </file>
 
@@ -7313,88 +7003,6 @@ if (!_env.success) {
 }
 
 export const env = _env.data;
-</file>
-
-<file path="src/domain/dtos/AgentDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { AgentStatus, AgentType } from "@prisma/client";
-
-export interface PicAgentDTO {
-  id?: number | undefined;
-  nama: string;
-  noHp: string;
-  alamat?: string | undefined;
-}
-export interface CreateAgentDTO {
-  nik: string;
-  nama: string;
-  alamat?: string | undefined;
-  noHp: string;
-  email?: string | undefined;
-  status?: AgentStatus | undefined;
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  feeMarketingPct?: number | undefined;
-  potonganPph?: number | undefined;
-  pics?: PicAgentDTO[] | undefined;
-}
-
-export interface UpdateAgentDTO {
-  userId?: number | undefined;
-  nik?: string | undefined;
-  nama?: string | undefined;
-  alamat?: string | undefined;
-  noHp?: string | undefined;
-  email?: string | undefined;
-  status?: AgentStatus | undefined;
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  feeMarketingPct?: number | undefined;
-  potonganPph?: number | undefined;
-  fileKtp?: string | undefined;
-  fileNpwp?: string | undefined;
-  kwitansiBookingFee?: string | undefined;
-  fileSuratKeterangan?: string | undefined;
-  fileKtpDirektur?: string | undefined;
-  fileNpwpPerusahaan?: string | undefined;
-  pics?: PicAgentDTO[] | undefined;
-}
-
-export interface AgentResponseDTO {
-  id: number;
-  userId: number | null;
-  nik: string;
-  kodeSales: string | null;
-  nama: string;
-  alamat: string | null;
-  noHp: string;
-  email: string | null;
-  status: AgentStatus;
-  type: AgentType;
-
-  namaBank: string | null;
-  noRekening: string | null;
-  atasNamaRekening: string | null;
-
-  feeMarketingPct: number | null;
-  potonganPph: number | null;
-
-  fileKtp: string | null;
-  fileNpwp: string | null;
-  kwitansiBookingFee: string | null;
-  fileSuratKeterangan: string | null;
-  fileKtpDirektur: string | null;
-  fileNpwpPerusahaan: string | null;
-
-  hasAccount: boolean;
-  pics: PicAgentDTO[];
-  createdAt: Date;
-}
-export type AgentFilterDTO = BaseFilterDTO;
 </file>
 
 <file path="src/domain/dtos/BankRekeningPtDTO.ts">
@@ -7798,167 +7406,6 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
       }
       throw error;
     }
-  }
-}
-</file>
-
-<file path="src/domain/repositories/customerRepo.ts">
-import { Prisma } from "@prisma/client";
-import type { PrismaClient, Customer } from "@prisma/client";
-import type { ICustomerRepository } from "./ICustomerRepo.js";
-import type {
-  CreateCustomerDTO,
-  UpdateCustomerDTO,
-  CustomerFilterDTO,
-} from "../dtos/CustomerDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-
-export class CustomerRepository implements ICustomerRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreateCustomerDTO): Promise<Customer> {
-    const existingCustomer = await this.findByNik(data.nikKtp);
-    if (existingCustomer) {
-      throw new ConflictError("Customer dengan NIK tersebut sudah terdaftar");
-    }
-
-    return await this.db.customer.create({
-      data: {
-        nikKtp: data.nikKtp,
-        nama: data.nama,
-        noHp: data.noHp,
-        email: data.email ?? null,
-        pekerjaan: data.pekerjaan ?? null,
-        perusahaan: data.perusahaan ?? null,
-        bank: data.bank ?? null,
-        alamatKoresponden: data.alamatKoresponden ?? null,
-        alamatKtp: data.alamatKtp,
-        alamatTinggal: data.alamatTinggal ?? null,
-      },
-    });
-  }
-
-  async findById(id: number): Promise<Customer | null> {
-    return await this.db.customer.findUnique({ where: { id } });
-  }
-
-  async findByNik(nikKtp: string): Promise<Customer | null> {
-    return await this.db.customer.findUnique({ where: { nikKtp } });
-  }
-
-  async update(id: number, data: UpdateCustomerDTO): Promise<Customer> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
-
-    if (data.nikKtp && data.nikKtp !== existing.nikKtp) {
-      const checkDuplicate = await this.findByNik(data.nikKtp);
-      if (checkDuplicate) {
-        throw new ConflictError("NIK sudah digunakan oleh customer lain");
-      }
-    }
-
-    const updateData: Prisma.CustomerUncheckedUpdateInput = {};
-    if (data.userId !== undefined) updateData.userId = data.userId;
-    if (data.nikKtp !== undefined) updateData.nikKtp = data.nikKtp;
-    if (data.nama !== undefined) updateData.nama = data.nama;
-    if (data.noHp !== undefined) updateData.noHp = data.noHp;
-    if (data.email !== undefined) updateData.email = data.email ?? null;
-    if (data.pekerjaan !== undefined)
-      updateData.pekerjaan = data.pekerjaan ?? null;
-    if (data.perusahaan !== undefined)
-      updateData.perusahaan = data.perusahaan ?? null;
-    if (data.bank !== undefined) updateData.bank = data.bank ?? null;
-    if (data.alamatKoresponden !== undefined)
-      updateData.alamatKoresponden = data.alamatKoresponden ?? null;
-    if (data.alamatKtp !== undefined) updateData.alamatKtp = data.alamatKtp;
-    if (data.alamatTinggal !== undefined)
-      updateData.alamatTinggal = data.alamatTinggal ?? null;
-    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
-    if (data.fileKk !== undefined) updateData.fileKk = data.fileKk ?? null;
-    if (data.fileNpwp !== undefined)
-      updateData.fileNpwp = data.fileNpwp ?? null;
-
-    if (data.dokumenLainnya !== undefined)
-      updateData.dokumenLainnya = data.dokumenLainnya ?? Prisma.DbNull;
-
-    return await this.db.customer.update({
-      where: { id },
-      data: updateData,
-    });
-  }
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: CustomerFilterDTO,
-  ): Promise<CursorPaginatedData<Customer>> {
-    const where: Prisma.CustomerWhereInput = {};
-
-    if (filters?.startDate || filters?.endDate) {
-      where.createdAt = {};
-      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
-      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
-    }
-
-    if (filters?.search) {
-      where.OR = [
-        { nama: { contains: filters.search } },
-        { nikKtp: { contains: filters.search } },
-        { noHp: { contains: filters.search } },
-      ];
-    }
-
-    let orderByClause: Prisma.CustomerOrderByWithRelationInput[] = [
-      { createdAt: "desc" },
-      { id: "asc" },
-    ];
-
-    if (filters?.orderBy) {
-      const { field, direction } = filters.orderBy;
-      const validFields = ["nama", "nikKtp", "noHp", "createdAt"];
-      if (validFields.includes(field)) {
-        orderByClause = [{ [field]: direction }, { id: "asc" }];
-      }
-    }
-
-    const items = await this.db.customer.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: orderByClause,
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
-
-    return { items, meta: { nextCursor, hasNextPage } };
-  }
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
-
-    try {
-      await this.db.customer.delete({ where: { id } });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2003"
-      ) {
-        throw new ConflictError(
-          "Customer tidak dapat dihapus karena sudah memiliki data SPR/Booking.",
-        );
-      }
-      throw error;
-    }
-  }
-  async findByUserId(userId: number): Promise<Customer | null> {
-    return await this.db.customer.findFirst({ where: { userId } });
   }
 }
 </file>
@@ -9628,52 +9075,99 @@ export class CancelPenjualanUseCase {
 }
 </file>
 
-<file path="src/domain/dtos/CustomerDTO.ts">
+<file path="src/domain/dtos/AgentDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { AgentStatus, AgentType } from "@prisma/client";
 
-export interface CreateCustomerDTO {
-  nikKtp: string;
+export interface PicAgentDTO {
+  id?: number | undefined;
   nama: string;
+  noHp: string;
+  alamat?: string | undefined;
+}
+export interface CreateAgentDTO {
+  nik: string;
+  nama: string;
+  alamat?: string | undefined;
   noHp: string;
   email?: string | undefined;
-  pekerjaan?: string | undefined;
-  perusahaan?: string | undefined;
-  bank?: string | undefined;
-  alamatKtp: string;
-  alamatTinggal?: string | undefined;
-  alamatKoresponden?: string | undefined;
+  status?: AgentStatus | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  feeMarketingPct?: number | undefined;
+  potonganPph?: number | undefined;
+  pics?: PicAgentDTO[] | undefined;
 }
 
-export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {
-  fileKtp?: string | undefined;
-  fileKk?: string | undefined;
-  fileNpwp?: string | undefined;
+export interface UpdateAgentDTO {
   userId?: number | undefined;
-  dokumenLainnya?: any;
+  nik?: string | undefined;
+  nama?: string | undefined;
+  alamat?: string | undefined;
+  noHp?: string | undefined;
+  email?: string | undefined;
+  status?: AgentStatus | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  feeMarketingPct?: number | undefined;
+  potonganPph?: number | undefined;
+  fileKtp?: string | undefined;
+  fileNpwp?: string | undefined;
+  kwitansiBookingFee?: string | undefined;
+  fileSuratKeterangan?: string | undefined;
+  fileKtpDirektur?: string | undefined;
+  fileNpwpPerusahaan?: string | undefined;
+  pics?: PicAgentDTO[] | undefined;
 }
-export interface CustomerResponseDTO {
+
+export interface AgentResponseDTO {
   id: number;
-  nikKtp: string;
+  userId: number | null;
+  nik: string;
+  kodeSales: string | null;
   nama: string;
+  alamat: string | null;
   noHp: string;
   email: string | null;
-  pekerjaan: string | null;
-  perusahaan: string | null;
-  bank: string | null;
-  alamatKtp: string;
-  alamatTinggal: string | null;
-  alamatKoresponden: string | null;
-  fileKtp: string | null;
-  fileKk: string | null;
-  fileNpwp: string | null;
+  status: AgentStatus;
+  type: AgentType;
 
-  dokumenLainnya?: any;
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
+
+  feeMarketingPct: number | null;
+  potonganPph: number | null;
+
+  fileKtp: string | null;
+  fileNpwp: string | null;
+  kwitansiBookingFee: string | null;
+  fileSuratKeterangan: string | null;
+  fileKtpDirektur: string | null;
+  fileNpwpPerusahaan: string | null;
 
   hasAccount: boolean;
+  pics: PicAgentDTO[];
   createdAt: Date;
 }
+export type AgentFilterDTO = BaseFilterDTO;
 
-export type CustomerFilterDTO = BaseFilterDTO;
+export interface RegisterAgentDTO {
+  nik: string;
+  nama: string;
+  noHp: string;
+  email: string;
+  password: string;
+  alamat?: string | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+}
 </file>
 
 <file path="src/domain/dtos/TagihanDTO.ts">
@@ -9729,6 +9223,168 @@ export interface TagihanFilterDTO extends BaseFilterDTO {
   customerId?: number;
   penjualanId?: number;
   status?: PaymentStatus;
+}
+</file>
+
+<file path="src/domain/repositories/customerRepo.ts">
+import { Prisma } from "@prisma/client";
+import type { PrismaClient, Customer } from "@prisma/client";
+import type { ICustomerRepository } from "./ICustomerRepo.js";
+import type {
+  CreateCustomerDTO,
+  UpdateCustomerDTO,
+  CustomerFilterDTO,
+} from "../dtos/CustomerDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+
+export class CustomerRepository implements ICustomerRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateCustomerDTO): Promise<Customer> {
+    const existingCustomer = await this.findByNik(data.nikKtp);
+    if (existingCustomer) {
+      throw new ConflictError("Customer dengan NIK tersebut sudah terdaftar");
+    }
+
+    return await this.db.customer.create({
+      data: {
+        userId: data.userId ?? null,
+        nikKtp: data.nikKtp,
+        nama: data.nama,
+        noHp: data.noHp,
+        email: data.email ?? null,
+        pekerjaan: data.pekerjaan ?? null,
+        perusahaan: data.perusahaan ?? null,
+        bank: data.bank ?? null,
+        alamatKoresponden: data.alamatKoresponden ?? null,
+        alamatKtp: data.alamatKtp,
+        alamatTinggal: data.alamatTinggal ?? null,
+      },
+    });
+  }
+
+  async findById(id: number): Promise<Customer | null> {
+    return await this.db.customer.findUnique({ where: { id } });
+  }
+
+  async findByNik(nikKtp: string): Promise<Customer | null> {
+    return await this.db.customer.findUnique({ where: { nikKtp } });
+  }
+
+  async update(id: number, data: UpdateCustomerDTO): Promise<Customer> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
+
+    if (data.nikKtp && data.nikKtp !== existing.nikKtp) {
+      const checkDuplicate = await this.findByNik(data.nikKtp);
+      if (checkDuplicate) {
+        throw new ConflictError("NIK sudah digunakan oleh customer lain");
+      }
+    }
+
+    const updateData: Prisma.CustomerUncheckedUpdateInput = {};
+    if (data.userId !== undefined) updateData.userId = data.userId;
+    if (data.nikKtp !== undefined) updateData.nikKtp = data.nikKtp;
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.email !== undefined) updateData.email = data.email ?? null;
+    if (data.pekerjaan !== undefined)
+      updateData.pekerjaan = data.pekerjaan ?? null;
+    if (data.perusahaan !== undefined)
+      updateData.perusahaan = data.perusahaan ?? null;
+    if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+    if (data.alamatKoresponden !== undefined)
+      updateData.alamatKoresponden = data.alamatKoresponden ?? null;
+    if (data.alamatKtp !== undefined) updateData.alamatKtp = data.alamatKtp;
+    if (data.alamatTinggal !== undefined)
+      updateData.alamatTinggal = data.alamatTinggal ?? null;
+    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
+    if (data.fileKk !== undefined) updateData.fileKk = data.fileKk ?? null;
+    if (data.fileNpwp !== undefined)
+      updateData.fileNpwp = data.fileNpwp ?? null;
+
+    if (data.dokumenLainnya !== undefined)
+      updateData.dokumenLainnya = data.dokumenLainnya ?? Prisma.DbNull;
+
+    return await this.db.customer.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: CustomerFilterDTO,
+  ): Promise<CursorPaginatedData<Customer>> {
+    const where: Prisma.CustomerWhereInput = {};
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { nama: { contains: filters.search } },
+        { nikKtp: { contains: filters.search } },
+        { noHp: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.CustomerOrderByWithRelationInput[] = [
+      { createdAt: "desc" },
+      { id: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "nikKtp", "noHp", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.customer.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
+
+    return { items, meta: { nextCursor, hasNextPage } };
+  }
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Customer tidak ditemukan");
+
+    try {
+      await this.db.customer.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ConflictError(
+          "Customer tidak dapat dihapus karena sudah memiliki data SPR/Booking.",
+        );
+      }
+      throw error;
+    }
+  }
+  async findByUserId(userId: number): Promise<Customer | null> {
+    return await this.db.customer.findFirst({ where: { userId } });
+  }
 }
 </file>
 
@@ -10045,228 +9701,6 @@ export class TagihanMapper {
 }
 </file>
 
-<file path="src/presentation/controllers/authController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
-import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
-import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
-import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
-import type { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
-import type { AgentLoginUseCase } from "../../application/usecases/auth/AgentLoginUseCase.js";
-
-export class AuthController {
-  constructor(
-    private readonly registerUseCase: RegisterUserUseCase,
-    private readonly loginUseCase: LoginUserUseCase,
-    private readonly getProfileUseCase: GetProfileUseCase,
-    private readonly customerLoginUseCase: CustomerLoginUseCase,
-    private readonly updateCustomerSelfUseCase: UpdateCustomerSelfUseCase,
-    private readonly agentLoginUseCase: AgentLoginUseCase,
-  ) {}
-
-  register = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.registerUseCase.execute(req.body);
-    sendResponse(
-      res,
-      StatusCodes.CREATED,
-      "User registered successfully",
-      result,
-    );
-  };
-
-  login = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.loginUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.OK, "Login Sukses", result);
-  };
-
-  getProfile = async (req: Request, res: Response): Promise<void> => {
-    if (!req.user?.userId) {
-      sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
-      return;
-    }
-    const user = await this.getProfileUseCase.execute(req.user.userId);
-    sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
-  };
-
-  loginCustomer = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.customerLoginUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.OK, "Login Customer Sukses", result);
-  };
-
-  updateSelf = async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
-    if (!userId) {
-      sendResponse(res, StatusCodes.UNAUTHORIZED, "Sesi tidak valid");
-      return;
-    }
-
-    const result = await this.updateCustomerSelfUseCase.execute(
-      userId,
-      req.body,
-    );
-    sendResponse(res, StatusCodes.OK, "Data akun berhasil diperbarui", result);
-  };
-  loginAgent = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.agentLoginUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.OK, "Login Agent Sukses", result);
-  };
-}
-</file>
-
-<file path="src/presentation/routes/authRoutes.ts">
-import { Router } from "express";
-import { validate } from "../../middlewares/validate";
-import { authenticate } from "../../middlewares/authMiddleware";
-import {
-  registerSchema,
-  loginSchema,
-  updateSelfSchema,
-} from "../../validations/authSchema";
-import type { AuthController } from "../controllers/authController";
-
-export const createAuthRoutes = (authController: AuthController): Router => {
-  const router = Router();
-
-  router.post("/register", validate(registerSchema), authController.register);
-
-  router.post("/login", validate(loginSchema), authController.login);
-  router.post(
-    "/login/customer",
-    validate(loginSchema),
-    authController.loginCustomer,
-  );
-  router.post("/login/agent", validate(loginSchema), authController.loginAgent);
-
-  router.get("/profile", authenticate, authController.getProfile);
-  router.patch(
-    "/update-me",
-    authenticate,
-    validate(updateSelfSchema),
-    authController.updateSelf,
-  );
-
-  return router;
-};
-</file>
-
-<file path="src/presentation/routes/customerRoutes.ts">
-// src/presentation/routes/customerRoutes.ts
-import { Router } from "express";
-import {
-  authenticate,
-  requirePermission,
-  requireRole,
-} from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import { upload } from "../../middlewares/upload.js";
-import {
-  createCustomerSchema,
-  updateCustomerSchema,
-  getCustomersPaginatedSchema,
-  generateAccountSchema,
-} from "../../validations/customerSchema.js";
-import type { CustomerController } from "../controllers/customerController.js";
-
-export const createCustomerRoutes = (
-  customerController: CustomerController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  // ==========================================
-  // ROUTE PORTAL CUSTOMER (Harus Paling Atas!)
-  // ==========================================
-  router.get(
-    "/me/dashboard",
-    requireRole(["CUSTOMER"]),
-    customerController.getMyDashboard,
-  );
-
-  router.patch(
-    "/me/upload/:docType",
-    requireRole(["CUSTOMER"]),
-    upload.single("file"),
-    customerController.uploadMyDocument,
-  );
-
-  router.patch(
-    "/me/tagihan/:id/upload-bukti",
-    requireRole(["CUSTOMER"]),
-    upload.single("fileBukti"),
-    customerController.uploadMyTagihan,
-  );
-
-  // ==========================================
-  // ROUTE INTERNAL ADMIN (Bawah)
-  // ==========================================
-  router.post(
-    "/",
-    requirePermission("CUSTOMER", "create"),
-    validate(createCustomerSchema),
-    customerController.create,
-  );
-
-  router.get(
-    "/",
-    requirePermission("CUSTOMER", "read"),
-    validate(getCustomersPaginatedSchema),
-    customerController.getPaginated,
-  );
-
-  router.get(
-    "/export/excel",
-    requirePermission("CUSTOMER", "read"),
-    customerController.exportExcel,
-  );
-
-  router.get(
-    "/export/pdf",
-    requirePermission("CUSTOMER", "read"),
-    customerController.exportPdf,
-  );
-
-  router.get(
-    "/:id",
-    requirePermission(["CUSTOMER", "CUSTOMER_DETAIL"], "read"),
-    validate({ params: updateCustomerSchema.params }),
-    customerController.getById,
-  );
-
-  router.patch(
-    "/:id",
-    requirePermission("CUSTOMER", "update"),
-    validate(updateCustomerSchema),
-    customerController.update,
-  );
-
-  router.patch(
-    "/:id/upload/:docType",
-    requirePermission("CUSTOMER", "update"),
-    upload.single("file"),
-    customerController.uploadDocument,
-  );
-
-  router.delete(
-    "/:id",
-    requirePermission("CUSTOMER", "delete"),
-    validate({ params: updateCustomerSchema.params }),
-    customerController.delete,
-  );
-
-  router.post(
-    "/:id/generate-account",
-    requirePermission("CUSTOMER", "update"),
-    validate(generateAccountSchema),
-    customerController.generateAccount,
-  );
-
-  return router;
-};
-</file>
-
 <file path="src/presentation/routes/dashboardRoutes.ts">
 import { Router } from "express";
 import {
@@ -10288,6 +9722,62 @@ export const createDashboardRoutes = (
   );
 
   return router;
+};
+</file>
+
+<file path="src/validations/authSchema.ts">
+import { z } from "zod";
+import { Role } from "@prisma/client";
+import { emptyAsUndefined } from "./emptySchema.js";
+export const registerSchema = {
+  body: z.object({
+    username: z.string().min(3, "Username minimal 3 karakter"),
+    email: z.string().email("Format email tidak valid"),
+    password: z.string().min(6, "Password minimal 6 karakter"),
+    role: z.nativeEnum(Role).default(Role.CUSTOMER),
+  }),
+};
+
+export const loginSchema = {
+  body: z.object({
+    email: z.string().email("Format email tidak valid"),
+    password: z.string().min(1, "Password wajib diisi"),
+  }),
+};
+
+export const customerLoginSchema = {
+  body: z.object({
+    username: z.string().min(1, "Username (No HP) wajib diisi"),
+    password: z.string().min(1, "Password (NIK) wajib diisi"),
+  }),
+};
+
+export const registerAgentSchema = {
+  body: z.object({
+    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
+    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
+    email: z.string().email("Format email salah"),
+    password: z.string().min(6, "Password minimal 6 karakter"),
+    alamat: emptyAsUndefined(z.string().optional()),
+    type: emptyAsUndefined(z.enum(["PRIBADI", "PERUSAHAAN"]).optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const updateSelfSchema = {
+  body: z
+    .object({
+      username: z.string().min(3, "Username minimal 3 karakter").optional(),
+      email: z.string().email("Format email tidak valid").optional(),
+      password: z.string().min(6, "Password minimal 6 karakter").optional(),
+    })
+    .refine((data) => data.username ?? data.email ?? data.password, {
+      message:
+        "Minimal salah satu data (username, email, atau password) harus diisi",
+    }),
 };
 </file>
 
@@ -10464,95 +9954,6 @@ networks:
 
 volumes:
   kavling_db_data:
-</file>
-
-<file path="prisma/seeds/kavlingSeed.ts">
-import { PrismaClient, UnitStatus } from "@prisma/client";
-import * as xlsx from "xlsx";
-import path from "path";
-import fs from "fs";
-function getTipe(lb: number, lt: number): string {
-  if (lb === 48) return "Asvara";
-  if (lb === 52) return "Adara";
-  if (lb === 73) return "Aruna";
-  if (lb === 36) return "Ansara";
-  return `Tipe ${lb}/${lt}`;
-}
-export async function seedKavling(prisma: PrismaClient) {
-  const excelPath = path.resolve(process.cwd(), "Analisa_Harga.xls");
-  if (!fs.existsSync(excelPath)) {
-    console.error("❌ File Analisa_Harga.xls tidak ditemukan di root folder!");
-    return;
-  }
-  const fileBuffer = fs.readFileSync(excelPath);
-  const workbook = xlsx.read(fileBuffer, { type: "buffer" });
-  const sheetName = "Summary T1";
-  const worksheet = workbook.Sheets[sheetName];
-  if (!worksheet) {
-    console.error(`❌ Sheet '${sheetName}' tidak ditemukan dalam file excel!`);
-    return;
-  }
-  const kavlingDataToInsert = [];
-  const formatRp = (num: number) =>
-    `Rp ${Number(num || 0).toLocaleString("id-ID")}`;
-  const range = xlsx.utils.decode_range(worksheet["!ref"] || "A1:L1000");
-  const maxRow = range.e.r + 1;
-  for (let i = 4; i <= maxRow; i++) {
-    const rawBank = worksheet[`D${i}`] ? worksheet[`D${i}`].v : undefined;
-    const rawBlokPrefix = worksheet[`G${i}`] ? worksheet[`G${i}`].v : undefined;
-    const rawBlokSuffix = worksheet[`H${i}`] ? worksheet[`H${i}`].v : undefined;
-    const rawUnit = worksheet[`I${i}`] ? worksheet[`I${i}`].v : undefined;
-    const rawLb = worksheet[`J${i}`] ? worksheet[`J${i}`].v : undefined;
-    const rawLt = worksheet[`K${i}`] ? worksheet[`K${i}`].v : undefined;
-    const rawHarga = worksheet[`L${i}`] ? worksheet[`L${i}`].v : undefined;
-    if (rawBank === undefined || String(rawBank).trim() === "") {
-      continue;
-    }
-    const bankStr = String(rawBank).trim().toUpperCase();
-    let rekeningTujuanId = null;
-    if (bankStr === "BMS") {
-      rekeningTujuanId = 2;
-    } else if (bankStr === "SGMP") {
-      rekeningTujuanId = 1;
-    }
-    const blokPrefix =
-      rawBlokPrefix !== undefined && rawBlokPrefix !== null
-        ? String(rawBlokPrefix).trim()
-        : "";
-    const blokSuffix =
-      rawBlokSuffix !== undefined && rawBlokSuffix !== null
-        ? String(rawBlokSuffix).trim()
-        : "";
-    const blok = `${blokPrefix}${blokSuffix}`;
-    const nomorUnit =
-      rawUnit !== undefined && rawUnit !== null ? String(rawUnit).trim() : "";
-    const lb = Math.round(Number(rawLb) || 0);
-    const lt = Number(rawLt) || 0;
-    const hargaDasar = Number(rawHarga) || 0;
-    const namaTipe = getTipe(lb, lt);
-    if (!blok && !nomorUnit) continue;
-    kavlingDataToInsert.push({
-      perumahanId: 1,
-      blok: blok,
-      nomorUnit: nomorUnit,
-      namaTipe: namaTipe,
-      luasBangunan: lb,
-      luasTanah: lt,
-      hargaDasar: hargaDasar,
-      rekeningTujuanId: rekeningTujuanId,
-      status: UnitStatus.AVAILABLE,
-    });
-  }
-  if (kavlingDataToInsert.length > 0) {
-    const result = await prisma.kavling.createMany({
-      data: kavlingDataToInsert,
-      skipDuplicates: true,
-    });
-    console.log(
-      `\n✅ BOOM! Sukses memproses dan insert ${result.count} data kavling baru ke tabel Kavling!`,
-    );
-  }
-}
 </file>
 
 <file path="src/application/usecases/penjualan/ApproveGantiKavlingUseCase.ts">
@@ -11074,6 +10475,240 @@ export class AgentRepository implements IAgentRepository {
 }
 </file>
 
+<file path="src/presentation/controllers/authController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase.js";
+import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase.js";
+import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
+import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
+import type { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
+import type { AgentLoginUseCase } from "../../application/usecases/auth/AgentLoginUseCase.js";
+import type { RegisterAgentUseCase } from "../../application/usecases/auth/AgentRegisterUseCase.js";
+
+export class AuthController {
+  constructor(
+    private readonly registerUseCase: RegisterUserUseCase,
+    private readonly loginUseCase: LoginUserUseCase,
+    private readonly getProfileUseCase: GetProfileUseCase,
+    private readonly customerLoginUseCase: CustomerLoginUseCase,
+    private readonly updateCustomerSelfUseCase: UpdateCustomerSelfUseCase,
+    private readonly agentLoginUseCase: AgentLoginUseCase,
+    private readonly registerAgentUseCase: RegisterAgentUseCase,
+  ) {}
+
+  register = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.registerUseCase.execute(req.body);
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "User registered successfully",
+      result,
+    );
+  };
+
+  login = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.loginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Sukses", result);
+  };
+
+  getProfile = async (req: Request, res: Response): Promise<void> => {
+    if (!req.user?.userId) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "User ID tidak valid");
+      return;
+    }
+    const user = await this.getProfileUseCase.execute(req.user.userId);
+    sendResponse(res, StatusCodes.OK, "Berhasil mengambil profil", { user });
+  };
+
+  loginCustomer = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.customerLoginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Customer Sukses", result);
+  };
+
+  updateSelf = async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      sendResponse(res, StatusCodes.UNAUTHORIZED, "Sesi tidak valid");
+      return;
+    }
+
+    const result = await this.updateCustomerSelfUseCase.execute(
+      userId,
+      req.body,
+    );
+    sendResponse(res, StatusCodes.OK, "Data akun berhasil diperbarui", result);
+  };
+  loginAgent = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.agentLoginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Agent Sukses", result);
+  };
+  registerAgent = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.registerAgentUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.CREATED, "Registrasi Agent berhasil", result);
+  };
+}
+</file>
+
+<file path="src/presentation/routes/authRoutes.ts">
+import { Router } from "express";
+import { validate } from "../../middlewares/validate";
+import { authenticate } from "../../middlewares/authMiddleware";
+import {
+  registerSchema,
+  loginSchema,
+  updateSelfSchema,
+  customerLoginSchema,
+  registerAgentSchema,
+} from "../../validations/authSchema";
+import type { AuthController } from "../controllers/authController";
+
+export const createAuthRoutes = (authController: AuthController): Router => {
+  const router = Router();
+
+  router.post("/register", validate(registerSchema), authController.register);
+
+  router.post("/login", validate(loginSchema), authController.login);
+  router.post(
+    "/login/customer",
+    validate(customerLoginSchema),
+    authController.loginCustomer,
+  );
+  router.post("/login/agent", validate(loginSchema), authController.loginAgent);
+
+  router.post(
+    "/register/agent",
+    validate(registerAgentSchema),
+    authController.registerAgent,
+  );
+
+  router.get("/profile", authenticate, authController.getProfile);
+  router.patch(
+    "/update-me",
+    authenticate,
+    validate(updateSelfSchema),
+    authController.updateSelf,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/customerRoutes.ts">
+// src/presentation/routes/customerRoutes.ts
+import { Router } from "express";
+import {
+  authenticate,
+  requirePermission,
+  requireRole,
+} from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+  getCustomersPaginatedSchema,
+} from "../../validations/customerSchema.js";
+import type { CustomerController } from "../controllers/customerController.js";
+
+export const createCustomerRoutes = (
+  customerController: CustomerController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  // ==========================================
+  // ROUTE PORTAL CUSTOMER (Harus Paling Atas!)
+  // ==========================================
+  router.get(
+    "/me/dashboard",
+    requireRole(["CUSTOMER"]),
+    customerController.getMyDashboard,
+  );
+
+  router.patch(
+    "/me/upload/:docType",
+    requireRole(["CUSTOMER"]),
+    upload.single("file"),
+    customerController.uploadMyDocument,
+  );
+
+  router.patch(
+    "/me/tagihan/:id/upload-bukti",
+    requireRole(["CUSTOMER"]),
+    upload.single("fileBukti"),
+    customerController.uploadMyTagihan,
+  );
+
+  // ==========================================
+  // ROUTE INTERNAL ADMIN (Bawah)
+  // ==========================================
+  router.post(
+    "/",
+    requirePermission("CUSTOMER", "create"),
+    validate(createCustomerSchema),
+    customerController.create,
+  );
+
+  router.get(
+    "/",
+    requirePermission("CUSTOMER", "read"),
+    validate(getCustomersPaginatedSchema),
+    customerController.getPaginated,
+  );
+
+  router.get(
+    "/export/excel",
+    requirePermission("CUSTOMER", "read"),
+    customerController.exportExcel,
+  );
+
+  router.get(
+    "/export/pdf",
+    requirePermission("CUSTOMER", "read"),
+    customerController.exportPdf,
+  );
+
+  router.get(
+    "/:id",
+    requirePermission(["CUSTOMER", "CUSTOMER_DETAIL"], "read"),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.getById,
+  );
+
+  router.patch(
+    "/:id",
+    requirePermission("CUSTOMER", "update"),
+    validate(updateCustomerSchema),
+    customerController.update,
+  );
+
+  router.patch(
+    "/:id/upload/:docType",
+    requirePermission("CUSTOMER", "update"),
+    upload.single("file"),
+    customerController.uploadDocument,
+  );
+
+  router.delete(
+    "/:id",
+    requirePermission("CUSTOMER", "delete"),
+    validate({ params: updateCustomerSchema.params }),
+    customerController.delete,
+  );
+
+  router.post(
+    "/:id/generate-account",
+    requirePermission("CUSTOMER", "update"),
+    customerController.generateAccount,
+  );
+
+  return router;
+};
+</file>
+
 <file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
 import { StatusCodes } from "http-status-codes";
 import { AppError } from "../../../domain/errors/AppError.js";
@@ -11219,6 +10854,59 @@ export class VerifyDocumentUseCase {
       },
     };
   }
+}
+</file>
+
+<file path="src/domain/dtos/CustomerDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreateCustomerDTO {
+  userId: number;
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email?: string | undefined;
+  pekerjaan?: string | undefined;
+  perusahaan?: string | undefined;
+  bank?: string | undefined;
+  alamatKtp: string;
+  alamatTinggal?: string | undefined;
+  alamatKoresponden?: string | undefined;
+}
+
+export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {
+  fileKtp?: string | undefined;
+  fileKk?: string | undefined;
+  fileNpwp?: string | undefined;
+  dokumenLainnya?: any;
+}
+export interface CustomerResponseDTO {
+  id: number;
+  nikKtp: string;
+  nama: string;
+  noHp: string;
+  email: string | null;
+  pekerjaan: string | null;
+  perusahaan: string | null;
+  bank: string | null;
+  alamatKtp: string;
+  alamatTinggal: string | null;
+  alamatKoresponden: string | null;
+  fileKtp: string | null;
+  fileKk: string | null;
+  fileNpwp: string | null;
+
+  dokumenLainnya?: any;
+
+  hasAccount: boolean;
+  createdAt: Date;
+}
+
+export type CustomerFilterDTO = BaseFilterDTO;
+
+export interface CustomerLoginInput {
+  username: string;
+  password: string;
 }
 </file>
 
@@ -11516,44 +11204,6 @@ export class TagihanController {
       result,
     );
   };
-}
-</file>
-
-<file path="prisma/seeds/userSeed.ts">
-import { PrismaClient, Role } from "@prisma/client";
-import * as bcrypt from "bcrypt";
-
-export async function seedUser(prisma: PrismaClient) {
-  const defaultPassword = await bcrypt.hash("password", 10);
-
-  await prisma.user.createMany({
-    data: [
-      {
-        username: "Admin",
-        email: "admin@gmail.com",
-        password: defaultPassword,
-        role: Role.ADMIN,
-      },
-      {
-        username: "Arga",
-        email: "arga@gmail.com",
-        password: await bcrypt.hash("arga123", 10),
-        role: Role.ADMIN,
-      },
-      {
-        username: "Wiwi",
-        email: "wiwi@gmail.com",
-        password: await bcrypt.hash("wiwi123", 10),
-        role: Role.MARKETING,
-      },
-      {
-        username: "Eva",
-        email: "eva@gmail.com",
-        password: await bcrypt.hash("eva123", 10),
-        role: Role.MARKETING,
-      },
-    ],
-  });
 }
 </file>
 
@@ -12029,373 +11679,6 @@ export const createPenjualanRoutes = (
 
   return router;
 };
-</file>
-
-<file path="prisma/seeds/penjualanSeed.ts">
-import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
-import * as xlsx from "xlsx";
-import path from "path";
-import fs from "fs";
-function getTipe(lb: number): string {
-  if (lb === 48) return "Asvara";
-  if (lb === 52) return "Adara";
-  if (lb === 73) return "Aruna";
-  if (lb === 36) return "Ansara";
-  return `Tipe ${lb}`;
-}
-function parseExcelDate(serial: number): Date | null {
-  if (!serial || isNaN(serial)) return null;
-  const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
-  return date;
-}
-function formatRp(num: number | null | undefined): string {
-  if (num == null) return "null";
-  return `Rp ${Number(num).toLocaleString("id-ID")}`;
-}
-export async function seedPenjualan(prisma: PrismaClient) {
-  console.log("==========================================================");
-  console.log("  MEMULAI SEED PENJUALAN dari Detil_Pembelian_Unit.xls");
-  console.log("==========================================================");
-  const excelPath = path.resolve(process.cwd(), "Detil_Pembelian_Unit.xls");
-  if (!fs.existsSync(excelPath)) {
-    console.error(
-      "❌ File Detil_Pembelian_Unit.xls tidak ditemukan di root folder!",
-    );
-    return;
-  }
-  const fileBuffer = fs.readFileSync(excelPath);
-  const workbook = xlsx.read(fileBuffer, { type: "buffer" });
-  const sheetName = "LENGKAP";
-  const worksheet = workbook.Sheets[sheetName];
-  if (!worksheet) {
-    console.error(`❌ Sheet '${sheetName}' tidak ditemukan!`);
-    return;
-  }
-  const range = xlsx.utils.decode_range(worksheet["!ref"] || "A1:AT1000");
-  const maxRow = range.e.r + 1;
-  console.log(`\n>>> Sheet ditemukan: '${sheetName}', total baris: ${maxRow}`);
-  let successCount = 0;
-  let skipCount = 0;
-  let errorCount = 0;
-  for (let i = 3; i <= maxRow; i++) {
-    const getCell = (col: string) => {
-      const cell = worksheet[`${col}${i}`];
-      return cell ? cell.v : undefined;
-    };
-    const rawBlok = getCell("E");
-    if (rawBlok === undefined || String(rawBlok).trim() === "") {
-      console.log(`\n[Baris ${i}] ⚠️  Kolom E kosong — baris dilewati.`);
-      skipCount++;
-      continue;
-    }
-    console.log(`\n========================================================`);
-    console.log(`[BARIS EXCEL ${i}] RAW VALUES`);
-    console.log(`========================================================`);
-    const rawKso = getCell("C");
-    let rekeningTujuanId: number | null = null;
-    if (rawKso !== undefined) {
-      const ksoStr = String(rawKso).trim().toLowerCase();
-      if (ksoStr.includes("gajah")) {
-        rekeningTujuanId = 1;
-      } else if (ksoStr.includes("mahligai")) {
-        rekeningTujuanId = 2;
-      }
-    }
-    const rawBank = getCell("D");
-    let caraPembayaran: PaymentMethod | null = null;
-    let bankField: string | null = null;
-    if (rawBank !== undefined && String(rawBank).trim() !== "") {
-      const bankStr = String(rawBank).trim().toUpperCase();
-      if (bankStr === "CASH TAHAP") {
-        caraPembayaran = PaymentMethod.CASH_BERTAHAP;
-      } else if (bankStr === "CASH KERAS") {
-        caraPembayaran = PaymentMethod.CASH_KERAS;
-      } else {
-        caraPembayaran = PaymentMethod.KPR;
-        bankField = String(rawBank).trim();
-      }
-    } else {
-      caraPembayaran = PaymentMethod.KPR;
-      bankField = null;
-    }
-    const blokRaw = String(rawBlok).trim();
-    const dashIdx = blokRaw.lastIndexOf("-");
-    const blok = dashIdx !== -1 ? blokRaw.substring(0, dashIdx) : blokRaw;
-    const nomorUnit = dashIdx !== -1 ? blokRaw.substring(dashIdx + 1) : "";
-    const rawCustomerNama = getCell("F");
-    const rawAgentNama = getCell("G");
-    const rawTipe = getCell("H");
-    let lb = 0;
-    let lt = 0;
-    if (rawTipe !== undefined) {
-      const parts = String(rawTipe).split("/");
-      lb = parseInt(parts[0]) || 0;
-      lt = parseInt(parts[1]) || 0;
-    }
-    const namaTipe = getTipe(lb);
-    const rawHargaJual = getCell("I");
-    const hargaJual = rawHargaJual !== undefined ? Number(rawHargaJual) : null;
-    const rawDiskon = getCell("J");
-    const diskonPenjualan = rawDiskon !== undefined ? Number(rawDiskon) : null;
-    const rawPpn = getCell("N");
-    const nrPpn = rawPpn !== undefined ? Number(rawPpn) : null;
-    const rawBphtb = getCell("O");
-    const nrBiayaBphtb = rawBphtb !== undefined ? Number(rawBphtb) : null;
-    const rawLainLain = getCell("Q");
-    const nrLainLain = rawLainLain !== undefined ? Number(rawLainLain) : null;
-    const rawNotarisAjb = getCell("R");
-    const nrBiayaNotarisAjb =
-      rawNotarisAjb !== undefined ? Number(rawNotarisAjb) : null;
-    const rawAkadPpjb = getCell("V");
-    const akadPpjb =
-      rawAkadPpjb !== undefined ? String(rawAkadPpjb).trim() : null;
-    const rawTglAkad = getCell("W");
-    const tanggalAkadPpjb =
-      rawTglAkad !== undefined ? parseExcelDate(Number(rawTglAkad)) : null;
-    const rawPph = getCell("X");
-    const nrPph = rawPph !== undefined ? Number(rawPph) : null;
-    const rawBiayaKpr = getCell("Y");
-    const biayaKpr = rawBiayaKpr !== undefined ? Number(rawBiayaKpr) : null;
-    const rawPlafonAcc = getCell("AB");
-    const plafonAcc = rawPlafonAcc !== undefined ? Number(rawPlafonAcc) : null;
-    const rawNamaNotaris = getCell("AR");
-    const rawBiayaPpjb = getCell("AS");
-    const biayaPpjb = rawBiayaPpjb !== undefined ? Number(rawBiayaPpjb) : null;
-    const rawBiayaAjb = getCell("AT");
-    const biayaAjb = rawBiayaAjb !== undefined ? Number(rawBiayaAjb) : null;
-    try {
-      let kavling = await prisma.kavling.findFirst({
-        where: { perumahanId: 1, blok: blok, nomorUnit: nomorUnit },
-      });
-      if (!kavling) {
-        kavling = await prisma.kavling.create({
-          data: {
-            perumahanId: 1,
-            blok: blok,
-            nomorUnit: nomorUnit,
-            namaTipe: namaTipe,
-            luasBangunan: lb,
-            luasTanah: lt,
-            hargaDasar: hargaJual ?? 0,
-            rekeningTujuanId: rekeningTujuanId,
-            status: "TERJUAL",
-          },
-        });
-      }
-      const namaCustomer = rawCustomerNama
-        ? String(rawCustomerNama).trim()
-        : null;
-      if (!namaCustomer) {
-        console.log(`  ❌ Nama customer kosong — baris dilewati.`);
-        skipCount++;
-        continue;
-      }
-      let customer = await prisma.customer.findFirst({
-        where: { nama: namaCustomer },
-      });
-      if (!customer) {
-        customer = await prisma.customer.create({
-          data: {
-            nikKtp: `IMP-${i}-${Date.now() % 100000}`,
-            nama: namaCustomer,
-            noHp: "-",
-            alamatKtp: "-",
-          },
-        });
-      }
-      const namaAgent = rawAgentNama ? String(rawAgentNama).trim() : null;
-      let agent = null;
-      if (namaAgent) {
-        agent = await prisma.agent.findFirst({
-          where: { nama: namaAgent },
-        });
-        if (!agent) {
-          agent = await prisma.agent.create({
-            data: {
-              nik: `IMP-${i}-${Date.now() % 100000}`,
-              nama: namaAgent,
-              noHp: "-",
-              status: "AKTIF",
-            },
-          });
-        }
-      }
-      const namaNotaris = rawNamaNotaris ? String(rawNamaNotaris).trim() : null;
-      let notaris = null;
-      if (namaNotaris) {
-        notaris = await prisma.notaris.findFirst({
-          where: { nama: namaNotaris },
-        });
-        if (!notaris) {
-          notaris = await prisma.notaris.create({
-            data: {
-              nama: namaNotaris,
-              biayaPpjb: biayaPpjb,
-              biayaAjb: biayaAjb,
-            },
-          });
-        } else {
-          if (!notaris.biayaPpjb || !notaris.biayaAjb) {
-            await prisma.notaris.update({
-              where: { id: notaris.id },
-              data: {
-                biayaPpjb: notaris.biayaPpjb ?? biayaPpjb,
-                biayaAjb: notaris.biayaAjb ?? biayaAjb,
-              },
-            });
-          }
-        }
-      }
-      const noTransaksi = `TRX-${blok}-${nomorUnit}-${i}`;
-      const calcDiskon = diskonPenjualan ?? 0;
-      const calcBookingFee = 5000000;
-      let calcPlafonAwal: number | null = null;
-      let calcBiayaKpr: number | null = biayaKpr;
-      let calcPlafonKredit: number | null = null;
-      let calcNilaiPengajuanKpr: number | null = null;
-      let calcDpTidakDibayar: number | null = null;
-      let calcDp: number | null = null;
-      calcDpTidakDibayar = Math.round(
-        (Number(kavling.hargaDasar) - Number(diskonPenjualan)) * 0.1 -
-          Number(calcBookingFee),
-      );
-      calcDp = calcDpTidakDibayar;
-
-      if (caraPembayaran === PaymentMethod.KPR) {
-        calcPlafonAwal =
-          Number(kavling.hargaDasar) - calcDiskon - calcBookingFee;
-        if (calcBiayaKpr == null || calcBiayaKpr === 0) {
-          calcBiayaKpr = Math.round(calcPlafonAwal * 0.06);
-        }
-        calcPlafonKredit = calcPlafonAwal + calcBiayaKpr;
-        calcNilaiPengajuanKpr = calcPlafonKredit;
-      }
-      const existingPenjualan = await prisma.penjualan.findFirst({
-        where: { kavlingId: kavling.id },
-      });
-      const payloadPenjualan = {
-        customerId: customer.id,
-        agentId: agent?.id ?? null,
-        rekeningTujuanId: rekeningTujuanId,
-        caraPembayaran: caraPembayaran,
-        bank: bankField,
-        hargaDasar: kavling.hargaDasar,
-        diskonPenjualan: calcDiskon > 0 ? calcDiskon : null,
-        hargaJual: kavling.hargaDasar,
-        plafonAwal: calcPlafonAwal,
-        biayaKpr: calcBiayaKpr,
-        plafonKredit: calcPlafonKredit,
-        nilaiPengajuanKpr: calcNilaiPengajuanKpr,
-        dpTidakDibayar: calcDpTidakDibayar,
-        dp: calcDp,
-        plafonAcc: plafonAcc,
-        bookingFee: calcBookingFee,
-        status: PenjualanStatus.PROSES,
-      };
-      let penjualan;
-      if (existingPenjualan) {
-        console.log(
-          `  ⚠️  Penjualan sudah ada untuk kavling ini (ID: ${existingPenjualan.id}). Update data...`,
-        );
-        penjualan = await prisma.penjualan.update({
-          where: { id: existingPenjualan.id },
-          data: {
-            ...payloadPenjualan,
-            fileBuktiBooking: "",
-          },
-        });
-      } else {
-        penjualan = await prisma.penjualan.create({
-          data: {
-            noTransaksi: noTransaksi,
-            tanggal: tanggalAkadPpjb ?? new Date(),
-            kavlingId: kavling.id,
-            ...payloadPenjualan,
-          },
-        });
-      }
-      const noTagihanBf = `INV-BF-${noTransaksi}`;
-
-      await prisma.tagihan.upsert({
-        where: { noTagihan: noTagihanBf },
-        update: {
-          nominal: calcBookingFee,
-          jatuhTempo: tanggalAkadPpjb ?? new Date(),
-        },
-        create: {
-          noTagihan: noTagihanBf,
-          customerId: customer.id,
-          penjualanId: penjualan.id,
-          pembayaran: "Booking Fee",
-          nominal: calcBookingFee,
-          jatuhTempo: tanggalAkadPpjb ?? new Date(),
-          status: "BELUM_BAYAR",
-        },
-      });
-
-      if (
-        calcDp &&
-        calcDp > 0 &&
-        (caraPembayaran === PaymentMethod.KPR ||
-          caraPembayaran === PaymentMethod.CASH_BERTAHAP)
-      ) {
-        const noTagihanDp = `INV-DP-${noTransaksi}`;
-        const dpDueDate = new Date(tanggalAkadPpjb ?? new Date());
-        dpDueDate.setDate(dpDueDate.getDate() + 14);
-
-        await prisma.tagihan.upsert({
-          where: { noTagihan: noTagihanDp },
-          update: {
-            nominal: calcDp,
-            jatuhTempo: dpDueDate,
-          },
-          create: {
-            noTagihan: noTagihanDp,
-            customerId: customer.id,
-            penjualanId: penjualan.id,
-            pembayaran: "Down Payment (DP)",
-            nominal: calcDp,
-            jatuhTempo: dpDueDate,
-            status: "BELUM_BAYAR",
-          },
-        });
-      }
-      const detailData = {
-        notarisId: notaris?.id ?? null,
-        akadPpjb: akadPpjb,
-        tanggalAkadPpjb: tanggalAkadPpjb,
-        nrPpn: nrPpn,
-        nrBiayaBphtb: nrBiayaBphtb,
-        nrLainLain: nrLainLain,
-        nrBiayaNotarisAjb: biayaAjb,
-        nrBiayaNotarisPpjb: biayaPpjb,
-        nrPph: nrPph,
-      };
-      await prisma.detailKavlingPajak.upsert({
-        where: { penjualanId: penjualan.id },
-        create: { penjualanId: penjualan.id, ...detailData },
-        update: detailData,
-      });
-      await prisma.kavling.update({
-        where: { id: kavling.id },
-        data: { status: "TERJUAL" },
-      });
-      successCount++;
-      console.log(
-        `\n✅ [Baris ${i}] SUKSES — ${blok}/${nomorUnit} (${namaCustomer})`,
-      );
-    } catch (err: any) {
-      errorCount++;
-      console.error(`\n❌ [Baris ${i}] ERROR: ${err.message}`);
-    }
-  }
-  console.log(`\n==========================================================`);
-  console.log(`  SELESAI SEED PENJUALAN`);
-  console.log(`  ✅ Sukses : ${successCount}`);
-  console.log(`  ⏭️  Skip   : ${skipCount}`);
-  console.log(`  ❌ Error  : ${errorCount}`);
-  console.log(`==========================================================`);
-}
 </file>
 
 <file path="src/application/usecases/customerKavling/CustomerKavlingUseCases.ts">
@@ -12957,33 +12240,6 @@ export class PenjualanController {
     );
   };
 }
-</file>
-
-<file path="prisma/seed.ts">
-import { PrismaClient } from "@prisma/client";
-import { seedUser } from "./seeds/userSeed.ts";
-import clearDatabase from "./clear.ts";
-import { seedAgent } from "./seeds/agentSeed.ts";
-import { seedBankRekeningPt } from "./seeds/bankRekeningPtSeed.ts";
-import { seedPerumahan } from "./seeds/perumahanSeed.ts";
-import { seedKavling } from "./seeds/kavlingSeed.ts";
-import { seedPenjualan } from "./seeds/penjualanSeed.ts";
-import { seedRolePermission } from "./seeds/rolePermissionSeed.ts";
-
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log("Memulai proses seeding...");
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
 </file>
 
 <file path="src/presentation/routes/index.ts">
@@ -15407,6 +14663,7 @@ import { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/Updat
 import { GenerateAgentAccountUseCase } from "../../application/usecases/agent/GenerateAgentAccountUseCase.js";
 import { UploadAgentDocumentUseCase } from "../../application/usecases/agent/UploadAgentDocumentUseCase.js";
 import { AgentLoginUseCase } from "../../application/usecases/auth/AgentLoginUseCase.js";
+import { RegisterAgentUseCase } from "../../application/usecases/auth/AgentRegisterUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -15443,7 +14700,10 @@ export const createContainer = (dbClient: PrismaClient) => {
 
   const exportCustomersUseCase = new ExportCustomersUseCase(dbClient);
   const exportCustomersPdfUseCase = new ExportCustomersPdfUseCase(dbClient);
-  const createCustomerUseCase = new CreateCustomerUseCase(customerRepo);
+  const createCustomerUseCase = new CreateCustomerUseCase(
+    customerRepo,
+    userRepo,
+  );
   const updateCustomerUseCase = new UpdateCustomerUseCase(customerRepo);
   const uploadCustomerDocumentUseCase = new UploadCustomerDocumentUseCase(
     customerRepo,
@@ -15566,6 +14826,7 @@ export const createContainer = (dbClient: PrismaClient) => {
 
   const ocrController = new OcrController(extractKtpDataUseCase);
   const agentLoginUseCase = new AgentLoginUseCase(userRepo, dbClient);
+  const registerAgentUseCase = new RegisterAgentUseCase(dbClient);
   const authController = new AuthController(
     registerUseCase,
     loginUseCase,
@@ -15573,6 +14834,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerLoginUseCase,
     updateCustomerSelfUseCase,
     agentLoginUseCase,
+    registerAgentUseCase,
   );
   const createUserUseCase = new CreateUserUseCase(userRepo);
   const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);

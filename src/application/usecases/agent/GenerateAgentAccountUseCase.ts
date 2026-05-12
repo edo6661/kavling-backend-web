@@ -14,14 +14,26 @@ export class GenerateAgentAccountUseCase {
   async execute(agentId: number, passwordInput: string) {
     const agent = await this.agentRepo.findById(agentId);
     if (!agent) throw new NotFoundError("Data Agent tidak ditemukan.");
-    if (agent.userId)
-      throw new ConflictError(
-        "Agent ini sudah memiliki akun portal yang tertaut.",
-      );
     if (!agent.email)
       throw new ConflictError(
         "Agent tidak memiliki email. Update profil agent dengan email terlebih dahulu.",
       );
+
+    const hashedPassword = await hashPassword(passwordInput);
+
+    if (agent.userId) {
+      const updatedUser = await this.userRepo.update(agent.userId, {
+        password: hashedPassword,
+      });
+      return {
+        message: "Kredensial portal agent berhasil di-reset.",
+        akun: {
+          username: updatedUser.username,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        },
+      };
+    }
 
     const existingUser = await this.userRepo.findByEmail(agent.email);
     if (existingUser)
@@ -29,7 +41,6 @@ export class GenerateAgentAccountUseCase {
         "Email agent ini sudah terdaftar sebagai User di dalam sistem.",
       );
 
-    const hashedPassword = await hashPassword(passwordInput);
     const newUser = await this.userRepo.create({
       username: agent.nama,
       email: agent.email,

@@ -11,20 +11,28 @@ export class GenerateCustomerAccountUseCase {
     private readonly userRepo: IUserRepository,
   ) {}
 
-  async execute(customerId: number) {
+  async execute(customerId: number, passwordInput: string) {
     const customer = await this.customerRepo.findById(customerId);
     if (!customer) {
       throw new NotFoundError("Data profil Customer tidak ditemukan.");
     }
 
-    if (customer.userId) {
-      throw new ConflictError(
-        "Customer ini sudah memiliki akun portal yang tertaut.",
-      );
-    }
-
-    const hashedPassword = await hashPassword(customer.nikKtp);
+    const hashedPassword = await hashPassword(passwordInput);
     const emailToUse = customer.email ?? `${customer.noHp}@customer.local`;
+
+    if (customer.userId) {
+      const updatedUser = await this.userRepo.update(customer.userId, {
+        password: hashedPassword,
+      });
+      return {
+        message: "Kredensial portal customer berhasil di-reset.",
+        akun: {
+          username: updatedUser.username,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        },
+      };
+    }
 
     const existingUser = await this.userRepo.findByEmail(emailToUse);
     if (existingUser) {
@@ -45,8 +53,7 @@ export class GenerateCustomerAccountUseCase {
     });
 
     return {
-      message:
-        "Akun portal customer berhasil dibuat (Username: No HP, Password: NIK).",
+      message: "Akun portal customer berhasil dibuat.",
       akun: {
         username: newUser.username,
         email: newUser.email,
