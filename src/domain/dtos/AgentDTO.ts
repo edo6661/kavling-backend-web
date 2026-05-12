@@ -77,3 +77,16 @@ export interface AgentResponseDTO {
   createdAt: Date;
 }
 export type AgentFilterDTO = BaseFilterDTO;
+
+export interface RegisterAgentDTO {
+  nik: string;
+  nama: string;
+  noHp: string;
+  email: string;
+  password: string;
+  alamat?: string | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+}

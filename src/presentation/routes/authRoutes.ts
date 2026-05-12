@@ -5,6 +5,8 @@ import {
   registerSchema,
   loginSchema,
   updateSelfSchema,
+  customerLoginSchema,
+  registerAgentSchema,
 } from "../../validations/authSchema";
 import type { AuthController } from "../controllers/authController";
 
@@ -16,10 +18,16 @@ export const createAuthRoutes = (authController: AuthController): Router => {
   router.post("/login", validate(loginSchema), authController.login);
   router.post(
     "/login/customer",
-    validate(loginSchema),
+    validate(customerLoginSchema),
     authController.loginCustomer,
   );
   router.post("/login/agent", validate(loginSchema), authController.loginAgent);
+
+  router.post(
+    "/register/agent",
+    validate(registerAgentSchema),
+    authController.registerAgent,
+  );
 
   router.get("/profile", authenticate, authController.getProfile);
   router.patch(

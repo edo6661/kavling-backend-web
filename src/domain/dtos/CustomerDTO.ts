@@ -1,6 +1,7 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 
 export interface CreateCustomerDTO {
+  userId: number;
   nikKtp: string;
   nama: string;
   noHp: string;
@@ -17,7 +18,6 @@ export interface UpdateCustomerDTO extends Partial<CreateCustomerDTO> {
   fileKtp?: string | undefined;
   fileKk?: string | undefined;
   fileNpwp?: string | undefined;
-  userId?: number | undefined;
   dokumenLainnya?: any;
 }
 export interface CustomerResponseDTO {

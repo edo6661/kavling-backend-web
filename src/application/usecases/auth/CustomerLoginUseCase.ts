@@ -21,17 +21,13 @@ export class CustomerLoginUseCase {
     const user = await this.userRepo.findByEmail(data.email);
     const invalidCredentialsError = new AppError(
       StatusCodes.UNAUTHORIZED,
-      "Email atau Password salah",
+      "Username atau Password salah",
     );
 
-    if (!user?.password || user.role !== "CUSTOMER") {
-      throw invalidCredentialsError;
-    }
+    if (!user?.password) throw invalidCredentialsError;
 
     const isPasswordValid = await comparePassword(data.password, user.password);
-    if (!isPasswordValid) {
-      throw invalidCredentialsError;
-    }
+    if (!isPasswordValid) throw invalidCredentialsError;
 
     const customerProfile = await this.db.customer.findFirst({
       where: { userId: user.id },

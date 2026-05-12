@@ -7,6 +7,7 @@ import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfi
 import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
 import type { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
 import type { AgentLoginUseCase } from "../../application/usecases/auth/AgentLoginUseCase.js";
+import type { RegisterAgentUseCase } from "../../application/usecases/auth/AgentRegisterUseCase.js";
 
 export class AuthController {
   constructor(
@@ -16,6 +17,7 @@ export class AuthController {
     private readonly customerLoginUseCase: CustomerLoginUseCase,
     private readonly updateCustomerSelfUseCase: UpdateCustomerSelfUseCase,
     private readonly agentLoginUseCase: AgentLoginUseCase,
+    private readonly registerAgentUseCase: RegisterAgentUseCase,
   ) {}
 
   register = async (req: Request, res: Response): Promise<void> => {
@@ -63,5 +65,9 @@ export class AuthController {
   loginAgent = async (req: Request, res: Response): Promise<void> => {
     const result = await this.agentLoginUseCase.execute(req.body);
     sendResponse(res, StatusCodes.OK, "Login Agent Sukses", result);
+  };
+  registerAgent = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.registerAgentUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.CREATED, "Registrasi Agent berhasil", result);
   };
 }

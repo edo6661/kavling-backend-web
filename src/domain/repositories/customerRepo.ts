@@ -21,6 +21,7 @@ export class CustomerRepository implements ICustomerRepository {
 
     return await this.db.customer.create({
       data: {
+        userId: data.userId ?? null,
         nikKtp: data.nikKtp,
         nama: data.nama,
         noHp: data.noHp,
