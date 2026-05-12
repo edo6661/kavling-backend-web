@@ -3,7 +3,6 @@ import { env } from "../../config/env";
 import { AppError } from "../../domain/errors/AppError";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
-
 export class CloudinaryService {
   constructor() {
     cloudinary.config({
@@ -35,15 +34,22 @@ export class CloudinaryService {
       uploadStream.end(buffer);
     });
   }
-
   async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
     try {
+      const isPdf =
+        buffer.length > 4 &&
+        buffer[0] === 0x25 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x44 &&
+        buffer[3] === 0x46;
+      if (isPdf) {
+        return await this.uploadFile(buffer, folder);
+      }
       const compressedBuffer = await sharp(buffer)
         .resize({ width: 800, withoutEnlargement: true })
         .flatten({ background: "#ffffff" })
         .jpeg({ quality: 80 })
         .toBuffer();
-
       return await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
@@ -71,15 +77,14 @@ export class CloudinaryService {
             resolve(result.secure_url);
           },
         );
-
         uploadStream.end(compressedBuffer);
       });
     } catch (error: any) {
-      console.error("Sharp Image Processing Error:");
+      console.error("File Processing Error:");
       console.error(error);
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Format file tidak didukung atau file rusak. Khusus unggahan ini, pastikan Anda menggunakan file gambar (JPG/PNG) yang valid.",
+        "Format file tidak didukung atau file rusak. Pastikan Anda mengunggah file gambar (JPG/PNG) atau PDF yang valid.",
         true,
       );
     }
@@ -89,16 +94,13 @@ export class CloudinaryService {
       const urlParts = imageUrl.split("/");
       const filenameWithExt = urlParts.pop();
       const folder = urlParts.pop();
-
       if (!filenameWithExt || !folder) return;
-
       const filename = filenameWithExt.split(".")[0];
       const publicId = `${folder}/${filename}`;
-
       await cloudinary.uploader.destroy(publicId);
-      console.log(`Berhasil rollback gambar dari Cloudinary: ${publicId}`);
+      console.log(`Berhasil rollback file dari Cloudinary: ${publicId}`);
     } catch (error) {
-      console.error("Gagal melakukan rollback gambar di Cloudinary:", error);
+      console.error("Gagal melakukan rollback file di Cloudinary:", error);
     }
   }
 }
