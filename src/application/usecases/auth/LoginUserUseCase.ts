@@ -52,7 +52,8 @@ export class LoginUserUseCase {
       email: user.email,
       role: user.role,
     };
-    const jwtOptions: SignOptions = { expiresIn: "1h" };
+
+    const jwtOptions: SignOptions = { expiresIn: "7d" };
     const token = jwt.sign(payload, env.JWT_SECRET, jwtOptions);
 
     return {

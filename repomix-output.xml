@@ -1,58 +1,4 @@
-kode backend:
-
-<file path="src/application/usecases/agent/GenerateAgentAccountUseCase.ts">
-import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
-import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import { hashPassword } from "../../../utils/hashing.js";
-import { Role } from "@prisma/client";
-
-export class GenerateAgentAccountUseCase {
-  constructor(
-    private readonly agentRepo: IAgentRepository,
-    private readonly userRepo: IUserRepository,
-  ) {}
-
-  async execute(agentId: number, passwordInput: string) {
-    const agent = await this.agentRepo.findById(agentId);
-    if (!agent) throw new NotFoundError("Data Agent tidak ditemukan.");
-    if (agent.userId)
-      throw new ConflictError(
-        "Agent ini sudah memiliki akun portal yang tertaut.",
-      );
-    if (!agent.email)
-      throw new ConflictError(
-        "Agent tidak memiliki email. Update profil agent dengan email terlebih dahulu.",
-      );
-
-    const existingUser = await this.userRepo.findByEmail(agent.email);
-    if (existingUser)
-      throw new ConflictError(
-        "Email agent ini sudah terdaftar sebagai User di dalam sistem.",
-      );
-
-    const hashedPassword = await hashPassword(passwordInput);
-    const newUser = await this.userRepo.create({
-      username: agent.nama,
-      email: agent.email,
-      password: hashedPassword,
-      role: Role.AGENT,
-    });
-
-    await this.agentRepo.update(agentId, { userId: newUser.id });
-
-    return {
-      message: "Akun portal agent berhasil dibuat dan ditautkan.",
-      akun: {
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    };
-  }
-}
-</file>
+tolong token nya perpanjang lagi jika login sebagai marketing / admin / finance / apapun itu, token nya expired nya per seminggu saja.
 
 <file path="src/application/usecases/agent/UploadAgentDocumentUseCase.ts">
 import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
@@ -4193,6 +4139,71 @@ export class GetAgentProfileUseCase {
 }
 </file>
 
+<file path="src/application/usecases/agent/GenerateAgentAccountUseCase.ts">
+import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.js";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import { hashPassword } from "../../../utils/hashing.js";
+import { Role } from "@prisma/client";
+
+export class GenerateAgentAccountUseCase {
+  constructor(
+    private readonly agentRepo: IAgentRepository,
+    private readonly userRepo: IUserRepository,
+  ) {}
+
+  async execute(agentId: number, passwordInput: string) {
+    const agent = await this.agentRepo.findById(agentId);
+    if (!agent) throw new NotFoundError("Data Agent tidak ditemukan.");
+    if (!agent.email)
+      throw new ConflictError(
+        "Agent tidak memiliki email. Update profil agent dengan email terlebih dahulu.",
+      );
+
+    const hashedPassword = await hashPassword(passwordInput);
+
+    if (agent.userId) {
+      const updatedUser = await this.userRepo.update(agent.userId, {
+        password: hashedPassword,
+      });
+      return {
+        message: "Kredensial portal agent berhasil di-reset.",
+        akun: {
+          username: updatedUser.username,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        },
+      };
+    }
+
+    const existingUser = await this.userRepo.findByEmail(agent.email);
+    if (existingUser)
+      throw new ConflictError(
+        "Email agent ini sudah terdaftar sebagai User di dalam sistem.",
+      );
+
+    const newUser = await this.userRepo.create({
+      username: agent.nama,
+      email: agent.email,
+      password: hashedPassword,
+      role: Role.AGENT,
+    });
+
+    await this.agentRepo.update(agentId, { userId: newUser.id });
+
+    return {
+      message: "Akun portal agent berhasil dibuat dan ditautkan.",
+      akun: {
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+      },
+    };
+  }
+}
+</file>
+
 <file path="src/application/usecases/auth/GetProfileUseCase.ts">
 import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
 import type { UserResponseDTO } from "../../../domain/dtos/UserDTO.js";
@@ -6768,66 +6779,6 @@ export class UpdateCustomerSelfUseCase {
 }
 </file>
 
-<file path="src/application/usecases/customer/GenerateCustomerAccountUseCase.ts">
-import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
-import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import { hashPassword } from "../../../utils/hashing.js";
-import { Role } from "@prisma/client";
-
-export class GenerateCustomerAccountUseCase {
-  constructor(
-    private readonly customerRepo: ICustomerRepository,
-    private readonly userRepo: IUserRepository,
-  ) {}
-
-  async execute(customerId: number) {
-    const customer = await this.customerRepo.findById(customerId);
-    if (!customer) {
-      throw new NotFoundError("Data profil Customer tidak ditemukan.");
-    }
-
-    if (customer.userId) {
-      throw new ConflictError(
-        "Customer ini sudah memiliki akun portal yang tertaut.",
-      );
-    }
-
-    const hashedPassword = await hashPassword(customer.nikKtp);
-    const emailToUse = customer.email ?? `${customer.noHp}@customer.local`;
-
-    const existingUser = await this.userRepo.findByEmail(emailToUse);
-    if (existingUser) {
-      throw new ConflictError(
-        "Email customer ini sudah terdaftar sebagai User di dalam sistem.",
-      );
-    }
-
-    const newUser = await this.userRepo.create({
-      username: customer.noHp,
-      email: emailToUse,
-      password: hashedPassword,
-      role: Role.CUSTOMER,
-    });
-
-    await this.customerRepo.update(customerId, {
-      userId: newUser.id,
-    });
-
-    return {
-      message:
-        "Akun portal customer berhasil dibuat (Username: No HP, Password: NIK).",
-      akun: {
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    };
-  }
-}
-</file>
-
 <file path="src/application/usecases/customer/UploadCustomerDocumentUseCase.ts">
 import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -8869,6 +8820,73 @@ export const generateAccountSchema = {
       .min(6, "Password minimal 6 karakter untuk akun Customer"),
   }),
 };
+</file>
+
+<file path="src/application/usecases/customer/GenerateCustomerAccountUseCase.ts">
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import { hashPassword } from "../../../utils/hashing.js";
+import { Role } from "@prisma/client";
+
+export class GenerateCustomerAccountUseCase {
+  constructor(
+    private readonly customerRepo: ICustomerRepository,
+    private readonly userRepo: IUserRepository,
+  ) {}
+
+  async execute(customerId: number, passwordInput: string) {
+    const customer = await this.customerRepo.findById(customerId);
+    if (!customer) {
+      throw new NotFoundError("Data profil Customer tidak ditemukan.");
+    }
+
+    const hashedPassword = await hashPassword(passwordInput);
+    const emailToUse = customer.email ?? `${customer.noHp}@customer.local`;
+
+    if (customer.userId) {
+      const updatedUser = await this.userRepo.update(customer.userId, {
+        password: hashedPassword,
+      });
+      return {
+        message: "Kredensial portal customer berhasil di-reset.",
+        akun: {
+          username: updatedUser.username,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        },
+      };
+    }
+
+    const existingUser = await this.userRepo.findByEmail(emailToUse);
+    if (existingUser) {
+      throw new ConflictError(
+        "Email customer ini sudah terdaftar sebagai User di dalam sistem.",
+      );
+    }
+
+    const newUser = await this.userRepo.create({
+      username: customer.noHp,
+      email: emailToUse,
+      password: hashedPassword,
+      role: Role.CUSTOMER,
+    });
+
+    await this.customerRepo.update(customerId, {
+      userId: newUser.id,
+    });
+
+    return {
+      message: "Akun portal customer berhasil dibuat.",
+      akun: {
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+      },
+    };
+  }
+}
 </file>
 
 <file path="src/application/usecases/dashboard/GetDashboardSummaryUseCase.ts">
