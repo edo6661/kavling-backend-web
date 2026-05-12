@@ -48,3 +48,15 @@ export class DeleteAgentUseCase {
     await this.repo.delete(id);
   }
 }
+
+export class GetAgentProfileUseCase {
+  constructor(private readonly repo: IAgentRepository) {}
+  async execute(userId: number): Promise<AgentEntity> {
+    const result = await this.repo.findByUserId(userId);
+    if (!result)
+      throw new NotFoundError(
+        "Profil agent tidak ditemukan. Pastikan akun tertaut dengan benar.",
+      );
+    return result;
+  }
+}

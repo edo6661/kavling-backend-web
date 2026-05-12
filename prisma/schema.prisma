@@ -5,6 +5,10 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+enum AgentType {
+  PRIBADI    @map("Pribadi")
+  PERUSAHAAN @map("Perusahaan")
+}
 enum Role {
   SUPERADMIN @map("superadmin") 
   ADMIN      @map("admin")
@@ -12,6 +16,7 @@ enum Role {
   MARKETING  @map("marketing")
   CUSTOMER   @map("customer")
   BANK       @map("bank")
+  AGENT      @map("agent")
 }
 enum UnitStatus {
   AVAILABLE  @map("Available")
@@ -68,6 +73,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
   auditLogs AuditLog[]
   customers Customer[]
+  agents    Agent[]
   pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
   persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
   pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
@@ -145,6 +151,7 @@ model PicNotaris {
 }
 model Agent {
   id        Int         @id @default(autoincrement())
+  userId    Int?        @map("user_id") 
   nik       String      @unique @db.VarChar(20)
   kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
   nama      String      @db.VarChar(150)
@@ -152,8 +159,25 @@ model Agent {
   noHp      String      @map("no_hp") @db.VarChar(20)
   email     String?     @db.VarChar(100)
   status    AgentStatus @default(AKTIF)
+  type      AgentType   @default(PRIBADI) 
+  
+  feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
+  potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
+
+  
+  fileKtp            String? @map("file_ktp") @db.VarChar(255)
+  fileNpwp           String? @map("file_npwp") @db.VarChar(255)
+  kwitansiBookingFee String? @map("kwitansi_booking_fee") @db.VarChar(255)
+
+  
+  fileSuratKeterangan String? @map("file_surat_keterangan") @db.VarChar(255)
+  fileKtpDirektur     String? @map("file_ktp_direktur") @db.VarChar(255)
+  fileNpwpPerusahaan  String? @map("file_npwp_perusahaan") @db.VarChar(255)
+
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
+  
+  user      User?       @relation(fields: [userId], references: [id])
   pics      PicAgent[]
   fees      FeeAgent[]
   penjualan Penjualan[]

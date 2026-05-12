@@ -23,6 +23,7 @@ import {
   GetAgentByIdUseCase,
   GetAgentsPaginatedUseCase,
   DeleteAgentUseCase,
+  GetAgentProfileUseCase,
 } from "../../application/usecases/agent/AgentUseCases.js";
 
 import { GoogleVisionService } from "../external/GoogleVisionService.js";
@@ -152,6 +153,9 @@ import { GetCustomerDashboardUseCase } from "../../application/usecases/customer
 import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
 import { SocketService } from "../websocket/SocketService.js";
 import { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
+import { GenerateAgentAccountUseCase } from "../../application/usecases/agent/GenerateAgentAccountUseCase.js";
+import { UploadAgentDocumentUseCase } from "../../application/usecases/agent/UploadAgentDocumentUseCase.js";
+import { AgentLoginUseCase } from "../../application/usecases/auth/AgentLoginUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -214,13 +218,24 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getAgentByIdUseCase = new GetAgentByIdUseCase(agentRepo);
   const getAgentsPaginatedUseCase = new GetAgentsPaginatedUseCase(agentRepo);
   const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
-
+  const generateAgentAccountUseCase = new GenerateAgentAccountUseCase(
+    agentRepo,
+    userRepo,
+  );
+  const uploadAgentDocumentUseCase = new UploadAgentDocumentUseCase(
+    agentRepo,
+    cloudinaryService,
+  );
+  const getAgentProfileUseCase = new GetAgentProfileUseCase(agentRepo);
   const agentController = new AgentController(
     createAgentUseCase,
     updateAgentUseCase,
     getAgentByIdUseCase,
     getAgentsPaginatedUseCase,
     deleteAgentUseCase,
+    uploadAgentDocumentUseCase,
+    generateAgentAccountUseCase,
+    getAgentProfileUseCase,
   );
   const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
   const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
@@ -299,12 +314,14 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
 
   const ocrController = new OcrController(extractKtpDataUseCase);
+  const agentLoginUseCase = new AgentLoginUseCase(userRepo, dbClient);
   const authController = new AuthController(
     registerUseCase,
     loginUseCase,
     getProfileUseCase,
     customerLoginUseCase,
     updateCustomerSelfUseCase,
+    agentLoginUseCase,
   );
   const createUserUseCase = new CreateUserUseCase(userRepo);
   const getUserByIdUseCase = new GetUserByIdUseCase(userRepo);

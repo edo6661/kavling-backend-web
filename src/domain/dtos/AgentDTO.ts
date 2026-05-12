@@ -1,5 +1,5 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { AgentStatus } from "@prisma/client";
+import type { AgentStatus, AgentType } from "@prisma/client";
 
 export interface PicAgentDTO {
   id?: number | undefined;
@@ -7,7 +7,6 @@ export interface PicAgentDTO {
   noHp: string;
   alamat?: string | undefined;
 }
-
 export interface CreateAgentDTO {
   nik: string;
   nama: string;
@@ -15,21 +14,35 @@ export interface CreateAgentDTO {
   noHp: string;
   email?: string | undefined;
   status?: AgentStatus | undefined;
+  type?: AgentType | undefined;
+  feeMarketingPct?: number | undefined;
+  potonganPph?: number | undefined;
   pics?: PicAgentDTO[] | undefined;
 }
 
 export interface UpdateAgentDTO {
+  userId?: number | undefined;
   nik?: string | undefined;
   nama?: string | undefined;
   alamat?: string | undefined;
   noHp?: string | undefined;
   email?: string | undefined;
   status?: AgentStatus | undefined;
+  type?: AgentType | undefined;
+  feeMarketingPct?: number | undefined;
+  potonganPph?: number | undefined;
+  fileKtp?: string | undefined;
+  fileNpwp?: string | undefined;
+  kwitansiBookingFee?: string | undefined;
+  fileSuratKeterangan?: string | undefined;
+  fileKtpDirektur?: string | undefined;
+  fileNpwpPerusahaan?: string | undefined;
   pics?: PicAgentDTO[] | undefined;
 }
 
 export interface AgentResponseDTO {
   id: number;
+  userId: number | null;
   nik: string;
   kodeSales: string | null;
   nama: string;
@@ -37,8 +50,20 @@ export interface AgentResponseDTO {
   noHp: string;
   email: string | null;
   status: AgentStatus;
+  type: AgentType;
+
+  feeMarketingPct: number | null;
+  potonganPph: number | null;
+
+  fileKtp: string | null;
+  fileNpwp: string | null;
+  kwitansiBookingFee: string | null;
+  fileSuratKeterangan: string | null;
+  fileKtpDirektur: string | null;
+  fileNpwpPerusahaan: string | null;
+
+  hasAccount: boolean;
   pics: PicAgentDTO[];
   createdAt: Date;
 }
-
 export type AgentFilterDTO = BaseFilterDTO;

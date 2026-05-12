@@ -16,4 +16,5 @@ export interface IAgentRepository {
     cursor?: number,
     filters?: AgentFilterDTO,
   ): Promise<CursorPaginatedData<AgentEntity>>;
+  findByUserId(userId: number): Promise<AgentEntity | null>;
 }

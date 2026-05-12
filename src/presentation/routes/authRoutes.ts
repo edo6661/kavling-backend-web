@@ -19,6 +19,7 @@ export const createAuthRoutes = (authController: AuthController): Router => {
     validate(loginSchema),
     authController.loginCustomer,
   );
+  router.post("/login/agent", validate(loginSchema), authController.loginAgent);
 
   router.get("/profile", authenticate, authController.getProfile);
   router.patch(

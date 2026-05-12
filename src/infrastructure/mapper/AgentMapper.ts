@@ -28,6 +28,7 @@ export class AgentMapper {
   static toDomain(prismaAgent: AgentWithRelations): AgentEntity {
     return {
       id: prismaAgent.id,
+      userId: prismaAgent.userId ?? null,
       nik: prismaAgent.nik,
       kodeSales: prismaAgent.kodeSales,
       nama: prismaAgent.nama,
@@ -35,6 +36,20 @@ export class AgentMapper {
       noHp: prismaAgent.noHp,
       email: prismaAgent.email,
       status: prismaAgent.status,
+      type: prismaAgent.type,
+      feeMarketingPct: prismaAgent.feeMarketingPct
+        ? Number(prismaAgent.feeMarketingPct)
+        : null,
+      potonganPph: prismaAgent.potonganPph
+        ? Number(prismaAgent.potonganPph)
+        : null,
+      fileKtp: prismaAgent.fileKtp ?? null,
+      fileNpwp: prismaAgent.fileNpwp ?? null,
+      kwitansiBookingFee: prismaAgent.kwitansiBookingFee ?? null,
+      fileSuratKeterangan: prismaAgent.fileSuratKeterangan ?? null,
+      fileKtpDirektur: prismaAgent.fileKtpDirektur ?? null,
+      fileNpwpPerusahaan: prismaAgent.fileNpwpPerusahaan ?? null,
+      hasAccount: prismaAgent.userId !== null,
       createdAt: prismaAgent.createdAt,
       updatedAt: prismaAgent.updatedAt,
       pics: prismaAgent.pics.map((pic) => ({

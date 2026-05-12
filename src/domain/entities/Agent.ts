@@ -1,4 +1,5 @@
 import type { AgentStatus } from "@prisma/client";
+import type { AgentType } from "@prisma/client";
 
 export interface PicAgentEntity {
   id: number;
@@ -23,9 +24,9 @@ export interface PenjualanAgentEntity {
     perumahan: { nama: string } | null;
   } | null;
 }
-
 export interface AgentEntity {
   id: number;
+  userId: number | null;
   nik: string;
   kodeSales: string | null;
   nama: string;
@@ -33,6 +34,19 @@ export interface AgentEntity {
   noHp: string;
   email: string | null;
   status: AgentStatus;
+  type: AgentType;
+
+  feeMarketingPct: number | null;
+  potonganPph: number | null;
+
+  fileKtp: string | null;
+  fileNpwp: string | null;
+  kwitansiBookingFee: string | null;
+  fileSuratKeterangan: string | null;
+  fileKtpDirektur: string | null;
+  fileNpwpPerusahaan: string | null;
+
+  hasAccount: boolean;
   pics: PicAgentEntity[];
   penjualan?: PenjualanAgentEntity[];
   createdAt: Date;

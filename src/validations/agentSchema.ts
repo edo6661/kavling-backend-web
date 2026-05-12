@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import { AgentStatus } from "@prisma/client";
+import { AgentStatus, AgentType } from "@prisma/client";
 
 // Schema untuk nested PIC
 const picSchema = z.object({
@@ -9,7 +9,6 @@ const picSchema = z.object({
   noHp: z.string().min(9, "Nomor HP PIC minimal 9 karakter"),
   alamat: emptyAsUndefined(z.string().optional()),
 });
-
 export const createAgentSchema = {
   body: z.object({
     nik: z.string().length(16, "NIK harus tepat 16 karakter"),
@@ -18,14 +17,18 @@ export const createAgentSchema = {
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),
     alamat: emptyAsUndefined(z.string().optional()),
     status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
+    potonganPph: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
     pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),
 };
-
 export const updateAgentSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
+  params: z.object({ id: z.string().regex(/^\d+$/, "ID harus berupa angka") }),
   body: z.object({
     nik: emptyAsUndefined(
       z.string().length(16, "NIK harus tepat 16 karakter").optional(),
@@ -35,10 +38,22 @@ export const updateAgentSchema = {
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),
     alamat: emptyAsUndefined(z.string().optional()),
     status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100).optional(),
+    ),
+    potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
     pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),
 };
-
+export const generateAgentAccountSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Agent harus berupa angka"),
+  }),
+  body: z.object({
+    password: z.string().min(6, "Password minimal 6 karakter"),
+  }),
+};
 export const getAgentsPaginatedSchema = {
   query: cursorPaginationQuerySchema,
 };

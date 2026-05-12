@@ -32,9 +32,12 @@ export class AgentRepository implements IAgentRepository {
       alamat: data.alamat ?? null,
     };
 
-    if (data.status) {
-      createData.status = data.status;
-    }
+    if (data.status) createData.status = data.status;
+    if (data.type) createData.type = data.type;
+    if (data.feeMarketingPct !== undefined)
+      createData.feeMarketingPct = data.feeMarketingPct;
+    if (data.potonganPph !== undefined)
+      createData.potonganPph = data.potonganPph;
 
     if (data.pics && data.pics.length > 0) {
       createData.pics = {
@@ -102,21 +105,39 @@ export class AgentRepository implements IAgentRepository {
     if (!result) return null;
     return AgentMapper.toDomain(result);
   }
-
   async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
     const existing = await this.findById(id);
     if (!existing) {
       throw new NotFoundError("Agent tidak ditemukan");
     }
 
-    const updateData: Prisma.AgentUpdateInput = {};
+    const updateData: Prisma.AgentUncheckedUpdateInput = {};
 
+    if (data.userId !== undefined) updateData.userId = data.userId;
     if (data.nik !== undefined) updateData.nik = data.nik;
     if (data.nama !== undefined) updateData.nama = data.nama;
     if (data.noHp !== undefined) updateData.noHp = data.noHp;
     if (data.email !== undefined) updateData.email = data.email ?? null;
     if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.type !== undefined) updateData.type = data.type;
+
+    if (data.feeMarketingPct !== undefined)
+      updateData.feeMarketingPct = data.feeMarketingPct ?? null;
+    if (data.potonganPph !== undefined)
+      updateData.potonganPph = data.potonganPph ?? null;
+
+    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
+    if (data.fileNpwp !== undefined)
+      updateData.fileNpwp = data.fileNpwp ?? null;
+    if (data.kwitansiBookingFee !== undefined)
+      updateData.kwitansiBookingFee = data.kwitansiBookingFee ?? null;
+    if (data.fileSuratKeterangan !== undefined)
+      updateData.fileSuratKeterangan = data.fileSuratKeterangan ?? null;
+    if (data.fileKtpDirektur !== undefined)
+      updateData.fileKtpDirektur = data.fileKtpDirektur ?? null;
+    if (data.fileNpwpPerusahaan !== undefined)
+      updateData.fileNpwpPerusahaan = data.fileNpwpPerusahaan ?? null;
 
     if (data.pics) {
       updateData.pics = {
@@ -234,5 +255,13 @@ export class AgentRepository implements IAgentRepository {
     }
 
     await this.db.agent.delete({ where: { id } });
+  }
+  async findByUserId(userId: number): Promise<AgentEntity | null> {
+    const result = await this.db.agent.findFirst({
+      where: { userId },
+      include: { pics: true },
+    });
+    if (!result) return null;
+    return AgentMapper.toDomain(result as any);
   }
 }

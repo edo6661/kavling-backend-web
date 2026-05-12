@@ -6,6 +6,7 @@ import type { RegisterUserUseCase } from "../../application/usecases/auth/Regist
 import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase.js";
 import type { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
 import type { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
+import type { AgentLoginUseCase } from "../../application/usecases/auth/AgentLoginUseCase.js";
 
 export class AuthController {
   constructor(
@@ -14,6 +15,7 @@ export class AuthController {
     private readonly getProfileUseCase: GetProfileUseCase,
     private readonly customerLoginUseCase: CustomerLoginUseCase,
     private readonly updateCustomerSelfUseCase: UpdateCustomerSelfUseCase,
+    private readonly agentLoginUseCase: AgentLoginUseCase,
   ) {}
 
   register = async (req: Request, res: Response): Promise<void> => {
@@ -57,5 +59,9 @@ export class AuthController {
       req.body,
     );
     sendResponse(res, StatusCodes.OK, "Data akun berhasil diperbarui", result);
+  };
+  loginAgent = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.agentLoginUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.OK, "Login Agent Sukses", result);
   };
 }
