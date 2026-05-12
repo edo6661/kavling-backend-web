@@ -15,6 +15,10 @@ export const updateProgressPenjualanSchema = {
     berkasCustomerValid: emptyAsUndefined(z.boolean().optional()),
     nilaiAjb: emptyAsUndefined(z.coerce.number().min(0).optional()),
 
+    nomorAjb: emptyAsUndefined(z.string().optional()),
+    tanggalAjb: emptyAsUndefined(z.string().optional()),
+    fileAjb: emptyAsUndefined(z.string().optional()),
+
     checklistBast: emptyAsUndefined(
       z
         .record(

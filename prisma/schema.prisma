@@ -160,6 +160,10 @@ model Agent {
   email     String?     @db.VarChar(100)
   status    AgentStatus @default(AKTIF)
   type      AgentType   @default(PRIBADI) 
+
+  namaBank           String?     @map("nama_bank") @db.VarChar(100)
+  noRekening         String?     @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
   
   feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
   potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
@@ -464,6 +468,8 @@ model ProgressPenjualan {
   biayaBphtb          Decimal?  @map("biaya_bphtb") @db.Decimal(15, 2)
   biayaPph            Decimal?  @map("biaya_pph") @db.Decimal(15, 2)
   fileAjb             String?   @map("file_ajb") @db.VarChar(255)
+  nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100) 
+  tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date       
   fileBast            String?   @map("file_bast") @db.VarChar(255)
   checklistBast       Json?     @map("checklist_bast") 
   createdAt           DateTime  @default(now()) @map("created_at")

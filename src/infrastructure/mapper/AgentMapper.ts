@@ -37,6 +37,9 @@ export class AgentMapper {
       email: prismaAgent.email,
       status: prismaAgent.status,
       type: prismaAgent.type,
+      namaBank: prismaAgent.namaBank ?? null,
+      noRekening: prismaAgent.noRekening ?? null,
+      atasNamaRekening: prismaAgent.atasNamaRekening ?? null,
       feeMarketingPct: prismaAgent.feeMarketingPct
         ? Number(prismaAgent.feeMarketingPct)
         : null,

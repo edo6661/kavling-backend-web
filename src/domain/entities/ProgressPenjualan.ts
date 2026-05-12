@@ -14,6 +14,10 @@ export interface ProgressPenjualanEntity {
   biayaBphtb: number | null;
   biayaPph: number | null;
   fileAjb: string | null;
+
+  nomorAjb: string | null;
+  tanggalAjb: Date | null;
+
   fileBast: string | null;
   checklistBast: ChecklistBastType | null;
   createdAt: Date;

@@ -30,6 +30,9 @@ export class AgentRepository implements IAgentRepository {
       noHp: data.noHp,
       email: data.email ?? null,
       alamat: data.alamat ?? null,
+      namaBank: data.namaBank ?? null,
+      noRekening: data.noRekening ?? null,
+      atasNamaRekening: data.atasNamaRekening ?? null,
     };
 
     if (data.status) createData.status = data.status;
@@ -121,6 +124,12 @@ export class AgentRepository implements IAgentRepository {
     if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.type !== undefined) updateData.type = data.type;
+    if (data.namaBank !== undefined)
+      updateData.namaBank = data.namaBank ?? null;
+    if (data.noRekening !== undefined)
+      updateData.noRekening = data.noRekening ?? null;
+    if (data.atasNamaRekening !== undefined)
+      updateData.atasNamaRekening = data.atasNamaRekening ?? null;
 
     if (data.feeMarketingPct !== undefined)
       updateData.feeMarketingPct = data.feeMarketingPct ?? null;

@@ -73,6 +73,12 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
     }
 
     if (data.fileAjb !== undefined) updateData.fileAjb = data.fileAjb;
+    if (data.nomorAjb !== undefined)
+      updateData.nomorAjb = data.nomorAjb ?? null;
+    if (data.tanggalAjb !== undefined)
+      updateData.tanggalAjb = data.tanggalAjb
+        ? new Date(data.tanggalAjb)
+        : null;
     if (data.fileBast !== undefined) updateData.fileBast = data.fileBast;
     if (data.checklistBast !== undefined) {
       updateData.checklistBast =

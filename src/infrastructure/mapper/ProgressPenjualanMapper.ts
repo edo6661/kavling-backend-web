@@ -23,6 +23,8 @@ export class ProgressPenjualanMapper {
         ? Number(prismaProgress.biayaPph)
         : null,
       fileAjb: prismaProgress.fileAjb,
+      nomorAjb: prismaProgress.nomorAjb,
+      tanggalAjb: prismaProgress.tanggalAjb,
       fileBast: prismaProgress.fileBast,
       checklistBast: prismaProgress.checklistBast
         ? (prismaProgress.checklistBast as ChecklistBastType)

@@ -15,6 +15,9 @@ export interface CreateAgentDTO {
   email?: string | undefined;
   status?: AgentStatus | undefined;
   type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
   feeMarketingPct?: number | undefined;
   potonganPph?: number | undefined;
   pics?: PicAgentDTO[] | undefined;
@@ -29,6 +32,9 @@ export interface UpdateAgentDTO {
   email?: string | undefined;
   status?: AgentStatus | undefined;
   type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
   feeMarketingPct?: number | undefined;
   potonganPph?: number | undefined;
   fileKtp?: string | undefined;
@@ -51,6 +57,10 @@ export interface AgentResponseDTO {
   email: string | null;
   status: AgentStatus;
   type: AgentType;
+
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
 
   feeMarketingPct: number | null;
   potonganPph: number | null;

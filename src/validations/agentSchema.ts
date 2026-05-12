@@ -18,6 +18,9 @@ export const createAgentSchema = {
     alamat: emptyAsUndefined(z.string().optional()),
     status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
     type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
     feeMarketingPct: emptyAsUndefined(
       z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
     ),
@@ -39,6 +42,9 @@ export const updateAgentSchema = {
     alamat: emptyAsUndefined(z.string().optional()),
     status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
     type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
     feeMarketingPct: emptyAsUndefined(
       z.coerce.number().min(0).max(100).optional(),
     ),

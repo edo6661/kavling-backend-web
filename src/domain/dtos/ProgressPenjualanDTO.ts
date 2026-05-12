@@ -9,6 +9,8 @@ export interface UpdateProgressPenjualanDTO {
   filePpjb?: string | undefined;
   nilaiAjb?: number | undefined;
   fileAjb?: string | undefined;
+  nomorAjb?: string | undefined;
+  tanggalAjb?: string | Date | undefined;
   fileBast?: string | undefined;
   checklistBast?: ChecklistBastType | null | undefined;
 }
@@ -23,6 +25,8 @@ export interface ProgressPenjualanResponseDTO {
   biayaBphtb: number | null;
   biayaPph: number | null;
   fileAjb: string | null;
+  nomorAjb: string | null;
+  tanggalAjb: Date | null;
   fileBast: string | null;
   checklistBast: ChecklistBastType | null;
 }

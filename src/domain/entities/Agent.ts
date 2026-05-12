@@ -35,6 +35,9 @@ export interface AgentEntity {
   email: string | null;
   status: AgentStatus;
   type: AgentType;
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
 
   feeMarketingPct: number | null;
   potonganPph: number | null;
