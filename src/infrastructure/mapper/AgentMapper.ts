@@ -3,6 +3,7 @@ import type { AgentEntity } from "../../domain/entities/Agent.js";
 
 export type AgentWithRelations = Prisma.AgentGetPayload<{
   include: {
+    perusahaanAgent: true;
     pics: true;
     penjualan: {
       select: {
@@ -64,6 +65,13 @@ export class AgentMapper {
         createdAt: pic.createdAt,
         updatedAt: pic.updatedAt,
       })),
+      ttdData: (prismaAgent as any).ttdData ?? null,
+      perusahaanAgent: prismaAgent.perusahaanAgent
+        ? {
+            id: prismaAgent.perusahaanAgent.id,
+            nama: prismaAgent.perusahaanAgent.nama,
+          }
+        : null,
 
       penjualan: prismaAgent.penjualan
         ? prismaAgent.penjualan

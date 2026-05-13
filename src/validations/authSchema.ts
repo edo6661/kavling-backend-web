@@ -36,6 +36,8 @@ export const registerAgentSchema = {
     namaBank: emptyAsUndefined(z.string().optional()),
     noRekening: emptyAsUndefined(z.string().optional()),
     atasNamaRekening: emptyAsUndefined(z.string().optional()),
+    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
+    ttdData: emptyAsUndefined(z.string().optional()),
   }),
 };
 

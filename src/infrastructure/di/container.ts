@@ -157,6 +157,9 @@ import { GenerateAgentAccountUseCase } from "../../application/usecases/agent/Ge
 import { UploadAgentDocumentUseCase } from "../../application/usecases/agent/UploadAgentDocumentUseCase.js";
 import { AgentLoginUseCase } from "../../application/usecases/auth/AgentLoginUseCase.js";
 import { RegisterAgentUseCase } from "../../application/usecases/auth/AgentRegisterUseCase.js";
+import { PerusahaanAgentRepository } from "../../domain/repositories/perusahaanAgentRepo.js";
+import { PerusahaanAgentUseCases } from "../../application/usecases/perusahaanAgent/PerusahaanAgentUseCases.js";
+import { PerusahaanAgentController } from "../../presentation/controllers/perusahaanAgentController.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -523,6 +526,14 @@ export const createContainer = (dbClient: PrismaClient) => {
     getRolePermissionsUseCase,
     deleteRolePermissionUseCase,
   );
+  const perusahaanAgentRepo = new PerusahaanAgentRepository(dbClient);
+  const perusahaanAgentUseCases = new PerusahaanAgentUseCases(
+    perusahaanAgentRepo,
+    cloudinaryService,
+  );
+  const perusahaanAgentController = new PerusahaanAgentController(
+    perusahaanAgentUseCases,
+  );
   return {
     authController,
     userRepo,
@@ -548,6 +559,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     telegramBotService,
     rolePermissionController,
     socketService,
+    perusahaanAgentController,
   };
 };
 

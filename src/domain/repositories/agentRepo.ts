@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { AgentStatus, type Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { IAgentRepository } from "./IAgentRepo.js";
 import type { AgentEntity } from "../entities/Agent.js";
@@ -33,10 +33,14 @@ export class AgentRepository implements IAgentRepository {
       namaBank: data.namaBank ?? null,
       noRekening: data.noRekening ?? null,
       atasNamaRekening: data.atasNamaRekening ?? null,
+      status: AgentStatus.AKTIF,
     };
 
     if (data.status) createData.status = data.status;
     if (data.type) createData.type = data.type;
+    if (data.perusahaanAgentId !== undefined) {
+      createData.perusahaanAgent = { connect: { id: data.perusahaanAgentId } };
+    }
     if (data.feeMarketingPct !== undefined)
       createData.feeMarketingPct = data.feeMarketingPct;
     if (data.potonganPph !== undefined)
@@ -56,6 +60,7 @@ export class AgentRepository implements IAgentRepository {
       data: createData,
       include: {
         pics: true,
+        perusahaanAgent: true,
         penjualan: {
           orderBy: { createdAt: "desc" },
           select: {
@@ -85,6 +90,7 @@ export class AgentRepository implements IAgentRepository {
       where: { id },
       include: {
         pics: true,
+        perusahaanAgent: true,
         penjualan: {
           orderBy: { createdAt: "desc" },
           select: {
@@ -124,6 +130,9 @@ export class AgentRepository implements IAgentRepository {
     if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.type !== undefined) updateData.type = data.type;
+    if (data.perusahaanAgentId !== undefined) {
+      updateData.perusahaanAgentId = data.perusahaanAgentId;
+    }
     if (data.namaBank !== undefined)
       updateData.namaBank = data.namaBank ?? null;
     if (data.noRekening !== undefined)
@@ -164,6 +173,7 @@ export class AgentRepository implements IAgentRepository {
       data: updateData,
       include: {
         pics: true,
+        perusahaanAgent: true,
         penjualan: {
           orderBy: { createdAt: "desc" },
           select: {
@@ -221,6 +231,7 @@ export class AgentRepository implements IAgentRepository {
       orderBy: orderByClause,
       include: {
         pics: true,
+        perusahaanAgent: true,
         penjualan: {
           orderBy: { createdAt: "desc" },
           select: {

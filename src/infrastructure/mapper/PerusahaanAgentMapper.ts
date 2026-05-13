@@ -1,0 +1,14 @@
+import type { PerusahaanAgent as PrismaPerusahaanAgent } from "@prisma/client";
+import type { PerusahaanAgentEntity } from "../../domain/entities/PerusahaanAgent.js";
+
+export class PerusahaanAgentMapper {
+  static toDomain(prismaData: PrismaPerusahaanAgent): PerusahaanAgentEntity {
+    return {
+      id: prismaData.id,
+      nama: prismaData.nama,
+      akte: prismaData.akte,
+      createdAt: prismaData.createdAt,
+      updatedAt: prismaData.updatedAt,
+    };
+  }
+}

@@ -51,6 +51,7 @@ enum PenjualanStatus {
   BATAL     @map("Batal")
 }
 enum AgentStatus {
+  PENDING    @map("Pending") 
   AKTIF      @map("Aktif")
   NONAKTIF   @map("Nonaktif")
 }
@@ -149,6 +150,16 @@ model PicNotaris {
   notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
   @@map("pic_notaris")
 }
+model PerusahaanAgent {
+  id        Int      @id @default(autoincrement())
+  nama      String   @db.VarChar(150)
+  akte      String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  agents    Agent[]
+
+  @@map("perusahaan_agents")
+}
 model Agent {
   id        Int         @id @default(autoincrement())
   userId    Int?        @map("user_id") 
@@ -158,8 +169,10 @@ model Agent {
   alamat    String?     @db.Text
   noHp      String      @map("no_hp") @db.VarChar(20)
   email     String?     @db.VarChar(100)
-  status    AgentStatus @default(AKTIF)
-  type      AgentType   @default(PRIBADI) 
+  status    AgentStatus @default(PENDING)
+  type      AgentType   @default(PRIBADI)
+  ttdData           String?          @db.LongText
+  perusahaanAgentId Int?             @map("perusahaan_agent_id")
 
   namaBank           String?     @map("nama_bank") @db.VarChar(100)
   noRekening         String?     @map("no_rekening") @db.VarChar(50)
@@ -182,6 +195,7 @@ model Agent {
   updatedAt DateTime    @updatedAt @map("updated_at")
   
   user      User?       @relation(fields: [userId], references: [id])
+  perusahaanAgent PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id], onDelete: SetNull)
   pics      PicAgent[]
   fees      FeeAgent[]
   penjualan Penjualan[]

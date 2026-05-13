@@ -45,11 +45,13 @@ export class CloudinaryService {
       if (isPdf) {
         return await this.uploadFile(buffer, folder);
       }
+
       const compressedBuffer = await sharp(buffer)
         .resize({ width: 800, withoutEnlargement: true })
         .flatten({ background: "#ffffff" })
         .jpeg({ quality: 80 })
         .toBuffer();
+
       return await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
@@ -80,11 +82,15 @@ export class CloudinaryService {
         uploadStream.end(compressedBuffer);
       });
     } catch (error: any) {
-      console.error("File Processing Error:");
-      console.error(error);
+      console.error("File Processing Error:", error);
+
+      if (error instanceof AppError) {
+        throw error;
+      }
+
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Format file tidak didukung atau file rusak. Pastikan Anda mengunggah file gambar (JPG/PNG) atau PDF yang valid.",
+        `Gagal memproses gambar: ${error.message ?? "File rusak atau format tidak didukung."}`,
         true,
       );
     }

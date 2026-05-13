@@ -39,11 +39,13 @@ export class RegisterAgentUseCase {
           noHp: data.noHp,
           email: data.email,
           alamat: data.alamat ?? null,
-          status: AgentStatus.AKTIF,
+          status: AgentStatus.PENDING,
           type: data.type ?? AgentType.PRIBADI,
           namaBank: data.namaBank ?? null,
           noRekening: data.noRekening ?? null,
           atasNamaRekening: data.atasNamaRekening ?? null,
+          perusahaanAgentId: data.perusahaanAgentId ?? null,
+          ttdData: data.ttdData ?? null,
         },
       });
 

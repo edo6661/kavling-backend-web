@@ -18,6 +18,8 @@ export interface CreateAgentDTO {
   namaBank?: string | undefined;
   noRekening?: string | undefined;
   atasNamaRekening?: string | undefined;
+  perusahaanAgentId?: number | undefined;
+
   feeMarketingPct?: number | undefined;
   potonganPph?: number | undefined;
   pics?: PicAgentDTO[] | undefined;
@@ -31,6 +33,8 @@ export interface UpdateAgentDTO {
   noHp?: string | undefined;
   email?: string | undefined;
   status?: AgentStatus | undefined;
+  perusahaanAgentId?: number | undefined;
+
   type?: AgentType | undefined;
   namaBank?: string | undefined;
   noRekening?: string | undefined;
@@ -89,4 +93,6 @@ export interface RegisterAgentDTO {
   namaBank?: string | undefined;
   noRekening?: string | undefined;
   atasNamaRekening?: string | undefined;
+  perusahaanAgentId?: number | undefined;
+  ttdData?: string | undefined;
 }

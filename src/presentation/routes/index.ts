@@ -19,6 +19,7 @@ import { createVerifyRoutes } from "./verifyRoutes.js";
 import { createAuditLogRoutes } from "./auditLogRoutes.js";
 import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
 import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
+import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -55,6 +56,10 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use(
     "/role-permissions",
     createRolePermissionRoutes(deps.rolePermissionController),
+  );
+  router.use(
+    "/perusahaan-agents",
+    createPerusahaanAgentRoutes(deps.perusahaanAgentController),
   );
   return router;
 };
