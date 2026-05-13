@@ -35,6 +35,7 @@ export const updateCustomerSchema = {
     alamatKoresponden: emptyAsUndefined(z.string().optional()),
     alamatKtp: emptyAsUndefined(z.string().min(5).optional()),
     alamatTinggal: emptyAsUndefined(z.string().optional()),
+    dokumenLainnya: emptyAsUndefined(z.any().optional()),
   }),
 };
 
