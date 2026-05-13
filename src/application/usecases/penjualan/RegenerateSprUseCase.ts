@@ -65,6 +65,15 @@ export class RegenerateSprUseCase {
       }
       return penjualan.id;
     });
+    const penjualanToUpdate = await this.db.penjualan.findUnique({
+      where: { id: penjualanId },
+    });
+
+    if (penjualanToUpdate?.fileSpr) {
+      await this.cloudinaryService
+        .deleteImageByUrl(penjualanToUpdate.fileSpr)
+        .catch((err) => console.error("Gagal menghapus SPR PDF lama:", err));
+    }
     const pdfBuffer = await this.generateSprPdfUseCase.execute(penjualanId);
     const sprUrl = await this.cloudinaryService.uploadFile(
       pdfBuffer,

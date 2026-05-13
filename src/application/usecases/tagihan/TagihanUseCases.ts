@@ -7,6 +7,16 @@ import type {
 } from "../../../domain/dtos/TagihanDTO.js";
 import type { CursorPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+
+type ITtdData = Record<
+  string,
+  {
+    nama: string;
+    tanggal: string;
+    url: string;
+  }
+>;
 
 export class CreateTagihanUseCase {
   constructor(private readonly repo: ITagihanRepository) {}
@@ -46,10 +56,35 @@ export class GetTagihansPaginatedUseCase {
     return await this.repo.findWithCursorPagination(limit, cursor, filters);
   }
 }
-
 export class DeleteTagihanUseCase {
-  constructor(private readonly repo: ITagihanRepository) {}
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
   async execute(id: number): Promise<void> {
+    const tagihan = await this.repo.findById(id);
+    if (!tagihan) throw new NotFoundError("Tagihan tidak ditemukan");
+
+    const filesToDelete = [tagihan.fileBukti, tagihan.fileBuktiRefund].filter(
+      Boolean,
+    ) as string[];
+
+    if (tagihan.ttdData) {
+      const ttdObj = tagihan.ttdData as unknown as ITtdData;
+      Object.values(ttdObj).forEach((ttd) => {
+        if (ttd?.url) filesToDelete.push(ttd.url);
+      });
+    }
+
+    for (const url of filesToDelete) {
+      await this.cloudinaryService
+        .deleteImageByUrl(url)
+        .catch((err) =>
+          console.error(`Gagal hapus file saat delete tagihan: ${url}`, err),
+        );
+    }
+
     await this.repo.delete(id);
   }
 }

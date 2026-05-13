@@ -25,8 +25,21 @@ export class PerusahaanAgentUseCases {
   async update(id: number, data: UpdatePerusahaanAgentDTO) {
     return await this.repo.update(id, data);
   }
-
   async delete(id: number) {
+    const existing = await this.repo.findById(id);
+    if (!existing) throw new NotFoundError("Perusahaan Agent tidak ditemukan");
+
+    if (existing.akte) {
+      await this.cloudinary
+        .deleteImageByUrl(existing.akte)
+        .catch((err) =>
+          console.error(
+            `Gagal hapus akte saat delete perusahaan agent: ${existing.akte}`,
+            err,
+          ),
+        );
+    }
+
     return await this.repo.delete(id);
   }
 

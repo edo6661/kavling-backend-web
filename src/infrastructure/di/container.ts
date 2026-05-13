@@ -200,7 +200,10 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerRepo,
     userRepo,
   );
-  const updateCustomerUseCase = new UpdateCustomerUseCase(customerRepo);
+  const updateCustomerUseCase = new UpdateCustomerUseCase(
+    customerRepo,
+    cloudinaryService,
+  );
   const uploadCustomerDocumentUseCase = new UploadCustomerDocumentUseCase(
     customerRepo,
     cloudinaryService,
@@ -210,7 +213,10 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
     customerRepo,
   );
-  const deleteCustomerUseCase = new DeleteCustomerUseCase(customerRepo);
+  const deleteCustomerUseCase = new DeleteCustomerUseCase(
+    customerRepo,
+    cloudinaryService,
+  );
   const generateCustomerAccountUseCase = new GenerateCustomerAccountUseCase(
     customerRepo,
     userRepo,
@@ -224,7 +230,10 @@ export const createContainer = (dbClient: PrismaClient) => {
   const updateAgentUseCase = new UpdateAgentUseCase(agentRepo);
   const getAgentByIdUseCase = new GetAgentByIdUseCase(agentRepo);
   const getAgentsPaginatedUseCase = new GetAgentsPaginatedUseCase(agentRepo);
-  const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
+  const deleteAgentUseCase = new DeleteAgentUseCase(
+    agentRepo,
+    cloudinaryService,
+  );
   const generateAgentAccountUseCase = new GenerateAgentAccountUseCase(
     agentRepo,
     userRepo,
@@ -266,7 +275,10 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getKavlingsPaginatedUseCase = new GetKavlingsPaginatedUseCase(
     kavlingRepo,
   );
-  const deleteKavlingUseCase = new DeleteKavlingUseCase(kavlingRepo);
+  const deleteKavlingUseCase = new DeleteKavlingUseCase(
+    kavlingRepo,
+    cloudinaryService,
+  );
 
   const uploadKavlingDocumentUseCase = new UploadKavlingDocumentUseCase(
     kavlingRepo,
@@ -359,7 +371,10 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getTagihansPaginatedUseCase = new GetTagihansPaginatedUseCase(
     tagihanRepo,
   );
-  const deleteTagihanUseCase = new DeleteTagihanUseCase(tagihanRepo);
+  const deleteTagihanUseCase = new DeleteTagihanUseCase(
+    tagihanRepo,
+    cloudinaryService,
+  );
 
   const penjualanRepo = new PenjualanRepository(dbClient);
   const generateSprPdfUseCase = new GenerateSprPdfUseCase(penjualanRepo);

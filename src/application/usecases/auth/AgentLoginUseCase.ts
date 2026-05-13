@@ -37,13 +37,6 @@ export class AgentLoginUseCase {
       where: { userId: user.id },
     });
 
-    if (agentProfile?.status === "PENDING") {
-      throw new AppError(
-        StatusCodes.FORBIDDEN,
-        "Akun Anda masih dalam status PENDING. Mohon tunggu approval dari Admin.",
-      );
-    }
-
     const payload: JwtUserPayload = {
       userId: user.id,
       username: user.username,

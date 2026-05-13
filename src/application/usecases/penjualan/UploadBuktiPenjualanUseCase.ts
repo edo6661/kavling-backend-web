@@ -25,6 +25,15 @@ export class UploadBuktiPenjualanUseCase {
         StatusCodes.NOT_FOUND,
         "Data Penjualan tidak ditemukan",
       );
+    if (type === "booking" && penjualan.fileBuktiBooking) {
+      await this.cloudinaryService
+        .deleteImageByUrl(penjualan.fileBuktiBooking)
+        .catch(console.error);
+    } else if (type === "dp" && penjualan.fileBuktiDp) {
+      await this.cloudinaryService
+        .deleteImageByUrl(penjualan.fileBuktiDp)
+        .catch(console.error);
+    }
     const folderPath = `bumantara/penjualan/${type}`;
     const imageUrl = await this.cloudinaryService.uploadImage(
       fileBuffer,

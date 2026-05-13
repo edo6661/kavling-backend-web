@@ -3,6 +3,15 @@ import type { CloudinaryService } from "../../../infrastructure/external/Cloudin
 import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 
+type ITtdData = Record<
+  string,
+  {
+    nama: string;
+    tanggal: string;
+    url: string;
+  }
+>;
+
 export class SaveSignatureUseCase {
   constructor(
     private readonly db: PrismaClient,
@@ -31,8 +40,17 @@ export class SaveSignatureUseCase {
       `bumantara/signatures/${penjualan.noTransaksi}`,
     );
 
-    const existingTtd = (penjualan.ttdData as any) ?? {};
-    const updatedTtd = {
+    const existingTtd = (penjualan.ttdData as unknown as ITtdData) || {};
+
+    if (existingTtd[peran]?.url) {
+      await this.cloudinaryService
+        .deleteImageByUrl(existingTtd[peran].url)
+        .catch((err) =>
+          console.error(`Gagal menghapus TTD lama ${peran}:`, err),
+        );
+    }
+
+    const updatedTtd: ITtdData = {
       ...existingTtd,
       [peran]: { nama, tanggal, url: imageUrl },
     };
@@ -57,7 +75,6 @@ export class SaveSignatureUseCase {
       return result;
     } catch (error) {
       console.error("Gagal re-generate SPR dengan TTD:", error);
-
       return penjualan;
     }
   }

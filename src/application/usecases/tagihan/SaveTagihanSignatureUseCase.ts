@@ -2,6 +2,15 @@ import type { PrismaClient } from "@prisma/client";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 
+type ITtdData = Record<
+  string,
+  {
+    nama: string;
+    tanggal: string;
+    url: string;
+  }
+>;
+
 export class SaveTagihanSignatureUseCase {
   constructor(
     private readonly db: PrismaClient,
@@ -26,15 +35,24 @@ export class SaveTagihanSignatureUseCase {
       `bumantara/signatures/tagihan/${tagihan.noTagihan}`,
     );
 
-    const existingTtd = (tagihan.ttdData as any) ?? {};
-    const updatedTtd = {
+    const existingTtd = (tagihan.ttdData as unknown as ITtdData) || {};
+
+    if (existingTtd[peran]?.url) {
+      await this.cloudinaryService
+        .deleteImageByUrl(existingTtd[peran].url)
+        .catch((err) =>
+          console.error(`Gagal menghapus TTD lama tagihan ${peran}:`, err),
+        );
+    }
+
+    const updatedTtd: ITtdData = {
       ...existingTtd,
       [peran]: { nama, tanggal, url: imageUrl },
     };
 
     return await this.db.tagihan.update({
       where: { id },
-      data: { ttdData: updatedTtd },
+      data: { ttdData: updatedTtd as any },
     });
   }
 }

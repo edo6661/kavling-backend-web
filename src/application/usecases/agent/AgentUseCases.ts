@@ -7,6 +7,7 @@ import type {
 import type { CursorPaginatedData } from "../../../types/response.js";
 import type { AgentEntity } from "../../../domain/entities/Agent.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 
 export class CreateAgentUseCase {
   constructor(private readonly repo: IAgentRepository) {}
@@ -41,14 +42,36 @@ export class GetAgentsPaginatedUseCase {
     return await this.repo.findWithCursorPagination(limit, cursor, filters);
   }
 }
-
 export class DeleteAgentUseCase {
-  constructor(private readonly repo: IAgentRepository) {}
+  constructor(
+    private readonly repo: IAgentRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
   async execute(id: number): Promise<void> {
+    const agent = await this.repo.findById(id);
+    if (!agent) throw new NotFoundError("Agent tidak ditemukan");
+
+    const filesToDelete = [
+      agent.fileKtp,
+      agent.fileNpwp,
+      agent.kwitansiBookingFee,
+      agent.fileSuratKeterangan,
+      agent.fileKtpDirektur,
+      agent.fileNpwpPerusahaan,
+    ].filter(Boolean) as string[];
+
+    for (const url of filesToDelete) {
+      await this.cloudinaryService
+        .deleteImageByUrl(url)
+        .catch((err) =>
+          console.error(`Gagal hapus file saat delete agent: ${url}`, err),
+        );
+    }
+
     await this.repo.delete(id);
   }
 }
-
 export class GetAgentProfileUseCase {
   constructor(private readonly repo: IAgentRepository) {}
   async execute(userId: number): Promise<AgentEntity> {

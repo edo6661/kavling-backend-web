@@ -7,6 +7,7 @@ import type {
 } from "../../../domain/dtos/KavlingDTO.js";
 import type { OffsetPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 
 export class CreateKavlingUseCase {
   constructor(private readonly repo: IKavlingRepository) {}
@@ -44,10 +45,30 @@ export class GetKavlingsPaginatedUseCase {
     return await this.repo.findWithCursorPagination(page, limit, filters);
   }
 }
-
 export class DeleteKavlingUseCase {
-  constructor(private readonly repo: IKavlingRepository) {}
+  constructor(
+    private readonly repo: IKavlingRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
   async execute(id: number): Promise<void> {
+    const kavling = await this.repo.findById(id);
+    if (!kavling) throw new NotFoundError("Kavling tidak ditemukan");
+
+    const filesToDelete = [
+      kavling.filePbg,
+      kavling.fileSertifikatTanah,
+      kavling.fileNopPbb,
+    ].filter(Boolean) as string[];
+
+    for (const url of filesToDelete) {
+      await this.cloudinaryService
+        .deleteImageByUrl(url)
+        .catch((err) =>
+          console.error(`Gagal hapus file saat delete kavling: ${url}`, err),
+        );
+    }
+
     await this.repo.delete(id);
   }
 }
