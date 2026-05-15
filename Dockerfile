@@ -11,7 +11,7 @@ FROM node:20-bookworm-slim
 WORKDIR /app
 
 RUN apt-get update -y && \
-    apt-get install -y openssl tzdata && \
+    apt-get install -y openssl tzdata qpdf && \
     rm -rf /var/lib/apt/lists/*
 
 ENV TZ=Asia/Jakarta
