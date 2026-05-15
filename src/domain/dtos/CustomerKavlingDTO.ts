@@ -8,6 +8,7 @@ export interface UpdateCustomerKavlingDTO {
   hargaDasarKavling?: number | undefined;
   rekeningTujuanId?: number | null | undefined;
   notarisId?: number | null | undefined;
+  biayaNotaris?: number | null | undefined;
   lantai?: string | undefined;
   lokasiStrategis?: string | undefined;
   tanggalAkadPpjb?: string | Date | undefined;

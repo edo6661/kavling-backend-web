@@ -11,6 +11,8 @@ const picNotarisSchema = z.object({
 export const createNotarisSchema = {
   body: z.object({
     nama: z.string().min(3, "Nama Notaris minimal 3 karakter"),
+    nomorKtp: emptyAsUndefined(z.string().optional()),
+    nomorIjin: emptyAsUndefined(z.string().optional()),
     biayaAjb: z.coerce.number().min(0, "Biaya AJB tidak boleh negatif"),
     pics: emptyAsUndefined(z.array(picNotarisSchema).optional()),
   }),
@@ -23,6 +25,8 @@ export const updateNotarisSchema = {
   body: z.object({
     nama: emptyAsUndefined(z.string().min(3).optional()),
     biayaAjb: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    nomorKtp: emptyAsUndefined(z.string().optional()),
+    nomorIjin: emptyAsUndefined(z.string().optional()),
     pics: emptyAsUndefined(z.array(picNotarisSchema).optional()),
   }),
 };

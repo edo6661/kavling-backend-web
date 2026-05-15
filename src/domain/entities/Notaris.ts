@@ -18,6 +18,9 @@ export interface NotarisEntity {
   id: number;
   nama: string;
   biayaAjb: number;
+  nomorKtp: string | null;
+  nomorIjin: string | null;
+
   pics: PicNotarisEntity[];
   ajbDitangani?: AjbDitanganiEntity[];
   createdAt: Date;

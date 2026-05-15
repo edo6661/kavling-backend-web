@@ -24,6 +24,8 @@ export class NotarisMapper {
     return {
       id: prismaNotaris.id,
       nama: prismaNotaris.nama,
+      nomorKtp: prismaNotaris.nomorKtp ?? null,
+      nomorIjin: prismaNotaris.nomorIjin ?? null,
       biayaAjb: Number(prismaNotaris.biayaAjb),
       createdAt: prismaNotaris.createdAt,
       updatedAt: prismaNotaris.updatedAt,

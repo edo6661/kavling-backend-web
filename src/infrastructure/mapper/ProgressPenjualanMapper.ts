@@ -1,10 +1,22 @@
-import type { ProgressPenjualan as PrismaProgress } from "@prisma/client";
+import type {
+  DetailKavlingPajak,
+  Penjualan,
+  ProgressPenjualan as PrismaProgress,
+} from "@prisma/client";
 import type { ProgressPenjualanResponseDTO } from "../../domain/dtos/ProgressPenjualanDTO.js";
 import type { ChecklistBastType } from "../../domain/entities/ProgressPenjualan.js";
 
+type ProgressWithRelations = PrismaProgress & {
+  penjualan?:
+    | (Penjualan & {
+        detailKavlingPajak?: DetailKavlingPajak | null;
+      })
+    | null;
+};
+
 export class ProgressPenjualanMapper {
   static toDomain(
-    prismaProgress: PrismaProgress,
+    prismaProgress: ProgressWithRelations,
   ): ProgressPenjualanResponseDTO {
     return {
       id: prismaProgress.id,
@@ -13,6 +25,11 @@ export class ProgressPenjualanMapper {
       fileSp3k: prismaProgress.fileSp3k,
       fileSalinanAjb: prismaProgress.fileSalinanAjb,
       filePpjb: prismaProgress.filePpjb,
+      notarisId:
+        prismaProgress.penjualan?.detailKavlingPajak?.notarisId ?? null,
+      biayaNotaris: prismaProgress.penjualan?.detailKavlingPajak?.biayaNotaris
+        ? Number(prismaProgress.penjualan.detailKavlingPajak.biayaNotaris)
+        : null,
       nilaiAjb: prismaProgress.nilaiAjb
         ? Number(prismaProgress.nilaiAjb)
         : null,

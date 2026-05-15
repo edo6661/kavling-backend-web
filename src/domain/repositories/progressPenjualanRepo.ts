@@ -35,11 +35,11 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
   ): Promise<ProgressPenjualanResponseDTO | null> {
     const result = await this.db.progressPenjualan.findUnique({
       where: { penjualanId },
+      include: { penjualan: { include: { detailKavlingPajak: true } } },
     });
     if (!result) return null;
-    return ProgressPenjualanMapper.toDomain(result);
+    return ProgressPenjualanMapper.toDomain(result as any);
   }
-
   async update(
     penjualanId: number,
     data: UpdateProgressPenjualanDTO,
@@ -90,8 +90,33 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
     const result = await this.db.progressPenjualan.update({
       where: { penjualanId },
       data: updateData,
+      include: { penjualan: { include: { detailKavlingPajak: true } } },
     });
+    if (data.notarisId !== undefined || data.biayaNotaris !== undefined) {
+      const pajakUpdateData: Prisma.DetailKavlingPajakUncheckedUpdateInput = {};
 
-    return ProgressPenjualanMapper.toDomain(result);
+      if (data.notarisId !== undefined)
+        pajakUpdateData.notarisId = data.notarisId;
+      if (data.biayaNotaris !== undefined)
+        pajakUpdateData.biayaNotaris = data.biayaNotaris;
+
+      await this.db.detailKavlingPajak.upsert({
+        where: { penjualanId },
+        create: {
+          penjualanId,
+          notarisId: data.notarisId ?? null,
+          biayaNotaris: data.biayaNotaris ?? null,
+        },
+        update: pajakUpdateData,
+      });
+
+      const updatedResult = await this.db.progressPenjualan.findUnique({
+        where: { penjualanId },
+        include: { penjualan: { include: { detailKavlingPajak: true } } },
+      });
+      return ProgressPenjualanMapper.toDomain(updatedResult as any);
+    }
+
+    return ProgressPenjualanMapper.toDomain(result as any);
   }
 }

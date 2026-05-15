@@ -20,6 +20,7 @@ export const updateCustomerKavlingSchema = {
     rekeningTujuanId: emptyAsUndefined(z.coerce.number().optional()),
 
     notarisId: emptyAsUndefined(z.coerce.number().optional()),
+    biayaNotaris: emptyAsUndefined(z.coerce.number().min(0).optional()),
     lantai: emptyAsUndefined(z.string().optional()),
     lokasiStrategis: emptyAsUndefined(z.string().optional()),
     tanggalAkadPpjb: emptyAsUndefined(z.string().optional()),

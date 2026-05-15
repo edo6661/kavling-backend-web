@@ -131,6 +131,8 @@ model BankRekeningPt {
 model Notaris {
   id                 Int                  @id @default(autoincrement())
   nama               String               @db.VarChar(150)
+  nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
+  nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
   biayaAjb           Decimal?              @map("biaya_ajb") @db.Decimal(15, 2)
   biayaPpjb           Decimal?              @map("biaya_ppjb") @db.Decimal(15, 2)
   createdAt          DateTime             @default(now()) @map("created_at")
@@ -288,6 +290,7 @@ model DetailKavlingPajak {
   id                      Int       @id @default(autoincrement())
   penjualanId             Int       @unique @map("penjualan_id")
   notarisId               Int?      @map("notaris_id")
+  biayaNotaris            Decimal?  @map("biaya_notaris") @db.Decimal(15, 2)
   lantai                  String?   @db.VarChar(10)
   luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
   lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)

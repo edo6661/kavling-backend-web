@@ -35,6 +35,8 @@ export class NotarisRepository implements INotarisRepository {
   async create(data: CreateNotarisDTO): Promise<NotarisEntity> {
     const createData: Prisma.NotarisCreateInput = {
       nama: data.nama,
+      nomorKtp: data.nomorKtp,
+      nomorIjin: data.nomorIjin,
       biayaAjb: data.biayaAjb,
     };
 
@@ -72,6 +74,8 @@ export class NotarisRepository implements INotarisRepository {
     const updateData: Prisma.NotarisUpdateInput = {};
 
     if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.nomorKtp !== undefined) updateData.nomorKtp = data.nomorKtp;
+    if (data.nomorIjin !== undefined) updateData.nomorIjin = data.nomorIjin;
     if (data.biayaAjb !== undefined) updateData.biayaAjb = data.biayaAjb;
 
     if (data.pics) {

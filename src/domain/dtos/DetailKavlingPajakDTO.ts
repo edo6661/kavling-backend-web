@@ -3,6 +3,7 @@ import type { SP3R } from "@prisma/client";
 export interface CreateDetailKavlingPajakDTO {
   penjualanId: number;
   notarisId?: number | null;
+  biayaNotaris?: number | null;
   lantai?: string | null;
   luasBangunan?: string | null;
   lokasiStrategis?: string | null;

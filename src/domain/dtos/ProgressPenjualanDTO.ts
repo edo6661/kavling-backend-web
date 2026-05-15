@@ -4,6 +4,8 @@ export interface CreateProgressPenjualanDTO {
 }
 export interface UpdateProgressPenjualanDTO {
   berkasCustomerValid?: boolean | undefined;
+  notarisId?: number | null | undefined;
+  biayaNotaris?: number | null | undefined;
   fileSp3k?: string | undefined;
   fileSalinanAjb?: string | undefined;
   filePpjb?: string | undefined;
@@ -17,6 +19,8 @@ export interface UpdateProgressPenjualanDTO {
 export interface ProgressPenjualanResponseDTO {
   id: number;
   penjualanId: number;
+  notarisId?: number | null | undefined;
+  biayaNotaris?: number | null | undefined;
   berkasCustomerValid: boolean;
   fileSp3k: string | null;
   fileSalinanAjb: string | null;

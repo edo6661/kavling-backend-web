@@ -36,6 +36,7 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
     const createData: Prisma.DetailKavlingPajakUncheckedCreateInput = {
       penjualanId: data.penjualanId,
       notarisId: data.notarisId ?? null,
+      biayaNotaris: data.biayaNotaris ?? null,
       lantai: data.lantai ?? null,
       luasBangunan: data.luasBangunan ?? null,
       lokasiStrategis: data.lokasiStrategis ?? null,
@@ -111,6 +112,8 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
 
     if (data.notarisId !== undefined)
       updateData.notarisId = data.notarisId ?? null;
+    if (data.biayaNotaris !== undefined)
+      updateData.biayaNotaris = data.biayaNotaris ?? null;
     if (data.lantai !== undefined) updateData.lantai = data.lantai ?? null;
     if (data.luasBangunan !== undefined)
       updateData.luasBangunan = data.luasBangunan ?? null;

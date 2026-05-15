@@ -16,12 +16,16 @@ export interface AjbDitanganiDTO {
 export interface CreateNotarisDTO {
   nama: string;
   biayaAjb: number;
+  nomorKtp?: string;
+  nomorIjin?: string;
   pics?: PicNotarisDTO[] | undefined;
 }
 
 export interface UpdateNotarisDTO {
   nama?: string | undefined;
   biayaAjb?: number | undefined;
+  nomorKtp?: string;
+  nomorIjin?: string;
   pics?: PicNotarisDTO[] | undefined;
 }
 
@@ -29,6 +33,8 @@ export interface NotarisResponseDTO {
   id: number;
   nama: string;
   biayaAjb: number;
+  nomorKtp: string;
+  nomorIjin: string;
   pics: PicNotarisDTO[];
   ajbDitangani: AjbDitanganiDTO[];
   createdAt: Date;

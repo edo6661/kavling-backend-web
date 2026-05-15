@@ -14,6 +14,10 @@ export const updateProgressPenjualanSchema = {
   body: z.object({
     berkasCustomerValid: emptyAsUndefined(z.boolean().optional()),
     nilaiAjb: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    notarisId: emptyAsUndefined(z.coerce.number().optional().nullable()),
+    biayaNotaris: emptyAsUndefined(
+      z.coerce.number().min(0).optional().nullable(),
+    ),
 
     nomorAjb: emptyAsUndefined(z.string().optional()),
     tanggalAjb: emptyAsUndefined(z.string().optional()),
