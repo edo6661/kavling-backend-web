@@ -3,6 +3,7 @@ import { env } from "../../config/env";
 import { AppError } from "../../domain/errors/AppError";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
+import { isPdfBuffer, unlockPdf } from "../utils/pdfUtils.js";
 export class CloudinaryService {
   constructor() {
     cloudinary.config({
@@ -11,16 +12,20 @@ export class CloudinaryService {
       api_secret: env.CLOUDINARY_API_SECRET,
     });
   }
-  async uploadFile(buffer: Buffer, folder = "bumantara"): Promise<string> {
+  async uploadFile(
+    buffer: Buffer,
+    folder = "bumantara",
+    pdfPassword?: string,
+  ): Promise<string> {
+    const finalBuffer = isPdfBuffer(buffer)
+      ? unlockPdf(buffer, pdfPassword)
+      : buffer;
+
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          resource_type: "auto",
-        },
+        { folder, resource_type: "auto" },
         (error, result) => {
           if (error) {
-            console.error("Cloudinary Upload Error Details:", error);
             return reject(
               new AppError(
                 StatusCodes.INTERNAL_SERVER_ERROR,
@@ -31,19 +36,17 @@ export class CloudinaryService {
           resolve(result!.secure_url);
         },
       );
-      uploadStream.end(buffer);
+      uploadStream.end(finalBuffer);
     });
   }
-  async uploadImage(buffer: Buffer, folder = "bumantara"): Promise<string> {
+  async uploadImage(
+    buffer: Buffer,
+    folder = "bumantara",
+    pdfPassword?: string,
+  ): Promise<string> {
     try {
-      const isPdf =
-        buffer.length > 4 &&
-        buffer[0] === 0x25 &&
-        buffer[1] === 0x50 &&
-        buffer[2] === 0x44 &&
-        buffer[3] === 0x46;
-      if (isPdf) {
-        return await this.uploadFile(buffer, folder);
+      if (isPdfBuffer(buffer)) {
+        return await this.uploadFile(buffer, folder, pdfPassword);
       }
 
       const compressedBuffer = await sharp(buffer)
@@ -88,9 +91,14 @@ export class CloudinaryService {
         throw error;
       }
 
+      const errMessage =
+        error instanceof Error
+          ? error.message
+          : "File rusak atau format tidak didukung.";
+
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `Gagal memproses gambar: ${error.message ?? "File rusak atau format tidak didukung."}`,
+        `Gagal memproses gambar: ${errMessage}`,
         true,
       );
     }

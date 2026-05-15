@@ -24,6 +24,7 @@ export class UploadCustomerDocumentUseCase {
     fileBuffer: Buffer,
     documentType: "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
     namaDokumen?: string,
+    pdfPassword?: string,
   ): Promise<CustomerResponseDTO> {
     const existing = await this.customerRepo.findById(id);
     if (!existing) throw new NotFoundError("Customer tidak ditemukan");
@@ -37,6 +38,7 @@ export class UploadCustomerDocumentUseCase {
       const imageUrl = await this.cloudinaryService.uploadImage(
         fileBuffer,
         `bumantara/customers/lainnya`,
+        pdfPassword,
       );
 
       // Type-casting yang aman dari Prisma JSON ke interface yang kita buat
@@ -83,6 +85,7 @@ export class UploadCustomerDocumentUseCase {
     const imageUrl = await this.cloudinaryService.uploadImage(
       fileBuffer,
       `bumantara/customers/${documentType}`,
+      pdfPassword,
     );
     const result = await this.customerRepo.update(id, {
       [documentType]: imageUrl,

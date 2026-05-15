@@ -103,7 +103,7 @@ export class CustomerController {
   uploadDocument = async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(req.params.id as string, 10);
     const docType = req.params.docType as string;
-    const { namaDokumen } = req.body;
+    const { namaDokumen, pdfPassword } = req.body;
 
     if (isNaN(id)) {
       sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
@@ -129,6 +129,7 @@ export class CustomerController {
       req.file.buffer,
       docType as "fileKtp" | "fileKk" | "fileNpwp" | "lainnya",
       namaDokumen,
+      pdfPassword,
     );
 
     sendResponse(res, StatusCodes.OK, "Dokumen berhasil diunggah", result);
