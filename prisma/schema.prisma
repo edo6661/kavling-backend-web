@@ -133,6 +133,8 @@ model Notaris {
   nama               String               @db.VarChar(150)
   nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
   nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
+  noHp               String?              @map("no_hp") @db.VarChar(20)   
+  alamat             String?              @db.Text                        
   biayaAjb           Decimal?              @map("biaya_ajb") @db.Decimal(15, 2)
   biayaPpjb           Decimal?              @map("biaya_ppjb") @db.Decimal(15, 2)
   createdAt          DateTime             @default(now()) @map("created_at")

@@ -13,6 +13,8 @@ export const createNotarisSchema = {
     nama: z.string().min(3, "Nama Notaris minimal 3 karakter"),
     nomorKtp: emptyAsUndefined(z.string().optional()),
     nomorIjin: emptyAsUndefined(z.string().optional()),
+    noHp: emptyAsUndefined(z.string().optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
     biayaAjb: z.coerce.number().min(0, "Biaya AJB tidak boleh negatif"),
     pics: emptyAsUndefined(z.array(picNotarisSchema).optional()),
   }),
@@ -27,6 +29,8 @@ export const updateNotarisSchema = {
     biayaAjb: emptyAsUndefined(z.coerce.number().min(0).optional()),
     nomorKtp: emptyAsUndefined(z.string().optional()),
     nomorIjin: emptyAsUndefined(z.string().optional()),
+    noHp: emptyAsUndefined(z.string().optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
     pics: emptyAsUndefined(z.array(picNotarisSchema).optional()),
   }),
 };

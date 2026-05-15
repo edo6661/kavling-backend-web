@@ -26,6 +26,8 @@ export class NotarisMapper {
       nama: prismaNotaris.nama,
       nomorKtp: prismaNotaris.nomorKtp ?? null,
       nomorIjin: prismaNotaris.nomorIjin ?? null,
+      noHp: prismaNotaris.noHp ?? null,
+      alamat: prismaNotaris.alamat ?? null,
       biayaAjb: Number(prismaNotaris.biayaAjb),
       createdAt: prismaNotaris.createdAt,
       updatedAt: prismaNotaris.updatedAt,

@@ -12,7 +12,6 @@ import { NotFoundError } from "../errors/NotFoundError.js";
 import { NotarisMapper } from "../../infrastructure/mapper/NotarisMapper.js";
 import { ConflictError } from "../errors/ConflictError.js";
 
-// Reusable include object agar query seragam
 const notarisIncludeRelations = {
   pics: true,
   detailKavlingPajak: {
@@ -35,8 +34,10 @@ export class NotarisRepository implements INotarisRepository {
   async create(data: CreateNotarisDTO): Promise<NotarisEntity> {
     const createData: Prisma.NotarisCreateInput = {
       nama: data.nama,
-      nomorKtp: data.nomorKtp,
-      nomorIjin: data.nomorIjin,
+      nomorKtp: data.nomorKtp ?? null,
+      nomorIjin: data.nomorIjin ?? null,
+      noHp: data.noHp ?? null,
+      alamat: data.alamat ?? null,
       biayaAjb: data.biayaAjb,
     };
 
@@ -76,6 +77,8 @@ export class NotarisRepository implements INotarisRepository {
     if (data.nama !== undefined) updateData.nama = data.nama;
     if (data.nomorKtp !== undefined) updateData.nomorKtp = data.nomorKtp;
     if (data.nomorIjin !== undefined) updateData.nomorIjin = data.nomorIjin;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.alamat !== undefined) updateData.alamat = data.alamat;
     if (data.biayaAjb !== undefined) updateData.biayaAjb = data.biayaAjb;
 
     if (data.pics) {
