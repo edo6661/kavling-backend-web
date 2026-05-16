@@ -57,11 +57,7 @@ export class GenerateSuratPernyataanPdfUseCase {
         );
         y += 15;
         doc.text("Perusahaan", startX, y);
-        doc.text(
-          `: ${data.perusahaan || "Independen / Pribadi"}`,
-          startX + 100,
-          y,
-        );
+        doc.text(`: ${data.perusahaan || "Pribadi"}`, startX + 100, y);
         y += 15;
         doc.text("Alamat", startX, y);
         doc.text(

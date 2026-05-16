@@ -62,8 +62,7 @@ export class RegisterAgentUseCase {
     });
 
     try {
-      const namaPerusahaan =
-        result.agent.perusahaanAgent?.nama ?? "Independen / Pribadi";
+      const namaPerusahaan = result.agent.perusahaanAgent?.nama ?? "Pribadi";
       const pdfBuffer = await this.generateSuratPernyataanPdf.execute({
         nama: result.agent.nama,
         perusahaan: namaPerusahaan,

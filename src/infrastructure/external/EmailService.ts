@@ -25,7 +25,7 @@ export class EmailService {
     }
 
     const mailOptions = {
-      from: `"Bumantara" <${env.SMTP_EMAIL}>`,
+      from: `"Puri Safana" <${env.SMTP_EMAIL}>`,
       to,
       subject: "Registrasi Agent Berhasil - Surat Pernyataan",
       text: `Halo ${agentName},\n\nRegistrasi Berhasil!\nAkun portal Anda telah dibuat. Silakan Print / Cetak dokumen ini (PDF), beri Materai dan tanda tangan basah, lalu upload kembali di dalam Portal Agent.`,
