@@ -1,4 +1,4 @@
-tolong ingat kode backend nya:
+tolong ingat kode backend:
 
 <file path="src/app.ts">
 import { env } from "./config/env";
@@ -3194,6 +3194,99 @@ export class ApproveBuktiTagihanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/tagihan/TagihanUseCases.ts">
+import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
+import type {
+  CreateTagihanDTO,
+  UpdateTagihanDTO,
+  TagihanFilterDTO,
+  TagihanResponseDTO,
+} from "../../../domain/dtos/TagihanDTO.js";
+import type { CursorPaginatedData } from "../../../types/response.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+
+type ITtdData = Record<
+  string,
+  {
+    nama: string;
+    tanggal: string;
+    url: string;
+  }
+>;
+
+export class CreateTagihanUseCase {
+  constructor(private readonly repo: ITagihanRepository) {}
+  async execute(data: CreateTagihanDTO): Promise<TagihanResponseDTO> {
+    const count = await this.repo.count();
+    const noTagihan = `INV-${String(count + 1).padStart(3, "0")}`;
+    return await this.repo.create(data, noTagihan);
+  }
+}
+
+export class UpdateTagihanUseCase {
+  constructor(private readonly repo: ITagihanRepository) {}
+  async execute(
+    id: number,
+    data: UpdateTagihanDTO,
+  ): Promise<TagihanResponseDTO> {
+    return await this.repo.update(id, data);
+  }
+}
+
+export class GetTagihanByIdUseCase {
+  constructor(private readonly repo: ITagihanRepository) {}
+  async execute(id: number): Promise<TagihanResponseDTO> {
+    const result = await this.repo.findById(id);
+    if (!result) throw new NotFoundError("Tagihan tidak ditemukan");
+    return result;
+  }
+}
+
+export class GetTagihansPaginatedUseCase {
+  constructor(private readonly repo: ITagihanRepository) {}
+  async execute(
+    limit: number,
+    cursor?: number,
+    filters?: TagihanFilterDTO,
+  ): Promise<CursorPaginatedData<TagihanResponseDTO>> {
+    return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  }
+}
+export class DeleteTagihanUseCase {
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(id: number): Promise<void> {
+    const tagihan = await this.repo.findById(id);
+    if (!tagihan) throw new NotFoundError("Tagihan tidak ditemukan");
+
+    const filesToDelete = [tagihan.fileBukti, tagihan.fileBuktiRefund].filter(
+      Boolean,
+    ) as string[];
+
+    if (tagihan.ttdData) {
+      const ttdObj = tagihan.ttdData as unknown as ITtdData;
+      Object.values(ttdObj).forEach((ttd) => {
+        if (ttd?.url) filesToDelete.push(ttd.url);
+      });
+    }
+
+    for (const url of filesToDelete) {
+      await this.cloudinaryService
+        .deleteImageByUrl(url)
+        .catch((err) =>
+          console.error(`Gagal hapus file saat delete tagihan: ${url}`, err),
+        );
+    }
+
+    await this.repo.delete(id);
+  }
+}
+</file>
+
 <file path="src/application/usecases/tagihan/UploadBuktiRefundUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -4113,6 +4206,33 @@ export interface IRolePermissionRepository {
     filters?: RolePermissionFilterDTO,
   ): Promise<RolePermissionResponseDTO[]>;
   delete(id: number): Promise<void>;
+}
+</file>
+
+<file path="src/domain/repositories/ITagihanRepo.ts">
+import type {
+  TagihanResponseDTO,
+  CreateTagihanDTO,
+  UpdateTagihanDTO,
+  TagihanFilterDTO,
+} from "../dtos/TagihanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+
+export interface ITagihanRepository {
+  create(
+    data: CreateTagihanDTO,
+    noTagihan: string,
+  ): Promise<TagihanResponseDTO>;
+  findById(id: number): Promise<TagihanResponseDTO | null>;
+  update(id: number, data: UpdateTagihanDTO): Promise<TagihanResponseDTO>;
+  delete(id: number): Promise<void>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: TagihanFilterDTO,
+  ): Promise<CursorPaginatedData<TagihanResponseDTO>>;
+  count(): Promise<number>;
+  findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null>;
 }
 </file>
 
@@ -5919,6 +6039,56 @@ export const rolePermissionIdParamSchema = {
 };
 </file>
 
+<file path="src/validations/tagihanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { PaymentStatus } from "@prisma/client";
+
+export const createTagihanSchema = {
+  body: z.object({
+    customerId: z.coerce.number().int().positive("Customer wajib dipilih"),
+    penjualanId: z.coerce
+      .number()
+      .int()
+      .positive("Data Penjualan (Kavling) wajib dipilih"),
+    pembayaran: z.string().min(3, "Keterangan pembayaran minimal 3 karakter"),
+    nominal: z.coerce.number().positive("Nominal harus lebih dari 0"),
+    jatuhTempo: z.string().min(1, "Jatuh tempo wajib diisi"),
+    reminderBerikutnya: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const updateTagihanSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    pembayaran: emptyAsUndefined(z.string().min(3).optional()),
+    nominal: emptyAsUndefined(z.coerce.number().positive().optional()),
+    jatuhTempo: emptyAsUndefined(z.string().optional()),
+    reminderBerikutnya: emptyAsUndefined(z.string().optional()),
+    status: emptyAsUndefined(z.nativeEnum(PaymentStatus).optional()),
+  }),
+};
+
+export const getTagihansPaginatedSchema = {
+  query: cursorPaginationQuerySchema.extend({
+    customerId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
+    penjualanId: emptyAsUndefined(
+      z.coerce.number().int().positive().optional(),
+    ),
+    status: emptyAsUndefined(z.nativeEnum(PaymentStatus).optional()),
+  }),
+};
+
+export const uploadBuktiByNoTagihanSchema = {
+  params: z.object({
+    noTagihan: z.string().min(1, "Nomor Tagihan wajib diisi"),
+  }),
+};
+</file>
+
 <file path="src/validations/userSchema.ts">
 // src/validations/userSchema.ts
 import { z } from "zod";
@@ -6872,99 +7042,6 @@ export class SaveTagihanSignatureUseCase {
 }
 </file>
 
-<file path="src/application/usecases/tagihan/TagihanUseCases.ts">
-import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
-import type {
-  CreateTagihanDTO,
-  UpdateTagihanDTO,
-  TagihanFilterDTO,
-  TagihanResponseDTO,
-} from "../../../domain/dtos/TagihanDTO.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-
-type ITtdData = Record<
-  string,
-  {
-    nama: string;
-    tanggal: string;
-    url: string;
-  }
->;
-
-export class CreateTagihanUseCase {
-  constructor(private readonly repo: ITagihanRepository) {}
-  async execute(data: CreateTagihanDTO): Promise<TagihanResponseDTO> {
-    const count = await this.repo.count();
-    const noTagihan = `INV-${String(count + 1).padStart(3, "0")}`;
-    return await this.repo.create(data, noTagihan);
-  }
-}
-
-export class UpdateTagihanUseCase {
-  constructor(private readonly repo: ITagihanRepository) {}
-  async execute(
-    id: number,
-    data: UpdateTagihanDTO,
-  ): Promise<TagihanResponseDTO> {
-    return await this.repo.update(id, data);
-  }
-}
-
-export class GetTagihanByIdUseCase {
-  constructor(private readonly repo: ITagihanRepository) {}
-  async execute(id: number): Promise<TagihanResponseDTO> {
-    const result = await this.repo.findById(id);
-    if (!result) throw new NotFoundError("Tagihan tidak ditemukan");
-    return result;
-  }
-}
-
-export class GetTagihansPaginatedUseCase {
-  constructor(private readonly repo: ITagihanRepository) {}
-  async execute(
-    limit: number,
-    cursor?: number,
-    filters?: TagihanFilterDTO,
-  ): Promise<CursorPaginatedData<TagihanResponseDTO>> {
-    return await this.repo.findWithCursorPagination(limit, cursor, filters);
-  }
-}
-export class DeleteTagihanUseCase {
-  constructor(
-    private readonly repo: ITagihanRepository,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
-
-  async execute(id: number): Promise<void> {
-    const tagihan = await this.repo.findById(id);
-    if (!tagihan) throw new NotFoundError("Tagihan tidak ditemukan");
-
-    const filesToDelete = [tagihan.fileBukti, tagihan.fileBuktiRefund].filter(
-      Boolean,
-    ) as string[];
-
-    if (tagihan.ttdData) {
-      const ttdObj = tagihan.ttdData as unknown as ITtdData;
-      Object.values(ttdObj).forEach((ttd) => {
-        if (ttd?.url) filesToDelete.push(ttd.url);
-      });
-    }
-
-    for (const url of filesToDelete) {
-      await this.cloudinaryService
-        .deleteImageByUrl(url)
-        .catch((err) =>
-          console.error(`Gagal hapus file saat delete tagihan: ${url}`, err),
-        );
-    }
-
-    await this.repo.delete(id);
-  }
-}
-</file>
-
 <file path="src/domain/dtos/NotarisDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 
@@ -7430,33 +7507,6 @@ export class FeeAgentRepository implements IFeeAgentRepository {
       },
     };
   }
-}
-</file>
-
-<file path="src/domain/repositories/ITagihanRepo.ts">
-import type {
-  TagihanResponseDTO,
-  CreateTagihanDTO,
-  UpdateTagihanDTO,
-  TagihanFilterDTO,
-} from "../dtos/TagihanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-
-export interface ITagihanRepository {
-  create(
-    data: CreateTagihanDTO,
-    noTagihan: string,
-  ): Promise<TagihanResponseDTO>;
-  findById(id: number): Promise<TagihanResponseDTO | null>;
-  update(id: number, data: UpdateTagihanDTO): Promise<TagihanResponseDTO>;
-  delete(id: number): Promise<void>;
-  findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: TagihanFilterDTO,
-  ): Promise<CursorPaginatedData<TagihanResponseDTO>>;
-  count(): Promise<number>;
-  findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null>;
 }
 </file>
 
@@ -8328,56 +8378,6 @@ export const getNotarisPaginatedSchema = {
 };
 </file>
 
-<file path="src/validations/tagihanSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import { PaymentStatus } from "@prisma/client";
-
-export const createTagihanSchema = {
-  body: z.object({
-    customerId: z.coerce.number().int().positive("Customer wajib dipilih"),
-    penjualanId: z.coerce
-      .number()
-      .int()
-      .positive("Data Penjualan (Kavling) wajib dipilih"),
-    pembayaran: z.string().min(3, "Keterangan pembayaran minimal 3 karakter"),
-    nominal: z.coerce.number().positive("Nominal harus lebih dari 0"),
-    jatuhTempo: z.string().min(1, "Jatuh tempo wajib diisi"),
-    reminderBerikutnya: emptyAsUndefined(z.string().optional()),
-  }),
-};
-
-export const updateTagihanSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
-  body: z.object({
-    pembayaran: emptyAsUndefined(z.string().min(3).optional()),
-    nominal: emptyAsUndefined(z.coerce.number().positive().optional()),
-    jatuhTempo: emptyAsUndefined(z.string().optional()),
-    reminderBerikutnya: emptyAsUndefined(z.string().optional()),
-    status: emptyAsUndefined(z.nativeEnum(PaymentStatus).optional()),
-  }),
-};
-
-export const getTagihansPaginatedSchema = {
-  query: cursorPaginationQuerySchema.extend({
-    customerId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
-    penjualanId: emptyAsUndefined(
-      z.coerce.number().int().positive().optional(),
-    ),
-    status: emptyAsUndefined(z.nativeEnum(PaymentStatus).optional()),
-  }),
-};
-
-export const uploadBuktiByNoTagihanSchema = {
-  params: z.object({
-    noTagihan: z.string().min(1, "Nomor Tagihan wajib diisi"),
-  }),
-};
-</file>
-
 <file path="docker-compose.yml">
 services:
   app:
@@ -9225,6 +9225,62 @@ export interface ProgressPenjualanResponseDTO {
 }
 </file>
 
+<file path="src/domain/dtos/TagihanDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { PaymentStatus } from "@prisma/client";
+
+export interface CreateTagihanDTO {
+  customerId: number;
+  penjualanId: number;
+  pembayaran: string;
+  nominal: number;
+  jatuhTempo: string | Date;
+  reminderBerikutnya?: string | Date | null | undefined;
+}
+
+export interface UpdateTagihanDTO {
+  pembayaran?: string | undefined;
+  nominal?: number | undefined;
+  jatuhTempo?: string | Date | undefined;
+  status?: PaymentStatus | undefined;
+  reminderBerikutnya?: string | Date | null | undefined;
+  fileBukti?: string | null | undefined;
+}
+
+export interface TagihanResponseDTO {
+  id: number;
+  noTagihan: string;
+  customerId: number;
+  namaCustomer: string;
+  penjualanId: number;
+  perumahan: string;
+  blok: string;
+  nomorUnit: string;
+  pembayaran: string;
+  nominal: number;
+  jatuhTempo: Date;
+  status: PaymentStatus;
+  fileBukti: string | null;
+  reminderBerikutnya: Date | null;
+  isRefunded?: boolean;
+  fileBuktiRefund?: string | null;
+  ttdData?: any;
+  rekeningTujuan?: {
+    namaBank: string;
+    noRekening: string;
+    atasNama: string;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TagihanFilterDTO extends BaseFilterDTO {
+  customerId?: number;
+  penjualanId?: number;
+  status?: PaymentStatus;
+}
+</file>
+
 <file path="src/domain/repositories/progressPenjualanRepo.ts">
 import type { PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
@@ -9350,6 +9406,169 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
 }
 </file>
 
+<file path="src/domain/repositories/tagihanRepo.ts">
+import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { ITagihanRepository } from "./ITagihanRepo.js";
+import type {
+  CreateTagihanDTO,
+  UpdateTagihanDTO,
+  TagihanFilterDTO,
+  TagihanResponseDTO,
+} from "../dtos/TagihanDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { TagihanMapper } from "../../infrastructure/mapper/TagihanMapper.js";
+
+const tagihanIncludeRelations = {
+  customer: { select: { nama: true } },
+  penjualan: {
+    include: {
+      kavling: {
+        include: {
+          perumahan: { select: { nama: true } },
+          rekeningTujuan: true,
+        },
+      },
+      rekeningTujuan: true,
+    },
+  },
+} satisfies Prisma.TagihanInclude;
+
+export class TagihanRepository implements ITagihanRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async count(): Promise<number> {
+    return await this.db.tagihan.count();
+  }
+
+  async create(
+    data: CreateTagihanDTO,
+    noTagihan: string,
+  ): Promise<TagihanResponseDTO> {
+    const parseDate = (d: string | Date) => new Date(d);
+
+    const result = await this.db.tagihan.create({
+      data: {
+        noTagihan,
+        customerId: data.customerId,
+        penjualanId: data.penjualanId,
+        pembayaran: data.pembayaran,
+        nominal: data.nominal,
+        jatuhTempo: parseDate(data.jatuhTempo),
+        reminderBerikutnya: data.reminderBerikutnya
+          ? parseDate(data.reminderBerikutnya)
+          : null,
+        status: "BELUM_BAYAR",
+      },
+      include: tagihanIncludeRelations,
+    });
+
+    return TagihanMapper.toDomain(result);
+  }
+
+  async findById(id: number): Promise<TagihanResponseDTO | null> {
+    const result = await this.db.tagihan.findUnique({
+      where: { id },
+      include: tagihanIncludeRelations,
+    });
+    if (!result) return null;
+    return TagihanMapper.toDomain(result);
+  }
+
+  async update(
+    id: number,
+    data: UpdateTagihanDTO,
+  ): Promise<TagihanResponseDTO> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
+
+    const updateData: Prisma.TagihanUpdateInput = {};
+    if (data.pembayaran !== undefined) updateData.pembayaran = data.pembayaran;
+    if (data.nominal !== undefined) updateData.nominal = data.nominal;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.fileBukti !== undefined) updateData.fileBukti = data.fileBukti;
+    if (data.jatuhTempo !== undefined)
+      updateData.jatuhTempo = new Date(data.jatuhTempo);
+    if (data.reminderBerikutnya !== undefined) {
+      updateData.reminderBerikutnya = data.reminderBerikutnya
+        ? new Date(data.reminderBerikutnya)
+        : null;
+    }
+
+    const result = await this.db.tagihan.update({
+      where: { id },
+      data: updateData,
+      include: tagihanIncludeRelations,
+    });
+
+    return TagihanMapper.toDomain(result);
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: TagihanFilterDTO,
+  ): Promise<CursorPaginatedData<TagihanResponseDTO>> {
+    const where: Prisma.TagihanWhereInput = {
+      penjualan: {
+        status: {
+          not: "BATAL",
+        },
+      },
+    };
+
+    if (filters?.customerId) where.customerId = filters.customerId;
+    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
+    if (filters?.status) where.status = filters.status;
+
+    if (filters?.search) {
+      where.OR = [
+        { noTagihan: { contains: filters.search } },
+        { pembayaran: { contains: filters.search } },
+        { customer: { nama: { contains: filters.search } } },
+      ];
+    }
+
+    const items = await this.db.tagihan.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      include: tagihanIncludeRelations,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => TagihanMapper.toDomain(item as any)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
+    await this.db.tagihan.delete({ where: { id } });
+  }
+  async findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null> {
+    const result = await this.db.tagihan.findUnique({
+      where: { noTagihan },
+      include: tagihanIncludeRelations,
+    });
+    if (!result) return null;
+    return TagihanMapper.toDomain(result);
+  }
+}
+</file>
+
 <file path="src/infrastructure/mapper/NotarisMapper.ts">
 import type { Prisma } from "@prisma/client";
 import type { NotarisEntity } from "../../domain/entities/Notaris.js";
@@ -9457,6 +9676,62 @@ export class ProgressPenjualanMapper {
       checklistBast: prismaProgress.checklistBast
         ? (prismaProgress.checklistBast as ChecklistBastType)
         : null,
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/TagihanMapper.ts">
+import type { Prisma } from "@prisma/client";
+import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
+
+type TagihanWithRelations = Prisma.TagihanGetPayload<{
+  include: {
+    customer: { select: { nama: true } };
+    penjualan: {
+      include: {
+        kavling: {
+          include: {
+            perumahan: { select: { nama: true } };
+            rekeningTujuan: true;
+          };
+        };
+        rekeningTujuan: true;
+      };
+    };
+  };
+}>;
+
+export class TagihanMapper {
+  static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
+    return {
+      id: prismaTagihan.id,
+      noTagihan: prismaTagihan.noTagihan,
+      customerId: prismaTagihan.customerId,
+      namaCustomer: prismaTagihan.customer.nama,
+      penjualanId: prismaTagihan.penjualanId,
+      perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
+      blok: prismaTagihan.penjualan.kavling.blok,
+      nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
+      pembayaran: prismaTagihan.pembayaran,
+      nominal: Number(prismaTagihan.nominal),
+      jatuhTempo: prismaTagihan.jatuhTempo,
+      status: prismaTagihan.status,
+      fileBukti: prismaTagihan.fileBukti,
+      reminderBerikutnya: prismaTagihan.reminderBerikutnya,
+      isRefunded: prismaTagihan.isRefunded ?? false,
+      fileBuktiRefund: prismaTagihan.fileBuktiRefund ?? null,
+      ttdData: prismaTagihan.ttdData ?? null,
+      rekeningTujuan: prismaTagihan.penjualan.kavling.rekeningTujuan
+        ? {
+            namaBank: prismaTagihan.penjualan.kavling.rekeningTujuan.namaBank,
+            noRekening:
+              prismaTagihan.penjualan.kavling.rekeningTujuan.noRekening,
+            atasNama: prismaTagihan.penjualan.kavling.rekeningTujuan.atasNama,
+          }
+        : null,
+      createdAt: prismaTagihan.createdAt,
+      updatedAt: prismaTagihan.updatedAt,
     };
   }
 }
@@ -10036,76 +10311,6 @@ export class CustomerController {
 }
 </file>
 
-<file path="src/validations/agentSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import { AgentStatus, AgentType } from "@prisma/client";
-
-// Schema untuk nested PIC
-const picSchema = z.object({
-  nama: z.string().min(3, "Nama PIC minimal 3 karakter"),
-  noHp: z.string().min(9, "Nomor HP PIC minimal 9 karakter"),
-  alamat: emptyAsUndefined(z.string().optional()),
-});
-export const createAgentSchema = {
-  body: z.object({
-    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
-    nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
-    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
-    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
-    alamat: emptyAsUndefined(z.string().optional()),
-    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
-    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
-    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
-    namaBank: emptyAsUndefined(z.string().optional()),
-    noRekening: emptyAsUndefined(z.string().optional()),
-    atasNamaRekening: emptyAsUndefined(z.string().optional()),
-    feeMarketingPct: emptyAsUndefined(
-      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
-    ),
-    potonganPph: emptyAsUndefined(
-      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
-    ),
-    pics: emptyAsUndefined(z.array(picSchema).optional()),
-  }),
-};
-export const updateAgentSchema = {
-  params: z.object({ id: z.string().regex(/^\d+$/, "ID harus berupa angka") }),
-  body: z.object({
-    nik: emptyAsUndefined(
-      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
-    ),
-    nama: emptyAsUndefined(z.string().min(3).optional()),
-    noHp: emptyAsUndefined(z.string().min(9).optional()),
-    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
-    alamat: emptyAsUndefined(z.string().optional()),
-    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
-    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
-    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
-    namaBank: emptyAsUndefined(z.string().optional()),
-    noRekening: emptyAsUndefined(z.string().optional()),
-    atasNamaRekening: emptyAsUndefined(z.string().optional()),
-    feeMarketingPct: emptyAsUndefined(
-      z.coerce.number().min(0).max(100).optional(),
-    ),
-    potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
-    pics: emptyAsUndefined(z.array(picSchema).optional()),
-  }),
-};
-export const generateAgentAccountSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID Agent harus berupa angka"),
-  }),
-  body: z.object({
-    password: z.string().min(6, "Password minimal 6 karakter"),
-  }),
-};
-export const getAgentsPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
-</file>
-
 <file path="src/validations/customerKavlingSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -10415,342 +10620,6 @@ export class CancelPenjualanUseCase {
 }
 </file>
 
-<file path="src/domain/dtos/TagihanDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { PaymentStatus } from "@prisma/client";
-
-export interface CreateTagihanDTO {
-  customerId: number;
-  penjualanId: number;
-  pembayaran: string;
-  nominal: number;
-  jatuhTempo: string | Date;
-  reminderBerikutnya?: string | Date | null | undefined;
-}
-
-export interface UpdateTagihanDTO {
-  pembayaran?: string | undefined;
-  nominal?: number | undefined;
-  jatuhTempo?: string | Date | undefined;
-  status?: PaymentStatus | undefined;
-  reminderBerikutnya?: string | Date | null | undefined;
-  fileBukti?: string | null | undefined;
-}
-
-export interface TagihanResponseDTO {
-  id: number;
-  noTagihan: string;
-  customerId: number;
-  namaCustomer: string;
-  penjualanId: number;
-  perumahan: string;
-  blok: string;
-  nomorUnit: string;
-  pembayaran: string;
-  nominal: number;
-  jatuhTempo: Date;
-  status: PaymentStatus;
-  fileBukti: string | null;
-  reminderBerikutnya: Date | null;
-  isRefunded?: boolean;
-  fileBuktiRefund?: string | null;
-  ttdData?: any;
-  rekeningTujuan?: {
-    namaBank: string;
-    noRekening: string;
-    atasNama: string;
-  } | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TagihanFilterDTO extends BaseFilterDTO {
-  customerId?: number;
-  penjualanId?: number;
-  status?: PaymentStatus;
-}
-</file>
-
-<file path="src/domain/entities/Agent.ts">
-import type { AgentStatus } from "@prisma/client";
-import type { AgentType } from "@prisma/client";
-
-export interface PicAgentEntity {
-  id: number;
-  agentId: number;
-  nama: string;
-  noHp: string;
-  alamat: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PenjualanAgentEntity {
-  id: number;
-  noTransaksi: string;
-  tanggal: Date;
-  hargaJual: number;
-  status: string;
-  customer: { nama: string } | null;
-  kavling: {
-    blok: string;
-    nomorUnit: string;
-    perumahan: { nama: string } | null;
-  } | null;
-}
-export interface AgentEntity {
-  id: number;
-  userId: number | null;
-  nik: string;
-  kodeSales: string | null;
-  nama: string;
-  alamat: string | null;
-  noHp: string;
-  email: string | null;
-  status: AgentStatus;
-  type: AgentType;
-  namaBank: string | null;
-  noRekening: string | null;
-  atasNamaRekening: string | null;
-
-  feeMarketingPct: number | null;
-  potonganPph: number | null;
-
-  fileKtp: string | null;
-  fileNpwp: string | null;
-  kwitansiBookingFee: string | null;
-  fileSuratPernyataan: string | null;
-  defaultSuratPernyataan: string | null;
-  fileSuratKeterangan: string | null;
-  fileKtpDirektur: string | null;
-  fileNpwpPerusahaan: string | null;
-  hasAccount: boolean;
-  pics: PicAgentEntity[];
-  penjualan?: PenjualanAgentEntity[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-</file>
-
-<file path="src/domain/repositories/tagihanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { ITagihanRepository } from "./ITagihanRepo.js";
-import type {
-  CreateTagihanDTO,
-  UpdateTagihanDTO,
-  TagihanFilterDTO,
-  TagihanResponseDTO,
-} from "../dtos/TagihanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { TagihanMapper } from "../../infrastructure/mapper/TagihanMapper.js";
-
-const tagihanIncludeRelations = {
-  customer: { select: { nama: true } },
-  penjualan: {
-    include: {
-      kavling: {
-        include: {
-          perumahan: { select: { nama: true } },
-          rekeningTujuan: true,
-        },
-      },
-      rekeningTujuan: true,
-    },
-  },
-} satisfies Prisma.TagihanInclude;
-
-export class TagihanRepository implements ITagihanRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async count(): Promise<number> {
-    return await this.db.tagihan.count();
-  }
-
-  async create(
-    data: CreateTagihanDTO,
-    noTagihan: string,
-  ): Promise<TagihanResponseDTO> {
-    const parseDate = (d: string | Date) => new Date(d);
-
-    const result = await this.db.tagihan.create({
-      data: {
-        noTagihan,
-        customerId: data.customerId,
-        penjualanId: data.penjualanId,
-        pembayaran: data.pembayaran,
-        nominal: data.nominal,
-        jatuhTempo: parseDate(data.jatuhTempo),
-        reminderBerikutnya: data.reminderBerikutnya
-          ? parseDate(data.reminderBerikutnya)
-          : null,
-        status: "BELUM_BAYAR",
-      },
-      include: tagihanIncludeRelations,
-    });
-
-    return TagihanMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<TagihanResponseDTO | null> {
-    const result = await this.db.tagihan.findUnique({
-      where: { id },
-      include: tagihanIncludeRelations,
-    });
-    if (!result) return null;
-    return TagihanMapper.toDomain(result);
-  }
-
-  async update(
-    id: number,
-    data: UpdateTagihanDTO,
-  ): Promise<TagihanResponseDTO> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
-
-    const updateData: Prisma.TagihanUpdateInput = {};
-    if (data.pembayaran !== undefined) updateData.pembayaran = data.pembayaran;
-    if (data.nominal !== undefined) updateData.nominal = data.nominal;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.fileBukti !== undefined) updateData.fileBukti = data.fileBukti;
-    if (data.jatuhTempo !== undefined)
-      updateData.jatuhTempo = new Date(data.jatuhTempo);
-    if (data.reminderBerikutnya !== undefined) {
-      updateData.reminderBerikutnya = data.reminderBerikutnya
-        ? new Date(data.reminderBerikutnya)
-        : null;
-    }
-
-    const result = await this.db.tagihan.update({
-      where: { id },
-      data: updateData,
-      include: tagihanIncludeRelations,
-    });
-
-    return TagihanMapper.toDomain(result);
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: TagihanFilterDTO,
-  ): Promise<CursorPaginatedData<TagihanResponseDTO>> {
-    const where: Prisma.TagihanWhereInput = {
-      penjualan: {
-        status: {
-          not: "BATAL",
-        },
-      },
-    };
-
-    if (filters?.customerId) where.customerId = filters.customerId;
-    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
-    if (filters?.status) where.status = filters.status;
-
-    if (filters?.search) {
-      where.OR = [
-        { noTagihan: { contains: filters.search } },
-        { pembayaran: { contains: filters.search } },
-        { customer: { nama: { contains: filters.search } } },
-      ];
-    }
-
-    const items = await this.db.tagihan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ createdAt: "desc" }],
-      include: tagihanIncludeRelations,
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    return {
-      items: items.map((item) => TagihanMapper.toDomain(item as any)),
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
-    await this.db.tagihan.delete({ where: { id } });
-  }
-  async findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null> {
-    const result = await this.db.tagihan.findUnique({
-      where: { noTagihan },
-      include: tagihanIncludeRelations,
-    });
-    if (!result) return null;
-    return TagihanMapper.toDomain(result);
-  }
-}
-</file>
-
-<file path="src/infrastructure/mapper/TagihanMapper.ts">
-import type { Prisma } from "@prisma/client";
-import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
-
-type TagihanWithRelations = Prisma.TagihanGetPayload<{
-  include: {
-    customer: { select: { nama: true } };
-    penjualan: {
-      include: {
-        kavling: {
-          include: {
-            perumahan: { select: { nama: true } };
-            rekeningTujuan: true;
-          };
-        };
-        rekeningTujuan: true;
-      };
-    };
-  };
-}>;
-
-export class TagihanMapper {
-  static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
-    return {
-      id: prismaTagihan.id,
-      noTagihan: prismaTagihan.noTagihan,
-      customerId: prismaTagihan.customerId,
-      namaCustomer: prismaTagihan.customer.nama,
-      penjualanId: prismaTagihan.penjualanId,
-      perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
-      blok: prismaTagihan.penjualan.kavling.blok,
-      nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
-      pembayaran: prismaTagihan.pembayaran,
-      nominal: Number(prismaTagihan.nominal),
-      jatuhTempo: prismaTagihan.jatuhTempo,
-      status: prismaTagihan.status,
-      fileBukti: prismaTagihan.fileBukti,
-      reminderBerikutnya: prismaTagihan.reminderBerikutnya,
-      isRefunded: prismaTagihan.isRefunded ?? false,
-      fileBuktiRefund: prismaTagihan.fileBuktiRefund ?? null,
-      ttdData: prismaTagihan.ttdData ?? null,
-      rekeningTujuan: prismaTagihan.penjualan.kavling.rekeningTujuan
-        ? {
-            namaBank: prismaTagihan.penjualan.kavling.rekeningTujuan.namaBank,
-            noRekening:
-              prismaTagihan.penjualan.kavling.rekeningTujuan.noRekening,
-            atasNama: prismaTagihan.penjualan.kavling.rekeningTujuan.atasNama,
-          }
-        : null,
-      createdAt: prismaTagihan.createdAt,
-      updatedAt: prismaTagihan.updatedAt,
-    };
-  }
-}
-</file>
-
 <file path="src/presentation/controllers/authController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -10985,6 +10854,82 @@ export const createCustomerRoutes = (
 };
 </file>
 
+<file path="src/validations/agentSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { AgentStatus, AgentType } from "@prisma/client";
+
+// Schema untuk nested PIC
+const picSchema = z.object({
+  nama: z.string().min(3, "Nama PIC minimal 3 karakter"),
+  noHp: z.string().min(9, "Nomor HP PIC minimal 9 karakter"),
+  alamat: emptyAsUndefined(z.string().optional()),
+});
+export const createAgentSchema = {
+  body: z.object({
+    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
+    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
+    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
+    feeClosingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ), // <-- TAMBAHKAN INI
+    potonganPph: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
+    pics: emptyAsUndefined(z.array(picSchema).optional()),
+  }),
+};
+export const updateAgentSchema = {
+  params: z.object({ id: z.string().regex(/^\d+$/, "ID harus berupa angka") }),
+  body: z.object({
+    nik: emptyAsUndefined(
+      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
+    ),
+    nama: emptyAsUndefined(z.string().min(3).optional()),
+    noHp: emptyAsUndefined(z.string().min(9).optional()),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
+    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100).optional(),
+    ),
+    feeClosingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ), // <-- TAMBAHKAN INI
+    potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
+    pics: emptyAsUndefined(z.array(picSchema).optional()),
+  }),
+};
+export const generateAgentAccountSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Agent harus berupa angka"),
+  }),
+  body: z.object({
+    password: z.string().min(6, "Password minimal 6 karakter"),
+  }),
+};
+export const getAgentsPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+</file>
+
 <file path="src/validations/authSchema.ts">
 import { z } from "zod";
 import { Role } from "@prisma/client";
@@ -11189,298 +11134,6 @@ export class ApproveGantiKavlingUseCase {
 }
 </file>
 
-<file path="src/domain/repositories/agentRepo.ts">
-import { AgentStatus, type Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IAgentRepository } from "./IAgentRepo.js";
-import type { AgentEntity } from "../entities/Agent.js";
-import type {
-  CreateAgentDTO,
-  UpdateAgentDTO,
-  AgentFilterDTO,
-} from "../dtos/AgentDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
-
-export class AgentRepository implements IAgentRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreateAgentDTO): Promise<AgentEntity> {
-    const checkDuplicate = await this.db.agent.findFirst({
-      where: { nik: data.nik },
-    });
-
-    if (checkDuplicate) {
-      throw new ConflictError("NIK Agent sudah terdaftar");
-    }
-
-    const createData: Prisma.AgentCreateInput = {
-      nik: data.nik,
-      nama: data.nama,
-      noHp: data.noHp,
-      email: data.email ?? null,
-      alamat: data.alamat ?? null,
-      namaBank: data.namaBank ?? null,
-      noRekening: data.noRekening ?? null,
-      atasNamaRekening: data.atasNamaRekening ?? null,
-      status: AgentStatus.AKTIF,
-    };
-
-    if (data.status) createData.status = data.status;
-    if (data.type) createData.type = data.type;
-    if (data.perusahaanAgentId !== undefined) {
-      createData.perusahaanAgent = { connect: { id: data.perusahaanAgentId } };
-    }
-    if (data.feeMarketingPct !== undefined)
-      createData.feeMarketingPct = data.feeMarketingPct;
-    if (data.potonganPph !== undefined)
-      createData.potonganPph = data.potonganPph;
-
-    if (data.pics && data.pics.length > 0) {
-      createData.pics = {
-        create: data.pics.map((p) => ({
-          nama: p.nama,
-          noHp: p.noHp,
-          alamat: p.alamat ?? null,
-        })),
-      };
-    }
-
-    const result = await this.db.agent.create({
-      data: createData,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return AgentMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<AgentEntity | null> {
-    const result = await this.db.agent.findUnique({
-      where: { id },
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-    if (!result) return null;
-    return AgentMapper.toDomain(result);
-  }
-  async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Agent tidak ditemukan");
-    }
-
-    const updateData: Prisma.AgentUncheckedUpdateInput = {};
-
-    if (data.userId !== undefined) updateData.userId = data.userId;
-    if (data.nik !== undefined) updateData.nik = data.nik;
-    if (data.nama !== undefined) updateData.nama = data.nama;
-    if (data.noHp !== undefined) updateData.noHp = data.noHp;
-    if (data.email !== undefined) updateData.email = data.email ?? null;
-    if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.type !== undefined) updateData.type = data.type;
-    if (data.perusahaanAgentId !== undefined) {
-      updateData.perusahaanAgentId = data.perusahaanAgentId;
-    }
-    if (data.namaBank !== undefined)
-      updateData.namaBank = data.namaBank ?? null;
-    if (data.noRekening !== undefined)
-      updateData.noRekening = data.noRekening ?? null;
-    if (data.atasNamaRekening !== undefined)
-      updateData.atasNamaRekening = data.atasNamaRekening ?? null;
-
-    if (data.feeMarketingPct !== undefined)
-      updateData.feeMarketingPct = data.feeMarketingPct ?? null;
-    if (data.potonganPph !== undefined)
-      updateData.potonganPph = data.potonganPph ?? null;
-
-    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
-    if (data.fileNpwp !== undefined)
-      updateData.fileNpwp = data.fileNpwp ?? null;
-    if (data.kwitansiBookingFee !== undefined)
-      updateData.kwitansiBookingFee = data.kwitansiBookingFee ?? null;
-    if (data.fileSuratPernyataan !== undefined)
-      updateData.fileSuratPernyataan = data.fileSuratPernyataan ?? null;
-    if (data.fileSuratKeterangan !== undefined)
-      updateData.fileSuratKeterangan = data.fileSuratKeterangan ?? null;
-    if (data.fileKtpDirektur !== undefined)
-      updateData.fileKtpDirektur = data.fileKtpDirektur ?? null;
-    if (data.fileNpwpPerusahaan !== undefined)
-      updateData.fileNpwpPerusahaan = data.fileNpwpPerusahaan ?? null;
-
-    if (data.pics) {
-      updateData.pics = {
-        deleteMany: {},
-        create: data.pics.map((p) => ({
-          nama: p.nama,
-          noHp: p.noHp,
-          alamat: p.alamat ?? null,
-        })),
-      };
-    }
-
-    const result = await this.db.agent.update({
-      where: { id },
-      data: updateData,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return AgentMapper.toDomain(result);
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: AgentFilterDTO,
-  ): Promise<CursorPaginatedData<AgentEntity>> {
-    const where: Prisma.AgentWhereInput = {};
-
-    if (filters?.search) {
-      where.OR = [
-        { nama: { contains: filters.search } },
-        { nik: { contains: filters.search } },
-      ];
-    }
-
-    let orderByClause: Prisma.AgentOrderByWithRelationInput[] = [
-      { nama: "asc" },
-    ];
-
-    if (filters?.orderBy) {
-      const { field, direction } = filters.orderBy;
-      const validFields = ["nama", "nik", "createdAt"];
-      if (validFields.includes(field)) {
-        orderByClause = [{ [field]: direction }, { id: "asc" }];
-      }
-    }
-
-    const items = await this.db.agent.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: orderByClause,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    return {
-      items: items.map((item) => AgentMapper.toDomain(item)),
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Agent tidak ditemukan");
-    }
-
-    await this.db.agent.delete({ where: { id } });
-  }
-  async findByUserId(userId: number): Promise<AgentEntity | null> {
-    const result = await this.db.agent.findFirst({
-      where: { userId },
-      include: { pics: true },
-    });
-    if (!result) return null;
-    return AgentMapper.toDomain(result as any);
-  }
-}
-</file>
-
 <file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
 import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -11572,6 +11225,258 @@ export class UploadBuktiTagihanUseCase {
 
     return updatedTagihan;
   }
+}
+</file>
+
+<file path="src/domain/entities/Agent.ts">
+import type { AgentStatus } from "@prisma/client";
+import type { AgentType } from "@prisma/client";
+
+export interface PicAgentEntity {
+  id: number;
+  agentId: number;
+  nama: string;
+  noHp: string;
+  alamat: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PenjualanAgentEntity {
+  id: number;
+  noTransaksi: string;
+  tanggal: Date;
+  hargaJual: number;
+  status: string;
+  customer: { nama: string } | null;
+  kavling: {
+    blok: string;
+    nomorUnit: string;
+    perumahan: { nama: string } | null;
+  } | null;
+}
+export interface AgentEntity {
+  id: number;
+  userId: number | null;
+  nik: string;
+  kodeSales: string | null;
+  nama: string;
+  alamat: string | null;
+  noHp: string;
+  email: string | null;
+  status: AgentStatus;
+  type: AgentType;
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
+
+  feeMarketingPct: number | null;
+  feeClosingPct: number | null;
+  potonganPph: number | null;
+
+  fileKtp: string | null;
+  fileNpwp: string | null;
+  kwitansiBookingFee: string | null;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
+  fileSuratKeterangan: string | null;
+  fileKtpDirektur: string | null;
+  fileNpwpPerusahaan: string | null;
+  hasAccount: boolean;
+  pics: PicAgentEntity[];
+  penjualan?: PenjualanAgentEntity[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
+<file path="src/presentation/controllers/tagihanController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type {
+  CreateTagihanUseCase,
+  UpdateTagihanUseCase,
+  GetTagihanByIdUseCase,
+  GetTagihansPaginatedUseCase,
+  DeleteTagihanUseCase,
+} from "../../application/usecases/tagihan/TagihanUseCases.js";
+import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+
+import type {
+  createTagihanSchema,
+  updateTagihanSchema,
+} from "../../validations/tagihanSchema.js";
+import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
+import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
+import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
+import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
+import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
+import type { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
+
+export class TagihanController {
+  constructor(
+    private readonly createUseCase: CreateTagihanUseCase,
+    private readonly updateUseCase: UpdateTagihanUseCase,
+    private readonly getByIdUseCase: GetTagihanByIdUseCase,
+    private readonly getPaginatedUseCase: GetTagihansPaginatedUseCase,
+    private readonly deleteUseCase: DeleteTagihanUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
+    private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
+    private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
+    private readonly approveBuktiTagihanUseCase: ApproveBuktiTagihanUseCase,
+  ) {}
+
+  create = async (
+    req: TypedRequest<typeof createTagihanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.createUseCase.execute(req.body);
+    sendResponse(res, StatusCodes.CREATED, "Tagihan berhasil dibuat", result);
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateTagihanSchema.body,
+      any,
+      typeof updateTagihanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(id, req.body);
+    sendResponse(res, StatusCodes.OK, "Tagihan berhasil diperbarui", result);
+  };
+
+  getById = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.getByIdUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Data tagihan berhasil diambil", result);
+  };
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getTagihansPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as TagihanFilterDTO,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar tagihan berhasil diambil",
+      result,
+    );
+  };
+
+  delete = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await this.deleteUseCase.execute(id);
+    sendResponse(res, StatusCodes.OK, "Tagihan berhasil dihapus");
+  };
+
+  uploadBukti = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(id, req.file.buffer);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti pembayaran berhasil diunggah",
+      result,
+    );
+  };
+
+  uploadBuktiRefund = async (
+    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
+      return;
+    }
+    if (!req.file?.buffer) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File bukti refund wajib diunggah",
+      );
+      return;
+    }
+
+    const result = await this.uploadBuktiRefundUseCase.execute(
+      id,
+      req.file.buffer,
+    );
+    sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
+  };
+
+  uploadSignature = async (
+    req: TypedRequest<
+      typeof uploadSignatureSchema.body,
+      any,
+      typeof uploadSignatureSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { signatureBase64, nama, peran, tanggal } = req.body;
+
+    const result = await this.saveSignatureUseCase.execute(
+      id,
+      signatureBase64,
+      nama,
+      peran,
+      tanggal,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Tanda tangan untuk kwitansi berhasil disimpan`,
+      result,
+    );
+  };
+
+  approveBukti = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(req.params.id as string, 10);
+    const { isApproved } = req.body;
+    const result = await this.approveBuktiTagihanUseCase.execute(
+      id,
+      isApproved,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      isApproved ? "Bukti disetujui" : "Bukti ditolak",
+      result,
+    );
+  };
 }
 </file>
 
@@ -11723,108 +11628,299 @@ export class VerifyDocumentUseCase {
 }
 </file>
 
-<file path="src/domain/dtos/AgentDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { AgentStatus, AgentType } from "@prisma/client";
+<file path="src/domain/repositories/agentRepo.ts">
+import { AgentStatus, type Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IAgentRepository } from "./IAgentRepo.js";
+import type { AgentEntity } from "../entities/Agent.js";
+import type {
+  CreateAgentDTO,
+  UpdateAgentDTO,
+  AgentFilterDTO,
+} from "../dtos/AgentDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
 
-export interface PicAgentDTO {
-  id?: number | undefined;
-  nama: string;
-  noHp: string;
-  alamat?: string | undefined;
-}
-export interface CreateAgentDTO {
-  nik: string;
-  nama: string;
-  alamat?: string | undefined;
-  noHp: string;
-  email?: string | undefined;
-  status?: AgentStatus | undefined;
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  perusahaanAgentId?: number | undefined;
+export class AgentRepository implements IAgentRepository {
+  constructor(private readonly db: PrismaClient) {}
 
-  feeMarketingPct?: number | undefined;
-  potonganPph?: number | undefined;
-  pics?: PicAgentDTO[] | undefined;
-}
+  async create(data: CreateAgentDTO): Promise<AgentEntity> {
+    const checkDuplicate = await this.db.agent.findFirst({
+      where: { nik: data.nik },
+    });
 
-export interface UpdateAgentDTO {
-  userId?: number | undefined;
-  nik?: string | undefined;
-  nama?: string | undefined;
-  alamat?: string | undefined;
-  noHp?: string | undefined;
-  fileSuratPernyataan: string | null;
-  defaultSuratPernyataan: string | null;
-  email?: string | undefined;
-  status?: AgentStatus | undefined;
-  perusahaanAgentId?: number | undefined;
+    if (checkDuplicate) {
+      throw new ConflictError("NIK Agent sudah terdaftar");
+    }
 
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  feeMarketingPct?: number | undefined;
-  potonganPph?: number | undefined;
-  fileKtp?: string | undefined;
-  fileNpwp?: string | undefined;
-  kwitansiBookingFee?: string | undefined;
-  fileSuratKeterangan?: string | undefined;
-  fileKtpDirektur?: string | undefined;
-  fileNpwpPerusahaan?: string | undefined;
-  pics?: PicAgentDTO[] | undefined;
-}
+    const createData: Prisma.AgentCreateInput = {
+      nik: data.nik,
+      nama: data.nama,
+      noHp: data.noHp,
+      email: data.email ?? null,
+      alamat: data.alamat ?? null,
+      namaBank: data.namaBank ?? null,
+      noRekening: data.noRekening ?? null,
+      atasNamaRekening: data.atasNamaRekening ?? null,
+      status: AgentStatus.AKTIF,
+    };
 
-export interface AgentResponseDTO {
-  id: number;
-  userId: number | null;
-  nik: string;
-  kodeSales: string | null;
-  nama: string;
-  alamat: string | null;
-  noHp: string;
-  email: string | null;
-  status: AgentStatus;
-  type: AgentType;
-  fileSuratPernyataan: string | null;
-  defaultSuratPernyataan: string | null;
+    if (data.status) createData.status = data.status;
+    if (data.type) createData.type = data.type;
+    if (data.perusahaanAgentId !== undefined) {
+      createData.perusahaanAgent = { connect: { id: data.perusahaanAgentId } };
+    }
+    if (data.feeMarketingPct !== undefined)
+      createData.feeMarketingPct = data.feeMarketingPct;
+    if (data.feeClosingPct !== undefined)
+      createData.feeClosingPct = data.feeClosingPct;
+    if (data.potonganPph !== undefined)
+      createData.potonganPph = data.potonganPph;
 
-  namaBank: string | null;
-  noRekening: string | null;
-  atasNamaRekening: string | null;
+    if (data.pics && data.pics.length > 0) {
+      createData.pics = {
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
 
-  feeMarketingPct: number | null;
-  potonganPph: number | null;
+    const result = await this.db.agent.create({
+      data: createData,
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
 
-  fileKtp: string | null;
-  fileNpwp: string | null;
-  kwitansiBookingFee: string | null;
-  fileSuratKeterangan: string | null;
-  fileKtpDirektur: string | null;
-  fileNpwpPerusahaan: string | null;
+    return AgentMapper.toDomain(result);
+  }
 
-  hasAccount: boolean;
-  pics: PicAgentDTO[];
-  createdAt: Date;
-}
-export type AgentFilterDTO = BaseFilterDTO;
+  async findById(id: number): Promise<AgentEntity | null> {
+    const result = await this.db.agent.findUnique({
+      where: { id },
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!result) return null;
+    return AgentMapper.toDomain(result);
+  }
+  async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
+    }
 
-export interface RegisterAgentDTO {
-  nik: string;
-  nama: string;
-  noHp: string;
-  email: string;
-  password: string;
-  alamat?: string | undefined;
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  perusahaanAgentId?: number | undefined;
-  ttdData?: string | undefined;
+    const updateData: Prisma.AgentUncheckedUpdateInput = {};
+
+    if (data.userId !== undefined) updateData.userId = data.userId;
+    if (data.nik !== undefined) updateData.nik = data.nik;
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.email !== undefined) updateData.email = data.email ?? null;
+    if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.perusahaanAgentId !== undefined) {
+      updateData.perusahaanAgentId = data.perusahaanAgentId;
+    }
+    if (data.namaBank !== undefined)
+      updateData.namaBank = data.namaBank ?? null;
+    if (data.noRekening !== undefined)
+      updateData.noRekening = data.noRekening ?? null;
+    if (data.atasNamaRekening !== undefined)
+      updateData.atasNamaRekening = data.atasNamaRekening ?? null;
+
+    if (data.feeMarketingPct !== undefined)
+      updateData.feeMarketingPct = data.feeMarketingPct ?? null;
+    if (data.feeClosingPct !== undefined)
+      updateData.feeClosingPct = data.feeClosingPct ?? null;
+    if (data.potonganPph !== undefined)
+      updateData.potonganPph = data.potonganPph ?? null;
+
+    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
+    if (data.fileNpwp !== undefined)
+      updateData.fileNpwp = data.fileNpwp ?? null;
+    if (data.kwitansiBookingFee !== undefined)
+      updateData.kwitansiBookingFee = data.kwitansiBookingFee ?? null;
+    if (data.fileSuratPernyataan !== undefined)
+      updateData.fileSuratPernyataan = data.fileSuratPernyataan ?? null;
+    if (data.fileSuratKeterangan !== undefined)
+      updateData.fileSuratKeterangan = data.fileSuratKeterangan ?? null;
+    if (data.fileKtpDirektur !== undefined)
+      updateData.fileKtpDirektur = data.fileKtpDirektur ?? null;
+    if (data.fileNpwpPerusahaan !== undefined)
+      updateData.fileNpwpPerusahaan = data.fileNpwpPerusahaan ?? null;
+
+    if (data.pics) {
+      updateData.pics = {
+        deleteMany: {},
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
+
+    const result = await this.db.agent.update({
+      where: { id },
+      data: updateData,
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return AgentMapper.toDomain(result);
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: AgentFilterDTO,
+  ): Promise<CursorPaginatedData<AgentEntity>> {
+    const where: Prisma.AgentWhereInput = {};
+
+    if (filters?.search) {
+      where.OR = [
+        { nama: { contains: filters.search } },
+        { nik: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.AgentOrderByWithRelationInput[] = [
+      { nama: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "nik", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.agent.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => AgentMapper.toDomain(item)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
+    }
+
+    await this.db.agent.delete({ where: { id } });
+  }
+  async findByUserId(userId: number): Promise<AgentEntity | null> {
+    const result = await this.db.agent.findFirst({
+      where: { userId },
+      include: { pics: true },
+    });
+    if (!result) return null;
+    return AgentMapper.toDomain(result as any);
+  }
 }
 </file>
 
@@ -12159,300 +12255,6 @@ export class CloudinaryService {
 }
 </file>
 
-<file path="src/infrastructure/mapper/AgentMapper.ts">
-import type { Prisma } from "@prisma/client";
-import type { AgentEntity } from "../../domain/entities/Agent.js";
-
-export type AgentWithRelations = Prisma.AgentGetPayload<{
-  include: {
-    perusahaanAgent: true;
-    pics: true;
-    penjualan: {
-      select: {
-        id: true;
-        noTransaksi: true;
-        tanggal: true;
-        hargaJual: true;
-        status: true;
-        customer: { select: { nama: true } };
-        kavling: {
-          select: {
-            blok: true;
-            nomorUnit: true;
-            perumahan: { select: { nama: true } };
-          };
-        };
-      };
-    };
-  };
-}>;
-
-export class AgentMapper {
-  static toDomain(prismaAgent: AgentWithRelations): AgentEntity {
-    return {
-      id: prismaAgent.id,
-      userId: prismaAgent.userId ?? null,
-      nik: prismaAgent.nik,
-      kodeSales: prismaAgent.kodeSales,
-      nama: prismaAgent.nama,
-      alamat: prismaAgent.alamat,
-      noHp: prismaAgent.noHp,
-      email: prismaAgent.email,
-      status: prismaAgent.status,
-      type: prismaAgent.type,
-      namaBank: prismaAgent.namaBank ?? null,
-      noRekening: prismaAgent.noRekening ?? null,
-      atasNamaRekening: prismaAgent.atasNamaRekening ?? null,
-      feeMarketingPct: prismaAgent.feeMarketingPct
-        ? Number(prismaAgent.feeMarketingPct)
-        : null,
-      potonganPph: prismaAgent.potonganPph
-        ? Number(prismaAgent.potonganPph)
-        : null,
-      fileKtp: prismaAgent.fileKtp ?? null,
-      fileNpwp: prismaAgent.fileNpwp ?? null,
-      kwitansiBookingFee: prismaAgent.kwitansiBookingFee ?? null,
-      fileSuratPernyataan: prismaAgent.fileSuratPernyataan ?? null,
-      defaultSuratPernyataan: prismaAgent.defaultSuratPernyataan ?? null,
-      fileSuratKeterangan: prismaAgent.fileSuratKeterangan ?? null,
-      fileKtpDirektur: prismaAgent.fileKtpDirektur ?? null,
-      fileNpwpPerusahaan: prismaAgent.fileNpwpPerusahaan ?? null,
-      hasAccount: prismaAgent.userId !== null,
-      createdAt: prismaAgent.createdAt,
-      updatedAt: prismaAgent.updatedAt,
-      pics: prismaAgent.pics.map((pic) => ({
-        id: pic.id,
-        agentId: pic.agentId,
-        nama: pic.nama,
-        noHp: pic.noHp,
-        alamat: pic.alamat,
-        createdAt: pic.createdAt,
-        updatedAt: pic.updatedAt,
-      })),
-      ttdData: (prismaAgent as any).ttdData ?? null,
-      perusahaanAgent: prismaAgent.perusahaanAgent
-        ? {
-            id: prismaAgent.perusahaanAgent.id,
-            nama: prismaAgent.perusahaanAgent.nama,
-          }
-        : null,
-
-      penjualan: prismaAgent.penjualan
-        ? prismaAgent.penjualan
-            .filter((p) => p.status !== "BATAL")
-            .map((p) => ({
-              id: p.id,
-              noTransaksi: p.noTransaksi,
-              tanggal: p.tanggal,
-              hargaJual: Number(p.hargaJual),
-              status: p.status,
-              customer: p.customer ? { nama: p.customer.nama } : null,
-              kavling: p.kavling
-                ? {
-                    blok: p.kavling.blok,
-                    nomorUnit: p.kavling.nomorUnit,
-                    perumahan: p.kavling.perumahan
-                      ? { nama: p.kavling.perumahan.nama }
-                      : null,
-                  }
-                : null,
-            }))
-        : [],
-    };
-  }
-}
-</file>
-
-<file path="src/presentation/controllers/tagihanController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type {
-  CreateTagihanUseCase,
-  UpdateTagihanUseCase,
-  GetTagihanByIdUseCase,
-  GetTagihansPaginatedUseCase,
-  DeleteTagihanUseCase,
-} from "../../application/usecases/tagihan/TagihanUseCases.js";
-import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
-
-import type {
-  createTagihanSchema,
-  updateTagihanSchema,
-} from "../../validations/tagihanSchema.js";
-import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
-import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
-import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
-import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
-import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
-import type { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
-
-export class TagihanController {
-  constructor(
-    private readonly createUseCase: CreateTagihanUseCase,
-    private readonly updateUseCase: UpdateTagihanUseCase,
-    private readonly getByIdUseCase: GetTagihanByIdUseCase,
-    private readonly getPaginatedUseCase: GetTagihansPaginatedUseCase,
-    private readonly deleteUseCase: DeleteTagihanUseCase,
-    private readonly uploadBuktiUseCase: UploadBuktiTagihanUseCase,
-    private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
-    private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
-    private readonly approveBuktiTagihanUseCase: ApproveBuktiTagihanUseCase,
-  ) {}
-
-  create = async (
-    req: TypedRequest<typeof createTagihanSchema.body>,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.createUseCase.execute(req.body);
-    sendResponse(res, StatusCodes.CREATED, "Tagihan berhasil dibuat", result);
-  };
-
-  update = async (
-    req: TypedRequest<
-      typeof updateTagihanSchema.body,
-      any,
-      typeof updateTagihanSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.updateUseCase.execute(id, req.body);
-    sendResponse(res, StatusCodes.OK, "Tagihan berhasil diperbarui", result);
-  };
-
-  getById = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.getByIdUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Data tagihan berhasil diambil", result);
-  };
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getTagihansPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as TagihanFilterDTO,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Daftar tagihan berhasil diambil",
-      result,
-    );
-  };
-
-  delete = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    await this.deleteUseCase.execute(id);
-    sendResponse(res, StatusCodes.OK, "Tagihan berhasil dihapus");
-  };
-
-  uploadBukti = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
-      return;
-    }
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(id, req.file.buffer);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Bukti pembayaran berhasil diunggah",
-      result,
-    );
-  };
-
-  uploadBuktiRefund = async (
-    req: TypedRequest<any, any, typeof updateTagihanSchema.params>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
-      return;
-    }
-    if (!req.file?.buffer) {
-      sendResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        "File bukti refund wajib diunggah",
-      );
-      return;
-    }
-
-    const result = await this.uploadBuktiRefundUseCase.execute(
-      id,
-      req.file.buffer,
-    );
-    sendResponse(res, StatusCodes.OK, "Bukti Refund berhasil diunggah", result);
-  };
-
-  uploadSignature = async (
-    req: TypedRequest<
-      typeof uploadSignatureSchema.body,
-      any,
-      typeof uploadSignatureSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const { signatureBase64, nama, peran, tanggal } = req.body;
-
-    const result = await this.saveSignatureUseCase.execute(
-      id,
-      signatureBase64,
-      nama,
-      peran,
-      tanggal,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      `Tanda tangan untuk kwitansi berhasil disimpan`,
-      result,
-    );
-  };
-
-  approveBukti = async (req: Request, res: Response): Promise<void> => {
-    const id = parseInt(req.params.id as string, 10);
-    const { isApproved } = req.body;
-    const result = await this.approveBuktiTagihanUseCase.execute(
-      id,
-      isApproved,
-    );
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      isApproved ? "Bukti disetujui" : "Bukti ditolak",
-      result,
-    );
-  };
-}
-</file>
-
 <file path="package.json">
 {
   "name": "bumantara",
@@ -12534,6 +12336,221 @@ export class TagihanController {
     "typescript-eslint": "^8.56.1",
     "vitest": "^3.2.4",
     "vitest-mock-extended": "^3.1.0"
+  }
+}
+</file>
+
+<file path="src/domain/dtos/AgentDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { AgentStatus, AgentType } from "@prisma/client";
+
+export interface PicAgentDTO {
+  id?: number | undefined;
+  nama: string;
+  noHp: string;
+  alamat?: string | undefined;
+}
+export interface CreateAgentDTO {
+  nik: string;
+  nama: string;
+  alamat?: string | undefined;
+  noHp: string;
+  email?: string | undefined;
+  status?: AgentStatus | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  perusahaanAgentId?: number | undefined;
+
+  feeMarketingPct?: number | undefined;
+  feeClosingPct?: number | undefined; // <-- TAMBAHKAN INI
+  potonganPph?: number | undefined;
+  pics?: PicAgentDTO[] | undefined;
+}
+
+export interface UpdateAgentDTO {
+  userId?: number | undefined;
+  nik?: string | undefined;
+  nama?: string | undefined;
+  alamat?: string | undefined;
+  noHp?: string | undefined;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
+  email?: string | undefined;
+  status?: AgentStatus | undefined;
+  perusahaanAgentId?: number | undefined;
+
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  feeMarketingPct?: number | undefined;
+  feeClosingPct?: number | undefined; // <-- TAMBAHKAN INI
+  potonganPph?: number | undefined;
+  fileKtp?: string | undefined;
+  fileNpwp?: string | undefined;
+  kwitansiBookingFee?: string | undefined;
+  fileSuratKeterangan?: string | undefined;
+  fileKtpDirektur?: string | undefined;
+  fileNpwpPerusahaan?: string | undefined;
+  pics?: PicAgentDTO[] | undefined;
+}
+
+export interface AgentResponseDTO {
+  id: number;
+  userId: number | null;
+  nik: string;
+  kodeSales: string | null;
+  nama: string;
+  alamat: string | null;
+  noHp: string;
+  email: string | null;
+  status: AgentStatus;
+  type: AgentType;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
+
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
+
+  feeMarketingPct: number | null;
+  feeClosingPct: number | null; // <-- TAMBAHKAN INI
+  potonganPph: number | null;
+
+  fileKtp: string | null;
+  fileNpwp: string | null;
+  kwitansiBookingFee: string | null;
+  fileSuratKeterangan: string | null;
+  fileKtpDirektur: string | null;
+  fileNpwpPerusahaan: string | null;
+
+  hasAccount: boolean;
+  pics: PicAgentDTO[];
+  createdAt: Date;
+}
+export type AgentFilterDTO = BaseFilterDTO;
+
+export interface RegisterAgentDTO {
+  nik: string;
+  nama: string;
+  noHp: string;
+  email: string;
+  password: string;
+  alamat?: string | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  perusahaanAgentId?: number | undefined;
+  ttdData?: string | undefined;
+}
+</file>
+
+<file path="src/infrastructure/mapper/AgentMapper.ts">
+import type { Prisma } from "@prisma/client";
+import type { AgentEntity } from "../../domain/entities/Agent.js";
+
+export type AgentWithRelations = Prisma.AgentGetPayload<{
+  include: {
+    perusahaanAgent: true;
+    pics: true;
+    penjualan: {
+      select: {
+        id: true;
+        noTransaksi: true;
+        tanggal: true;
+        hargaJual: true;
+        status: true;
+        customer: { select: { nama: true } };
+        kavling: {
+          select: {
+            blok: true;
+            nomorUnit: true;
+            perumahan: { select: { nama: true } };
+          };
+        };
+      };
+    };
+  };
+}>;
+
+export class AgentMapper {
+  static toDomain(prismaAgent: AgentWithRelations): AgentEntity {
+    return {
+      id: prismaAgent.id,
+      userId: prismaAgent.userId ?? null,
+      nik: prismaAgent.nik,
+      kodeSales: prismaAgent.kodeSales,
+      nama: prismaAgent.nama,
+      alamat: prismaAgent.alamat,
+      noHp: prismaAgent.noHp,
+      email: prismaAgent.email,
+      status: prismaAgent.status,
+      type: prismaAgent.type,
+      namaBank: prismaAgent.namaBank ?? null,
+      noRekening: prismaAgent.noRekening ?? null,
+      atasNamaRekening: prismaAgent.atasNamaRekening ?? null,
+      feeMarketingPct: prismaAgent.feeMarketingPct
+        ? Number(prismaAgent.feeMarketingPct)
+        : null,
+      feeClosingPct: prismaAgent.feeClosingPct
+        ? Number(prismaAgent.feeClosingPct)
+        : null,
+      potonganPph: prismaAgent.potonganPph
+        ? Number(prismaAgent.potonganPph)
+        : null,
+      fileKtp: prismaAgent.fileKtp ?? null,
+      fileNpwp: prismaAgent.fileNpwp ?? null,
+      kwitansiBookingFee: prismaAgent.kwitansiBookingFee ?? null,
+      fileSuratPernyataan: prismaAgent.fileSuratPernyataan ?? null,
+      defaultSuratPernyataan: prismaAgent.defaultSuratPernyataan ?? null,
+      fileSuratKeterangan: prismaAgent.fileSuratKeterangan ?? null,
+      fileKtpDirektur: prismaAgent.fileKtpDirektur ?? null,
+      fileNpwpPerusahaan: prismaAgent.fileNpwpPerusahaan ?? null,
+      hasAccount: prismaAgent.userId !== null,
+      createdAt: prismaAgent.createdAt,
+      updatedAt: prismaAgent.updatedAt,
+      pics: prismaAgent.pics.map((pic) => ({
+        id: pic.id,
+        agentId: pic.agentId,
+        nama: pic.nama,
+        noHp: pic.noHp,
+        alamat: pic.alamat,
+        createdAt: pic.createdAt,
+        updatedAt: pic.updatedAt,
+      })),
+      ttdData: (prismaAgent as any).ttdData ?? null,
+      perusahaanAgent: prismaAgent.perusahaanAgent
+        ? {
+            id: prismaAgent.perusahaanAgent.id,
+            nama: prismaAgent.perusahaanAgent.nama,
+          }
+        : null,
+
+      penjualan: prismaAgent.penjualan
+        ? prismaAgent.penjualan
+            .filter((p) => p.status !== "BATAL")
+            .map((p) => ({
+              id: p.id,
+              noTransaksi: p.noTransaksi,
+              tanggal: p.tanggal,
+              hargaJual: Number(p.hargaJual),
+              status: p.status,
+              customer: p.customer ? { nama: p.customer.nama } : null,
+              kavling: p.kavling
+                ? {
+                    blok: p.kavling.blok,
+                    nomorUnit: p.kavling.nomorUnit,
+                    perumahan: p.kavling.perumahan
+                      ? { nama: p.kavling.perumahan.nama }
+                      : null,
+                  }
+                : null,
+            }))
+        : [],
+    };
   }
 }
 </file>
@@ -14552,525 +14569,6 @@ export const approveSchema = {
 };
 </file>
 
-<file path="prisma/schema.prisma">
-generator client {
-  provider = "prisma-client-js"
-}
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-enum AgentType {
-  PRIBADI    @map("Pribadi")
-  PERUSAHAAN @map("Perusahaan")
-}
-enum Role {
-  SUPERADMIN @map("superadmin") 
-  ADMIN      @map("admin")
-  FINANCE    @map("finance")    
-  MARKETING  @map("marketing")
-  CUSTOMER   @map("customer")
-  BANK       @map("bank")
-  AGENT      @map("agent")
-}
-enum UnitStatus {
-  AVAILABLE  @map("Available")
-  BOOKING    @map("Booking")
-  TERJUAL    @map("Terjual")
-  HOLD       @map("Hold")
-}
-enum ActionType {
-  CREATE
-  UPDATE
-  DELETE
-}
-enum PaymentStatus {
-  BELUM_BAYAR         @map("Belum Bayar")
-  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi") 
-  LUNAS               @map("Lunas")
-}
-enum PaymentMethod {
-  CASH_KERAS    @map("CASH KERAS")
-  CASH_BERTAHAP @map("CASH BERTAHAP")
-  KPR           @map("KPR")
-}
-enum ProgressStatus {
-  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
-  DISETUJUI           @map("Disetujui")
-  REVISI              @map("Revisi")
-}
-enum PenjualanStatus {
-  BOOKED    @map("Booked")
-  PROSES    @map("Proses")
-  LUNAS     @map("Lunas")
-  BATAL     @map("Batal")
-}
-enum AgentStatus {
-  PENDING    @map("Pending") 
-  AKTIF      @map("Aktif")
-  NONAKTIF   @map("Nonaktif")
-}
-enum SP3R {
-  BANK  @map("BANK")
-  CASH  @map("Cash")
-}
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @db.VarChar(100)
-  email     String   @unique @db.VarChar(100)
-  password  String   @db.VarChar(255)
-  role      Role
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  auditLogs AuditLog[]
-  customers Customer[]
-  agents    Agent[]
-  pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
-  persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
-  pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
-  persetujuanBatal        PengajuanBatal[]      @relation("PenyetujuBatal")
-  @@map("users")
-}
-model Customer {
-  id                Int         @id @default(autoincrement())
-  userId            Int?        @map("user_id")
-  nikKtp            String      @unique @map("nik_ktp") @db.VarChar(20)
-  nama              String      @db.VarChar(150)
-  noHp              String      @map("no_hp") @db.VarChar(20)
-  alamatKtp         String      @map("alamat_ktp") @db.Text
-  alamatTinggal     String?     @map("alamat_tinggal") @db.Text
-  email             String?     @db.VarChar(100)
-  pekerjaan         String?     @db.VarChar(100)
-  perusahaan        String?     @db.VarChar(150)
-  bank              String?     @db.VarChar(100)
-  alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
-  fileKtp           String?     @map("file_ktp") @db.VarChar(255)
-  fileKk            String?     @map("file_kk") @db.VarChar(255)
-  fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
-  dokumenLainnya    Json?     @map("dokumen_lainnya") 
-  createdAt         DateTime    @default(now()) @map("created_at")
-  updatedAt         DateTime    @updatedAt @map("updated_at")
-  user              User?       @relation(fields: [userId], references: [id])
-  penjualan         Penjualan[]
-  tagihan           Tagihan[]
-  @@map("customers")
-}
-model Perumahan {
-  id             Int              @id @default(autoincrement())
-  nama           String           @unique @db.VarChar(150)
-  logo           String           @unique @db.VarChar(150)
-  alamat         String           @unique @db.VarChar(150)
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  kavlings       Kavling[]
-  bankRekeningPt BankRekeningPt[]
-  @@map("perumahan")
-}
-model BankRekeningPt {
-  id          Int         @id @default(autoincrement())
-  perumahanId Int         @map("perumahan_id")
-  namaBank    String      @map("nama_bank") @db.VarChar(100)
-  noRekening  String      @map("no_rekening") @db.VarChar(50)
-  atasNama    String      @map("atas_nama") @db.VarChar(150)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  penjualan   Penjualan[]
-  kavlings    Kavling[]
-  @@map("bank_rekening_pt")
-}
-model Notaris {
-  id                 Int                  @id @default(autoincrement())
-  nama               String               @db.VarChar(150)
-  nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
-  nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
-  noHp               String?              @map("no_hp") @db.VarChar(20)   
-  alamat             String?              @db.Text                        
-  biayaAjb           Decimal?              @map("biaya_ajb") @db.Decimal(15, 2)
-  biayaPpjb           Decimal?              @map("biaya_ppjb") @db.Decimal(15, 2)
-  createdAt          DateTime             @default(now()) @map("created_at")
-  updatedAt          DateTime             @updatedAt @map("updated_at")
-  pics               PicNotaris[]
-  detailKavlingPajak DetailKavlingPajak[]
-  @@map("notaris")
-}
-model PicNotaris {
-  id        Int      @id @default(autoincrement())
-  notarisId Int      @map("notaris_id")
-  nama      String   @db.VarChar(150)
-  noHp      String   @map("no_hp") @db.VarChar(20)
-  alamat    String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
-  @@map("pic_notaris")
-}
-model PerusahaanAgent {
-  id        Int      @id @default(autoincrement())
-  nama      String   @db.VarChar(150)
-  akte      String?  @db.VarChar(255)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  agents    Agent[]
-
-  @@map("perusahaan_agents")
-}
-model Agent {
-  id        Int         @id @default(autoincrement())
-  userId    Int?        @map("user_id") 
-  nik       String      @unique @db.VarChar(20)
-  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
-  nama      String      @db.VarChar(150)
-  alamat    String?     @db.Text
-  noHp      String      @map("no_hp") @db.VarChar(20)
-  email     String?     @db.VarChar(100)
-  status    AgentStatus @default(PENDING)
-  type      AgentType   @default(PRIBADI)
-  ttdData           String?          @db.LongText
-  perusahaanAgentId Int?             @map("perusahaan_agent_id")
-
-  namaBank           String?     @map("nama_bank") @db.VarChar(100)
-  noRekening         String?     @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
-  
-  feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
-  potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
-
-  
-  fileKtp            String? @map("file_ktp") @db.VarChar(255)
-  fileNpwp           String? @map("file_npwp") @db.VarChar(255)
-  kwitansiBookingFee String? @map("kwitansi_booking_fee") @db.VarChar(255)
-
-  
-  fileSuratKeterangan String? @map("file_surat_keterangan") @db.VarChar(255)
-  fileKtpDirektur     String? @map("file_ktp_direktur") @db.VarChar(255)
-  fileNpwpPerusahaan  String? @map("file_npwp_perusahaan") @db.VarChar(255)
-  fileSuratPernyataan String? @map("file_surat_pernyataan") @db.VarChar(255)
-  defaultSuratPernyataan String? @map("default_surat_pernyataan") @db.VarChar(255)
-
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
-  
-  user      User?       @relation(fields: [userId], references: [id])
-  perusahaanAgent PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id], onDelete: SetNull)
-  pics      PicAgent[]
-  fees      FeeAgent[]
-  penjualan Penjualan[]
-  @@map("agents")
-}
-model PicAgent {
-  id        Int      @id @default(autoincrement())
-  agentId   Int      @map("agent_id")
-  nama      String   @db.VarChar(150)
-  noHp      String   @map("no_hp") @db.VarChar(20)
-  alamat    String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  @@map("pic_agents")
-}
-model Kavling {
-  id                  Int              @id @default(autoincrement())
-  perumahanId         Int              @map("perumahan_id")
-  blok                String           @db.VarChar(10)
-  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
-  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
-  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
-  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
-  hargaDasar          Decimal          @map("harga_dasar") @db.Decimal(15, 2)
-  status              UnitStatus       @default(AVAILABLE)
-  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
-  filePbg             String?          @map("file_pbg") @db.VarChar(255)
-  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
-  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
-  riwayatLama        RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
-  riwayatBaru        RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
-  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
-  penjualan           Penjualan[]
-  progressProyek      ProgressProyek[]
-  @@unique([perumahanId, blok, nomorUnit])
-  @@map("kavling")
-}
-model Penjualan {
-  id                Int                 @id @default(autoincrement())
-  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
-  tanggal           DateTime            @db.Date
-  customerId        Int                 @map("customer_id")
-  kavlingId         Int                 @map("kavling_id")
-  agentId           Int?                @map("agent_id")
-  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
-  caraPembayaran    PaymentMethod?       @map("cara_pembayaran")
-  termin            Int?                @map("termin")
-  hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
-  plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
-  plafonAcc          Decimal?             @map("plafon_acc") @db.Decimal(15, 2)
-  biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
-  plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
-  dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
-  hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
-  dp                Decimal?            @db.Decimal(15, 2)
-  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
-  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
-  bank              String?             @db.VarChar(100)
-  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
-  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
-  status            PenjualanStatus     @default(BOOKED)
-  alasanBatal       String?             @map("alasan_batal") @db.Text
-  keteranganAngsuran String?            @map("keterangan_angsuran") @db.Text
-  fileSpr           String?             @map("file_spr") @db.VarChar(255)
-  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
-  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
-  ttdData           Json?               @map("ttd_data")
-  tambahanKpr       Json?               @map("tambahan_kpr")
-  createdBy           String?             @map("created_by") @db.VarChar(100) 
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  riwayatGantiKavling RiwayatGantiKavling[]
-  customer          Customer            @relation(fields: [customerId], references: [id])
-  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
-  agent             Agent?              @relation(fields: [agentId], references: [id])
-  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
-  tagihan           Tagihan[]
-  detailKavlingPajak DetailKavlingPajak?
-  feeAgent          FeeAgent?
-  progressPenjualan   ProgressPenjualan?
-  pengajuanBatal PengajuanBatal[]
-  riwayatSpr          RiwayatSpr[]
-  @@map("penjualan")
-}
-model DetailKavlingPajak {
-  id                      Int       @id @default(autoincrement())
-  penjualanId             Int       @unique @map("penjualan_id")
-  notarisId               Int?      @map("notaris_id")
-  biayaNotaris            Decimal?  @map("biaya_notaris") @db.Decimal(15, 2)
-  lantai                  String?   @db.VarChar(10)
-  luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
-  lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
-  tanggalAkadPpjb         DateTime? @map("tanggal_akad_ppjb") @db.Date
-  akadPpjb                String?   @map("akad_ppjb") @db.VarChar(100)
-  tanggalAkadAjbPpat      DateTime? @map("tanggal_akad_ajb_ppat") @db.Date
-  tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
-  tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
-  pembiayaan              String?   @db.VarChar(100)
-  sp3r                    SP3R?     @default(BANK) 
-  lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
-  biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
-  nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
-  nrDiskonAngsuran        Decimal?  @map("nr_diskon_angsuran") @db.Decimal(15, 2)
-  nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
-  nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
-  nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
-  nrBiayaNotarisPpjb       Decimal?  @map("nr_biaya_notaris_ppjb") @db.Decimal(15, 2)
-  nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
-  nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
-  nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
-  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
-  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
-  nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
-  nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
-  nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
-  pjBiayaKpr              Decimal?  @map("pj_biaya_kpr") @db.Decimal(15, 2)
-  pjBiayaAsuransi         Decimal?  @map("pj_biaya_asuransi") @db.Decimal(15, 2)
-  pjDiskonAngsuran        Decimal?  @map("pj_diskon_angsuran") @db.Decimal(15, 2)
-  pjBiayaBbn              Decimal?  @map("pj_biaya_bbn") @db.Decimal(15, 2)
-  pjBiayaAjb              Decimal?  @map("pj_biaya_ajb") @db.Decimal(15, 2)
-  pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
-  pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
-  pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
-  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
-  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
-  pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
-  pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
-  pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
-  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
-  ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
-  ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
-  ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
-  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
-  ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
-  ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
-  ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
-  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
-  ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
-  penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
-  @@map("detail_kavling_pajak")
-}
-model Tagihan {
-  id                 Int           @id @default(autoincrement())
-  noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
-  customerId         Int           @map("customer_id")
-  penjualanId        Int           @map("penjualan_id")
-  pembayaran         String        @db.VarChar(255)
-  nominal            Decimal       @db.Decimal(15, 2)
-  jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
-  status             PaymentStatus @default(BELUM_BAYAR)
-  fileBukti          String?       @map("file_bukti") @db.VarChar(255)
-  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
-  isRefunded         Boolean       @default(false) @map("is_refunded")
-  fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
-  ttdData            Json?         @map("ttd_data") 
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
-  customer           Customer      @relation(fields: [customerId], references: [id])
-  penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
-  @@map("tagihan")
-}
-model FeeAgent {
-  id               Int       @id @default(autoincrement())
-  agentId          Int       @map("agent_id")
-  penjualanId      Int       @unique @map("penjualan_id")
-  bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
-  bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
-  bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
-  closingNominal   Decimal?  @map("closing_nominal") @db.Decimal(15, 2)
-  closingTanggal   DateTime? @map("closing_tanggal") @db.Date
-  closingBukti     String?   @map("closing_bukti") @db.VarChar(255)
-  marketingNominal Decimal?  @map("marketing_nominal") @db.Decimal(15, 2)
-  marketingTanggal DateTime? @map("marketing_tanggal") @db.Date
-  marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  agent            Agent     @relation(fields: [agentId], references: [id])
-  @@map("fee_agent")
-}
-model Spk {
-  id               Int      @id @default(autoincrement())
-  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
-  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
-  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
-  lokasi           String   @db.Text
-  jangkaWaktu      Int      @map("jangka_waktu")
-  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
-  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
-  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
-  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
-  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
-  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
-  namaBank         String   @map("nama_bank") @db.VarChar(100)
-  noRekening       String   @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
-  fileSpk          String?  @map("file_spk") @db.VarChar(255)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  @@map("spk")
-}
-model ProgressProyek {
-  id               Int            @id @default(autoincrement())
-  kavlingId        Int            @map("kavling_id")
-  pelaksana        String         @db.VarChar(150)
-  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
-  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
-  persentase       Int            @default(0)
-  keterangan       String         @db.Text
-  kendala          String?        @db.Text
-  fotoLapangan     Json?          @map("foto_lapangan")
-  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
-  @@map("progress_proyek")
-}
-model AuditLog {
-  id          Int        @id @default(autoincrement())
-  entityName  String     @map("entity_name") @db.VarChar(100) 
-  entityId    String     @map("entity_id") @db.VarChar(50)    
-  action      ActionType
-  changes     Json       
-  userId      Int?       @map("user_id") 
-  createdAt   DateTime   @default(now()) @map("created_at")
-  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  @@map("audit_logs")
-}
-model RiwayatGantiKavling {
-  id            Int            @id @default(autoincrement())
-  penjualanId   Int            @map("penjualan_id")
-  kavlingLamaId Int            @map("kavling_lama_id")
-  kavlingBaruId Int            @map("kavling_baru_id")
-  alasan        String?        @db.Text
-  status        ApprovalStatus @default(PENDING)
-  requestedById Int?           @map("requested_by_id")
-  approvedById  Int?           @map("approved_by_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") 
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  kavlingLama Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
-  kavlingBaru Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
-  requestedBy User?     @relation("PengajuGantiKavling", fields: [requestedById], references: [id], onDelete: SetNull)
-  approvedBy  User?     @relation("PenyetujuGantiKavling", fields: [approvedById], references: [id], onDelete: SetNull)
-  @@map("riwayat_ganti_kavling")
-}
-model PengajuanBatal {
-  id            Int            @id @default(autoincrement())
-  penjualanId   Int            @map("penjualan_id")
-  alasan        String         @db.Text
-  status        ApprovalStatus @default(PENDING)
-  requestedById Int?           @map("requested_by_id")
-  approvedById  Int?           @map("approved_by_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  requestedBy User?     @relation("PengajuBatal", fields: [requestedById], references: [id], onDelete: SetNull)
-  approvedBy  User?     @relation("PenyetujuBatal", fields: [approvedById], references: [id], onDelete: SetNull)
-  @@map("pengajuan_batal")
-}
-model RiwayatSpr {
-  id          Int      @id @default(autoincrement())
-  penjualanId Int      @map("penjualan_id")
-  fileSpr     String   @map("file_spr") @db.VarChar(255)
-  keterangan  String?  @db.VarChar(255) 
-  createdAt   DateTime @default(now()) @map("created_at")
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  @@map("riwayat_spr")
-}
-model ProgressPenjualan {
-  id                  Int       @id @default(autoincrement())
-  penjualanId         Int       @unique @map("penjualan_id")
-  berkasCustomerValid Boolean   @default(false) @map("berkas_customer_valid")
-  fileSp3k            String?   @map("file_sp3k") @db.VarChar(255)
-  fileSalinanAjb      String?   @map("file_salinan_ajb") @db.VarChar(255)
-  filePpjb            String?   @map("file_ppjb") @db.VarChar(255)
-  nilaiAjb            Decimal?  @map("nilai_ajb") @db.Decimal(15, 2)
-  biayaBphtb          Decimal?  @map("biaya_bphtb") @db.Decimal(15, 2)
-  biayaPph            Decimal?  @map("biaya_pph") @db.Decimal(15, 2)
-  fileAjb             String?   @map("file_ajb") @db.VarChar(255)
-  nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100) 
-  tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date       
-  fileBast            String?   @map("file_bast") @db.VarChar(255)
-  checklistBast       Json?     @map("checklist_bast") 
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-  penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  @@map("progress_penjualan")
-}
-
-
-model RolePermission {
-  id        Int      @id @default(autoincrement())
-  role      Role     
-  resource  String   @db.VarChar(100) 
-  canCreate Boolean  @default(false)
-  canRead   Boolean  @default(false)
-  canUpdate Boolean  @default(false)
-  canDelete Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([role, resource]) 
-  @@map("role_permissions")
-}
-</file>
-
 <file path="src/domain/repositories/penjualanRepo.ts">
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
@@ -15568,6 +15066,526 @@ export class PenjualanRepository implements IPenjualanRepository {
       },
     });
   }
+}
+</file>
+
+<file path="prisma/schema.prisma">
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+enum AgentType {
+  PRIBADI    @map("Pribadi")
+  PERUSAHAAN @map("Perusahaan")
+}
+enum Role {
+  SUPERADMIN @map("superadmin") 
+  ADMIN      @map("admin")
+  FINANCE    @map("finance")    
+  MARKETING  @map("marketing")
+  CUSTOMER   @map("customer")
+  BANK       @map("bank")
+  AGENT      @map("agent")
+}
+enum UnitStatus {
+  AVAILABLE  @map("Available")
+  BOOKING    @map("Booking")
+  TERJUAL    @map("Terjual")
+  HOLD       @map("Hold")
+}
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+}
+enum PaymentStatus {
+  BELUM_BAYAR         @map("Belum Bayar")
+  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi") 
+  LUNAS               @map("Lunas")
+}
+enum PaymentMethod {
+  CASH_KERAS    @map("CASH KERAS")
+  CASH_BERTAHAP @map("CASH BERTAHAP")
+  KPR           @map("KPR")
+}
+enum ProgressStatus {
+  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
+  DISETUJUI           @map("Disetujui")
+  REVISI              @map("Revisi")
+}
+enum PenjualanStatus {
+  BOOKED    @map("Booked")
+  PROSES    @map("Proses")
+  LUNAS     @map("Lunas")
+  BATAL     @map("Batal")
+}
+enum AgentStatus {
+  PENDING    @map("Pending") 
+  AKTIF      @map("Aktif")
+  NONAKTIF   @map("Nonaktif")
+}
+enum SP3R {
+  BANK  @map("BANK")
+  CASH  @map("Cash")
+}
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  auditLogs AuditLog[]
+  customers Customer[]
+  agents    Agent[]
+  pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
+  persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
+  pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
+  persetujuanBatal        PengajuanBatal[]      @relation("PenyetujuBatal")
+  @@map("users")
+}
+model Customer {
+  id                Int         @id @default(autoincrement())
+  userId            Int?        @map("user_id")
+  nikKtp            String      @unique @map("nik_ktp") @db.VarChar(20)
+  nama              String      @db.VarChar(150)
+  noHp              String      @map("no_hp") @db.VarChar(20)
+  alamatKtp         String      @map("alamat_ktp") @db.Text
+  alamatTinggal     String?     @map("alamat_tinggal") @db.Text
+  email             String?     @db.VarChar(100)
+  pekerjaan         String?     @db.VarChar(100)
+  perusahaan        String?     @db.VarChar(150)
+  bank              String?     @db.VarChar(100)
+  alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
+  fileKtp           String?     @map("file_ktp") @db.VarChar(255)
+  fileKk            String?     @map("file_kk") @db.VarChar(255)
+  fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
+  dokumenLainnya    Json?     @map("dokumen_lainnya") 
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  user              User?       @relation(fields: [userId], references: [id])
+  penjualan         Penjualan[]
+  tagihan           Tagihan[]
+  @@map("customers")
+}
+model Perumahan {
+  id             Int              @id @default(autoincrement())
+  nama           String           @unique @db.VarChar(150)
+  logo           String           @unique @db.VarChar(150)
+  alamat         String           @unique @db.VarChar(150)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  kavlings       Kavling[]
+  bankRekeningPt BankRekeningPt[]
+  @@map("perumahan")
+}
+model BankRekeningPt {
+  id          Int         @id @default(autoincrement())
+  perumahanId Int         @map("perumahan_id")
+  namaBank    String      @map("nama_bank") @db.VarChar(100)
+  noRekening  String      @map("no_rekening") @db.VarChar(50)
+  atasNama    String      @map("atas_nama") @db.VarChar(150)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  penjualan   Penjualan[]
+  kavlings    Kavling[]
+  @@map("bank_rekening_pt")
+}
+model Notaris {
+  id                 Int                  @id @default(autoincrement())
+  nama               String               @db.VarChar(150)
+  nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
+  nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
+  noHp               String?              @map("no_hp") @db.VarChar(20)   
+  alamat             String?              @db.Text                        
+  biayaAjb           Decimal?              @map("biaya_ajb") @db.Decimal(15, 2)
+  biayaPpjb           Decimal?              @map("biaya_ppjb") @db.Decimal(15, 2)
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  pics               PicNotaris[]
+  detailKavlingPajak DetailKavlingPajak[]
+  @@map("notaris")
+}
+model PicNotaris {
+  id        Int      @id @default(autoincrement())
+  notarisId Int      @map("notaris_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
+  @@map("pic_notaris")
+}
+model PerusahaanAgent {
+  id        Int      @id @default(autoincrement())
+  nama      String   @db.VarChar(150)
+  akte      String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  agents    Agent[]
+
+  @@map("perusahaan_agents")
+}
+model Agent {
+  id        Int         @id @default(autoincrement())
+  userId    Int?        @map("user_id") 
+  nik       String      @unique @db.VarChar(20)
+  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
+  nama      String      @db.VarChar(150)
+  alamat    String?     @db.Text
+  noHp      String      @map("no_hp") @db.VarChar(20)
+  email     String?     @db.VarChar(100)
+  status    AgentStatus @default(PENDING)
+  type      AgentType   @default(PRIBADI)
+  ttdData           String?          @db.LongText
+  perusahaanAgentId Int?             @map("perusahaan_agent_id")
+
+  namaBank           String?     @map("nama_bank") @db.VarChar(100)
+  noRekening         String?     @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
+  
+  feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
+  feeClosingPct   Decimal? @map("fee_closing_pct") @db.Decimal(5, 2)
+  potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
+
+  
+  fileKtp            String? @map("file_ktp") @db.VarChar(255)
+  fileNpwp           String? @map("file_npwp") @db.VarChar(255)
+  kwitansiBookingFee String? @map("kwitansi_booking_fee") @db.VarChar(255)
+
+  
+  fileSuratKeterangan String? @map("file_surat_keterangan") @db.VarChar(255)
+  fileKtpDirektur     String? @map("file_ktp_direktur") @db.VarChar(255)
+  fileNpwpPerusahaan  String? @map("file_npwp_perusahaan") @db.VarChar(255)
+  fileSuratPernyataan String? @map("file_surat_pernyataan") @db.VarChar(255)
+  defaultSuratPernyataan String? @map("default_surat_pernyataan") @db.VarChar(255)
+
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  
+  user      User?       @relation(fields: [userId], references: [id])
+  perusahaanAgent PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id], onDelete: SetNull)
+  pics      PicAgent[]
+  fees      FeeAgent[]
+  penjualan Penjualan[]
+  @@map("agents")
+}
+model PicAgent {
+  id        Int      @id @default(autoincrement())
+  agentId   Int      @map("agent_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@map("pic_agents")
+}
+model Kavling {
+  id                  Int              @id @default(autoincrement())
+  perumahanId         Int              @map("perumahan_id")
+  blok                String           @db.VarChar(10)
+  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
+  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
+  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
+  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
+  hargaDasar          Decimal          @map("harga_dasar") @db.Decimal(15, 2)
+  status              UnitStatus       @default(AVAILABLE)
+  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
+  filePbg             String?          @map("file_pbg") @db.VarChar(255)
+  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
+  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  riwayatLama        RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
+  riwayatBaru        RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
+  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
+  penjualan           Penjualan[]
+  progressProyek      ProgressProyek[]
+  @@unique([perumahanId, blok, nomorUnit])
+  @@map("kavling")
+}
+model Penjualan {
+  id                Int                 @id @default(autoincrement())
+  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
+  tanggal           DateTime            @db.Date
+  customerId        Int                 @map("customer_id")
+  kavlingId         Int                 @map("kavling_id")
+  agentId           Int?                @map("agent_id")
+  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
+  caraPembayaran    PaymentMethod?       @map("cara_pembayaran")
+  termin            Int?                @map("termin")
+  hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
+  plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
+  plafonAcc          Decimal?             @map("plafon_acc") @db.Decimal(15, 2)
+  biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
+  plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
+  dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
+  hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
+  dp                Decimal?            @db.Decimal(15, 2)
+  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
+  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
+  bank              String?             @db.VarChar(100)
+  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
+  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
+  status            PenjualanStatus     @default(BOOKED)
+  alasanBatal       String?             @map("alasan_batal") @db.Text
+  keteranganAngsuran String?            @map("keterangan_angsuran") @db.Text
+  fileSpr           String?             @map("file_spr") @db.VarChar(255)
+  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
+  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
+  ttdData           Json?               @map("ttd_data")
+  tambahanKpr       Json?               @map("tambahan_kpr")
+  createdBy           String?             @map("created_by") @db.VarChar(100) 
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  riwayatGantiKavling RiwayatGantiKavling[]
+  customer          Customer            @relation(fields: [customerId], references: [id])
+  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
+  agent             Agent?              @relation(fields: [agentId], references: [id])
+  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
+  tagihan           Tagihan[]
+  detailKavlingPajak DetailKavlingPajak?
+  feeAgent          FeeAgent?
+  progressPenjualan   ProgressPenjualan?
+  pengajuanBatal PengajuanBatal[]
+  riwayatSpr          RiwayatSpr[]
+  @@map("penjualan")
+}
+model DetailKavlingPajak {
+  id                      Int       @id @default(autoincrement())
+  penjualanId             Int       @unique @map("penjualan_id")
+  notarisId               Int?      @map("notaris_id")
+  biayaNotaris            Decimal?  @map("biaya_notaris") @db.Decimal(15, 2)
+  lantai                  String?   @db.VarChar(10)
+  luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
+  lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
+  tanggalAkadPpjb         DateTime? @map("tanggal_akad_ppjb") @db.Date
+  akadPpjb                String?   @map("akad_ppjb") @db.VarChar(100)
+  tanggalAkadAjbPpat      DateTime? @map("tanggal_akad_ajb_ppat") @db.Date
+  tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
+  tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
+  pembiayaan              String?   @db.VarChar(100)
+  sp3r                    SP3R?     @default(BANK) 
+  lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
+  biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
+  nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
+  nrDiskonAngsuran        Decimal?  @map("nr_diskon_angsuran") @db.Decimal(15, 2)
+  nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
+  nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
+  nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
+  nrBiayaNotarisPpjb       Decimal?  @map("nr_biaya_notaris_ppjb") @db.Decimal(15, 2)
+  nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
+  nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
+  nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
+  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
+  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
+  nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
+  nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
+  nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
+  pjBiayaKpr              Decimal?  @map("pj_biaya_kpr") @db.Decimal(15, 2)
+  pjBiayaAsuransi         Decimal?  @map("pj_biaya_asuransi") @db.Decimal(15, 2)
+  pjDiskonAngsuran        Decimal?  @map("pj_diskon_angsuran") @db.Decimal(15, 2)
+  pjBiayaBbn              Decimal?  @map("pj_biaya_bbn") @db.Decimal(15, 2)
+  pjBiayaAjb              Decimal?  @map("pj_biaya_ajb") @db.Decimal(15, 2)
+  pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
+  pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
+  pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
+  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
+  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
+  pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
+  pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
+  pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
+  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
+  ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
+  ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
+  ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
+  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
+  ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
+  ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
+  ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
+  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
+  ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
+  penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
+  @@map("detail_kavling_pajak")
+}
+model Tagihan {
+  id                 Int           @id @default(autoincrement())
+  noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
+  customerId         Int           @map("customer_id")
+  penjualanId        Int           @map("penjualan_id")
+  pembayaran         String        @db.VarChar(255)
+  nominal            Decimal       @db.Decimal(15, 2)
+  jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
+  status             PaymentStatus @default(BELUM_BAYAR)
+  fileBukti          String?       @map("file_bukti") @db.VarChar(255)
+  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
+  isRefunded         Boolean       @default(false) @map("is_refunded")
+  fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
+  ttdData            Json?         @map("ttd_data") 
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
+  @@map("tagihan")
+}
+model FeeAgent {
+  id               Int       @id @default(autoincrement())
+  agentId          Int       @map("agent_id")
+  penjualanId      Int       @unique @map("penjualan_id")
+  bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
+  bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
+  bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
+  closingNominal   Decimal?  @map("closing_nominal") @db.Decimal(15, 2)
+  closingTanggal   DateTime? @map("closing_tanggal") @db.Date
+  closingBukti     String?   @map("closing_bukti") @db.VarChar(255)
+  marketingNominal Decimal?  @map("marketing_nominal") @db.Decimal(15, 2)
+  marketingTanggal DateTime? @map("marketing_tanggal") @db.Date
+  marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  agent            Agent     @relation(fields: [agentId], references: [id])
+  @@map("fee_agent")
+}
+model Spk {
+  id               Int      @id @default(autoincrement())
+  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
+  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
+  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
+  lokasi           String   @db.Text
+  jangkaWaktu      Int      @map("jangka_waktu")
+  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
+  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
+  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
+  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
+  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
+  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
+  namaBank         String   @map("nama_bank") @db.VarChar(100)
+  noRekening       String   @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
+  fileSpk          String?  @map("file_spk") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  @@map("spk")
+}
+model ProgressProyek {
+  id               Int            @id @default(autoincrement())
+  kavlingId        Int            @map("kavling_id")
+  pelaksana        String         @db.VarChar(150)
+  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
+  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
+  persentase       Int            @default(0)
+  keterangan       String         @db.Text
+  kendala          String?        @db.Text
+  fotoLapangan     Json?          @map("foto_lapangan")
+  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
+  @@map("progress_proyek")
+}
+model AuditLog {
+  id          Int        @id @default(autoincrement())
+  entityName  String     @map("entity_name") @db.VarChar(100) 
+  entityId    String     @map("entity_id") @db.VarChar(50)    
+  action      ActionType
+  changes     Json       
+  userId      Int?       @map("user_id") 
+  createdAt   DateTime   @default(now()) @map("created_at")
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("audit_logs")
+}
+model RiwayatGantiKavling {
+  id            Int            @id @default(autoincrement())
+  penjualanId   Int            @map("penjualan_id")
+  kavlingLamaId Int            @map("kavling_lama_id")
+  kavlingBaruId Int            @map("kavling_baru_id")
+  alasan        String?        @db.Text
+  status        ApprovalStatus @default(PENDING)
+  requestedById Int?           @map("requested_by_id")
+  approvedById  Int?           @map("approved_by_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") 
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  kavlingLama Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
+  kavlingBaru Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
+  requestedBy User?     @relation("PengajuGantiKavling", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy  User?     @relation("PenyetujuGantiKavling", fields: [approvedById], references: [id], onDelete: SetNull)
+  @@map("riwayat_ganti_kavling")
+}
+model PengajuanBatal {
+  id            Int            @id @default(autoincrement())
+  penjualanId   Int            @map("penjualan_id")
+  alasan        String         @db.Text
+  status        ApprovalStatus @default(PENDING)
+  requestedById Int?           @map("requested_by_id")
+  approvedById  Int?           @map("approved_by_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  requestedBy User?     @relation("PengajuBatal", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy  User?     @relation("PenyetujuBatal", fields: [approvedById], references: [id], onDelete: SetNull)
+  @@map("pengajuan_batal")
+}
+model RiwayatSpr {
+  id          Int      @id @default(autoincrement())
+  penjualanId Int      @map("penjualan_id")
+  fileSpr     String   @map("file_spr") @db.VarChar(255)
+  keterangan  String?  @db.VarChar(255) 
+  createdAt   DateTime @default(now()) @map("created_at")
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  @@map("riwayat_spr")
+}
+model ProgressPenjualan {
+  id                  Int       @id @default(autoincrement())
+  penjualanId         Int       @unique @map("penjualan_id")
+  berkasCustomerValid Boolean   @default(false) @map("berkas_customer_valid")
+  fileSp3k            String?   @map("file_sp3k") @db.VarChar(255)
+  fileSalinanAjb      String?   @map("file_salinan_ajb") @db.VarChar(255)
+  filePpjb            String?   @map("file_ppjb") @db.VarChar(255)
+  nilaiAjb            Decimal?  @map("nilai_ajb") @db.Decimal(15, 2)
+  biayaBphtb          Decimal?  @map("biaya_bphtb") @db.Decimal(15, 2)
+  biayaPph            Decimal?  @map("biaya_pph") @db.Decimal(15, 2)
+  fileAjb             String?   @map("file_ajb") @db.VarChar(255)
+  nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100) 
+  tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date       
+  fileBast            String?   @map("file_bast") @db.VarChar(255)
+  checklistBast       Json?     @map("checklist_bast") 
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  @@map("progress_penjualan")
+}
+
+
+model RolePermission {
+  id        Int      @id @default(autoincrement())
+  role      Role     
+  resource  String   @db.VarChar(100) 
+  canCreate Boolean  @default(false)
+  canRead   Boolean  @default(false)
+  canUpdate Boolean  @default(false)
+  canDelete Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([role, resource]) 
+  @@map("role_permissions")
 }
 </file>
 

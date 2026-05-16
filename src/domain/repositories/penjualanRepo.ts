@@ -176,6 +176,8 @@ export class PenjualanRepository implements IPenjualanRepository {
       let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
+      let dpTidakDibayar = 0;
+      const dpDibayar = data.dpDibayar ? Number(data.dpDibayar) : 0;
       let hargaJual: number | null = null;
 
       if (data.caraPembayaran) {
@@ -197,10 +199,13 @@ export class PenjualanRepository implements IPenjualanRepository {
 
           const baseHargaJual = plafonKredit / 0.9;
           hargaJual = data.hargaJual ?? baseHargaJual + diskon;
-          dp =
-            data.dp ??
+
+          dpTidakDibayar =
             data.dpTidakDibayar ??
             Math.round((hargaJual - diskon) * 0.1 - bookingFee);
+
+          // Logika Penentu DP untuk Tagihan/SPR
+          dp = dpDibayar > 0 ? dpDibayar : dpTidakDibayar;
         }
       }
       const penjualan = await tx.penjualan.create({
@@ -220,6 +225,8 @@ export class PenjualanRepository implements IPenjualanRepository {
           plafonKredit: plafonKredit > 0 ? plafonKredit : null,
           nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
           dp: dp > 0 ? dp : null,
+          dpTidakDibayar: dpTidakDibayar > 0 ? dpTidakDibayar : null,
+          dpDibayar: dpDibayar > 0 ? dpDibayar : null,
 
           diskonPenjualan: diskon > 0 ? diskon : null,
           bookingFee: bookingFee > 0 ? bookingFee : null,
@@ -426,6 +433,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         dpTidakDibayar: item.dpTidakDibayar
           ? Number(item.dpTidakDibayar)
           : null,
+        dpDibayar: item.dpDibayar ? Number(item.dpDibayar) : null,
         hargaJual: item.hargaJual ? Number(item.hargaJual) : null,
         caraPembayaran: item.caraPembayaran
           ? item.caraPembayaran.replace(/_/g, " ")

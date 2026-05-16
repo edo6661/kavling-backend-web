@@ -180,6 +180,7 @@ export class UpdatePenjualanUseCase {
       let nilaiPengajuanKpr = 0;
       let dp = 0;
       let dpTidakDibayar = 0;
+      const dpDibayar = data.dpDibayar ?? Number(old.dpDibayar ?? 0);
       let hargaJual = 0;
 
       if (
@@ -204,7 +205,7 @@ export class UpdatePenjualanUseCase {
         nilaiPengajuanKpr =
           data.nilaiPengajuanKpr ??
           plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
-        dp = data.dp ?? dpTidakDibayar;
+        dp = dpDibayar > 0 ? dpDibayar : dpTidakDibayar;
       }
 
       updateData.hargaDasar = currentHargaDasar;
@@ -212,6 +213,7 @@ export class UpdatePenjualanUseCase {
       updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
       updateData.plafonKredit = plafonKredit > 0 ? plafonKredit : null;
       updateData.dpTidakDibayar = dpTidakDibayar > 0 ? dpTidakDibayar : null;
+      updateData.dpDibayar = dpDibayar > 0 ? dpDibayar : null;
       updateData.nilaiPengajuanKpr =
         nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
       updateData.dp = dp > 0 ? dp : null;

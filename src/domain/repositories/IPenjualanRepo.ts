@@ -52,6 +52,7 @@ export interface PenjualanPaginatedItem {
   biayaKpr?: number | null;
   plafonKredit?: number | null;
   dpTidakDibayar?: number | null;
+  dpDibayar?: number | null;
   hargaJual: number | null;
   caraPembayaran: string | null;
 

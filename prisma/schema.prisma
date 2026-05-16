@@ -260,6 +260,7 @@ model Penjualan {
   biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
   plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
   dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
+  dpDibayar         Decimal?            @map("dp_dibayar") @db.Decimal(15, 2)
   hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
   dp                Decimal?            @db.Decimal(15, 2)
   diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)

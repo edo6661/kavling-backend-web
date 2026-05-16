@@ -26,6 +26,7 @@ export const createPenjualanSchema = {
     hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
     diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    dpDibayar: emptyAsUndefined(z.coerce.number().min(0).optional()),
     bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
     bank: emptyAsUndefined(z.string().optional()),
     caraPembayaran: emptyAsUndefined(
@@ -102,6 +103,7 @@ export const updatePenjualanSchema = {
       plafonKredit: emptyAsUndefined(z.coerce.number().optional()),
       plafonAcc: emptyAsUndefined(z.coerce.number().optional()),
       dpTidakDibayar: emptyAsUndefined(z.coerce.number().optional()),
+      dpDibayar: emptyAsUndefined(z.coerce.number().optional()),
       cicilanPerBulan: emptyAsUndefined(z.coerce.number().optional()),
       biayaKpr: emptyAsUndefined(z.coerce.number().optional()),
       nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().optional()),
