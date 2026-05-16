@@ -183,6 +183,7 @@ model Agent {
   atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
   
   feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
+  feeClosingPct   Decimal? @map("fee_closing_pct") @db.Decimal(5, 2)
   potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
 
   

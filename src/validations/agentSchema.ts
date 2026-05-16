@@ -25,6 +25,9 @@ export const createAgentSchema = {
     feeMarketingPct: emptyAsUndefined(
       z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
     ),
+    feeClosingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ), // <-- TAMBAHKAN INI
     potonganPph: emptyAsUndefined(
       z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
     ),
@@ -50,6 +53,9 @@ export const updateAgentSchema = {
     feeMarketingPct: emptyAsUndefined(
       z.coerce.number().min(0).max(100).optional(),
     ),
+    feeClosingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ), // <-- TAMBAHKAN INI
     potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
     pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),

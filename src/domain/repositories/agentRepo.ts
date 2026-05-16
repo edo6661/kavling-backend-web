@@ -43,6 +43,8 @@ export class AgentRepository implements IAgentRepository {
     }
     if (data.feeMarketingPct !== undefined)
       createData.feeMarketingPct = data.feeMarketingPct;
+    if (data.feeClosingPct !== undefined)
+      createData.feeClosingPct = data.feeClosingPct;
     if (data.potonganPph !== undefined)
       createData.potonganPph = data.potonganPph;
 
@@ -142,6 +144,8 @@ export class AgentRepository implements IAgentRepository {
 
     if (data.feeMarketingPct !== undefined)
       updateData.feeMarketingPct = data.feeMarketingPct ?? null;
+    if (data.feeClosingPct !== undefined)
+      updateData.feeClosingPct = data.feeClosingPct ?? null;
     if (data.potonganPph !== undefined)
       updateData.potonganPph = data.potonganPph ?? null;
 
