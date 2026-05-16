@@ -49,7 +49,7 @@ export class UploadBuktiTagihanUseCase {
       "bumantara/tagihan",
     );
 
-    const newStatus = isCustomer ? "MENUNGGU_KONFIRMASI" : "LUNAS";
+    const newStatus = "MENUNGGU_KONFIRMASI";
 
     const updateData = {
       fileBukti: imageUrl,

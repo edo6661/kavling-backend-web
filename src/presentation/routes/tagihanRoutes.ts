@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   authenticate,
   requirePermission,
+  requireRole,
 } from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
@@ -69,7 +70,7 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
   );
   router.post(
     "/:id/approve",
-    requirePermission("TAGIHAN", "update"),
+    requireRole(["SUPERADMIN", "FINANCE"]),
     controller.approveBukti,
   );
 
