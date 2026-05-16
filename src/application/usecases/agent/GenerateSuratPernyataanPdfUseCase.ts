@@ -31,11 +31,11 @@ export class GenerateSuratPernyataanPdfUseCase {
 
         if (logoBuffer) {
           doc.image(logoBuffer, (doc.page.width - 120) / 2, 40, { width: 120 });
-          doc.y = 160;
+          doc.y = 140;
         } else {
           doc.y = 80;
         }
-        doc.moveDown(4);
+        doc.moveDown(2);
 
         doc
           .font("Helvetica-Bold")
