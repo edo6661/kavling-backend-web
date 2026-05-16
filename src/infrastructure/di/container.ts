@@ -160,6 +160,7 @@ import { RegisterAgentUseCase } from "../../application/usecases/auth/AgentRegis
 import { PerusahaanAgentRepository } from "../../domain/repositories/perusahaanAgentRepo.js";
 import { PerusahaanAgentUseCases } from "../../application/usecases/perusahaanAgent/PerusahaanAgentUseCases.js";
 import { PerusahaanAgentController } from "../../presentation/controllers/perusahaanAgentController.js";
+import { GenerateSuratPernyataanPdfUseCase } from "../../application/usecases/agent/GenerateSuratPernyataanPdfUseCase.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
@@ -334,7 +335,13 @@ export const createContainer = (dbClient: PrismaClient) => {
 
   const ocrController = new OcrController(extractKtpDataUseCase);
   const agentLoginUseCase = new AgentLoginUseCase(userRepo, dbClient);
-  const registerAgentUseCase = new RegisterAgentUseCase(dbClient);
+  const generateSuratPernyataanPdfUseCase =
+    new GenerateSuratPernyataanPdfUseCase();
+  const registerAgentUseCase = new RegisterAgentUseCase(
+    dbClient,
+    cloudinaryService,
+    generateSuratPernyataanPdfUseCase,
+  );
   const authController = new AuthController(
     registerUseCase,
     loginUseCase,

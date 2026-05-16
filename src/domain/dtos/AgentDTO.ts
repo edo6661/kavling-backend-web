@@ -31,7 +31,8 @@ export interface UpdateAgentDTO {
   nama?: string | undefined;
   alamat?: string | undefined;
   noHp?: string | undefined;
-  fileSuratPernyataan?: string | undefined;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
   email?: string | undefined;
   status?: AgentStatus | undefined;
   perusahaanAgentId?: number | undefined;
@@ -62,7 +63,8 @@ export interface AgentResponseDTO {
   email: string | null;
   status: AgentStatus;
   type: AgentType;
-  fileSuratPernyataan?: string | undefined;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
 
   namaBank: string | null;
   noRekening: string | null;

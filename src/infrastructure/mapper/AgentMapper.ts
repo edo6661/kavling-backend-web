@@ -51,6 +51,7 @@ export class AgentMapper {
       fileNpwp: prismaAgent.fileNpwp ?? null,
       kwitansiBookingFee: prismaAgent.kwitansiBookingFee ?? null,
       fileSuratPernyataan: prismaAgent.fileSuratPernyataan ?? null,
+      defaultSuratPernyataan: prismaAgent.defaultSuratPernyataan ?? null,
       fileSuratKeterangan: prismaAgent.fileSuratKeterangan ?? null,
       fileKtpDirektur: prismaAgent.fileKtpDirektur ?? null,
       fileNpwpPerusahaan: prismaAgent.fileNpwpPerusahaan ?? null,

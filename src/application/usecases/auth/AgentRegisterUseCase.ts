@@ -3,12 +3,18 @@ import { Role, AgentStatus, AgentType } from "@prisma/client";
 import { hashPassword } from "../../../utils/hashing.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { RegisterAgentDTO } from "../../../domain/dtos/AgentDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSuratPernyataanPdfUseCase } from "../agent/GenerateSuratPernyataanPdfUseCase.js";
 
 export class RegisterAgentUseCase {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinary: CloudinaryService,
+    private readonly generateSuratPernyataanPdf: GenerateSuratPernyataanPdfUseCase,
+  ) {}
 
   async execute(data: RegisterAgentDTO) {
-    return await this.db.$transaction(async (tx) => {
+    const result = await this.db.$transaction(async (tx) => {
       const existingUser = await tx.user.findUnique({
         where: { email: data.email },
       });
@@ -31,7 +37,7 @@ export class RegisterAgentUseCase {
         },
       });
 
-      await tx.agent.create({
+      const agent = await tx.agent.create({
         data: {
           userId: user.id,
           nik: data.nik,
@@ -47,14 +53,39 @@ export class RegisterAgentUseCase {
           perusahaanAgentId: data.perusahaanAgentId ?? null,
           ttdData: data.ttdData ?? null,
         },
+        include: { perusahaanAgent: true },
       });
 
-      return {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      };
+      return { user, agent };
     });
+
+    try {
+      const namaPerusahaan =
+        result.agent.perusahaanAgent?.nama ?? "Independen / Pribadi";
+      const pdfBuffer = await this.generateSuratPernyataanPdf.execute({
+        nama: result.agent.nama,
+        perusahaan: namaPerusahaan,
+        alamat: result.agent.alamat ?? "",
+      });
+
+      const pdfUrl = await this.cloudinary.uploadFile(
+        pdfBuffer,
+        "bumantara/agents/surat_pernyataan_default",
+      );
+
+      await this.db.agent.update({
+        where: { id: result.agent.id },
+        data: { defaultSuratPernyataan: pdfUrl },
+      });
+    } catch (err) {
+      console.error("Gagal generate/upload Surat Pernyataan Default:", err);
+    }
+
+    return {
+      id: result.user.id,
+      username: result.user.username,
+      email: result.user.email,
+      role: result.user.role,
+    };
   }
 }
