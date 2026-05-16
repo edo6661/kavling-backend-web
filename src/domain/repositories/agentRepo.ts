@@ -150,6 +150,8 @@ export class AgentRepository implements IAgentRepository {
       updateData.fileNpwp = data.fileNpwp ?? null;
     if (data.kwitansiBookingFee !== undefined)
       updateData.kwitansiBookingFee = data.kwitansiBookingFee ?? null;
+    if (data.fileSuratPernyataan !== undefined)
+      updateData.fileSuratPernyataan = data.fileSuratPernyataan ?? null;
     if (data.fileSuratKeterangan !== undefined)
       updateData.fileSuratKeterangan = data.fileSuratKeterangan ?? null;
     if (data.fileKtpDirektur !== undefined)

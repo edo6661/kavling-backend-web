@@ -45,10 +45,10 @@ export interface AgentEntity {
   fileKtp: string | null;
   fileNpwp: string | null;
   kwitansiBookingFee: string | null;
+  fileSuratPernyataan: string | null; // <-- TAMBAHKAN INI
   fileSuratKeterangan: string | null;
   fileKtpDirektur: string | null;
   fileNpwpPerusahaan: string | null;
-
   hasAccount: boolean;
   pics: PicAgentEntity[];
   penjualan?: PenjualanAgentEntity[];

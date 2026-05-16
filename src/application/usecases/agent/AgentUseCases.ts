@@ -56,6 +56,7 @@ export class DeleteAgentUseCase {
       agent.fileKtp,
       agent.fileNpwp,
       agent.kwitansiBookingFee,
+      agent.fileSuratPernyataan,
       agent.fileSuratKeterangan,
       agent.fileKtpDirektur,
       agent.fileNpwpPerusahaan,

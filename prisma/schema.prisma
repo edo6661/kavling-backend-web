@@ -194,6 +194,7 @@ model Agent {
   fileSuratKeterangan String? @map("file_surat_keterangan") @db.VarChar(255)
   fileKtpDirektur     String? @map("file_ktp_direktur") @db.VarChar(255)
   fileNpwpPerusahaan  String? @map("file_npwp_perusahaan") @db.VarChar(255)
+  fileSuratPernyataan String? @map("file_surat_pernyataan") @db.VarChar(255)
 
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")

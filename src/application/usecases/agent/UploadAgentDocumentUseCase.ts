@@ -25,6 +25,7 @@ export class UploadAgentDocumentUseCase {
       "fileKtp",
       "fileNpwp",
       "kwitansiBookingFee",
+      "fileSuratPernyataan",
       "fileSuratKeterangan",
       "fileKtpDirektur",
       "fileNpwpPerusahaan",
