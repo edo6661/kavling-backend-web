@@ -161,11 +161,13 @@ import { PerusahaanAgentRepository } from "../../domain/repositories/perusahaanA
 import { PerusahaanAgentUseCases } from "../../application/usecases/perusahaanAgent/PerusahaanAgentUseCases.js";
 import { PerusahaanAgentController } from "../../presentation/controllers/perusahaanAgentController.js";
 import { GenerateSuratPernyataanPdfUseCase } from "../../application/usecases/agent/GenerateSuratPernyataanPdfUseCase.js";
+import { EmailService } from "../external/EmailService.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
   const socketService = new SocketService();
+  const emailService = new EmailService();
 
   const userRepo = new UserRepository(dbClient);
   const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
@@ -341,6 +343,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     dbClient,
     cloudinaryService,
     generateSuratPernyataanPdfUseCase,
+    emailService,
   );
   const authController = new AuthController(
     registerUseCase,

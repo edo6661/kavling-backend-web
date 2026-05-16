@@ -39,6 +39,8 @@ jobs:
             DB_USER=${{ secrets.DB_USER }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DB_NAME=${{ secrets.DB_NAME }}
+            SMTP_EMAIL="${{ secrets.SMTP_EMAIL }}"
+            SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}"
             EOT
 
             docker compose up -d --build

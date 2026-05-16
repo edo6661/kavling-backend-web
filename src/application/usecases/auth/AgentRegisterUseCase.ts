@@ -5,12 +5,14 @@ import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { RegisterAgentDTO } from "../../../domain/dtos/AgentDTO.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { GenerateSuratPernyataanPdfUseCase } from "../agent/GenerateSuratPernyataanPdfUseCase.js";
+import type { EmailService } from "../../../infrastructure/external/EmailService.js";
 
 export class RegisterAgentUseCase {
   constructor(
     private readonly db: PrismaClient,
     private readonly cloudinary: CloudinaryService,
     private readonly generateSuratPernyataanPdf: GenerateSuratPernyataanPdfUseCase,
+    private readonly emailService: EmailService,
   ) {}
 
   async execute(data: RegisterAgentDTO) {
@@ -67,6 +69,9 @@ export class RegisterAgentUseCase {
         perusahaan: namaPerusahaan,
         alamat: result.agent.alamat ?? "",
       });
+      this.emailService
+        .sendAgentRegistrationEmail(data.email, pdfBuffer, result.agent.nama)
+        .catch((err) => console.error("Gagal kirim email:", err));
 
       const pdfUrl = await this.cloudinary.uploadFile(
         pdfBuffer,

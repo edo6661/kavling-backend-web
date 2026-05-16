@@ -1,4 +1,4 @@
-tolong ingat kode backend:
+tolong ingat kode backend nya:
 
 <file path="src/app.ts">
 import { env } from "./config/env";
@@ -449,6 +449,42 @@ export class ExtractKtpDataUseCase {
     }
 
     return this.googleVisionService.extractKtpData(fotoKtpBuffer);
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/CreatePenjualanUseCase.ts">
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type {
+  CreatePenjualanDTO,
+  PenjualanResponseDTO,
+} from "../../../domain/dtos/PenjualanDTO.js";
+
+export class CreatePenjualanUseCase {
+  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
+
+  async execute(data: CreatePenjualanDTO): Promise<PenjualanResponseDTO> {
+    const penjualan = await this.penjualanRepo.createWithTransaction(data);
+
+    return {
+      id: penjualan.id,
+      noTransaksi: penjualan.noTransaksi,
+      tanggal: penjualan.tanggal,
+      customer: {
+        id: penjualan.customer.id,
+        nama: penjualan.customer.nama,
+      },
+      kavling: {
+        id: penjualan.kavling.id,
+        blok: penjualan.kavling.blok,
+        nomorUnit: penjualan.kavling.nomorUnit,
+        perumahan: penjualan.kavling.perumahan.nama,
+      },
+      caraPembayaran: penjualan.caraPembayaran,
+      hargaJual: Number(penjualan.hargaJual),
+      status: penjualan.status,
+      createdAt: penjualan.createdAt,
+    };
   }
 }
 </file>
@@ -2938,42 +2974,6 @@ export class ApproveBatalUseCase {
 }
 </file>
 
-<file path="src/application/usecases/penjualan/CreatePenjualanUseCase.ts">
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import type {
-  CreatePenjualanDTO,
-  PenjualanResponseDTO,
-} from "../../../domain/dtos/PenjualanDTO.js";
-
-export class CreatePenjualanUseCase {
-  constructor(private readonly penjualanRepo: IPenjualanRepository) {}
-
-  async execute(data: CreatePenjualanDTO): Promise<PenjualanResponseDTO> {
-    const penjualan = await this.penjualanRepo.createWithTransaction(data);
-
-    return {
-      id: penjualan.id,
-      noTransaksi: penjualan.noTransaksi,
-      tanggal: penjualan.tanggal,
-      customer: {
-        id: penjualan.customer.id,
-        nama: penjualan.customer.nama,
-      },
-      kavling: {
-        id: penjualan.kavling.id,
-        blok: penjualan.kavling.blok,
-        nomorUnit: penjualan.kavling.nomorUnit,
-        perumahan: penjualan.kavling.perumahan.nama,
-      },
-      caraPembayaran: penjualan.caraPembayaran,
-      hargaJual: Number(penjualan.hargaJual),
-      status: penjualan.status,
-      createdAt: penjualan.createdAt,
-    };
-  }
-}
-</file>
-
 <file path="src/application/usecases/penjualan/GetPengajuanBatalUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 
@@ -3023,6 +3023,23 @@ export class GetPengajuanGantiKavlingUseCase {
         approvedBy: { select: { username: true } },
       },
     });
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts">
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { PenjualanFilterDTO } from "../../../domain/dtos/PenjualanDTO.js";
+
+export class GetPenjualanPaginatedUseCase {
+  constructor(private readonly repo: IPenjualanRepository) {}
+
+  async execute(
+    page: number,
+    limit: number,
+    filters?: PenjualanFilterDTO & { status?: string },
+  ) {
+    return await this.repo.findWithOffsetPagination(page, limit, filters);
   }
 }
 </file>
@@ -6718,23 +6735,6 @@ export class UploadKavlingDocumentUseCase {
     );
     const updateData = { [docType]: fileUrl };
     return await this.repo.update(id, updateData);
-  }
-}
-</file>
-
-<file path="src/application/usecases/penjualan/GetPenjualanPaginatedUseCase.ts">
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import type { PenjualanFilterDTO } from "../../../domain/dtos/PenjualanDTO.js";
-
-export class GetPenjualanPaginatedUseCase {
-  constructor(private readonly repo: IPenjualanRepository) {}
-
-  async execute(
-    page: number,
-    limit: number,
-    filters?: PenjualanFilterDTO & { status?: string },
-  ) {
-    return await this.repo.findWithOffsetPagination(page, limit, filters);
   }
 }
 </file>
@@ -12255,6 +12255,77 @@ export class CloudinaryService {
 }
 </file>
 
+<file path="src/presentation/routes/index.ts">
+import { Router } from "express";
+import { checkHealth } from "../controllers/healthController.js";
+import { createAuthRoutes } from "./authRoutes.js";
+import { createUserRoutes } from "./userRoutes.js";
+import { createOcrRoutes } from "./ocrRoutes.js";
+import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
+import { createCustomerRoutes } from "./customerRoutes.js";
+import { container } from "../../infrastructure/di/container.js";
+import { createPerumahanRoutes } from "./perumahanRoutes.js";
+import { createDashboardRoutes } from "./dashboardRoutes.js";
+import { createAgentRoutes } from "./agentRoutes.js";
+import { createNotarisRoutes } from "./notarisRoutes.js";
+import { createKavlingRoutes } from "./kavlingRoutes.js";
+import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
+import { createTagihanRoutes } from "./tagihanRoutes.js";
+import { createPenjualanRoutes } from "./penjualanRoutes.js";
+import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
+import { createVerifyRoutes } from "./verifyRoutes.js";
+import { createAuditLogRoutes } from "./auditLogRoutes.js";
+import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
+import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
+import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
+export const createMainRouter = (deps: typeof container): Router => {
+  const router = Router();
+
+  router.get("/health", checkHealth);
+  router.use("/verify", createVerifyRoutes(deps.verifyController));
+
+  router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/users", createUserRoutes(deps.userController));
+  router.use("/ocr", createOcrRoutes(deps.ocrController));
+
+  router.use(
+    "/bank-rekening",
+    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  );
+
+  router.use("/customers", createCustomerRoutes(deps.customerController));
+  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
+  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/agents", createAgentRoutes(deps.agentController));
+  router.use("/notaris", createNotarisRoutes(deps.notarisController));
+  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
+  router.use(
+    "/customer-kavling",
+    createCustomerKavlingRoutes(deps.customerKavlingController),
+  );
+  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
+  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use(
+    "/progress-penjualan",
+    createProgressPenjualanRoutes(deps.progressPenjualanController),
+  );
+  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
+  router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
+  router.use(
+    "/role-permissions",
+    createRolePermissionRoutes(deps.rolePermissionController),
+  );
+  router.use(
+    "/perusahaan-agents",
+    createPerusahaanAgentRoutes(deps.perusahaanAgentController),
+  );
+  return router;
+};
+
+const router = createMainRouter(container);
+export default router;
+</file>
+
 <file path="package.json">
 {
   "name": "bumantara",
@@ -12555,77 +12626,6 @@ export class AgentMapper {
 }
 </file>
 
-<file path="src/presentation/routes/index.ts">
-import { Router } from "express";
-import { checkHealth } from "../controllers/healthController.js";
-import { createAuthRoutes } from "./authRoutes.js";
-import { createUserRoutes } from "./userRoutes.js";
-import { createOcrRoutes } from "./ocrRoutes.js";
-import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
-import { createCustomerRoutes } from "./customerRoutes.js";
-import { container } from "../../infrastructure/di/container.js";
-import { createPerumahanRoutes } from "./perumahanRoutes.js";
-import { createDashboardRoutes } from "./dashboardRoutes.js";
-import { createAgentRoutes } from "./agentRoutes.js";
-import { createNotarisRoutes } from "./notarisRoutes.js";
-import { createKavlingRoutes } from "./kavlingRoutes.js";
-import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
-import { createTagihanRoutes } from "./tagihanRoutes.js";
-import { createPenjualanRoutes } from "./penjualanRoutes.js";
-import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
-import { createVerifyRoutes } from "./verifyRoutes.js";
-import { createAuditLogRoutes } from "./auditLogRoutes.js";
-import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
-import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
-import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
-export const createMainRouter = (deps: typeof container): Router => {
-  const router = Router();
-
-  router.get("/health", checkHealth);
-  router.use("/verify", createVerifyRoutes(deps.verifyController));
-
-  router.use("/auth", createAuthRoutes(deps.authController));
-  router.use("/users", createUserRoutes(deps.userController));
-  router.use("/ocr", createOcrRoutes(deps.ocrController));
-
-  router.use(
-    "/bank-rekening",
-    createBankRekeningPtRoutes(deps.bankRekeningPtController),
-  );
-
-  router.use("/customers", createCustomerRoutes(deps.customerController));
-  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
-  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
-  router.use("/agents", createAgentRoutes(deps.agentController));
-  router.use("/notaris", createNotarisRoutes(deps.notarisController));
-  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
-  router.use(
-    "/customer-kavling",
-    createCustomerKavlingRoutes(deps.customerKavlingController),
-  );
-  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
-  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
-  router.use(
-    "/progress-penjualan",
-    createProgressPenjualanRoutes(deps.progressPenjualanController),
-  );
-  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
-  router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
-  router.use(
-    "/role-permissions",
-    createRolePermissionRoutes(deps.rolePermissionController),
-  );
-  router.use(
-    "/perusahaan-agents",
-    createPerusahaanAgentRoutes(deps.perusahaanAgentController),
-  );
-  return router;
-};
-
-const router = createMainRouter(container);
-export default router;
-</file>
-
 <file path="src/presentation/routes/tagihanRoutes.ts">
 import { Router } from "express";
 import {
@@ -12701,6 +12701,109 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
     "/:id/approve",
     requireRole(["SUPERADMIN", "FINANCE"]),
     controller.approveBukti,
+  );
+
+  return router;
+};
+</file>
+
+<file path="src/presentation/routes/penjualanRoutes.ts">
+import { Router } from "express";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import {
+  cancelPenjualanSchema,
+  createPenjualanSchema,
+  gantiKavlingSchema,
+  getPenjualanPaginatedSchema,
+  updatePenjualanSchema,
+  uploadSignatureSchema,
+  approveSchema,
+} from "../../validations/penjualanSchema.js";
+import type { PenjualanController } from "../controllers/penjualanController.js";
+import { upload } from "../../middlewares/upload.js";
+
+export const createPenjualanRoutes = (
+  controller: PenjualanController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.get(
+    "/pengajuan-batal",
+    requirePermission("BATAL_TRANSAKSI", "read"),
+    controller.getPengajuanBatal,
+  );
+  router.get(
+    "/pengajuan-ganti-kavling",
+    requirePermission("GANTI_KAVLING", "read"),
+    controller.getPengajuanGantiKavling,
+  );
+
+  router.post(
+    "/pengajuan-batal/:id/approve",
+    requirePermission("BATAL_TRANSAKSI", "update"),
+    validate(approveSchema),
+    controller.approveBatal,
+  );
+  router.post(
+    "/pengajuan-ganti-kavling/:id/approve",
+    requirePermission("GANTI_KAVLING", "update"),
+    validate(approveSchema),
+    controller.approveGantiKavling,
+  );
+
+  router.get(
+    "/",
+    requirePermission("PENJUALAN", "read"),
+    validate(getPenjualanPaginatedSchema),
+    controller.getPaginated,
+  );
+  router.post(
+    "/",
+    requirePermission("PENJUALAN", "create"),
+    validate(createPenjualanSchema),
+    controller.create,
+  );
+
+  router.patch(
+    "/:id/cancel",
+    requirePermission("PENJUALAN", "update"),
+    validate(cancelPenjualanSchema),
+    controller.cancel,
+  );
+  router.patch(
+    "/:id/upload/:type",
+    requirePermission("PENJUALAN", "update"),
+    upload.single("fileBukti"),
+    controller.uploadBukti,
+  );
+  router.post(
+    "/:id/signature",
+    requirePermission("PENJUALAN", "update"),
+    validate(uploadSignatureSchema),
+    controller.uploadSignature,
+  );
+  router.patch(
+    "/:id",
+    requirePermission("PENJUALAN", "update"),
+    validate(updatePenjualanSchema),
+    controller.update,
+  );
+  router.patch(
+    "/:id/ganti-kavling",
+    requirePermission("PENJUALAN", "update"),
+    validate(gantiKavlingSchema),
+    controller.gantiKavling,
+  );
+  router.post(
+    "/:id/generate-spr",
+    requirePermission("PENJUALAN", "update"),
+    controller.regenerateSpr,
   );
 
   return router;
@@ -12880,109 +12983,6 @@ export class UpdateCustomerKavlingUseCase {
 }
 </file>
 
-<file path="src/presentation/routes/penjualanRoutes.ts">
-import { Router } from "express";
-import {
-  authenticate,
-  requirePermission,
-} from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import {
-  cancelPenjualanSchema,
-  createPenjualanSchema,
-  gantiKavlingSchema,
-  getPenjualanPaginatedSchema,
-  updatePenjualanSchema,
-  uploadSignatureSchema,
-  approveSchema,
-} from "../../validations/penjualanSchema.js";
-import type { PenjualanController } from "../controllers/penjualanController.js";
-import { upload } from "../../middlewares/upload.js";
-
-export const createPenjualanRoutes = (
-  controller: PenjualanController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.get(
-    "/pengajuan-batal",
-    requirePermission("BATAL_TRANSAKSI", "read"),
-    controller.getPengajuanBatal,
-  );
-  router.get(
-    "/pengajuan-ganti-kavling",
-    requirePermission("GANTI_KAVLING", "read"),
-    controller.getPengajuanGantiKavling,
-  );
-
-  router.post(
-    "/pengajuan-batal/:id/approve",
-    requirePermission("BATAL_TRANSAKSI", "update"),
-    validate(approveSchema),
-    controller.approveBatal,
-  );
-  router.post(
-    "/pengajuan-ganti-kavling/:id/approve",
-    requirePermission("GANTI_KAVLING", "update"),
-    validate(approveSchema),
-    controller.approveGantiKavling,
-  );
-
-  router.get(
-    "/",
-    requirePermission("PENJUALAN", "read"),
-    validate(getPenjualanPaginatedSchema),
-    controller.getPaginated,
-  );
-  router.post(
-    "/",
-    requirePermission("PENJUALAN", "create"),
-    validate(createPenjualanSchema),
-    controller.create,
-  );
-
-  router.patch(
-    "/:id/cancel",
-    requirePermission("PENJUALAN", "update"),
-    validate(cancelPenjualanSchema),
-    controller.cancel,
-  );
-  router.patch(
-    "/:id/upload/:type",
-    requirePermission("PENJUALAN", "update"),
-    upload.single("fileBukti"),
-    controller.uploadBukti,
-  );
-  router.post(
-    "/:id/signature",
-    requirePermission("PENJUALAN", "update"),
-    validate(uploadSignatureSchema),
-    controller.uploadSignature,
-  );
-  router.patch(
-    "/:id",
-    requirePermission("PENJUALAN", "update"),
-    validate(updatePenjualanSchema),
-    controller.update,
-  );
-  router.patch(
-    "/:id/ganti-kavling",
-    requirePermission("PENJUALAN", "update"),
-    validate(gantiKavlingSchema),
-    controller.gantiKavling,
-  );
-  router.post(
-    "/:id/generate-spr",
-    requirePermission("PENJUALAN", "update"),
-    controller.regenerateSpr,
-  );
-
-  return router;
-};
-</file>
-
 <file path="src/domain/dtos/PenjualanDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
@@ -13006,6 +13006,7 @@ export interface CreatePenjualanDTO {
   plafonKredit?: number;
   plafonAcc?: number;
   dpTidakDibayar?: number;
+  dpDibayar?: number;
   hargaJual?: number;
   hargaPromosi?: number | undefined;
   diskonPenjualan?: number | undefined;
@@ -13921,6 +13922,7 @@ export interface PenjualanPaginatedItem {
   biayaKpr?: number | null;
   plafonKredit?: number | null;
   dpTidakDibayar?: number | null;
+  dpDibayar?: number | null;
   hargaJual: number | null;
   caraPembayaran: string | null;
 
@@ -14156,6 +14158,7 @@ export class UpdatePenjualanUseCase {
       let nilaiPengajuanKpr = 0;
       let dp = 0;
       let dpTidakDibayar = 0;
+      const dpDibayar = data.dpDibayar ?? Number(old.dpDibayar ?? 0);
       let hargaJual = 0;
 
       if (
@@ -14180,7 +14183,7 @@ export class UpdatePenjualanUseCase {
         nilaiPengajuanKpr =
           data.nilaiPengajuanKpr ??
           plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
-        dp = data.dp ?? dpTidakDibayar;
+        dp = dpDibayar > 0 ? dpDibayar : dpTidakDibayar;
       }
 
       updateData.hargaDasar = currentHargaDasar;
@@ -14188,6 +14191,7 @@ export class UpdatePenjualanUseCase {
       updateData.biayaKpr = biayaKpr > 0 ? biayaKpr : null;
       updateData.plafonKredit = plafonKredit > 0 ? plafonKredit : null;
       updateData.dpTidakDibayar = dpTidakDibayar > 0 ? dpTidakDibayar : null;
+      updateData.dpDibayar = dpDibayar > 0 ? dpDibayar : null;
       updateData.nilaiPengajuanKpr =
         nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null;
       updateData.dp = dp > 0 ? dp : null;
@@ -14446,6 +14450,7 @@ export const createPenjualanSchema = {
     hargaPromosi: emptyAsUndefined(z.coerce.number().min(0).optional()),
     diskonPenjualan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     dp: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    dpDibayar: emptyAsUndefined(z.coerce.number().min(0).optional()),
     bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
     bank: emptyAsUndefined(z.string().optional()),
     caraPembayaran: emptyAsUndefined(
@@ -14522,6 +14527,7 @@ export const updatePenjualanSchema = {
       plafonKredit: emptyAsUndefined(z.coerce.number().optional()),
       plafonAcc: emptyAsUndefined(z.coerce.number().optional()),
       dpTidakDibayar: emptyAsUndefined(z.coerce.number().optional()),
+      dpDibayar: emptyAsUndefined(z.coerce.number().optional()),
       cicilanPerBulan: emptyAsUndefined(z.coerce.number().optional()),
       biayaKpr: emptyAsUndefined(z.coerce.number().optional()),
       nilaiPengajuanKpr: emptyAsUndefined(z.coerce.number().optional()),
@@ -14748,6 +14754,8 @@ export class PenjualanRepository implements IPenjualanRepository {
       let plafonKredit = 0;
       let nilaiPengajuanKpr = 0;
       let dp = 0;
+      let dpTidakDibayar = 0;
+      const dpDibayar = data.dpDibayar ? Number(data.dpDibayar) : 0;
       let hargaJual: number | null = null;
 
       if (data.caraPembayaran) {
@@ -14769,10 +14777,13 @@ export class PenjualanRepository implements IPenjualanRepository {
 
           const baseHargaJual = plafonKredit / 0.9;
           hargaJual = data.hargaJual ?? baseHargaJual + diskon;
-          dp =
-            data.dp ??
+
+          dpTidakDibayar =
             data.dpTidakDibayar ??
             Math.round((hargaJual - diskon) * 0.1 - bookingFee);
+
+          // Logika Penentu DP untuk Tagihan/SPR
+          dp = dpDibayar > 0 ? dpDibayar : dpTidakDibayar;
         }
       }
       const penjualan = await tx.penjualan.create({
@@ -14792,6 +14803,8 @@ export class PenjualanRepository implements IPenjualanRepository {
           plafonKredit: plafonKredit > 0 ? plafonKredit : null,
           nilaiPengajuanKpr: nilaiPengajuanKpr > 0 ? nilaiPengajuanKpr : null,
           dp: dp > 0 ? dp : null,
+          dpTidakDibayar: dpTidakDibayar > 0 ? dpTidakDibayar : null,
+          dpDibayar: dpDibayar > 0 ? dpDibayar : null,
 
           diskonPenjualan: diskon > 0 ? diskon : null,
           bookingFee: bookingFee > 0 ? bookingFee : null,
@@ -14998,6 +15011,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         dpTidakDibayar: item.dpTidakDibayar
           ? Number(item.dpTidakDibayar)
           : null,
+        dpDibayar: item.dpDibayar ? Number(item.dpDibayar) : null,
         hargaJual: item.hargaJual ? Number(item.hargaJual) : null,
         caraPembayaran: item.caraPembayaran
           ? item.caraPembayaran.replace(/_/g, " ")
@@ -15066,526 +15080,6 @@ export class PenjualanRepository implements IPenjualanRepository {
       },
     });
   }
-}
-</file>
-
-<file path="prisma/schema.prisma">
-generator client {
-  provider = "prisma-client-js"
-}
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-enum AgentType {
-  PRIBADI    @map("Pribadi")
-  PERUSAHAAN @map("Perusahaan")
-}
-enum Role {
-  SUPERADMIN @map("superadmin") 
-  ADMIN      @map("admin")
-  FINANCE    @map("finance")    
-  MARKETING  @map("marketing")
-  CUSTOMER   @map("customer")
-  BANK       @map("bank")
-  AGENT      @map("agent")
-}
-enum UnitStatus {
-  AVAILABLE  @map("Available")
-  BOOKING    @map("Booking")
-  TERJUAL    @map("Terjual")
-  HOLD       @map("Hold")
-}
-enum ActionType {
-  CREATE
-  UPDATE
-  DELETE
-}
-enum PaymentStatus {
-  BELUM_BAYAR         @map("Belum Bayar")
-  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi") 
-  LUNAS               @map("Lunas")
-}
-enum PaymentMethod {
-  CASH_KERAS    @map("CASH KERAS")
-  CASH_BERTAHAP @map("CASH BERTAHAP")
-  KPR           @map("KPR")
-}
-enum ProgressStatus {
-  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
-  DISETUJUI           @map("Disetujui")
-  REVISI              @map("Revisi")
-}
-enum PenjualanStatus {
-  BOOKED    @map("Booked")
-  PROSES    @map("Proses")
-  LUNAS     @map("Lunas")
-  BATAL     @map("Batal")
-}
-enum AgentStatus {
-  PENDING    @map("Pending") 
-  AKTIF      @map("Aktif")
-  NONAKTIF   @map("Nonaktif")
-}
-enum SP3R {
-  BANK  @map("BANK")
-  CASH  @map("Cash")
-}
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @db.VarChar(100)
-  email     String   @unique @db.VarChar(100)
-  password  String   @db.VarChar(255)
-  role      Role
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  auditLogs AuditLog[]
-  customers Customer[]
-  agents    Agent[]
-  pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
-  persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
-  pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
-  persetujuanBatal        PengajuanBatal[]      @relation("PenyetujuBatal")
-  @@map("users")
-}
-model Customer {
-  id                Int         @id @default(autoincrement())
-  userId            Int?        @map("user_id")
-  nikKtp            String      @unique @map("nik_ktp") @db.VarChar(20)
-  nama              String      @db.VarChar(150)
-  noHp              String      @map("no_hp") @db.VarChar(20)
-  alamatKtp         String      @map("alamat_ktp") @db.Text
-  alamatTinggal     String?     @map("alamat_tinggal") @db.Text
-  email             String?     @db.VarChar(100)
-  pekerjaan         String?     @db.VarChar(100)
-  perusahaan        String?     @db.VarChar(150)
-  bank              String?     @db.VarChar(100)
-  alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
-  fileKtp           String?     @map("file_ktp") @db.VarChar(255)
-  fileKk            String?     @map("file_kk") @db.VarChar(255)
-  fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
-  dokumenLainnya    Json?     @map("dokumen_lainnya") 
-  createdAt         DateTime    @default(now()) @map("created_at")
-  updatedAt         DateTime    @updatedAt @map("updated_at")
-  user              User?       @relation(fields: [userId], references: [id])
-  penjualan         Penjualan[]
-  tagihan           Tagihan[]
-  @@map("customers")
-}
-model Perumahan {
-  id             Int              @id @default(autoincrement())
-  nama           String           @unique @db.VarChar(150)
-  logo           String           @unique @db.VarChar(150)
-  alamat         String           @unique @db.VarChar(150)
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  kavlings       Kavling[]
-  bankRekeningPt BankRekeningPt[]
-  @@map("perumahan")
-}
-model BankRekeningPt {
-  id          Int         @id @default(autoincrement())
-  perumahanId Int         @map("perumahan_id")
-  namaBank    String      @map("nama_bank") @db.VarChar(100)
-  noRekening  String      @map("no_rekening") @db.VarChar(50)
-  atasNama    String      @map("atas_nama") @db.VarChar(150)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  penjualan   Penjualan[]
-  kavlings    Kavling[]
-  @@map("bank_rekening_pt")
-}
-model Notaris {
-  id                 Int                  @id @default(autoincrement())
-  nama               String               @db.VarChar(150)
-  nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
-  nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
-  noHp               String?              @map("no_hp") @db.VarChar(20)   
-  alamat             String?              @db.Text                        
-  biayaAjb           Decimal?              @map("biaya_ajb") @db.Decimal(15, 2)
-  biayaPpjb           Decimal?              @map("biaya_ppjb") @db.Decimal(15, 2)
-  createdAt          DateTime             @default(now()) @map("created_at")
-  updatedAt          DateTime             @updatedAt @map("updated_at")
-  pics               PicNotaris[]
-  detailKavlingPajak DetailKavlingPajak[]
-  @@map("notaris")
-}
-model PicNotaris {
-  id        Int      @id @default(autoincrement())
-  notarisId Int      @map("notaris_id")
-  nama      String   @db.VarChar(150)
-  noHp      String   @map("no_hp") @db.VarChar(20)
-  alamat    String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
-  @@map("pic_notaris")
-}
-model PerusahaanAgent {
-  id        Int      @id @default(autoincrement())
-  nama      String   @db.VarChar(150)
-  akte      String?  @db.VarChar(255)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  agents    Agent[]
-
-  @@map("perusahaan_agents")
-}
-model Agent {
-  id        Int         @id @default(autoincrement())
-  userId    Int?        @map("user_id") 
-  nik       String      @unique @db.VarChar(20)
-  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
-  nama      String      @db.VarChar(150)
-  alamat    String?     @db.Text
-  noHp      String      @map("no_hp") @db.VarChar(20)
-  email     String?     @db.VarChar(100)
-  status    AgentStatus @default(PENDING)
-  type      AgentType   @default(PRIBADI)
-  ttdData           String?          @db.LongText
-  perusahaanAgentId Int?             @map("perusahaan_agent_id")
-
-  namaBank           String?     @map("nama_bank") @db.VarChar(100)
-  noRekening         String?     @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
-  
-  feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
-  feeClosingPct   Decimal? @map("fee_closing_pct") @db.Decimal(5, 2)
-  potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
-
-  
-  fileKtp            String? @map("file_ktp") @db.VarChar(255)
-  fileNpwp           String? @map("file_npwp") @db.VarChar(255)
-  kwitansiBookingFee String? @map("kwitansi_booking_fee") @db.VarChar(255)
-
-  
-  fileSuratKeterangan String? @map("file_surat_keterangan") @db.VarChar(255)
-  fileKtpDirektur     String? @map("file_ktp_direktur") @db.VarChar(255)
-  fileNpwpPerusahaan  String? @map("file_npwp_perusahaan") @db.VarChar(255)
-  fileSuratPernyataan String? @map("file_surat_pernyataan") @db.VarChar(255)
-  defaultSuratPernyataan String? @map("default_surat_pernyataan") @db.VarChar(255)
-
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
-  
-  user      User?       @relation(fields: [userId], references: [id])
-  perusahaanAgent PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id], onDelete: SetNull)
-  pics      PicAgent[]
-  fees      FeeAgent[]
-  penjualan Penjualan[]
-  @@map("agents")
-}
-model PicAgent {
-  id        Int      @id @default(autoincrement())
-  agentId   Int      @map("agent_id")
-  nama      String   @db.VarChar(150)
-  noHp      String   @map("no_hp") @db.VarChar(20)
-  alamat    String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  @@map("pic_agents")
-}
-model Kavling {
-  id                  Int              @id @default(autoincrement())
-  perumahanId         Int              @map("perumahan_id")
-  blok                String           @db.VarChar(10)
-  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
-  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
-  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
-  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
-  hargaDasar          Decimal          @map("harga_dasar") @db.Decimal(15, 2)
-  status              UnitStatus       @default(AVAILABLE)
-  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
-  filePbg             String?          @map("file_pbg") @db.VarChar(255)
-  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
-  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
-  riwayatLama        RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
-  riwayatBaru        RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
-  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
-  penjualan           Penjualan[]
-  progressProyek      ProgressProyek[]
-  @@unique([perumahanId, blok, nomorUnit])
-  @@map("kavling")
-}
-model Penjualan {
-  id                Int                 @id @default(autoincrement())
-  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
-  tanggal           DateTime            @db.Date
-  customerId        Int                 @map("customer_id")
-  kavlingId         Int                 @map("kavling_id")
-  agentId           Int?                @map("agent_id")
-  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
-  caraPembayaran    PaymentMethod?       @map("cara_pembayaran")
-  termin            Int?                @map("termin")
-  hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
-  plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
-  plafonAcc          Decimal?             @map("plafon_acc") @db.Decimal(15, 2)
-  biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
-  plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
-  dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
-  hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
-  dp                Decimal?            @db.Decimal(15, 2)
-  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
-  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
-  bank              String?             @db.VarChar(100)
-  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
-  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
-  status            PenjualanStatus     @default(BOOKED)
-  alasanBatal       String?             @map("alasan_batal") @db.Text
-  keteranganAngsuran String?            @map("keterangan_angsuran") @db.Text
-  fileSpr           String?             @map("file_spr") @db.VarChar(255)
-  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
-  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
-  ttdData           Json?               @map("ttd_data")
-  tambahanKpr       Json?               @map("tambahan_kpr")
-  createdBy           String?             @map("created_by") @db.VarChar(100) 
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  riwayatGantiKavling RiwayatGantiKavling[]
-  customer          Customer            @relation(fields: [customerId], references: [id])
-  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
-  agent             Agent?              @relation(fields: [agentId], references: [id])
-  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
-  tagihan           Tagihan[]
-  detailKavlingPajak DetailKavlingPajak?
-  feeAgent          FeeAgent?
-  progressPenjualan   ProgressPenjualan?
-  pengajuanBatal PengajuanBatal[]
-  riwayatSpr          RiwayatSpr[]
-  @@map("penjualan")
-}
-model DetailKavlingPajak {
-  id                      Int       @id @default(autoincrement())
-  penjualanId             Int       @unique @map("penjualan_id")
-  notarisId               Int?      @map("notaris_id")
-  biayaNotaris            Decimal?  @map("biaya_notaris") @db.Decimal(15, 2)
-  lantai                  String?   @db.VarChar(10)
-  luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
-  lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
-  tanggalAkadPpjb         DateTime? @map("tanggal_akad_ppjb") @db.Date
-  akadPpjb                String?   @map("akad_ppjb") @db.VarChar(100)
-  tanggalAkadAjbPpat      DateTime? @map("tanggal_akad_ajb_ppat") @db.Date
-  tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
-  tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
-  pembiayaan              String?   @db.VarChar(100)
-  sp3r                    SP3R?     @default(BANK) 
-  lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
-  biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
-  nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
-  nrDiskonAngsuran        Decimal?  @map("nr_diskon_angsuran") @db.Decimal(15, 2)
-  nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
-  nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
-  nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
-  nrBiayaNotarisPpjb       Decimal?  @map("nr_biaya_notaris_ppjb") @db.Decimal(15, 2)
-  nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
-  nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
-  nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
-  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
-  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
-  nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
-  nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
-  nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
-  pjBiayaKpr              Decimal?  @map("pj_biaya_kpr") @db.Decimal(15, 2)
-  pjBiayaAsuransi         Decimal?  @map("pj_biaya_asuransi") @db.Decimal(15, 2)
-  pjDiskonAngsuran        Decimal?  @map("pj_diskon_angsuran") @db.Decimal(15, 2)
-  pjBiayaBbn              Decimal?  @map("pj_biaya_bbn") @db.Decimal(15, 2)
-  pjBiayaAjb              Decimal?  @map("pj_biaya_ajb") @db.Decimal(15, 2)
-  pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
-  pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
-  pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
-  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
-  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
-  pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
-  pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
-  pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
-  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
-  ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
-  ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
-  ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
-  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
-  ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
-  ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
-  ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
-  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
-  ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
-  ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
-  penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
-  @@map("detail_kavling_pajak")
-}
-model Tagihan {
-  id                 Int           @id @default(autoincrement())
-  noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
-  customerId         Int           @map("customer_id")
-  penjualanId        Int           @map("penjualan_id")
-  pembayaran         String        @db.VarChar(255)
-  nominal            Decimal       @db.Decimal(15, 2)
-  jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
-  status             PaymentStatus @default(BELUM_BAYAR)
-  fileBukti          String?       @map("file_bukti") @db.VarChar(255)
-  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
-  isRefunded         Boolean       @default(false) @map("is_refunded")
-  fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
-  ttdData            Json?         @map("ttd_data") 
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
-  customer           Customer      @relation(fields: [customerId], references: [id])
-  penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
-  @@map("tagihan")
-}
-model FeeAgent {
-  id               Int       @id @default(autoincrement())
-  agentId          Int       @map("agent_id")
-  penjualanId      Int       @unique @map("penjualan_id")
-  bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
-  bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
-  bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
-  closingNominal   Decimal?  @map("closing_nominal") @db.Decimal(15, 2)
-  closingTanggal   DateTime? @map("closing_tanggal") @db.Date
-  closingBukti     String?   @map("closing_bukti") @db.VarChar(255)
-  marketingNominal Decimal?  @map("marketing_nominal") @db.Decimal(15, 2)
-  marketingTanggal DateTime? @map("marketing_tanggal") @db.Date
-  marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  agent            Agent     @relation(fields: [agentId], references: [id])
-  @@map("fee_agent")
-}
-model Spk {
-  id               Int      @id @default(autoincrement())
-  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
-  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
-  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
-  lokasi           String   @db.Text
-  jangkaWaktu      Int      @map("jangka_waktu")
-  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
-  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
-  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
-  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
-  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
-  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
-  namaBank         String   @map("nama_bank") @db.VarChar(100)
-  noRekening       String   @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
-  fileSpk          String?  @map("file_spk") @db.VarChar(255)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  @@map("spk")
-}
-model ProgressProyek {
-  id               Int            @id @default(autoincrement())
-  kavlingId        Int            @map("kavling_id")
-  pelaksana        String         @db.VarChar(150)
-  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
-  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
-  persentase       Int            @default(0)
-  keterangan       String         @db.Text
-  kendala          String?        @db.Text
-  fotoLapangan     Json?          @map("foto_lapangan")
-  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
-  @@map("progress_proyek")
-}
-model AuditLog {
-  id          Int        @id @default(autoincrement())
-  entityName  String     @map("entity_name") @db.VarChar(100) 
-  entityId    String     @map("entity_id") @db.VarChar(50)    
-  action      ActionType
-  changes     Json       
-  userId      Int?       @map("user_id") 
-  createdAt   DateTime   @default(now()) @map("created_at")
-  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  @@map("audit_logs")
-}
-model RiwayatGantiKavling {
-  id            Int            @id @default(autoincrement())
-  penjualanId   Int            @map("penjualan_id")
-  kavlingLamaId Int            @map("kavling_lama_id")
-  kavlingBaruId Int            @map("kavling_baru_id")
-  alasan        String?        @db.Text
-  status        ApprovalStatus @default(PENDING)
-  requestedById Int?           @map("requested_by_id")
-  approvedById  Int?           @map("approved_by_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") 
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  kavlingLama Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
-  kavlingBaru Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
-  requestedBy User?     @relation("PengajuGantiKavling", fields: [requestedById], references: [id], onDelete: SetNull)
-  approvedBy  User?     @relation("PenyetujuGantiKavling", fields: [approvedById], references: [id], onDelete: SetNull)
-  @@map("riwayat_ganti_kavling")
-}
-model PengajuanBatal {
-  id            Int            @id @default(autoincrement())
-  penjualanId   Int            @map("penjualan_id")
-  alasan        String         @db.Text
-  status        ApprovalStatus @default(PENDING)
-  requestedById Int?           @map("requested_by_id")
-  approvedById  Int?           @map("approved_by_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  requestedBy User?     @relation("PengajuBatal", fields: [requestedById], references: [id], onDelete: SetNull)
-  approvedBy  User?     @relation("PenyetujuBatal", fields: [approvedById], references: [id], onDelete: SetNull)
-  @@map("pengajuan_batal")
-}
-model RiwayatSpr {
-  id          Int      @id @default(autoincrement())
-  penjualanId Int      @map("penjualan_id")
-  fileSpr     String   @map("file_spr") @db.VarChar(255)
-  keterangan  String?  @db.VarChar(255) 
-  createdAt   DateTime @default(now()) @map("created_at")
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  @@map("riwayat_spr")
-}
-model ProgressPenjualan {
-  id                  Int       @id @default(autoincrement())
-  penjualanId         Int       @unique @map("penjualan_id")
-  berkasCustomerValid Boolean   @default(false) @map("berkas_customer_valid")
-  fileSp3k            String?   @map("file_sp3k") @db.VarChar(255)
-  fileSalinanAjb      String?   @map("file_salinan_ajb") @db.VarChar(255)
-  filePpjb            String?   @map("file_ppjb") @db.VarChar(255)
-  nilaiAjb            Decimal?  @map("nilai_ajb") @db.Decimal(15, 2)
-  biayaBphtb          Decimal?  @map("biaya_bphtb") @db.Decimal(15, 2)
-  biayaPph            Decimal?  @map("biaya_pph") @db.Decimal(15, 2)
-  fileAjb             String?   @map("file_ajb") @db.VarChar(255)
-  nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100) 
-  tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date       
-  fileBast            String?   @map("file_bast") @db.VarChar(255)
-  checklistBast       Json?     @map("checklist_bast") 
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-  penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  @@map("progress_penjualan")
-}
-
-
-model RolePermission {
-  id        Int      @id @default(autoincrement())
-  role      Role     
-  resource  String   @db.VarChar(100) 
-  canCreate Boolean  @default(false)
-  canRead   Boolean  @default(false)
-  canUpdate Boolean  @default(false)
-  canDelete Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([role, resource]) 
-  @@map("role_permissions")
 }
 </file>
 
@@ -16178,6 +15672,527 @@ export const createContainer = (dbClient: PrismaClient) => {
 };
 
 export const container = createContainer(prisma as any);
+</file>
+
+<file path="prisma/schema.prisma">
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+enum AgentType {
+  PRIBADI    @map("Pribadi")
+  PERUSAHAAN @map("Perusahaan")
+}
+enum Role {
+  SUPERADMIN @map("superadmin") 
+  ADMIN      @map("admin")
+  FINANCE    @map("finance")    
+  MARKETING  @map("marketing")
+  CUSTOMER   @map("customer")
+  BANK       @map("bank")
+  AGENT      @map("agent")
+}
+enum UnitStatus {
+  AVAILABLE  @map("Available")
+  BOOKING    @map("Booking")
+  TERJUAL    @map("Terjual")
+  HOLD       @map("Hold")
+}
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+}
+enum PaymentStatus {
+  BELUM_BAYAR         @map("Belum Bayar")
+  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi") 
+  LUNAS               @map("Lunas")
+}
+enum PaymentMethod {
+  CASH_KERAS    @map("CASH KERAS")
+  CASH_BERTAHAP @map("CASH BERTAHAP")
+  KPR           @map("KPR")
+}
+enum ProgressStatus {
+  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
+  DISETUJUI           @map("Disetujui")
+  REVISI              @map("Revisi")
+}
+enum PenjualanStatus {
+  BOOKED    @map("Booked")
+  PROSES    @map("Proses")
+  LUNAS     @map("Lunas")
+  BATAL     @map("Batal")
+}
+enum AgentStatus {
+  PENDING    @map("Pending") 
+  AKTIF      @map("Aktif")
+  NONAKTIF   @map("Nonaktif")
+}
+enum SP3R {
+  BANK  @map("BANK")
+  CASH  @map("Cash")
+}
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  auditLogs AuditLog[]
+  customers Customer[]
+  agents    Agent[]
+  pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
+  persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
+  pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
+  persetujuanBatal        PengajuanBatal[]      @relation("PenyetujuBatal")
+  @@map("users")
+}
+model Customer {
+  id                Int         @id @default(autoincrement())
+  userId            Int?        @map("user_id")
+  nikKtp            String      @unique @map("nik_ktp") @db.VarChar(20)
+  nama              String      @db.VarChar(150)
+  noHp              String      @map("no_hp") @db.VarChar(20)
+  alamatKtp         String      @map("alamat_ktp") @db.Text
+  alamatTinggal     String?     @map("alamat_tinggal") @db.Text
+  email             String?     @db.VarChar(100)
+  pekerjaan         String?     @db.VarChar(100)
+  perusahaan        String?     @db.VarChar(150)
+  bank              String?     @db.VarChar(100)
+  alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
+  fileKtp           String?     @map("file_ktp") @db.VarChar(255)
+  fileKk            String?     @map("file_kk") @db.VarChar(255)
+  fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
+  dokumenLainnya    Json?     @map("dokumen_lainnya") 
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  user              User?       @relation(fields: [userId], references: [id])
+  penjualan         Penjualan[]
+  tagihan           Tagihan[]
+  @@map("customers")
+}
+model Perumahan {
+  id             Int              @id @default(autoincrement())
+  nama           String           @unique @db.VarChar(150)
+  logo           String           @unique @db.VarChar(150)
+  alamat         String           @unique @db.VarChar(150)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  kavlings       Kavling[]
+  bankRekeningPt BankRekeningPt[]
+  @@map("perumahan")
+}
+model BankRekeningPt {
+  id          Int         @id @default(autoincrement())
+  perumahanId Int         @map("perumahan_id")
+  namaBank    String      @map("nama_bank") @db.VarChar(100)
+  noRekening  String      @map("no_rekening") @db.VarChar(50)
+  atasNama    String      @map("atas_nama") @db.VarChar(150)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  penjualan   Penjualan[]
+  kavlings    Kavling[]
+  @@map("bank_rekening_pt")
+}
+model Notaris {
+  id                 Int                  @id @default(autoincrement())
+  nama               String               @db.VarChar(150)
+  nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
+  nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
+  noHp               String?              @map("no_hp") @db.VarChar(20)   
+  alamat             String?              @db.Text                        
+  biayaAjb           Decimal?              @map("biaya_ajb") @db.Decimal(15, 2)
+  biayaPpjb           Decimal?              @map("biaya_ppjb") @db.Decimal(15, 2)
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  pics               PicNotaris[]
+  detailKavlingPajak DetailKavlingPajak[]
+  @@map("notaris")
+}
+model PicNotaris {
+  id        Int      @id @default(autoincrement())
+  notarisId Int      @map("notaris_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
+  @@map("pic_notaris")
+}
+model PerusahaanAgent {
+  id        Int      @id @default(autoincrement())
+  nama      String   @db.VarChar(150)
+  akte      String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  agents    Agent[]
+
+  @@map("perusahaan_agents")
+}
+model Agent {
+  id        Int         @id @default(autoincrement())
+  userId    Int?        @map("user_id") 
+  nik       String      @unique @db.VarChar(20)
+  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
+  nama      String      @db.VarChar(150)
+  alamat    String?     @db.Text
+  noHp      String      @map("no_hp") @db.VarChar(20)
+  email     String?     @db.VarChar(100)
+  status    AgentStatus @default(PENDING)
+  type      AgentType   @default(PRIBADI)
+  ttdData           String?          @db.LongText
+  perusahaanAgentId Int?             @map("perusahaan_agent_id")
+
+  namaBank           String?     @map("nama_bank") @db.VarChar(100)
+  noRekening         String?     @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
+  
+  feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
+  feeClosingPct   Decimal? @map("fee_closing_pct") @db.Decimal(5, 2)
+  potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
+
+  
+  fileKtp            String? @map("file_ktp") @db.VarChar(255)
+  fileNpwp           String? @map("file_npwp") @db.VarChar(255)
+  kwitansiBookingFee String? @map("kwitansi_booking_fee") @db.VarChar(255)
+
+  
+  fileSuratKeterangan String? @map("file_surat_keterangan") @db.VarChar(255)
+  fileKtpDirektur     String? @map("file_ktp_direktur") @db.VarChar(255)
+  fileNpwpPerusahaan  String? @map("file_npwp_perusahaan") @db.VarChar(255)
+  fileSuratPernyataan String? @map("file_surat_pernyataan") @db.VarChar(255)
+  defaultSuratPernyataan String? @map("default_surat_pernyataan") @db.VarChar(255)
+
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  
+  user      User?       @relation(fields: [userId], references: [id])
+  perusahaanAgent PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id], onDelete: SetNull)
+  pics      PicAgent[]
+  fees      FeeAgent[]
+  penjualan Penjualan[]
+  @@map("agents")
+}
+model PicAgent {
+  id        Int      @id @default(autoincrement())
+  agentId   Int      @map("agent_id")
+  nama      String   @db.VarChar(150)
+  noHp      String   @map("no_hp") @db.VarChar(20)
+  alamat    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  @@map("pic_agents")
+}
+model Kavling {
+  id                  Int              @id @default(autoincrement())
+  perumahanId         Int              @map("perumahan_id")
+  blok                String           @db.VarChar(10)
+  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
+  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
+  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
+  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
+  hargaDasar          Decimal          @map("harga_dasar") @db.Decimal(15, 2)
+  status              UnitStatus       @default(AVAILABLE)
+  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
+  filePbg             String?          @map("file_pbg") @db.VarChar(255)
+  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
+  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  riwayatLama        RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
+  riwayatBaru        RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
+  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
+  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
+  penjualan           Penjualan[]
+  progressProyek      ProgressProyek[]
+  @@unique([perumahanId, blok, nomorUnit])
+  @@map("kavling")
+}
+model Penjualan {
+  id                Int                 @id @default(autoincrement())
+  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
+  tanggal           DateTime            @db.Date
+  customerId        Int                 @map("customer_id")
+  kavlingId         Int                 @map("kavling_id")
+  agentId           Int?                @map("agent_id")
+  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
+  caraPembayaran    PaymentMethod?       @map("cara_pembayaran")
+  termin            Int?                @map("termin")
+  hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
+  plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
+  plafonAcc          Decimal?             @map("plafon_acc") @db.Decimal(15, 2)
+  biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
+  plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
+  dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
+  dpDibayar         Decimal?            @map("dp_dibayar") @db.Decimal(15, 2)
+  hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
+  dp                Decimal?            @db.Decimal(15, 2)
+  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
+  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
+  bank              String?             @db.VarChar(100)
+  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
+  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
+  status            PenjualanStatus     @default(BOOKED)
+  alasanBatal       String?             @map("alasan_batal") @db.Text
+  keteranganAngsuran String?            @map("keterangan_angsuran") @db.Text
+  fileSpr           String?             @map("file_spr") @db.VarChar(255)
+  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
+  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
+  ttdData           Json?               @map("ttd_data")
+  tambahanKpr       Json?               @map("tambahan_kpr")
+  createdBy           String?             @map("created_by") @db.VarChar(100) 
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  riwayatGantiKavling RiwayatGantiKavling[]
+  customer          Customer            @relation(fields: [customerId], references: [id])
+  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
+  agent             Agent?              @relation(fields: [agentId], references: [id])
+  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
+  tagihan           Tagihan[]
+  detailKavlingPajak DetailKavlingPajak?
+  feeAgent          FeeAgent?
+  progressPenjualan   ProgressPenjualan?
+  pengajuanBatal PengajuanBatal[]
+  riwayatSpr          RiwayatSpr[]
+  @@map("penjualan")
+}
+model DetailKavlingPajak {
+  id                      Int       @id @default(autoincrement())
+  penjualanId             Int       @unique @map("penjualan_id")
+  notarisId               Int?      @map("notaris_id")
+  biayaNotaris            Decimal?  @map("biaya_notaris") @db.Decimal(15, 2)
+  lantai                  String?   @db.VarChar(10)
+  luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
+  lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
+  tanggalAkadPpjb         DateTime? @map("tanggal_akad_ppjb") @db.Date
+  akadPpjb                String?   @map("akad_ppjb") @db.VarChar(100)
+  tanggalAkadAjbPpat      DateTime? @map("tanggal_akad_ajb_ppat") @db.Date
+  tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
+  tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
+  pembiayaan              String?   @db.VarChar(100)
+  sp3r                    SP3R?     @default(BANK) 
+  lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
+  biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
+  nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
+  nrDiskonAngsuran        Decimal?  @map("nr_diskon_angsuran") @db.Decimal(15, 2)
+  nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
+  nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
+  nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
+  nrBiayaNotarisPpjb       Decimal?  @map("nr_biaya_notaris_ppjb") @db.Decimal(15, 2)
+  nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
+  nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
+  nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
+  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
+  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
+  nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
+  nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
+  nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
+  pjBiayaKpr              Decimal?  @map("pj_biaya_kpr") @db.Decimal(15, 2)
+  pjBiayaAsuransi         Decimal?  @map("pj_biaya_asuransi") @db.Decimal(15, 2)
+  pjDiskonAngsuran        Decimal?  @map("pj_diskon_angsuran") @db.Decimal(15, 2)
+  pjBiayaBbn              Decimal?  @map("pj_biaya_bbn") @db.Decimal(15, 2)
+  pjBiayaAjb              Decimal?  @map("pj_biaya_ajb") @db.Decimal(15, 2)
+  pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
+  pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
+  pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
+  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
+  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
+  pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
+  pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
+  pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
+  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
+  ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
+  ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
+  ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
+  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
+  ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
+  ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
+  ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
+  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
+  ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
+  ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
+  penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
+  @@map("detail_kavling_pajak")
+}
+model Tagihan {
+  id                 Int           @id @default(autoincrement())
+  noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
+  customerId         Int           @map("customer_id")
+  penjualanId        Int           @map("penjualan_id")
+  pembayaran         String        @db.VarChar(255)
+  nominal            Decimal       @db.Decimal(15, 2)
+  jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
+  status             PaymentStatus @default(BELUM_BAYAR)
+  fileBukti          String?       @map("file_bukti") @db.VarChar(255)
+  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
+  isRefunded         Boolean       @default(false) @map("is_refunded")
+  fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
+  ttdData            Json?         @map("ttd_data") 
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
+  @@map("tagihan")
+}
+model FeeAgent {
+  id               Int       @id @default(autoincrement())
+  agentId          Int       @map("agent_id")
+  penjualanId      Int       @unique @map("penjualan_id")
+  bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
+  bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
+  bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
+  closingNominal   Decimal?  @map("closing_nominal") @db.Decimal(15, 2)
+  closingTanggal   DateTime? @map("closing_tanggal") @db.Date
+  closingBukti     String?   @map("closing_bukti") @db.VarChar(255)
+  marketingNominal Decimal?  @map("marketing_nominal") @db.Decimal(15, 2)
+  marketingTanggal DateTime? @map("marketing_tanggal") @db.Date
+  marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  agent            Agent     @relation(fields: [agentId], references: [id])
+  @@map("fee_agent")
+}
+model Spk {
+  id               Int      @id @default(autoincrement())
+  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
+  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
+  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
+  lokasi           String   @db.Text
+  jangkaWaktu      Int      @map("jangka_waktu")
+  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
+  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
+  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
+  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
+  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
+  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
+  namaBank         String   @map("nama_bank") @db.VarChar(100)
+  noRekening       String   @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
+  fileSpk          String?  @map("file_spk") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  @@map("spk")
+}
+model ProgressProyek {
+  id               Int            @id @default(autoincrement())
+  kavlingId        Int            @map("kavling_id")
+  pelaksana        String         @db.VarChar(150)
+  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
+  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
+  persentase       Int            @default(0)
+  keterangan       String         @db.Text
+  kendala          String?        @db.Text
+  fotoLapangan     Json?          @map("foto_lapangan")
+  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
+  @@map("progress_proyek")
+}
+model AuditLog {
+  id          Int        @id @default(autoincrement())
+  entityName  String     @map("entity_name") @db.VarChar(100) 
+  entityId    String     @map("entity_id") @db.VarChar(50)    
+  action      ActionType
+  changes     Json       
+  userId      Int?       @map("user_id") 
+  createdAt   DateTime   @default(now()) @map("created_at")
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@map("audit_logs")
+}
+model RiwayatGantiKavling {
+  id            Int            @id @default(autoincrement())
+  penjualanId   Int            @map("penjualan_id")
+  kavlingLamaId Int            @map("kavling_lama_id")
+  kavlingBaruId Int            @map("kavling_baru_id")
+  alasan        String?        @db.Text
+  status        ApprovalStatus @default(PENDING)
+  requestedById Int?           @map("requested_by_id")
+  approvedById  Int?           @map("approved_by_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") 
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  kavlingLama Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
+  kavlingBaru Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
+  requestedBy User?     @relation("PengajuGantiKavling", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy  User?     @relation("PenyetujuGantiKavling", fields: [approvedById], references: [id], onDelete: SetNull)
+  @@map("riwayat_ganti_kavling")
+}
+model PengajuanBatal {
+  id            Int            @id @default(autoincrement())
+  penjualanId   Int            @map("penjualan_id")
+  alasan        String         @db.Text
+  status        ApprovalStatus @default(PENDING)
+  requestedById Int?           @map("requested_by_id")
+  approvedById  Int?           @map("approved_by_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  requestedBy User?     @relation("PengajuBatal", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy  User?     @relation("PenyetujuBatal", fields: [approvedById], references: [id], onDelete: SetNull)
+  @@map("pengajuan_batal")
+}
+model RiwayatSpr {
+  id          Int      @id @default(autoincrement())
+  penjualanId Int      @map("penjualan_id")
+  fileSpr     String   @map("file_spr") @db.VarChar(255)
+  keterangan  String?  @db.VarChar(255) 
+  createdAt   DateTime @default(now()) @map("created_at")
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  @@map("riwayat_spr")
+}
+model ProgressPenjualan {
+  id                  Int       @id @default(autoincrement())
+  penjualanId         Int       @unique @map("penjualan_id")
+  berkasCustomerValid Boolean   @default(false) @map("berkas_customer_valid")
+  fileSp3k            String?   @map("file_sp3k") @db.VarChar(255)
+  fileSalinanAjb      String?   @map("file_salinan_ajb") @db.VarChar(255)
+  filePpjb            String?   @map("file_ppjb") @db.VarChar(255)
+  nilaiAjb            Decimal?  @map("nilai_ajb") @db.Decimal(15, 2)
+  biayaBphtb          Decimal?  @map("biaya_bphtb") @db.Decimal(15, 2)
+  biayaPph            Decimal?  @map("biaya_pph") @db.Decimal(15, 2)
+  fileAjb             String?   @map("file_ajb") @db.VarChar(255)
+  nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100) 
+  tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date       
+  fileBast            String?   @map("file_bast") @db.VarChar(255)
+  checklistBast       Json?     @map("checklist_bast") 
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  @@map("progress_penjualan")
+}
+
+
+model RolePermission {
+  id        Int      @id @default(autoincrement())
+  role      Role     
+  resource  String   @db.VarChar(100) 
+  canCreate Boolean  @default(false)
+  canRead   Boolean  @default(false)
+  canUpdate Boolean  @default(false)
+  canDelete Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([role, resource]) 
+  @@map("role_permissions")
+}
 </file>
 
 </files>
