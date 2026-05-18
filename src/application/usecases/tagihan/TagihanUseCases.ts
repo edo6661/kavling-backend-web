@@ -5,7 +5,7 @@ import type {
   TagihanFilterDTO,
   TagihanResponseDTO,
 } from "../../../domain/dtos/TagihanDTO.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
+import type { OffsetPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 
@@ -49,11 +49,12 @@ export class GetTagihanByIdUseCase {
 export class GetTagihansPaginatedUseCase {
   constructor(private readonly repo: ITagihanRepository) {}
   async execute(
+    page: number, // <-- Ubah cursor jadi page
     limit: number,
-    cursor?: number,
     filters?: TagihanFilterDTO,
-  ): Promise<CursorPaginatedData<TagihanResponseDTO>> {
-    return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  ): Promise<OffsetPaginatedData<TagihanResponseDTO>> {
+    // <-- Ubah return type
+    return await this.repo.findWithOffsetPagination(page, limit, filters);
   }
 }
 export class DeleteTagihanUseCase {

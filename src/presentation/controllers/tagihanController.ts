@@ -67,13 +67,14 @@ export class TagihanController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getTagihansPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
+    // Ambil page & limit
+    const { page, limit, ...filters } = getTagihansPaginatedSchema.query.parse(
+      req.query,
+    );
 
     const result = await this.getPaginatedUseCase.execute(
+      page,
       limit,
-      parsedCursor,
       filters as TagihanFilterDTO,
     );
     sendResponse(

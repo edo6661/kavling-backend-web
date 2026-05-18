@@ -7,9 +7,9 @@ import type {
   TagihanFilterDTO,
   TagihanResponseDTO,
 } from "../dtos/TagihanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { TagihanMapper } from "../../infrastructure/mapper/TagihanMapper.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
 const tagihanIncludeRelations = {
   customer: { select: { nama: true } },
@@ -96,16 +96,14 @@ export class TagihanRepository implements ITagihanRepository {
     return TagihanMapper.toDomain(result);
   }
 
-  async findWithCursorPagination(
+  async findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: TagihanFilterDTO,
-  ): Promise<CursorPaginatedData<TagihanResponseDTO>> {
+  ): Promise<OffsetPaginatedData<TagihanResponseDTO>> {
     const where: Prisma.TagihanWhereInput = {
       penjualan: {
-        status: {
-          not: "BATAL",
-        },
+        status: { not: "BATAL" },
       },
     };
 
@@ -121,29 +119,60 @@ export class TagihanRepository implements ITagihanRepository {
       ];
     }
 
-    const items = await this.db.tagihan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ createdAt: "desc" }],
-      include: tagihanIncludeRelations,
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
+    // Penambahan Filter Tanggal (Berdasarkan Update/Bayar)
+    if (filters?.startDate || filters?.endDate) {
+      where.updatedAt = {};
+      if (filters.startDate) {
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        where.updatedAt.gte = start;
+      }
+      if (filters.endDate) {
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.updatedAt.lte = end;
+      }
     }
+
+    // Penambahan Dinamis Order By
+    let orderByClause: Prisma.TagihanOrderByWithRelationInput[] = [
+      { updatedAt: "desc" }, // Default Sort
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      if (["createdAt", "updatedAt", "nominal"].includes(field)) {
+        orderByClause = [{ [field]: direction }];
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [items, totalItems] = await Promise.all([
+      this.db.tagihan.findMany({
+        take: limit,
+        skip,
+        where,
+        orderBy: orderByClause,
+        include: tagihanIncludeRelations,
+      }),
+      this.db.tagihan.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit) || 1;
 
     return {
       items: items.map((item) => TagihanMapper.toDomain(item as any)),
       meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
     };
   }
-
   async delete(id: number): Promise<void> {
     const existing = await this.findById(id);
     if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");

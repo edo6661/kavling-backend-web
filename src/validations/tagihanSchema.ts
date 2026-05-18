@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import {
+  cursorPaginationQuerySchema,
+  offsetPaginationQuerySchema,
+} from "./paginationSchema.js";
 import { PaymentStatus } from "@prisma/client";
 
 export const createTagihanSchema = {
@@ -31,7 +34,7 @@ export const updateTagihanSchema = {
 };
 
 export const getTagihansPaginatedSchema = {
-  query: cursorPaginationQuerySchema.extend({
+  query: offsetPaginationQuerySchema.extend({
     customerId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
     penjualanId: emptyAsUndefined(
       z.coerce.number().int().positive().optional(),

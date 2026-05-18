@@ -4,7 +4,7 @@ import type {
   UpdateTagihanDTO,
   TagihanFilterDTO,
 } from "../dtos/TagihanDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
 export interface ITagihanRepository {
   create(
@@ -14,11 +14,11 @@ export interface ITagihanRepository {
   findById(id: number): Promise<TagihanResponseDTO | null>;
   update(id: number, data: UpdateTagihanDTO): Promise<TagihanResponseDTO>;
   delete(id: number): Promise<void>;
-  findWithCursorPagination(
+  findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: TagihanFilterDTO,
-  ): Promise<CursorPaginatedData<TagihanResponseDTO>>;
+  ): Promise<OffsetPaginatedData<TagihanResponseDTO>>;
   count(): Promise<number>;
   findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null>;
 }
