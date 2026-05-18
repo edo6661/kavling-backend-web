@@ -1,5 +1,14 @@
 tolong ingat kode backend nya:
 
+<file path=".dockerignore">
+node_modules
+dist
+npm-debug.log
+.env
+.git
+.github
+</file>
+
 <file path="src/app.ts">
 import { env } from "./config/env";
 import * as Sentry from "@sentry/node";
@@ -78,6 +87,191 @@ app.use(globalErrorHandler);
 export default app;
 </file>
 
+<file path="src/application/usecases/auth/LoginUserUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { LoginUserUseCase } from "./LoginUserUseCase";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import { StatusCodes } from "http-status-codes";
+import type { UserEntity } from "../../../domain/entities/User";
+import jwt from "jsonwebtoken";
+import * as hashingUtils from "../../../utils/hashing";
+import { Role } from "@prisma/client";
+
+vi.mock("jsonwebtoken");
+vi.mock("../../../utils/hashing");
+
+describe("LoginUserUseCase", () => {
+  let userRepoMock: MockProxy<IUserRepository>;
+  let loginUserUseCase: LoginUserUseCase;
+
+  beforeEach(() => {
+    userRepoMock = mock<IUserRepository>();
+    loginUserUseCase = new LoginUserUseCase(userRepoMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus berhasil login dan mengembalikan token serta data user", async () => {
+    const payload = { email: "valid@example.com", password: "password" };
+    const user: UserEntity = {
+      id: 1,
+      username: "Valid User",
+      email: payload.email,
+      password: "hashed_password",
+      role: Role.CUSTOMER,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    userRepoMock.findByEmail.mockResolvedValue(user);
+    vi.spyOn(hashingUtils, "comparePassword").mockResolvedValue(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (jwt.sign as any).mockReturnValue("mock_jwt_token");
+
+    const result = await loginUserUseCase.execute(payload);
+
+    expect(userRepoMock.findByEmail).toHaveBeenCalledWith(payload.email);
+    expect(hashingUtils.comparePassword).toHaveBeenCalledWith(
+      payload.password,
+      user.password,
+    );
+    expect(jwt.sign).toHaveBeenCalled();
+    expect(result).toEqual({
+      token: "mock_jwt_token",
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  });
+
+  it("harus melempar error UNAUTHORIZED jika email tidak ditemukan", async () => {
+    userRepoMock.findByEmail.mockResolvedValue(null);
+
+    await expect(
+      loginUserUseCase.execute({
+        email: "unknown@example.com",
+        password: "any",
+      }),
+    ).rejects.toThrow(
+      expect.objectContaining({ statusCode: StatusCodes.UNAUTHORIZED }),
+    );
+  });
+
+  it("harus melempar error UNAUTHORIZED jika password salah", async () => {
+    const user = mock<UserEntity>();
+    user.password = "hashed_real";
+    userRepoMock.findByEmail.mockResolvedValue(user);
+    vi.spyOn(hashingUtils, "comparePassword").mockResolvedValue(false);
+
+    await expect(
+      loginUserUseCase.execute({
+        email: "valid@example.com",
+        password: "wrong_password",
+      }),
+    ).rejects.toThrow(
+      expect.objectContaining({ statusCode: StatusCodes.UNAUTHORIZED }),
+    );
+  });
+
+  it("harus melempar error jika repository mengalami kegagalan sistem (misal DB down)", async () => {
+    const dbError = new Error("Connection refused");
+    userRepoMock.findByEmail.mockRejectedValue(dbError);
+
+    await expect(
+      loginUserUseCase.execute({
+        email: "valid@example.com",
+        password: "any",
+      }),
+    ).rejects.toThrow("Connection refused");
+  });
+});
+</file>
+
+<file path="src/application/usecases/auth/RegisterUserUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { RegisterUserUseCase } from "./RegisterUserUseCase";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import { ConflictError } from "../../../domain/errors/ConflictError";
+import type { UserEntity } from "../../../domain/entities/User";
+import { Role } from "@prisma/client";
+
+vi.mock("../../../utils/hashing", () => ({
+  hashPassword: vi.fn().mockResolvedValue("hashed_password_123"),
+}));
+
+describe("RegisterUserUseCase", () => {
+  let userRepoMock: MockProxy<IUserRepository>;
+  let registerUserUseCase: RegisterUserUseCase;
+
+  beforeEach(() => {
+    userRepoMock = mock<IUserRepository>();
+    registerUserUseCase = new RegisterUserUseCase(userRepoMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus berhasil mendaftarkan user baru", async () => {
+    const payload = {
+      username: "Test User",
+      email: "test@example.com",
+      password: "password",
+      role: Role.CUSTOMER,
+    };
+
+    userRepoMock.findByEmail.mockResolvedValue(null);
+
+    const createdUser: UserEntity = {
+      id: 1,
+      username: payload.username,
+      email: payload.email,
+      password: "hashed_password_123",
+      role: Role.CUSTOMER,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    userRepoMock.create.mockResolvedValue(createdUser);
+
+    const result = await registerUserUseCase.execute(payload);
+
+    expect(userRepoMock.findByEmail).toHaveBeenCalledWith(payload.email);
+    expect(userRepoMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        password: "hashed_password_123",
+        role: Role.CUSTOMER,
+      }),
+    );
+    expect(result).toEqual({
+      id: createdUser.id,
+      username: createdUser.username,
+      email: createdUser.email,
+      role: createdUser.role,
+      createdAt: createdUser.createdAt,
+    });
+  });
+
+  it("harus melempar ConflictError jika email sudah terdaftar", async () => {
+    const payload = {
+      username: "Duplicate User",
+      email: "exist@example.com",
+      password: "password",
+      role: Role.CUSTOMER,
+    };
+
+    const existingUser = mock<UserEntity>();
+    userRepoMock.findByEmail.mockResolvedValue(existingUser);
+
+    await expect(registerUserUseCase.execute(payload)).rejects.toThrow(
+      ConflictError,
+    );
+    expect(userRepoMock.create).not.toHaveBeenCalled();
+  });
+});
+</file>
+
 <file path="src/application/usecases/auth/RegisterUserUseCase.ts">
 import type {
   RegisterUserDTO,
@@ -117,6 +311,136 @@ export class RegisterUserUseCase {
     };
   }
 }
+</file>
+
+<file path="src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import {
+  CreateBankRekeningPtUseCase,
+  UpdateBankRekeningPtUseCase,
+  GetBankRekeningPtByIdUseCase,
+  GetBankRekeningPtPaginatedUseCase,
+  DeleteBankRekeningPtUseCase,
+} from "./BankRekeningPtUseCases";
+import type { IBankRekeningPtRepository } from "../../../domain/repositories/IBankRekeningPtRepo";
+import { NotFoundError } from "../../../domain/errors/NotFoundError";
+
+describe("BankRekeningPtUseCases", () => {
+  let repoMock: MockProxy<IBankRekeningPtRepository>;
+
+  beforeEach(() => {
+    repoMock = mock<IBankRekeningPtRepository>();
+    vi.clearAllMocks();
+  });
+
+  describe("CreateBankRekeningPtUseCase", () => {
+    it("harus berhasil membuat rekening dan mereturn domain data", async () => {
+      const useCase = new CreateBankRekeningPtUseCase(repoMock);
+      const payload = {
+        namaBank: "BCA",
+        noRekening: "123456",
+        atasNama: "PT ABC",
+      };
+      const mockResult = { id: 1, ...payload, createdAt: new Date() };
+
+      repoMock.create.mockResolvedValue(mockResult);
+
+      const result = await useCase.execute(payload);
+
+      expect(repoMock.create).toHaveBeenCalledWith(payload);
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe("GetBankRekeningPtByIdUseCase", () => {
+    it("harus mereturn data rekening jika ditemukan", async () => {
+      const useCase = new GetBankRekeningPtByIdUseCase(repoMock);
+      const mockResult = {
+        id: 1,
+        namaBank: "BCA",
+        noRekening: "123456",
+        atasNama: "PT ABC",
+        createdAt: new Date(),
+      };
+
+      repoMock.findById.mockResolvedValue(mockResult);
+
+      const result = await useCase.execute(1);
+
+      expect(repoMock.findById).toHaveBeenCalledWith(1);
+      expect(result).toEqual(mockResult);
+    });
+
+    it("harus melempar NotFoundError jika rekening tidak ditemukan", async () => {
+      const useCase = new GetBankRekeningPtByIdUseCase(repoMock);
+      repoMock.findById.mockResolvedValue(null);
+
+      await expect(useCase.execute(99)).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("UpdateBankRekeningPtUseCase", () => {
+    it("harus berhasil mengupdate rekening", async () => {
+      const useCase = new UpdateBankRekeningPtUseCase(repoMock);
+      const payload = { namaBank: "Mandiri" };
+      const mockResult = {
+        id: 1,
+        namaBank: "Mandiri",
+        noRekening: "123456",
+        atasNama: "PT ABC",
+        createdAt: new Date(),
+      };
+
+      repoMock.update.mockResolvedValue(mockResult);
+
+      const result = await useCase.execute(1, payload);
+
+      expect(repoMock.update).toHaveBeenCalledWith(1, payload);
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe("GetBankRekeningPtPaginatedUseCase", () => {
+    it("harus mereturn daftar rekening terpaginasi beserta meta datanya", async () => {
+      const useCase = new GetBankRekeningPtPaginatedUseCase(repoMock);
+      const mockResult = {
+        items: [
+          {
+            id: 1,
+            namaBank: "BCA",
+            noRekening: "123456",
+            atasNama: "PT ABC",
+            createdAt: new Date(),
+          },
+        ],
+        meta: { nextCursor: null, hasNextPage: false },
+      };
+
+      repoMock.findWithCursorPagination.mockResolvedValue(mockResult);
+
+      const result = await useCase.execute(10, undefined, { search: "BCA" });
+
+      expect(repoMock.findWithCursorPagination).toHaveBeenCalledWith(
+        10,
+        undefined,
+        { search: "BCA" },
+      );
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe("DeleteBankRekeningPtUseCase", () => {
+    it("harus memanggil repo.delete dengan id yang benar", async () => {
+      const useCase = new DeleteBankRekeningPtUseCase(repoMock);
+      repoMock.delete.mockResolvedValue();
+
+      await useCase.execute(1);
+
+      expect(repoMock.delete).toHaveBeenCalledWith(1);
+    });
+  });
+});
 </file>
 
 <file path="src/application/usecases/bankRekeningPt/BankRekeningPtUseCases.ts">
@@ -189,6 +513,89 @@ export class DeleteBankRekeningPtUseCase {
     await this.repo.delete(id);
   }
 }
+</file>
+
+<file path="src/application/usecases/customer/CreateCustomerUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { CreateCustomerUseCase } from "./CreateCustomerUseCase";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo";
+
+describe("CreateCustomerUseCase", () => {
+  let customerRepoMock: MockProxy<ICustomerRepository>;
+  let createCustomerUseCase: CreateCustomerUseCase;
+
+  beforeEach(() => {
+    customerRepoMock = mock<ICustomerRepository>();
+    createCustomerUseCase = new CreateCustomerUseCase(customerRepoMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus berhasil membuat customer baru dan mengembalikan DTO yang di-map", async () => {
+    const payload = {
+      nikKtp: "3201234567890123",
+      nama: "Budi Santoso",
+      noHp: "081234567890",
+      alamatKtp: "Jl. Merdeka No. 1",
+    };
+
+    const createdCustomer = {
+      id: 1,
+      ...payload,
+      email: null,
+      pekerjaan: null,
+      alamatTinggal: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    customerRepoMock.create.mockResolvedValue(createdCustomer as any);
+
+    const result = await createCustomerUseCase.execute(payload);
+
+    expect(customerRepoMock.create).toHaveBeenCalledWith(payload);
+    expect(result).toEqual({
+      id: createdCustomer.id,
+      nikKtp: createdCustomer.nikKtp,
+      nama: createdCustomer.nama,
+      noHp: createdCustomer.noHp,
+      email: createdCustomer.email,
+      pekerjaan: createdCustomer.pekerjaan,
+      alamatKtp: createdCustomer.alamatKtp,
+      alamatTinggal: createdCustomer.alamatTinggal,
+      createdAt: createdCustomer.createdAt,
+      updatedAt: createdCustomer.updatedAt,
+    });
+  });
+});
+</file>
+
+<file path="src/application/usecases/customer/DeleteCustomerUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { DeleteCustomerUseCase } from "./DeleteCustomerUseCase";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo";
+
+describe("DeleteCustomerUseCase", () => {
+  let customerRepoMock: MockProxy<ICustomerRepository>;
+  let deleteCustomerUseCase: DeleteCustomerUseCase;
+
+  beforeEach(() => {
+    customerRepoMock = mock<ICustomerRepository>();
+    deleteCustomerUseCase = new DeleteCustomerUseCase(customerRepoMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus memanggil customerRepo.delete dengan id yang benar", async () => {
+    const customerId = 1;
+    customerRepoMock.delete.mockResolvedValue();
+
+    await deleteCustomerUseCase.execute(customerId);
+
+    expect(customerRepoMock.delete).toHaveBeenCalledWith(customerId);
+    expect(customerRepoMock.delete).toHaveBeenCalledTimes(1);
+  });
+});
 </file>
 
 <file path="src/application/usecases/customer/ExportCustomersPdfUseCase.ts">
@@ -325,6 +732,56 @@ export class ExportCustomersUseCase {
 }
 </file>
 
+<file path="src/application/usecases/customer/GetCustomerByIdUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { GetCustomerByIdUseCase } from "./GetCustomerByIdUseCase";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo";
+import { NotFoundError } from "../../../domain/errors/NotFoundError";
+
+describe("GetCustomerByIdUseCase", () => {
+  let customerRepoMock: MockProxy<ICustomerRepository>;
+  let getCustomerByIdUseCase: GetCustomerByIdUseCase;
+
+  beforeEach(() => {
+    customerRepoMock = mock<ICustomerRepository>();
+    getCustomerByIdUseCase = new GetCustomerByIdUseCase(customerRepoMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus mengembalikan data customer jika ditemukan", async () => {
+    const mockCustomer = {
+      id: 1,
+      nikKtp: "3201234567890123",
+      nama: "Budi Santoso",
+      noHp: "081234567890",
+      email: null,
+      pekerjaan: null,
+      alamatKtp: "Jl. Merdeka No. 1",
+      alamatTinggal: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    customerRepoMock.findById.mockResolvedValue(mockCustomer as any);
+
+    const result = await getCustomerByIdUseCase.execute(1);
+
+    expect(customerRepoMock.findById).toHaveBeenCalledWith(1);
+    expect(result.id).toBe(mockCustomer.id);
+    expect(result.nama).toBe(mockCustomer.nama);
+  });
+
+  it("harus melempar NotFoundError jika customer tidak ditemukan", async () => {
+    customerRepoMock.findById.mockResolvedValue(null);
+
+    await expect(getCustomerByIdUseCase.execute(99)).rejects.toThrow(
+      NotFoundError,
+    );
+  });
+});
+</file>
+
 <file path="src/application/usecases/customer/GetCustomerByIdUseCase.ts">
 import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo.js";
 import type { CustomerResponseDTO } from "../../../domain/dtos/CustomerDTO.js";
@@ -342,6 +799,66 @@ export class GetCustomerByIdUseCase {
     return CustomerMapper.toDomain(customer);
   }
 }
+</file>
+
+<file path="src/application/usecases/customer/GetCustomersPaginatedUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { GetCustomersPaginatedUseCase } from "./GetCustomersPaginatedUseCase";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo";
+
+describe("GetCustomersPaginatedUseCase", () => {
+  let customerRepoMock: MockProxy<ICustomerRepository>;
+  let getCustomersPaginatedUseCase: GetCustomersPaginatedUseCase;
+
+  beforeEach(() => {
+    customerRepoMock = mock<ICustomerRepository>();
+    getCustomersPaginatedUseCase = new GetCustomersPaginatedUseCase(
+      customerRepoMock,
+    );
+    vi.clearAllMocks();
+  });
+
+  it("harus mengembalikan daftar customer beserta pagination meta", async () => {
+    const mockResult = {
+      items: [
+        {
+          id: 1,
+          nikKtp: "3201234567890123",
+          nama: "Budi Santoso",
+          noHp: "081234567890",
+          email: "budi@test.com",
+          pekerjaan: "PNS",
+          alamatKtp: "Jl. Merdeka",
+          alamatTinggal: "Jl. Kemerdekaan",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      meta: { nextCursor: null, hasNextPage: false },
+    };
+
+    customerRepoMock.findWithCursorPagination.mockResolvedValue(
+      mockResult as any,
+    );
+
+    const limit = 10;
+    const result = await getCustomersPaginatedUseCase.execute(
+      limit,
+      undefined,
+      { search: "Budi" },
+    );
+
+    expect(customerRepoMock.findWithCursorPagination).toHaveBeenCalledWith(
+      limit,
+      undefined,
+      { search: "Budi" },
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.nama).toBe("Budi Santoso");
+    expect(result.meta).toEqual(mockResult.meta);
+  });
+});
 </file>
 
 <file path="src/application/usecases/customer/GetCustomersPaginatedUseCase.ts">
@@ -371,6 +888,134 @@ export class GetCustomersPaginatedUseCase {
       items: result.items.map((customer) => CustomerMapper.toDomain(customer)),
       meta: result.meta,
     };
+  }
+}
+</file>
+
+<file path="src/application/usecases/customer/UpdateCustomerUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { UpdateCustomerUseCase } from "./UpdateCustomerUseCase";
+import type { ICustomerRepository } from "../../../domain/repositories/ICustomerRepo";
+
+describe("UpdateCustomerUseCase", () => {
+  let customerRepoMock: MockProxy<ICustomerRepository>;
+  let updateCustomerUseCase: UpdateCustomerUseCase;
+
+  beforeEach(() => {
+    customerRepoMock = mock<ICustomerRepository>();
+    updateCustomerUseCase = new UpdateCustomerUseCase(customerRepoMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus berhasil mengupdate customer dan mengembalikan DTO yang di-map", async () => {
+    const customerId = 1;
+    const updatePayload = {
+      nama: "Budi Santoso Updated",
+      noHp: "089999999999",
+    };
+
+    const updatedCustomer = {
+      id: customerId,
+      nikKtp: "3201234567890123",
+      nama: updatePayload.nama,
+      noHp: updatePayload.noHp,
+      email: null,
+      pekerjaan: null,
+      alamatKtp: "Jl. Merdeka No. 1",
+      alamatTinggal: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Cast menggunakan 'as any' untuk menghindari error strict type Prisma
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    customerRepoMock.update.mockResolvedValue(updatedCustomer as any);
+
+    const result = await updateCustomerUseCase.execute(
+      customerId,
+      updatePayload,
+    );
+
+    expect(customerRepoMock.update).toHaveBeenCalledWith(
+      customerId,
+      updatePayload,
+    );
+    expect(result).toEqual({
+      id: updatedCustomer.id,
+      nikKtp: updatedCustomer.nikKtp,
+      nama: updatedCustomer.nama,
+      noHp: updatedCustomer.noHp,
+      email: updatedCustomer.email,
+      pekerjaan: updatedCustomer.pekerjaan,
+      alamatKtp: updatedCustomer.alamatKtp,
+      alamatTinggal: updatedCustomer.alamatTinggal,
+      createdAt: updatedCustomer.createdAt,
+      updatedAt: updatedCustomer.updatedAt,
+    });
+  });
+});
+</file>
+
+<file path="src/application/usecases/feeAgent/FeeAgentUseCases.ts">
+import type { IFeeAgentRepository } from "../../../domain/repositories/IFeeAgentRepo.js";
+import type {
+  UpdateFeeAgentDTO,
+  FeeAgentFilterDTO,
+} from "../../../domain/dtos/FeeAgentDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+export class GetFeeAgentsPaginatedUseCase {
+  constructor(private readonly repo: IFeeAgentRepository) {}
+  async execute(limit: number, cursor?: number, filters?: FeeAgentFilterDTO) {
+    return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  }
+}
+
+export class UpdateFeeAgentUseCase {
+  constructor(private readonly repo: IFeeAgentRepository) {}
+  async execute(id: number, data: UpdateFeeAgentDTO) {
+    return await this.repo.update(id, data);
+  }
+}
+
+export class UploadBuktiFeeUseCase {
+  constructor(
+    private readonly repo: IFeeAgentRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    id: number,
+    fileBuffer: Buffer,
+    type: "bookingBukti" | "closingBukti" | "marketingBukti",
+  ) {
+    const existing = await this.repo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Data Fee Agent tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing[type]) {
+      await this.cloudinaryService.deleteImageByUrl(existing[type]);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      `bumantara/fee/${type}`,
+    );
+
+    const updateData = { [type]: imageUrl };
+    return await this.repo.update(id, updateData);
   }
 }
 </file>
@@ -426,6 +1071,58 @@ export class DeleteNotarisUseCase {
     await this.repo.delete(id);
   }
 }
+</file>
+
+<file path="src/application/usecases/ocr/ExtractKtpDataUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { ExtractKtpDataUseCase } from "./ExtractKtpDataUseCase";
+import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService";
+import { AppError } from "../../../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+describe("ExtractKtpDataUseCase", () => {
+  let googleVisionServiceMock: MockProxy<GoogleVisionService>;
+  let useCase: ExtractKtpDataUseCase;
+
+  beforeEach(() => {
+    googleVisionServiceMock = mock<GoogleVisionService>();
+    useCase = new ExtractKtpDataUseCase(googleVisionServiceMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus berhasil mengekstrak data dari buffer KTP dengan memanggil GoogleVisionService", async () => {
+    const mockBuffer = Buffer.from("dummy image data");
+    const mockExtractedData = {
+      nik: "3201234567890123",
+      nama: "Budi Santoso",
+      alamat: "Jl. Merdeka No. 1",
+      statusPerkawinan: "BELUM KAWIN",
+    };
+
+    googleVisionServiceMock.extractKtpData.mockResolvedValue(mockExtractedData);
+
+    const result = await useCase.execute(mockBuffer);
+
+    expect(googleVisionServiceMock.extractKtpData).toHaveBeenCalledWith(
+      mockBuffer,
+    );
+    expect(result).toEqual(mockExtractedData);
+  });
+
+  it("harus melempar AppError BAD_REQUEST jika buffer KTP kosong", async () => {
+    await expect(useCase.execute(null as any)).rejects.toThrow(AppError);
+
+    try {
+      await useCase.execute(null as any);
+    } catch (error: any) {
+      expect(error.statusCode).toBe(StatusCodes.BAD_REQUEST);
+      expect(error.message).toBe("Buffer foto KTP tidak boleh kosong.");
+    }
+
+    expect(googleVisionServiceMock.extractKtpData).not.toHaveBeenCalled();
+  });
+});
 </file>
 
 <file path="src/application/usecases/ocr/ExtractKtpDataUseCase.ts">
@@ -559,6 +1256,57 @@ export class DeletePerumahanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/user/GetAllUsersUseCase.test.ts">
+import { describe, it, expect, beforeEach } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { GetAllUsersUseCase } from "./GetAllUsersUseCase";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import type { UserEntity } from "../../../domain/entities/User";
+import { Role } from "@prisma/client";
+
+describe("GetAllUsersUseCase", () => {
+  let userRepo: MockProxy<IUserRepository>;
+  let useCase: GetAllUsersUseCase;
+
+  beforeEach(() => {
+    userRepo = mock<IUserRepository>();
+    useCase = new GetAllUsersUseCase(userRepo);
+  });
+
+  it("harus mengembalikan daftar user dan memapping data dengan benar", async () => {
+    const mockUsers: UserEntity[] = [
+      {
+        id: 1,
+        username: "User 1",
+        email: "u1@test.com",
+        password: "hashed_pw",
+        role: Role.ADMIN,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: 2,
+        username: "User 2",
+        email: "u2@test.com",
+        password: "hashed_pw",
+        role: Role.CUSTOMER,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    userRepo.findAll.mockResolvedValue(mockUsers);
+
+    const result = await useCase.execute();
+
+    expect(userRepo.findAll).toHaveBeenCalled();
+    expect(result).toHaveLength(2);
+    expect(result[0]?.username).toBe("User 1");
+    expect(result[1]?.role).toBe(Role.CUSTOMER);
+  });
+});
+</file>
+
 <file path="src/application/usecases/user/GetAllUsersUseCase.ts">
 import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
 import type { UserResponseDTO } from "../../../domain/dtos/UserDTO";
@@ -616,6 +1364,76 @@ export class GetUsersPaginatedUseCase {
     };
   }
 }
+</file>
+
+<file path="src/application/usecases/user/UpdateUserUseCase.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { UpdateUserUseCase } from "./UpdateUserUseCase";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo";
+import * as hashingUtils from "../../../utils/hashing";
+import { Role } from "@prisma/client";
+
+vi.mock("../../../utils/hashing");
+
+describe("UpdateUserUseCase", () => {
+  let userRepoMock: MockProxy<IUserRepository>;
+  let useCase: UpdateUserUseCase;
+
+  beforeEach(() => {
+    userRepoMock = mock<IUserRepository>();
+    useCase = new UpdateUserUseCase(userRepoMock);
+    vi.clearAllMocks();
+  });
+
+  it("harus men-hash password jika field password disertakan dalam update", async () => {
+    const payload = { password: "newpassword" };
+    vi.spyOn(hashingUtils, "hashPassword").mockResolvedValue(
+      "hashed_new_secret",
+    );
+
+    userRepoMock.update.mockResolvedValue({
+      id: 1,
+      username: "User",
+      email: "a@a.com",
+      role: Role.CUSTOMER,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    await useCase.execute(1, payload);
+
+    expect(hashingUtils.hashPassword).toHaveBeenCalledWith("newpassword");
+    expect(userRepoMock.update).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        password: "hashed_new_secret",
+      }),
+    );
+  });
+
+  it("JANGAN men-hash apapun jika field password tidak ada/undefined", async () => {
+    const payload = { username: "Ganti Nama" };
+    userRepoMock.update.mockResolvedValue({
+      id: 1,
+      username: "Ganti Nama",
+      email: "a@a.com",
+      role: Role.CUSTOMER,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    await useCase.execute(1, payload);
+
+    expect(hashingUtils.hashPassword).not.toHaveBeenCalled();
+    expect(userRepoMock.update).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        username: "Ganti Nama",
+      }),
+    );
+  });
+});
 </file>
 
 <file path="src/application/usecases/user/UpdateUserUseCase.ts">
@@ -738,6 +1556,53 @@ export interface DashboardResponseDTO {
 }
 </file>
 
+<file path="src/domain/dtos/FeeAgentDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreateFeeAgentDTO {
+  agentId: number;
+  penjualanId: number;
+}
+
+export interface UpdateFeeAgentDTO {
+  bookingNominal?: number | undefined;
+  bookingTanggal?: string | Date | undefined;
+  closingNominal?: number | undefined;
+  closingTanggal?: string | Date | undefined;
+  marketingNominal?: number | undefined;
+  marketingTanggal?: string | Date | undefined;
+  bookingBukti?: string | null | undefined;
+  closingBukti?: string | null | undefined;
+  marketingBukti?: string | null | undefined;
+}
+
+export interface FeeAgentResponseDTO {
+  id: number;
+  agentId: number;
+  namaAgent: string;
+  penjualanId: number;
+  noTransaksi: string;
+  namaCustomer: string;
+  kavling: string;
+  bookingNominal: number | null;
+  bookingTanggal: Date | null;
+  bookingBukti: string | null;
+  closingNominal: number | null;
+  closingTanggal: Date | null;
+  closingBukti: string | null;
+  marketingNominal: number | null;
+  marketingTanggal: Date | null;
+  marketingBukti: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FeeAgentFilterDTO extends BaseFilterDTO {
+  agentId?: number;
+  penjualanId?: number;
+}
+</file>
+
 <file path="src/domain/dtos/PerumahanDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 
@@ -835,6 +1700,25 @@ export interface DetailKavlingPajakEntity {
 }
 </file>
 
+<file path="src/domain/entities/FeeAgent.ts">
+export interface FeeAgentEntity {
+  id: number;
+  agentId: number;
+  penjualanId: number;
+  bookingNominal: number | null;
+  bookingTanggal: Date | null;
+  bookingBukti: string | null;
+  closingNominal: number | null;
+  closingTanggal: Date | null;
+  closingBukti: string | null;
+  marketingNominal: number | null;
+  marketingTanggal: Date | null;
+  marketingBukti: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
 <file path="src/domain/entities/Perumahan.ts">
 export interface PerumahanEntity {
   id: number;
@@ -898,6 +1782,125 @@ export class NotFoundError extends AppError {
     this.name = "NotFoundError";
   }
 }
+</file>
+
+<file path="src/domain/repositories/bankRekeningPtRepo.test.ts">
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { BankRekeningPtRepository } from "./bankRekeningPtRepo";
+import {
+  prismaTest,
+  clearDatabase,
+  disconnectDatabase,
+} from "../../tests/setup";
+import { ConflictError } from "../errors/ConflictError";
+import { NotFoundError } from "../errors/NotFoundError";
+
+describe("Integration Test: BankRekeningPtRepository", () => {
+  let repo: BankRekeningPtRepository;
+
+  beforeEach(async () => {
+    await clearDatabase();
+    repo = new BankRekeningPtRepository(prismaTest);
+  });
+
+  afterAll(async () => {
+    await disconnectDatabase();
+  });
+
+  describe("create", () => {
+    it("harus berhasil membuat rekening baru", async () => {
+      const data = {
+        namaBank: "BCA",
+        noRekening: "123456789",
+        atasNama: "PT Bumantara",
+      };
+
+      const result = await repo.create(data);
+
+      expect(result.id).toBeDefined();
+      expect(result.namaBank).toBe("BCA");
+      expect(result.noRekening).toBe("123456789");
+
+      const dbCheck = await prismaTest.bankRekeningPt.findUnique({
+        where: { id: result.id },
+      });
+      expect(dbCheck).not.toBeNull();
+    });
+
+    it("harus melempar ConflictError jika nomor rekening sudah terdaftar", async () => {
+      const data = { namaBank: "BCA", noRekening: "111222", atasNama: "PT A" };
+      await repo.create(data);
+
+      await expect(repo.create(data)).rejects.toThrow(ConflictError);
+    });
+  });
+
+  describe("findById", () => {
+    it("harus bisa mencari rekening berdasarkan ID", async () => {
+      const created = await repo.create({
+        namaBank: "BNI",
+        noRekening: "333",
+        atasNama: "PT B",
+      });
+      const found = await repo.findById(created.id);
+
+      expect(found).not.toBeNull();
+      expect(found?.noRekening).toBe("333");
+    });
+  });
+
+  describe("update", () => {
+    it("harus berhasil mengupdate data rekening", async () => {
+      const created = await repo.create({
+        namaBank: "Mandiri",
+        noRekening: "444",
+        atasNama: "PT C",
+      });
+
+      const updated = await repo.update(created.id, { namaBank: "BSI" });
+
+      expect(updated.namaBank).toBe("BSI");
+      expect(updated.noRekening).toBe("444");
+    });
+
+    it("harus melempar ConflictError jika update ke no rekening yang sudah dipakai entitas lain", async () => {
+      await repo.create({
+        namaBank: "BCA",
+        noRekening: "123",
+        atasNama: "PT A",
+      });
+      const created2 = await repo.create({
+        namaBank: "BNI",
+        noRekening: "456",
+        atasNama: "PT B",
+      });
+
+      await expect(
+        repo.update(created2.id, { noRekening: "123" }),
+      ).rejects.toThrow(ConflictError);
+    });
+  });
+
+  describe("delete", () => {
+    it("harus berhasil menghapus rekening", async () => {
+      const created = await repo.create({
+        namaBank: "BRI",
+        noRekening: "999",
+        atasNama: "PT D",
+      });
+      await repo.delete(created.id);
+
+      const check = await prismaTest.bankRekeningPt.findUnique({
+        where: { id: created.id },
+      });
+      expect(check).toBeNull();
+    });
+
+    it("harus melempar NotFoundError jika rekening tidak ada saat dihapus", async () => {
+      await expect(repo.delete(99999)).rejects.toThrow(NotFoundError);
+    });
+  });
+});
 </file>
 
 <file path="src/domain/repositories/bankRekeningPtRepo.ts">
@@ -1047,6 +2050,203 @@ export class BankRekeningPtRepository implements IBankRekeningPtRepository {
 }
 </file>
 
+<file path="src/domain/repositories/customerRepo.test.ts">
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { CustomerRepository } from "./customerRepo";
+import {
+  prismaTest,
+  clearDatabase,
+  disconnectDatabase,
+} from "../../tests/setup";
+import { ConflictError } from "../errors/ConflictError";
+import { NotFoundError } from "../errors/NotFoundError";
+
+describe("Integration Test: CustomerRepository", () => {
+  let repo: CustomerRepository;
+
+  beforeEach(async () => {
+    // Bersihkan database sebelum setiap test agar datanya selalu fresh
+    await clearDatabase();
+    repo = new CustomerRepository(prismaTest);
+  });
+
+  afterAll(async () => {
+    // Putuskan koneksi setelah semua test selesai
+    await disconnectDatabase();
+  });
+
+  describe("create", () => {
+    it("harus berhasil membuat customer baru", async () => {
+      const data = {
+        nikKtp: "3201234567890123",
+        nama: "Budi Santoso",
+        noHp: "081234567890",
+        alamatKtp: "Jl. Merdeka No. 1",
+      };
+
+      const result = await repo.create(data);
+
+      expect(result.id).toBeDefined();
+      expect(result.nama).toBe("Budi Santoso");
+      expect(result.nikKtp).toBe("3201234567890123");
+
+      // Verifikasi data benar-benar masuk ke DB
+      const dbCheck = await prismaTest.customer.findUnique({
+        where: { id: result.id },
+      });
+      expect(dbCheck).not.toBeNull();
+      expect(dbCheck?.nikKtp).toBe("3201234567890123");
+    });
+
+    it("harus melempar ConflictError jika NIK sudah terdaftar", async () => {
+      const data = {
+        nikKtp: "1111222233334444",
+        nama: "Customer A",
+        noHp: "08111",
+        alamatKtp: "Alamat A",
+      };
+
+      // Insert pertama (sukses)
+      await repo.create(data);
+
+      // Insert kedua dengan NIK yang sama (harus gagal)
+      await expect(repo.create(data)).rejects.toThrow(ConflictError);
+    });
+  });
+
+  describe("findById & findByNik", () => {
+    it("harus bisa mencari customer berdasarkan ID atau NIK", async () => {
+      const created = await repo.create({
+        nikKtp: "9999888877776666",
+        nama: "Customer Find",
+        noHp: "08999",
+        alamatKtp: "Alamat Find",
+      });
+
+      const foundById = await repo.findById(created.id);
+      expect(foundById).not.toBeNull();
+      expect(foundById?.nama).toBe("Customer Find");
+
+      const foundByNik = await repo.findByNik("9999888877776666");
+      expect(foundByNik).not.toBeNull();
+      expect(foundByNik?.id).toBe(created.id);
+    });
+  });
+
+  describe("update", () => {
+    it("harus berhasil mengupdate sebagian data customer", async () => {
+      const created = await repo.create({
+        nikKtp: "1234123412341234",
+        nama: "Old Name",
+        noHp: "08111",
+        alamatKtp: "Old Address",
+      });
+
+      const updated = await repo.update(created.id, {
+        nama: "New Name",
+        noHp: "08222",
+      });
+
+      expect(updated.nama).toBe("New Name");
+      expect(updated.noHp).toBe("08222");
+      // NIK harus tetap sama
+      expect(updated.nikKtp).toBe("1234123412341234");
+    });
+
+    it("harus melempar ConflictError jika update ke NIK yang sudah dipakai customer lain", async () => {
+      await repo.create({
+        nikKtp: "1111111111111111",
+        nama: "Customer 1",
+        noHp: "081",
+        alamatKtp: "Alamat 1",
+      });
+      const customer2 = await repo.create({
+        nikKtp: "2222222222222222",
+        nama: "Customer 2",
+        noHp: "082",
+        alamatKtp: "Alamat 2",
+      });
+
+      // Customer 2 mencoba pakai NIK milik Customer 1
+      await expect(
+        repo.update(customer2.id, { nikKtp: "1111111111111111" }),
+      ).rejects.toThrow(ConflictError);
+    });
+
+    it("harus melempar NotFoundError jika ID tidak ditemukan", async () => {
+      await expect(repo.update(99999, { nama: "Ghost" })).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+  });
+
+  describe("findWithCursorPagination", () => {
+    it("harus mengembalikan data sesuai limit dan bisa difilter (search)", async () => {
+      await repo.create({
+        nikKtp: "1111",
+        nama: "Ahmad",
+        noHp: "081",
+        alamatKtp: "X",
+      });
+      await repo.create({
+        nikKtp: "2222",
+        nama: "Budi",
+        noHp: "082",
+        alamatKtp: "Y",
+      });
+      await repo.create({
+        nikKtp: "3333",
+        nama: "Ahmad Budi",
+        noHp: "083",
+        alamatKtp: "Z",
+      });
+
+      // Test limit
+      const resultLimit = await repo.findWithCursorPagination(2);
+      expect(resultLimit.items).toHaveLength(2);
+      expect(resultLimit.meta.hasNextPage).toBe(true);
+
+      // Test search berdasarkan nama
+      const resultSearch = await repo.findWithCursorPagination(10, undefined, {
+        search: "Ahmad",
+      });
+      expect(resultSearch.items).toHaveLength(2); // "Ahmad" dan "Ahmad Budi"
+
+      // Test search berdasarkan NIK
+      const resultSearchNik = await repo.findWithCursorPagination(
+        10,
+        undefined,
+        { search: "2222" },
+      );
+      expect(resultSearchNik.items).toHaveLength(1);
+      expect(resultSearchNik.items[0]?.nama).toBe("Budi");
+    });
+  });
+
+  describe("delete", () => {
+    it("harus berhasil menghapus customer jika belum ada relasi SPR", async () => {
+      const created = await repo.create({
+        nikKtp: "5555555555555555",
+        nama: "To Be Deleted",
+        noHp: "085",
+        alamatKtp: "Alamat",
+      });
+
+      await repo.delete(created.id);
+
+      const check = await prismaTest.customer.findUnique({
+        where: { id: created.id },
+      });
+      expect(check).toBeNull();
+    });
+
+    it("harus melempar NotFoundError jika customer tidak ada saat dihapus", async () => {
+      await expect(repo.delete(99999)).rejects.toThrow(NotFoundError);
+    });
+  });
+});
+</file>
+
 <file path="src/domain/repositories/IBankRekeningPtRepo.ts">
 import type { BankRekeningPt } from "@prisma/client";
 import type {
@@ -1109,6 +2309,28 @@ export interface IDetailKavlingPajakRepository {
   findByPenjualanId(
     penjualanId: number,
   ): Promise<DetailKavlingPajakEntity | null>;
+}
+</file>
+
+<file path="src/domain/repositories/IFeeAgentRepo.ts">
+import type { CursorPaginatedData } from "../../types/response.js";
+import type {
+  CreateFeeAgentDTO,
+  UpdateFeeAgentDTO,
+  FeeAgentFilterDTO,
+  FeeAgentResponseDTO,
+} from "../dtos/FeeAgentDTO.js";
+
+export interface IFeeAgentRepository {
+  create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO>;
+  update(id: number, data: UpdateFeeAgentDTO): Promise<FeeAgentResponseDTO>;
+  findById(id: number): Promise<FeeAgentResponseDTO | null>;
+  findByPenjualanId(penjualanId: number): Promise<FeeAgentResponseDTO | null>;
+  findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: FeeAgentFilterDTO,
+  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>>;
 }
 </file>
 
@@ -1294,6 +2516,165 @@ export class PerumahanRepository implements IPerumahanRepository {
 }
 </file>
 
+<file path="src/domain/repositories/userRepo.test.ts">
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { UserRepository } from "./userRepo";
+import {
+  prismaTest,
+  clearDatabase,
+  disconnectDatabase,
+} from "../../tests/setup";
+import type { RegisterUserDTO } from "../dtos/UserDTO";
+import { ConflictError } from "../errors/ConflictError";
+import { NotFoundError } from "../errors/NotFoundError";
+import { Role } from "@prisma/client";
+
+describe("Integration Test: UserRepository", () => {
+  let repo: UserRepository;
+
+  beforeEach(async () => {
+    await clearDatabase();
+    repo = new UserRepository(prismaTest);
+  });
+
+  afterAll(async () => {
+    await disconnectDatabase();
+  });
+
+  it("harus berhasil membuat user baru", async () => {
+    const data: RegisterUserDTO = {
+      username: "Integration User",
+      email: "int@test.com",
+      password: "hashed_pw",
+      role: Role.CUSTOMER,
+    };
+
+    const user = await repo.create(data);
+    expect(user.id).toBeDefined();
+    expect(typeof user.id).toBe("number");
+    expect(user.email).toBe(data.email);
+    expect(user.role).toBe(Role.CUSTOMER);
+
+    const dbUser = await prismaTest.user.findUnique({
+      where: { id: user.id },
+    });
+    expect(dbUser).not.toBeNull();
+    expect(dbUser?.role).toBe(Role.CUSTOMER);
+  });
+
+  it("harus melempar ConflictError saat membuat user dengan email duplikat", async () => {
+    const data: RegisterUserDTO = {
+      username: "User A",
+      email: "duplicate@test.com",
+      password: "pw",
+      role: Role.CUSTOMER,
+    };
+    await repo.create(data);
+
+    await expect(repo.create(data)).rejects.toThrow(ConflictError);
+  });
+
+  it("harus bisa mencari user berdasarkan email", async () => {
+    await repo.create({
+      username: "Finder",
+      email: "find@me.com",
+      password: "pw",
+      role: Role.CUSTOMER,
+    });
+
+    const found = await repo.findByEmail("find@me.com");
+    expect(found).not.toBeNull();
+    expect(found?.username).toBe("Finder");
+
+    const notFound = await repo.findByEmail("404@me.com");
+    expect(notFound).toBeNull();
+  });
+
+  describe("Update User", () => {
+    it("harus berhasil mengupdate data user (Happy Path)", async () => {
+      const user = await repo.create({
+        username: "Old Name",
+        email: "old@test.com",
+        password: "pw",
+        role: Role.CUSTOMER,
+      });
+
+      const updated = await repo.update(user.id, {
+        username: "New Name",
+        email: "new@test.com",
+      });
+
+      expect(updated.username).toBe("New Name");
+      expect(updated.email).toBe("new@test.com");
+
+      const dbCheck = await prismaTest.user.findUnique({
+        where: { id: user.id },
+      });
+      expect(dbCheck?.username).toBe("New Name");
+    });
+
+    it("harus melempar ConflictError jika update email ke email milik user lain", async () => {
+      await repo.create({
+        username: "User A",
+        email: "a@test.com",
+        password: "pw",
+        role: Role.CUSTOMER,
+      });
+      const userB = await repo.create({
+        username: "User B",
+        email: "b@test.com",
+        password: "pw",
+        role: Role.CUSTOMER,
+      });
+
+      await expect(
+        repo.update(userB.id, { email: "a@test.com" }),
+      ).rejects.toThrow(ConflictError);
+    });
+
+    it("harus melempar NotFoundError jika ID user tidak ditemukan saat update", async () => {
+      await expect(repo.update(999999, { username: "Ghost" })).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+  });
+
+  describe("Find Operations", () => {
+    it("findAll harus mengembalikan semua user aktif", async () => {
+      await repo.create({
+        username: "U1",
+        email: "u1@t.com",
+        password: "p",
+        role: Role.ADMIN,
+      });
+      await repo.create({
+        username: "U2",
+        email: "u2@t.com",
+        password: "p",
+        role: Role.CUSTOMER,
+      });
+
+      const result = await repo.findAll();
+      expect(result).toHaveLength(2);
+    });
+
+    it("findById harus mengembalikan user yang benar", async () => {
+      const user = await repo.create({
+        username: "Target",
+        email: "target@t.com",
+        password: "p",
+        role: Role.ADMIN,
+      });
+
+      const result = await repo.findById(user.id);
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe(user.id);
+      expect(result?.role).toBe(Role.ADMIN);
+    });
+  });
+});
+</file>
+
 <file path="src/infrastructure/database/prisma.ts">
 import { PrismaClient } from "@prisma/client";
 import { env } from "../../config/env";
@@ -1316,6 +2697,74 @@ declare global {
 export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 
 if (env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
+</file>
+
+<file path="src/infrastructure/external/CloudinaryService.test.ts">
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { CloudinaryService } from "./CloudinaryService";
+import { v2 as cloudinary } from "cloudinary";
+import { AppError } from "../../domain/errors/AppError";
+import sharp from "sharp";
+
+vi.mock("cloudinary");
+vi.mock("sharp", () => ({
+  default: () => ({
+    resize: () => ({
+      jpeg: () => ({
+        toBuffer: vi.fn().mockResolvedValue(Buffer.from("resized-buffer")),
+      }),
+    }),
+  }),
+}));
+
+describe("CloudinaryService", () => {
+  let service: CloudinaryService;
+
+  beforeEach(() => {
+    service = new CloudinaryService();
+    vi.clearAllMocks();
+  });
+
+  it("harus mengembalikan URL secure jika upload berhasil", async () => {
+    const mockUploadStream = vi.fn((options, callback) => {
+      callback(null, { secure_url: "https://cloudinary.com/image.jpg" });
+      return { end: vi.fn() };
+    });
+
+    (cloudinary.uploader.upload_stream as any) = mockUploadStream;
+
+    const result = await service.uploadImage(Buffer.from("image"));
+
+    expect(result).toBe("https://cloudinary.com/image.jpg");
+    expect(mockUploadStream).toHaveBeenCalled();
+  });
+
+  it("harus melempar AppError jika upload gagal (Error dari Cloudinary)", async () => {
+    const mockUploadStream = vi.fn((options, callback) => {
+      callback(new Error("Cloudinary down"), null);
+      return { end: vi.fn() };
+    });
+
+    (cloudinary.uploader.upload_stream as any) = mockUploadStream;
+
+    await expect(service.uploadImage(Buffer.from("image"))).rejects.toThrow(
+      AppError,
+    );
+  });
+
+  it("harus melempar AppError jika result dari Cloudinary kosong/null", async () => {
+    const mockUploadStream = vi.fn((options, callback) => {
+      callback(null, null);
+      return { end: vi.fn() };
+    });
+
+    (cloudinary.uploader.upload_stream as any) = mockUploadStream;
+
+    await expect(service.uploadImage(Buffer.from("image"))).rejects.toThrow(
+      "Gagal mendapatkan respon",
+    );
+  });
+});
 </file>
 
 <file path="src/infrastructure/external/GoogleVisionService.ts">
@@ -1424,6 +2873,31 @@ export class GoogleVisionService {
 }
 </file>
 
+<file path="src/infrastructure/mapper/BankRekeningPtMapper.test.ts">
+import { describe, it, expect } from "vitest";
+import { BankRekeningPtMapper } from "./BankRekeningPtMapper";
+
+describe("BankRekeningPtMapper", () => {
+  it("harus memetakan Prisma BankRekeningPt ke Domain Entity dengan benar", () => {
+    const mockPrismaBank = {
+      id: 1,
+      namaBank: "BCA",
+      noRekening: "1234567890",
+      atasNama: "PT Sari Asih Group",
+      createdAt: new Date(),
+    };
+
+    const domain = BankRekeningPtMapper.toDomain(mockPrismaBank);
+
+    expect(domain.id).toBe(mockPrismaBank.id);
+    expect(domain.namaBank).toBe(mockPrismaBank.namaBank);
+    expect(domain.noRekening).toBe(mockPrismaBank.noRekening);
+    expect(domain.atasNama).toBe(mockPrismaBank.atasNama);
+    expect(domain.createdAt).toEqual(mockPrismaBank.createdAt);
+  });
+});
+</file>
+
 <file path="src/infrastructure/mapper/BankRekeningPtMapper.ts">
 import type {
   BankRekeningPt as PrismaBankRekeningPt,
@@ -1516,6 +2990,60 @@ export class DetailKavlingPajakMapper {
 }
 </file>
 
+<file path="src/infrastructure/mapper/FeeAgentMapper.ts">
+import type {
+  FeeAgent,
+  Agent,
+  Penjualan,
+  Customer,
+  Kavling,
+  Perumahan,
+} from "@prisma/client";
+import type { FeeAgentResponseDTO } from "../../domain/dtos/FeeAgentDTO.js";
+
+// Kita buat tipe eksplisit untuk menghindari Unsafe member access
+export type FeeAgentWithRelations = FeeAgent & {
+  agent: Pick<Agent, "nama">;
+  penjualan: Penjualan & {
+    customer: Pick<Customer, "nama">;
+    kavling: Kavling & {
+      perumahan: Pick<Perumahan, "nama">;
+    };
+  };
+};
+
+export class FeeAgentMapper {
+  static toDomain(prismaFee: FeeAgentWithRelations): FeeAgentResponseDTO {
+    return {
+      id: prismaFee.id,
+      agentId: prismaFee.agentId,
+      namaAgent: prismaFee.agent.nama,
+      penjualanId: prismaFee.penjualanId,
+      noTransaksi: prismaFee.penjualan.noTransaksi,
+      namaCustomer: prismaFee.penjualan.customer.nama,
+      kavling: `${prismaFee.penjualan.kavling.perumahan.nama} Blok ${prismaFee.penjualan.kavling.blok}-${prismaFee.penjualan.kavling.nomorUnit}`,
+      bookingNominal: prismaFee.bookingNominal
+        ? Number(prismaFee.bookingNominal)
+        : null,
+      bookingTanggal: prismaFee.bookingTanggal,
+      bookingBukti: prismaFee.bookingBukti,
+      closingNominal: prismaFee.closingNominal
+        ? Number(prismaFee.closingNominal)
+        : null,
+      closingTanggal: prismaFee.closingTanggal,
+      closingBukti: prismaFee.closingBukti,
+      marketingNominal: prismaFee.marketingNominal
+        ? Number(prismaFee.marketingNominal)
+        : null,
+      marketingTanggal: prismaFee.marketingTanggal,
+      marketingBukti: prismaFee.marketingBukti,
+      createdAt: prismaFee.createdAt,
+      updatedAt: prismaFee.updatedAt,
+    };
+  }
+}
+</file>
+
 <file path="src/infrastructure/mapper/PerumahanMapper.ts">
 import type { Perumahan as PrismaPerumahan } from "@prisma/client";
 import type { PerumahanEntity } from "../../domain/entities/Perumahan.js";
@@ -1532,6 +3060,32 @@ export class PerumahanMapper {
     };
   }
 }
+</file>
+
+<file path="src/infrastructure/mapper/UserMapper.test.ts">
+import { describe, it, expect } from "vitest";
+import { UserMapper } from "./UserMapper";
+import { Role } from "@prisma/client";
+
+describe("UserMapper", () => {
+  it("harus memetakan Prisma User ke Domain Entity dengan benar", () => {
+    const mockPrismaUser: any = {
+      id: 1,
+      username: "Test",
+      email: "test@example.com",
+      password: "hashed_password",
+      role: Role.ADMIN,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const domain = UserMapper.toDomain(mockPrismaUser);
+
+    expect(domain.id).toBe(1);
+    expect(domain.username).toBe("Test");
+    expect(domain.role).toBe(Role.ADMIN);
+  });
+});
 </file>
 
 <file path="src/infrastructure/mapper/UserMapper.ts">
@@ -1551,6 +3105,287 @@ export class UserMapper {
     };
   }
 }
+</file>
+
+<file path="src/middlewares/authMiddleware.test.ts">
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Request, Response, NextFunction } from "express";
+import { authenticate, requireRole } from "./authMiddleware";
+import jwt from "jsonwebtoken";
+import { StatusCodes } from "http-status-codes";
+import { Role } from "@prisma/client";
+
+// Mock sendResponse
+vi.mock("../utils/response", () => ({
+  sendResponse: vi.fn(),
+}));
+import { sendResponse } from "../utils/response";
+
+describe("Auth Middleware", () => {
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+  let next: NextFunction;
+
+  beforeEach(() => {
+    mockReq = { headers: {} };
+    mockRes = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    next = vi.fn();
+    vi.clearAllMocks();
+  });
+
+  describe("authenticate", () => {
+    it("harus menolak request tanpa header Authorization", () => {
+      authenticate(mockReq as Request, mockRes as Response, next);
+      expect(sendResponse).toHaveBeenCalledWith(
+        mockRes,
+        StatusCodes.UNAUTHORIZED,
+        expect.stringContaining("Access denied"),
+      );
+    });
+
+    it("harus memanggil next() dan set user jika token valid", () => {
+      mockReq.headers = { authorization: "Bearer valid_token" };
+
+      const decodedToken = {
+        userId: 1,
+        username: "Test User",
+        email: "test@example.com",
+        role: Role.CUSTOMER,
+      };
+
+      vi.spyOn(jwt, "verify").mockReturnValue(decodedToken as any);
+
+      authenticate(mockReq as Request, mockRes as Response, next);
+
+      expect(jwt.verify).toHaveBeenCalled();
+      expect(mockReq.user).toEqual(decodedToken);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it("harus menolak request jika token expired/invalid", () => {
+      mockReq.headers = { authorization: "Bearer bad_token" };
+      vi.spyOn(jwt, "verify").mockImplementation(() => {
+        throw new jwt.TokenExpiredError("jwt expired", new Date());
+      });
+
+      authenticate(mockReq as Request, mockRes as Response, next);
+
+      expect(sendResponse).toHaveBeenCalledWith(
+        mockRes,
+        StatusCodes.UNAUTHORIZED,
+        "Token expired.",
+      );
+    });
+
+    it("harus menolak request jika format token malformed (bukan JWT valid)", () => {
+      mockReq.headers = { authorization: "Bearer token_ngasal_bukan_jwt" };
+
+      vi.spyOn(jwt, "verify").mockImplementation(() => {
+        throw new jwt.JsonWebTokenError("invalid token");
+      });
+
+      authenticate(mockReq as Request, mockRes as Response, next);
+
+      expect(sendResponse).toHaveBeenCalledWith(
+        mockRes,
+        StatusCodes.UNAUTHORIZED,
+        "Invalid token.", // Disesuaikan dengan implementasi asli
+      );
+    });
+  });
+
+  describe("requireRole", () => {
+    it("harus mengizinkan akses jika role user sesuai", () => {
+      mockReq.user = {
+        userId: 1,
+        username: "Admin",
+        email: "a@a.com",
+        role: Role.ADMIN,
+      };
+
+      mockReq.log = { info: vi.fn() } as any;
+
+      const middleware = requireRole([Role.ADMIN]);
+      middleware(mockReq as Request, mockRes as Response, next);
+
+      expect(next).toHaveBeenCalled();
+    });
+
+    it("harus melarang akses (403) jika role user tidak sesuai", () => {
+      mockReq.user = {
+        userId: 1,
+        username: "Pekerja",
+        email: "a@a.com",
+        role: Role.CUSTOMER,
+      };
+      mockReq.log = { info: vi.fn() } as any;
+
+      const middleware = requireRole([Role.ADMIN]);
+      middleware(mockReq as Request, mockRes as Response, next);
+
+      expect(sendResponse).toHaveBeenCalledWith(
+        mockRes,
+        StatusCodes.FORBIDDEN,
+        expect.any(String),
+      );
+    });
+  });
+});
+</file>
+
+<file path="src/middlewares/errorHandler.test.ts">
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Request, Response, NextFunction } from "express";
+import { globalErrorHandler } from "./errorHandler";
+import { NotFoundError } from "../domain/errors/NotFoundError";
+import { ConflictError } from "../domain/errors/ConflictError";
+import { z } from "zod";
+import { env } from "../config/env";
+
+describe("Global Error Handler Middleware", () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let nextFunction: NextFunction;
+
+  beforeEach(() => {
+    mockRequest = {
+      log: { error: vi.fn() } as unknown as Request["log"],
+    };
+    mockResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    nextFunction = vi.fn();
+  });
+
+  it("harus menangani AppError (seperti NotFoundError) dengan status dan pesan yang sesuai", () => {
+    const error = new NotFoundError("Data dummy tidak ditemukan");
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(404);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: "Data dummy tidak ditemukan",
+      }),
+    );
+  });
+  it("harus menangani AppError spesifik seperti ConflictError dengan status HTTP 409", () => {
+    const error = new ConflictError("Data dengan nama tersebut sudah ada");
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(409);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: "Data dengan nama tersebut sudah ada",
+      }),
+    );
+  });
+
+  it("harus menangani ZodError dan memformat detail error validasi", () => {
+    const schema = z.object({ name: z.string().min(3) });
+    const result = schema.safeParse({ name: "A" });
+    const error = (result as z.ZodSafeParseError<unknown>).error;
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(400);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: "Validation Error",
+        error: expect.arrayContaining([
+          expect.objectContaining({ field: "name" }),
+        ]),
+      }),
+    );
+  });
+
+  it("harus menangani Generic Error (500) dan menyembunyikan stack trace jika dipaksa sebagai production", () => {
+    const error = new Error("Sesuatu yang sangat buruk terjadi pada database");
+
+    const originalEnv = env.NODE_ENV;
+
+    env.NODE_ENV = "production";
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(500);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: "Internal Server Error",
+      }),
+    );
+
+    const jsonCallArgs = (mockResponse.json as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+    expect(jsonCallArgs.error).toBeUndefined();
+
+    env.NODE_ENV = originalEnv;
+  });
+
+  it("harus memanggil req.log.error untuk keperluan logging internal", () => {
+    const error = new Error("Test error logging");
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockRequest.log?.error).toHaveBeenCalledTimes(1);
+    expect(mockRequest.log?.error).toHaveBeenCalledWith(error);
+  });
+  it("harus menangani SyntaxError (Malformed JSON) dari express body parser", () => {
+    const error = new SyntaxError("Unexpected string in JSON");
+    // Mocking properti tambahan yang disisipkan oleh body-parser express
+    (error as any).status = 400;
+    (error as any).body = "{ bad json }";
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(400);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: "Invalid JSON payload passed",
+      }),
+    );
+  });
+});
 </file>
 
 <file path="src/middlewares/errorHandler.ts">
@@ -1624,6 +3459,108 @@ export const globalErrorHandler = (
 };
 </file>
 
+<file path="src/middlewares/upload.test.ts">
+import { describe, it, expect, vi } from "vitest";
+import { upload } from "./upload";
+import { AppError } from "../domain/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+describe("Upload Middleware (Multer Config)", () => {
+  const fileFilter = (upload as any).fileFilter;
+
+  it("harus mengizinkan file dengan mimetype gambar (image/jpeg, image/png)", () => {
+    const mockFile = { mimetype: "image/jpeg" };
+    const cb = vi.fn();
+
+    fileFilter({}, mockFile, cb);
+
+    expect(cb).toHaveBeenCalledWith(null, true);
+  });
+
+  it("harus menolak file non-gambar dengan AppError 400", () => {
+    const mockFile = { mimetype: "application/pdf" };
+    const cb = vi.fn();
+
+    fileFilter({}, mockFile, cb);
+
+    const errorArg = cb.mock.calls[0]?.[0];
+
+    expect(errorArg).toBeDefined();
+    expect(errorArg).toBeInstanceOf(AppError);
+
+    const appError = errorArg as AppError;
+    expect(appError.statusCode).toBe(StatusCodes.BAD_REQUEST);
+    expect(appError.message).toContain("Hanya file gambar");
+  });
+});
+</file>
+
+<file path="src/middlewares/validate.test.ts">
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Request, Response, NextFunction } from "express";
+import { validate } from "./validate";
+import { z } from "zod";
+
+describe("Validate Middleware", () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+  let nextFunction: NextFunction;
+
+  beforeEach(() => {
+    mockRequest = { body: {}, params: {}, query: {} };
+    mockResponse = {};
+    nextFunction = vi.fn();
+  });
+
+  it("harus memanggil next() dan mereassign body jika validasi body berhasil", () => {
+    const schema = {
+      body: z.object({ name: z.string() }),
+    };
+    mockRequest.body = { name: "Valid String", extraData: "Akan Dibuang" };
+
+    const middleware = validate(schema);
+    middleware(mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(nextFunction).toHaveBeenCalledTimes(1);
+    expect(nextFunction).toHaveBeenCalledWith();
+
+    expect(mockRequest.body).toEqual({ name: "Valid String" });
+  });
+
+  it("harus memanggil next(error) jika validasi gagal", () => {
+    const schema = {
+      body: z.object({ age: z.number() }),
+    };
+    mockRequest.body = { age: "bukan_angka" };
+
+    const middleware = validate(schema);
+    middleware(mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(nextFunction).toHaveBeenCalledTimes(1);
+
+    const errorArg = (nextFunction as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0];
+    expect(errorArg).toBeInstanceOf(z.ZodError);
+  });
+
+  it("harus memvalidasi query dan params dengan benar", () => {
+    const schema = {
+      params: z.object({ id: z.string().cuid() }),
+      query: z.object({ limit: z.coerce.number() }),
+    };
+
+    mockRequest.params = { id: "cuid123456789" };
+    mockRequest.query = { limit: "10" };
+
+    const middleware = validate(schema);
+    middleware(mockRequest as Request, mockResponse as Response, nextFunction);
+
+    expect(nextFunction).toHaveBeenCalledTimes(1);
+    expect(mockRequest.query).toEqual({ limit: 10 });
+  });
+});
+</file>
+
 <file path="src/middlewares/validate.ts">
 import type { Request, Response, NextFunction } from "express";
 import type { z } from "zod";
@@ -1661,6 +3598,290 @@ export const validate = (schemas: ValidationSchemas) => {
     }
   };
 };
+</file>
+
+<file path="src/presentation/controllers/authController.test.ts">
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { AuthController } from "./authController";
+import type { RegisterUserUseCase } from "../../application/usecases/auth/RegisterUserUseCase";
+import type { LoginUserUseCase } from "../../application/usecases/auth/LoginUserUseCase";
+import type { GetProfileUseCase } from "../../application/usecases/auth/GetProfileUseCase";
+import { StatusCodes } from "http-status-codes";
+import type { Request, Response } from "express";
+import { Role } from "@prisma/client";
+
+vi.mock("../../utils/response", () => ({
+  sendResponse: vi.fn(),
+}));
+import { sendResponse } from "../../utils/response";
+
+describe("AuthController", () => {
+  let registerUseCaseMock: MockProxy<RegisterUserUseCase>;
+  let loginUseCaseMock: MockProxy<LoginUserUseCase>;
+  let getProfileUseCaseMock: MockProxy<GetProfileUseCase>;
+  let authController: AuthController;
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+
+  beforeEach(() => {
+    registerUseCaseMock = mock<RegisterUserUseCase>();
+    loginUseCaseMock = mock<LoginUserUseCase>();
+    getProfileUseCaseMock = mock<GetProfileUseCase>();
+
+    authController = new AuthController(
+      registerUseCaseMock,
+      loginUseCaseMock,
+      getProfileUseCaseMock,
+    );
+
+    mockReq = { body: {} };
+    mockRes = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    vi.clearAllMocks();
+  });
+
+  describe("register", () => {
+    it("harus memanggil usecase register dan return 201", async () => {
+      const result = {
+        id: 1,
+        username: "Test",
+        email: "test@example.com",
+        role: Role.CUSTOMER,
+        createdAt: new Date(),
+      };
+      registerUseCaseMock.execute.mockResolvedValue(result);
+
+      mockReq.body = {
+        username: "Test",
+        email: "test@example.com",
+        password: "pw",
+        role: Role.CUSTOMER,
+      };
+      await authController.register(mockReq as Request, mockRes as Response);
+
+      expect(registerUseCaseMock.execute).toHaveBeenCalledWith(mockReq.body);
+      expect(sendResponse).toHaveBeenCalledWith(
+        mockRes,
+        StatusCodes.CREATED,
+        "User registered successfully",
+        result,
+      );
+    });
+  });
+
+  describe("login", () => {
+    it("harus memanggil usecase login dan return 200", async () => {
+      const result = {
+        token: "token_abc",
+        user: {
+          id: 1,
+          username: "User",
+          email: "u@u.com",
+          role: Role.CUSTOMER,
+        },
+      };
+      loginUseCaseMock.execute.mockResolvedValue(result);
+
+      mockReq.body = { email: "u@u.com", password: "pw" };
+      await authController.login(mockReq as Request, mockRes as Response);
+
+      expect(loginUseCaseMock.execute).toHaveBeenCalledWith(mockReq.body);
+      expect(sendResponse).toHaveBeenCalledWith(
+        mockRes,
+        StatusCodes.OK,
+        "Login Sukses",
+        result,
+      );
+    });
+  });
+
+  describe("getProfile", () => {
+    it("harus mereturn data user dari usecase (200 OK)", async () => {
+      const mockUserPayload = {
+        userId: 1,
+        username: "Test User",
+        email: "test@example.com",
+        role: Role.CUSTOMER,
+      };
+
+      const mockUsecaseResult = {
+        id: 1,
+        username: "Test User",
+        email: "test@example.com",
+        role: Role.CUSTOMER,
+        createdAt: new Date(),
+      };
+
+      mockReq.user = mockUserPayload;
+      getProfileUseCaseMock.execute.mockResolvedValue(mockUsecaseResult);
+
+      await authController.getProfile(mockReq as Request, mockRes as Response);
+
+      expect(getProfileUseCaseMock.execute).toHaveBeenCalledWith(
+        mockUserPayload.userId,
+      );
+      expect(sendResponse).toHaveBeenCalledWith(
+        mockRes,
+        StatusCodes.OK,
+        "Berhasil mengambil profil",
+        { user: mockUsecaseResult },
+      );
+    });
+  });
+});
+</file>
+
+<file path="src/presentation/controllers/bankRekeningPtController.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { BankRekeningPtController } from "./bankRekeningPtController";
+import type {
+  CreateBankRekeningPtUseCase,
+  UpdateBankRekeningPtUseCase,
+  GetBankRekeningPtByIdUseCase,
+  GetBankRekeningPtPaginatedUseCase,
+  DeleteBankRekeningPtUseCase,
+} from "../../application/usecases/bankRekeningPt/BankRekeningPtUseCases";
+import { StatusCodes } from "http-status-codes";
+import type { Request, Response } from "express";
+
+vi.mock("../../utils/response", () => ({
+  sendResponse: vi.fn(),
+}));
+import { sendResponse } from "../../utils/response";
+
+describe("BankRekeningPtController", () => {
+  let createUseCaseMock: MockProxy<CreateBankRekeningPtUseCase>;
+  let updateUseCaseMock: MockProxy<UpdateBankRekeningPtUseCase>;
+  let getByIdUseCaseMock: MockProxy<GetBankRekeningPtByIdUseCase>;
+  let getPaginatedUseCaseMock: MockProxy<GetBankRekeningPtPaginatedUseCase>;
+  let deleteUseCaseMock: MockProxy<DeleteBankRekeningPtUseCase>;
+
+  let controller: BankRekeningPtController;
+  let req: Partial<Request>;
+  let res: Partial<Response>;
+
+  beforeEach(() => {
+    createUseCaseMock = mock<CreateBankRekeningPtUseCase>();
+    updateUseCaseMock = mock<UpdateBankRekeningPtUseCase>();
+    getByIdUseCaseMock = mock<GetBankRekeningPtByIdUseCase>();
+    getPaginatedUseCaseMock = mock<GetBankRekeningPtPaginatedUseCase>();
+    deleteUseCaseMock = mock<DeleteBankRekeningPtUseCase>();
+
+    controller = new BankRekeningPtController(
+      createUseCaseMock,
+      updateUseCaseMock,
+      getByIdUseCaseMock,
+      getPaginatedUseCaseMock,
+      deleteUseCaseMock,
+    );
+
+    req = { params: {}, body: {}, query: {} };
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    vi.clearAllMocks();
+  });
+
+  it("create - harus memanggil usecase dan return 201", async () => {
+    const mockBody = {
+      namaBank: "BCA",
+      noRekening: "123456",
+      atasNama: "PT ABC",
+    };
+    req.body = mockBody;
+
+    const mockResult: any = { id: 1, ...mockBody };
+    createUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.create(req as any, res as Response);
+
+    expect(createUseCaseMock.execute).toHaveBeenCalledWith(mockBody);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.CREATED,
+      "Rekening berhasil ditambahkan",
+      mockResult,
+    );
+  });
+
+  it("update - harus meneruskan ID dan Body ke usecase dan return 200", async () => {
+    req.params = { id: "1" };
+    req.body = { namaBank: "Mandiri" };
+
+    const mockResult: any = { id: 1, namaBank: "Mandiri" };
+    updateUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.update(req as any, res as Response);
+
+    expect(updateUseCaseMock.execute).toHaveBeenCalledWith(1, req.body);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Rekening berhasil diperbarui",
+      mockResult,
+    );
+  });
+
+  it("getById - harus memanggil usecase dengan ID dan return 200", async () => {
+    req.params = { id: "1" };
+
+    const mockResult: any = { id: 1, namaBank: "BCA" };
+    getByIdUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.getById(req as any, res as Response);
+
+    expect(getByIdUseCaseMock.execute).toHaveBeenCalledWith(1);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Data rekening berhasil diambil",
+      mockResult,
+    );
+  });
+
+  it("getPaginated - harus memparsing query dan memanggil usecase, lalu return 200", async () => {
+    req.query = { limit: "10", search: "BCA" };
+
+    const mockResult: any = {
+      items: [],
+      meta: { nextCursor: null, hasNextPage: false },
+    };
+    getPaginatedUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.getPaginated(req as Request, res as Response);
+
+    expect(getPaginatedUseCaseMock.execute).toHaveBeenCalledWith(
+      10,
+      undefined,
+      { search: "BCA" },
+    );
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Daftar rekening berhasil diambil",
+      mockResult,
+    );
+  });
+
+  it("delete - harus memanggil usecase dengan ID dan return 200", async () => {
+    req.params = { id: "1" };
+    deleteUseCaseMock.execute.mockResolvedValue();
+
+    await controller.delete(req as any, res as Response);
+
+    expect(deleteUseCaseMock.execute).toHaveBeenCalledWith(1);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Rekening berhasil dihapus",
+    );
+  });
+});
 </file>
 
 <file path="src/presentation/controllers/bankRekeningPtController.ts">
@@ -1754,6 +3975,162 @@ export class BankRekeningPtController {
 }
 </file>
 
+<file path="src/presentation/controllers/customerController.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { CustomerController } from "./customerController";
+import type { CreateCustomerUseCase } from "../../application/usecases/customer/CreateCustomerUseCase";
+import type { UpdateCustomerUseCase } from "../../application/usecases/customer/UpdateCustomerUseCase";
+import type { GetCustomerByIdUseCase } from "../../application/usecases/customer/GetCustomerByIdUseCase";
+import type { GetCustomersPaginatedUseCase } from "../../application/usecases/customer/GetCustomersPaginatedUseCase";
+import type { DeleteCustomerUseCase } from "../../application/usecases/customer/DeleteCustomerUseCase";
+import { StatusCodes } from "http-status-codes";
+import type { Request, Response } from "express";
+
+// Mock utility sendResponse agar kita bisa cek argumennya
+vi.mock("../../utils/response", () => ({
+  sendResponse: vi.fn(),
+}));
+import { sendResponse } from "../../utils/response";
+
+describe("CustomerController", () => {
+  let createUseCaseMock: MockProxy<CreateCustomerUseCase>;
+  let updateUseCaseMock: MockProxy<UpdateCustomerUseCase>;
+  let getByIdUseCaseMock: MockProxy<GetCustomerByIdUseCase>;
+  let getPaginatedUseCaseMock: MockProxy<GetCustomersPaginatedUseCase>;
+  let deleteUseCaseMock: MockProxy<DeleteCustomerUseCase>;
+
+  let controller: CustomerController;
+  let req: Partial<Request>;
+  let res: Partial<Response>;
+
+  beforeEach(() => {
+    createUseCaseMock = mock<CreateCustomerUseCase>();
+    updateUseCaseMock = mock<UpdateCustomerUseCase>();
+    getByIdUseCaseMock = mock<GetCustomerByIdUseCase>();
+    getPaginatedUseCaseMock = mock<GetCustomersPaginatedUseCase>();
+    deleteUseCaseMock = mock<DeleteCustomerUseCase>();
+
+    controller = new CustomerController(
+      createUseCaseMock,
+      updateUseCaseMock,
+      getByIdUseCaseMock,
+      getPaginatedUseCaseMock,
+      deleteUseCaseMock,
+    );
+
+    req = { params: {}, body: {}, query: {} };
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    vi.clearAllMocks();
+  });
+
+  it("create - harus memanggil usecase dan return status 201 CREATED", async () => {
+    const mockBody = {
+      nikKtp: "3201234567890123",
+      nama: "Budi Santoso",
+      noHp: "081234567890",
+      alamatKtp: "Jl. Merdeka No. 1",
+    };
+    req.body = mockBody;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockResult: any = { id: 1, ...mockBody };
+    createUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    // Cast req karena menggunakan TypedRequest di controller
+    await controller.create(req as any, res as Response);
+
+    expect(createUseCaseMock.execute).toHaveBeenCalledWith(mockBody);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.CREATED,
+      "Customer berhasil ditambahkan",
+      mockResult,
+    );
+  });
+
+  it("update - harus meneruskan ID dan Body ke usecase dan return status 200 OK", async () => {
+    req.params = { id: "1" };
+    req.body = { nama: "Budi Updated" };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockResult: any = { id: 1, nama: "Budi Updated" };
+    updateUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.update(req as any, res as Response);
+
+    expect(updateUseCaseMock.execute).toHaveBeenCalledWith(1, req.body);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Customer berhasil diperbarui",
+      mockResult,
+    );
+  });
+
+  it("getById - harus memanggil usecase dengan ID dan return status 200 OK", async () => {
+    req.params = { id: "1" };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockResult: any = { id: 1, nama: "Budi Santoso" };
+    getByIdUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.getById(req as any, res as Response);
+
+    expect(getByIdUseCaseMock.execute).toHaveBeenCalledWith(1);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Data customer berhasil diambil",
+      mockResult,
+    );
+  });
+
+  it("getPaginated - harus memparsing query dan memanggil usecase, lalu return 200 OK", async () => {
+    // Controller melakukan parsing menggunakan Zod, jadi berikan data yang valid
+    req.query = { limit: "10", search: "Budi" };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockResult: any = {
+      items: [{ id: 1, nama: "Budi Santoso" }],
+      meta: { nextCursor: null, hasNextPage: false },
+    };
+    getPaginatedUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.getPaginated(req as Request, res as Response);
+
+    expect(getPaginatedUseCaseMock.execute).toHaveBeenCalledWith(
+      10, // limit diparsing jadi number oleh zod
+      undefined, // cursor kosong
+      { search: "Budi" }, // filters
+    );
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Daftar customer berhasil diambil",
+      mockResult,
+    );
+  });
+
+  it("delete - harus memanggil usecase dengan ID dan return 200 OK", async () => {
+    req.params = { id: "1" };
+    deleteUseCaseMock.execute.mockResolvedValue();
+
+    await controller.delete(req as any, res as Response);
+
+    expect(deleteUseCaseMock.execute).toHaveBeenCalledWith(1);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Customer berhasil dihapus",
+    );
+  });
+});
+</file>
+
 <file path="src/presentation/controllers/customerKavlingController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -1834,6 +4211,155 @@ export class DashboardController {
     );
   };
 }
+</file>
+
+<file path="src/presentation/controllers/feeAgentController.ts">
+import type { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type {
+  GetFeeAgentsPaginatedUseCase,
+  UpdateFeeAgentUseCase,
+  UploadBuktiFeeUseCase,
+} from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
+import type { updateFeeAgentSchema } from "../../validations/feeAgentSchema.js";
+import { getFeeAgentsPaginatedSchema } from "../../validations/feeAgentSchema.js";
+import type { FeeAgentFilterDTO } from "../../domain/dtos/FeeAgentDTO.js";
+
+export class FeeAgentController {
+  constructor(
+    private readonly getPaginatedUseCase: GetFeeAgentsPaginatedUseCase,
+    private readonly updateUseCase: UpdateFeeAgentUseCase,
+    private readonly uploadBuktiUseCase: UploadBuktiFeeUseCase,
+  ) {}
+
+  getPaginated = async (req: Request, res: Response): Promise<void> => {
+    const { limit, cursor, ...filters } =
+      getFeeAgentsPaginatedSchema.query.parse(req.query);
+    const parsedCursor = cursor ? Number(cursor) : undefined;
+
+    const result = await this.getPaginatedUseCase.execute(
+      limit,
+      parsedCursor,
+      filters as FeeAgentFilterDTO,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data fee agent berhasil diambil",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateFeeAgentSchema.body,
+      any,
+      typeof updateFeeAgentSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(id, req.body);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data fee agent berhasil diperbarui",
+      result,
+    );
+  };
+
+  uploadBukti = async (
+    req: Request<{ id: string; type: string }>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const type = req.params.type;
+
+    if (!["bookingBukti", "closingBukti", "marketingBukti"].includes(type)) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe bukti tidak valid");
+      return;
+    }
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadBuktiUseCase.execute(
+      id,
+      req.file.buffer,
+      type as "bookingBukti" | "closingBukti" | "marketingBukti",
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti fee agent berhasil diunggah",
+      result,
+    );
+  };
+}
+</file>
+
+<file path="src/presentation/controllers/healthController.test.ts">
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Request, Response } from "express";
+import { checkHealth } from "./healthController";
+import { prisma } from "../../infrastructure/database/prisma";
+import { StatusCodes } from "http-status-codes";
+
+vi.mock("../../utils/response", () => ({
+  sendResponse: vi.fn(),
+}));
+
+import { sendResponse } from "../../utils/response";
+
+describe("HealthController", () => {
+  let mockRequest: Partial<Request>;
+  let mockResponse: Partial<Response>;
+
+  beforeEach(() => {
+    mockRequest = {};
+    mockResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("harus mengembalikan status 200 OK jika API dan Database sehat", async () => {
+    const dbSpy = vi.spyOn(prisma, "$queryRaw").mockResolvedValue([{ 1: 1 }]);
+
+    await checkHealth(mockRequest as Request, mockResponse as Response);
+
+    expect(dbSpy).toHaveBeenCalledTimes(1);
+    expect(sendResponse).toHaveBeenCalledWith(
+      mockResponse,
+      StatusCodes.OK,
+      "API & Database healthy",
+    );
+  });
+
+  it("harus melempar error jika database mati", async () => {
+    const dbError = new Error("Connection refused");
+
+    vi.spyOn(prisma, "$queryRaw").mockRejectedValue(dbError);
+
+    await expect(
+      checkHealth(mockRequest as Request, mockResponse as Response),
+    ).rejects.toThrow(dbError);
+
+    expect(sendResponse).not.toHaveBeenCalled();
+  });
+});
 </file>
 
 <file path="src/presentation/controllers/healthController.ts">
@@ -1946,6 +4472,78 @@ export class NotarisController {
     sendResponse(res, StatusCodes.OK, "Notaris berhasil dihapus");
   };
 }
+</file>
+
+<file path="src/presentation/controllers/ocrController.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { OcrController } from "./ocrController";
+import type { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase";
+import { StatusCodes } from "http-status-codes";
+import type { Request, Response } from "express";
+
+vi.mock("../../utils/response", () => ({
+  sendResponse: vi.fn(),
+}));
+import { sendResponse } from "../../utils/response";
+
+describe("OcrController", () => {
+  let extractKtpDataUseCaseMock: MockProxy<ExtractKtpDataUseCase>;
+  let controller: OcrController;
+  let req: Partial<Request>;
+  let res: Partial<Response>;
+
+  beforeEach(() => {
+    extractKtpDataUseCaseMock = mock<ExtractKtpDataUseCase>();
+    controller = new OcrController(extractKtpDataUseCaseMock);
+
+    req = { body: {}, file: undefined };
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    vi.clearAllMocks();
+  });
+
+  it("harus memanggil usecase dan mereturn 200 OK jika file KTP valid", async () => {
+    const mockBuffer = Buffer.from("dummy-buffer");
+
+    req.file = { buffer: mockBuffer } as any;
+
+    const mockResult = {
+      nik: "3201234567890123",
+      nama: "Budi Santoso",
+      alamat: "Jl. Merdeka",
+      statusPerkawinan: "BELUM KAWIN",
+    };
+
+    extractKtpDataUseCaseMock.execute.mockResolvedValue(mockResult);
+
+    await controller.extractKtpData(req as any, res as any);
+
+    expect(extractKtpDataUseCaseMock.execute).toHaveBeenCalledWith(mockBuffer);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      "Berhasil mengekstrak data KTP",
+      mockResult,
+    );
+  });
+
+  it("harus mereturn 400 BAD_REQUEST jika file foto KTP (req.file) tidak ada", async () => {
+    req.file = undefined;
+
+    await controller.extractKtpData(req as any, res as any);
+
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.BAD_REQUEST,
+      "File foto KTP (foto_ktp) wajib diunggah.",
+    );
+
+    expect(extractKtpDataUseCaseMock.execute).not.toHaveBeenCalled();
+  });
+});
 </file>
 
 <file path="src/presentation/controllers/ocrController.ts">
@@ -2077,6 +4675,472 @@ export class PerumahanController {
 }
 </file>
 
+<file path="src/presentation/controllers/userController.test.ts">
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import { UserController } from "./userController";
+import type { GetAllUsersUseCase } from "../../application/usecases/user/GetAllUsersUseCase";
+import type { UpdateUserUseCase } from "../../application/usecases/user/UpdateUserUseCase";
+import type { GetUsersPaginatedUseCase } from "../../application/usecases/user/GetUsersPaginatedUseCase";
+import { StatusCodes } from "http-status-codes";
+import type { Request, Response } from "express";
+
+vi.mock("../../utils/response", () => ({
+  sendResponse: vi.fn(),
+}));
+import { sendResponse } from "../../utils/response";
+
+describe("UserController", () => {
+  let getAllUsersUseCase: MockProxy<GetAllUsersUseCase>;
+  let updateUserUseCase: MockProxy<UpdateUserUseCase>;
+  let getUsersPaginatedUseCase: MockProxy<GetUsersPaginatedUseCase>;
+  let controller: UserController;
+  let req: Partial<Request>;
+  let res: Partial<Response>;
+
+  beforeEach(() => {
+    getAllUsersUseCase = mock<GetAllUsersUseCase>();
+    updateUserUseCase = mock<UpdateUserUseCase>();
+    getUsersPaginatedUseCase = mock<GetUsersPaginatedUseCase>();
+    controller = new UserController(
+      getAllUsersUseCase,
+      updateUserUseCase,
+      getUsersPaginatedUseCase,
+    );
+
+    req = {};
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+    vi.clearAllMocks();
+  });
+
+  it("getAll - harus memanggil usecase dan return 200", async () => {
+    getAllUsersUseCase.execute.mockResolvedValue([]);
+
+    await controller.getAll(req as Request, res as Response);
+
+    expect(getAllUsersUseCase.execute).toHaveBeenCalled();
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      expect.any(String),
+      [],
+    );
+  });
+
+  it("update - harus meneruskan ID dari params dan Body ke usecase", async () => {
+    req.params = { id: "1" };
+    req.body = { username: "Updated Name" };
+
+    const mockResult: any = { id: 1, username: "Updated Name" };
+    updateUserUseCase.execute.mockResolvedValue(mockResult);
+
+    await controller.update(req as any, res as Response);
+
+    expect(updateUserUseCase.execute).toHaveBeenCalledWith(1, req.body);
+    expect(sendResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.OK,
+      expect.any(String),
+      mockResult,
+    );
+  });
+});
+</file>
+
+<file path="src/presentation/routes/authRoutes.test.ts">
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import request from "supertest";
+import app from "../../app";
+import {
+  prismaTest,
+  clearDatabase,
+  disconnectDatabase,
+} from "../../tests/setup";
+import { hashPassword } from "../../utils/hashing";
+import { Role } from "@prisma/client";
+
+describe("Integration Test: Auth Routes (E2E API)", () => {
+  beforeEach(async () => {
+    await clearDatabase();
+  });
+
+  afterAll(async () => {
+    await disconnectDatabase();
+  });
+
+  describe("POST /api/v1/auth/register", () => {
+    it("harus berhasil register user baru (201)", async () => {
+      const payload = {
+        username: "New User",
+        email: "new@user.com",
+        password: "password",
+        role: Role.CUSTOMER,
+      };
+
+      const res = await request(app)
+        .post("/api/v1/auth/register")
+        .send(payload);
+
+      expect(res.status).toBe(201);
+      expect(res.body.data).toHaveProperty("id");
+      expect(res.body.data.email).toBe(payload.email);
+      expect(res.body.data.role).toBe(Role.CUSTOMER);
+    });
+
+    it("harus gagal jika email format salah (400)", async () => {
+      const res = await request(app).post("/api/v1/auth/register").send({
+        username: "Bad Email",
+        email: "not-an-email",
+        password: "password",
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Validation Error");
+    });
+
+    it("harus gagal jika email sudah terdaftar (409)", async () => {
+      const existingPayload = {
+        username: "User 1",
+        email: "same@email.com",
+        password: "password",
+      };
+
+      await prismaTest.user.create({
+        data: {
+          ...existingPayload,
+          role: Role.CUSTOMER,
+        },
+      });
+
+      const res = await request(app)
+        .post("/api/v1/auth/register")
+        .send({
+          ...existingPayload,
+          role: Role.CUSTOMER,
+        });
+
+      expect(res.status).toBe(409);
+    });
+  });
+
+  describe("POST /api/v1/auth/login", () => {
+    it("harus berhasil login dengan kredensial yang benar (200)", async () => {
+      const password = "securepassword";
+      const hashedPassword = await hashPassword(password);
+
+      await prismaTest.user.create({
+        data: {
+          username: "Login User",
+          email: "login@user.com",
+          password: hashedPassword,
+          role: Role.ADMIN,
+        },
+      });
+
+      const res = await request(app).post("/api/v1/auth/login").send({
+        email: "login@user.com",
+        password: password,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveProperty("token");
+      expect(res.body.data.user.role).toBe(Role.ADMIN);
+    });
+
+    it("harus gagal login jika password salah (401)", async () => {
+      const password = "securepassword";
+      const hashedPassword = await hashPassword(password);
+
+      await prismaTest.user.create({
+        data: {
+          username: "Login User",
+          email: "wrongpass@user.com",
+          password: hashedPassword,
+          role: Role.ADMIN,
+        },
+      });
+
+      const res = await request(app).post("/api/v1/auth/login").send({
+        email: "wrongpass@user.com",
+        password: "wrongpassword",
+      });
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe("GET /api/v1/auth/profile", () => {
+    it("harus bisa mengakses profile dengan token valid", async () => {
+      const userPayload = {
+        username: "Profile User",
+        email: "profile@test.com",
+        password: "password",
+        role: Role.ADMIN,
+      };
+
+      await request(app).post("/api/v1/auth/register").send(userPayload);
+
+      const loginRes = await request(app).post("/api/v1/auth/login").send({
+        email: userPayload.email,
+        password: userPayload.password,
+      });
+
+      expect(loginRes.status).toBe(200);
+      const token = loginRes.body.data.token;
+
+      const res = await request(app)
+        .get("/api/v1/auth/profile")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.user.email).toBe(userPayload.email);
+      expect(res.body.data.user.role).toBe(Role.ADMIN);
+    });
+
+    it("harus ditolak jika tanpa token (401)", async () => {
+      const res = await request(app).get("/api/v1/auth/profile");
+      expect(res.status).toBe(401);
+    });
+  });
+
+  it("harus gagal register jika password kurang dari 6 karakter (400)", async () => {
+    const res = await request(app).post("/api/v1/auth/register").send({
+      username: "Weak User",
+      email: "weak@user.com",
+      password: "123",
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe("Validation Error");
+  });
+});
+</file>
+
+<file path="src/presentation/routes/bankRekeningPtRoutes.test.ts">
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import request from "supertest";
+import app from "../../app";
+import {
+  prismaTest,
+  clearDatabase,
+  disconnectDatabase,
+} from "../../tests/setup";
+import jwt from "jsonwebtoken";
+import { env } from "../../config/env";
+import { Role } from "@prisma/client";
+import { BankRekeningPtFactory } from "../../tests/factories/bankRekeningPtFactory";
+
+describe("Integration Test: Bank Rekening PT Routes (E2E API)", () => {
+  let adminToken: string;
+  let marketingToken: string;
+
+  beforeEach(async () => {
+    await clearDatabase();
+    adminToken = jwt.sign({ userId: 1, role: Role.ADMIN }, env.JWT_SECRET);
+    marketingToken = jwt.sign(
+      { userId: 2, role: Role.MARKETING },
+      env.JWT_SECRET,
+    );
+  });
+
+  afterAll(async () => {
+    await disconnectDatabase();
+  });
+
+  describe("POST /api/v1/bank-rekening", () => {
+    it("harus mengizinkan ADMIN membuat rekening (201)", async () => {
+      const payload = {
+        namaBank: "BCA",
+        noRekening: "12345",
+        atasNama: "PT ABC",
+      };
+
+      const res = await request(app)
+        .post("/api/v1/bank-rekening")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(payload);
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.namaBank).toBe("BCA");
+    });
+
+    it("harus MENOLAK MARKETING membuat rekening (403)", async () => {
+      const payload = {
+        namaBank: "BNI",
+        noRekening: "67890",
+        atasNama: "PT XYZ",
+      };
+
+      const res = await request(app)
+        .post("/api/v1/bank-rekening")
+        .set("Authorization", `Bearer ${marketingToken}`)
+        .send(payload);
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("GET /api/v1/bank-rekening", () => {
+    it("harus mengizinkan MARKETING melihat daftar rekening (200)", async () => {
+      await BankRekeningPtFactory.create();
+
+      const res = await request(app)
+        .get("/api/v1/bank-rekening")
+        .set("Authorization", `Bearer ${marketingToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("PATCH /api/v1/bank-rekening/:id", () => {
+    it("harus mengizinkan ADMIN mengupdate rekening (200)", async () => {
+      const bank = await BankRekeningPtFactory.create({ namaBank: "BCA Lama" });
+
+      const res = await request(app)
+        .patch(`/api/v1/bank-rekening/${bank.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ namaBank: "BCA Baru" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.namaBank).toBe("BCA Baru");
+    });
+  });
+
+  describe("DELETE /api/v1/bank-rekening/:id", () => {
+    it("harus mengizinkan ADMIN menghapus rekening (200)", async () => {
+      const bank = await BankRekeningPtFactory.create();
+
+      const res = await request(app)
+        .delete(`/api/v1/bank-rekening/${bank.id}`)
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+    });
+  });
+});
+</file>
+
+<file path="src/presentation/routes/customerRoutes.test.ts">
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import request from "supertest";
+import app from "../../app";
+import {
+  prismaTest,
+  clearDatabase,
+  disconnectDatabase,
+} from "../../tests/setup";
+import jwt from "jsonwebtoken";
+import { env } from "../../config/env";
+import { Role } from "@prisma/client";
+import { CustomerFactory } from "../../tests/factories";
+
+describe("Integration Test: Customer Routes (E2E API)", () => {
+  let adminToken: string;
+  let marketingToken: string;
+  let customerToken: string;
+
+  beforeEach(async () => {
+    await clearDatabase();
+
+    adminToken = jwt.sign({ userId: 1, role: Role.ADMIN }, env.JWT_SECRET);
+    marketingToken = jwt.sign(
+      { userId: 2, role: Role.MARKETING },
+      env.JWT_SECRET,
+    );
+    customerToken = jwt.sign(
+      { userId: 3, role: Role.CUSTOMER },
+      env.JWT_SECRET,
+    );
+  });
+
+  afterAll(async () => {
+    await disconnectDatabase();
+  });
+
+  describe("POST /api/v1/customers", () => {
+    it("harus mengizinkan MARKETING membuat customer baru (201)", async () => {
+      const payload = {
+        nikKtp: "3201234567890123",
+        nama: "Budi Baru",
+        noHp: "081234567890",
+        alamatKtp: "Jl. Merdeka",
+      };
+
+      const res = await request(app)
+        .post("/api/v1/customers")
+        .set("Authorization", `Bearer ${marketingToken}`)
+        .send(payload);
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.nama).toBe("Budi Baru");
+      expect(res.body.data.nikKtp).toBe("3201234567890123");
+    });
+
+    it("harus MENOLAK akses jika CUSTOMER mencoba membuat data (403)", async () => {
+      const res = await request(app)
+        .post("/api/v1/customers")
+        .set("Authorization", `Bearer ${customerToken}`)
+        .send({ nikKtp: "123", nama: "Gagal", noHp: "081", alamatKtp: "X" });
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("GET /api/v1/customers", () => {
+    it("harus mengizinkan ADMIN melihat daftar customer (200)", async () => {
+      await CustomerFactory.create({ nama: "Test Get 1" });
+      await CustomerFactory.create({ nama: "Test Get 2" });
+
+      const res = await request(app)
+        .get("/api/v1/customers")
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.items.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe("PATCH /api/v1/customers/:id", () => {
+    it("harus mengizinkan MARKETING mengupdate data customer (200)", async () => {
+      const customer = await CustomerFactory.create({ nama: "Budi Lama" });
+
+      const res = await request(app)
+        .patch(`/api/v1/customers/${customer.id}`)
+        .set("Authorization", `Bearer ${marketingToken}`)
+        .send({ nama: "Budi Updated" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.nama).toBe("Budi Updated");
+    });
+  });
+
+  describe("DELETE /api/v1/customers/:id", () => {
+    it("harus mengizinkan ADMIN menghapus customer (200)", async () => {
+      const customer = await CustomerFactory.create();
+
+      const res = await request(app)
+        .delete(`/api/v1/customers/${customer.id}`)
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("Customer berhasil dihapus");
+    });
+
+    it("harus MENOLAK MARKETING menghapus customer (403)", async () => {
+      const customer = await CustomerFactory.create();
+
+      const res = await request(app)
+        .delete(`/api/v1/customers/${customer.id}`)
+        .set("Authorization", `Bearer ${marketingToken}`);
+
+      expect(res.status).toBe(403);
+    });
+  });
+});
+</file>
+
 <file path="src/presentation/routes/ocrRoutes.ts">
 import { Router } from "express";
 import { authenticate } from "../../middlewares/authMiddleware.js";
@@ -2099,6 +5163,73 @@ export const createOcrRoutes = (controller: OcrController): Router => {
 
   return router;
 };
+</file>
+
+<file path="src/presentation/routes/userRoutes.test.ts">
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import request from "supertest";
+import app from "../../app";
+import {
+  prismaTest,
+  clearDatabase,
+  disconnectDatabase,
+} from "../../tests/setup";
+import jwt from "jsonwebtoken";
+import { env } from "../../config/env";
+import { Role } from "@prisma/client";
+
+describe("Integration: User Routes (RBAC)", () => {
+  let adminToken: string;
+  let customerToken: string;
+
+  beforeEach(async () => {
+    await clearDatabase();
+
+    adminToken = jwt.sign({ userId: 1, role: Role.ADMIN }, env.JWT_SECRET);
+    customerToken = jwt.sign(
+      { userId: 2, role: Role.CUSTOMER },
+      env.JWT_SECRET,
+    );
+  });
+
+  afterAll(async () => {
+    await disconnectDatabase();
+  });
+
+  describe("GET /api/v1/users", () => {
+    it("harus mengizinkan ADMIN mengakses list user (200)", async () => {
+      const res = await request(app)
+        .get("/api/v1/users")
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("harus MELARANG CUSTOMER mengakses list user (403)", async () => {
+      const res = await request(app)
+        .get("/api/v1/users")
+        .set("Authorization", `Bearer ${customerToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("harus MELARANG Public/Guest (401)", async () => {
+      const res = await request(app).get("/api/v1/users");
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe("PATCH /api/v1/users/:id", () => {
+    it("harus MELARANG CUSTOMER mengupdate user (403)", async () => {
+      const res = await request(app)
+        .patch("/api/v1/users/1")
+        .set("Authorization", `Bearer ${customerToken}`)
+        .send({ username: "Hacker" });
+
+      expect(res.status).toBe(403);
+    });
+  });
+});
 </file>
 
 <file path="src/tests/factories/bankRekeningPtFactory.ts">
@@ -2241,6 +5372,37 @@ export type TypedRequest<
 > = Request<z.infer<TParams>, unknown, z.infer<TBody>, z.infer<TQuery>>;
 </file>
 
+<file path="src/utils/hashing.test.ts">
+import { describe, it, expect } from "vitest";
+import { hashPassword, comparePassword } from "./hashing";
+
+describe("Hashing Utils", () => {
+  it("harus menghasilkan hash yang berbeda dari plain text", async () => {
+    const password = "password";
+    const hashed = await hashPassword(password);
+
+    expect(hashed).not.toBe(password);
+    expect(hashed).toHaveLength(60);
+  });
+
+  it("harus return TRUE jika password cocok dengan hash", async () => {
+    const password = "rahasia-negara";
+    const hashed = await hashPassword(password);
+
+    const isValid = await comparePassword(password, hashed);
+    expect(isValid).toBe(true);
+  });
+
+  it("harus return FALSE jika password salah", async () => {
+    const password = "rahasia-negara";
+    const hashed = await hashPassword(password);
+
+    const isValid = await comparePassword("salah-password", hashed);
+    expect(isValid).toBe(false);
+  });
+});
+</file>
+
 <file path="src/utils/hashing.ts">
 import bcrypt from "bcrypt";
 
@@ -2287,6 +5449,66 @@ export const logger = pino({
         },
       },
     }),
+});
+</file>
+
+<file path="src/utils/response.test.ts">
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Response } from "express";
+import { sendResponse } from "./response";
+
+describe("Utils: sendResponse", () => {
+  let mockResponse: Partial<Response>;
+
+  beforeEach(() => {
+    mockResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+  });
+
+  it("harus mengirim response success (true) untuk status code 2xx", () => {
+    const data = { id: 1, name: "Test" };
+
+    sendResponse(mockResponse as Response, 200, "Berhasil", data);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    expect(mockResponse.json).toHaveBeenCalledWith({
+      success: true,
+      message: "Berhasil",
+      data: data,
+    });
+  });
+
+  it("harus mengirim response success (false) untuk status code 4xx/5xx", () => {
+    sendResponse(mockResponse as Response, 404, "Tidak ditemukan");
+
+    expect(mockResponse.status).toHaveBeenCalledWith(404);
+    expect(mockResponse.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Tidak ditemukan",
+      data: null,
+    });
+  });
+
+  it("harus menyertakan object error jika argumen error diberikan", () => {
+    const errorDetail = { detail: "Field name is required" };
+
+    sendResponse(
+      mockResponse as Response,
+      400,
+      "Validasi Gagal",
+      null,
+      errorDetail,
+    );
+
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: errorDetail,
+      }),
+    );
+  });
 });
 </file>
 
@@ -2357,6 +5579,35 @@ export const emptyAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
     }
     return val;
   }, schema);
+</file>
+
+<file path="src/validations/feeAgentSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const getFeeAgentsPaginatedSchema = {
+  query: cursorPaginationQuerySchema.extend({
+    agentId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
+    penjualanId: emptyAsUndefined(
+      z.coerce.number().int().positive().optional(),
+    ),
+  }),
+};
+
+export const updateFeeAgentSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    bookingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    bookingTanggal: emptyAsUndefined(z.string().optional()),
+    closingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    closingTanggal: emptyAsUndefined(z.string().optional()),
+    marketingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    marketingTanggal: emptyAsUndefined(z.string().optional()),
+  }),
+};
 </file>
 
 <file path="src/validations/ocrSchema.ts">
@@ -2854,69 +6105,6 @@ export class GetDashboardSummaryUseCase {
       topAgents,
       documentAlerts,
     };
-  }
-}
-</file>
-
-<file path="src/application/usecases/feeAgent/FeeAgentUseCases.ts">
-import type { IFeeAgentRepository } from "../../../domain/repositories/IFeeAgentRepo.js";
-import type {
-  UpdateFeeAgentDTO,
-  FeeAgentFilterDTO,
-} from "../../../domain/dtos/FeeAgentDTO.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-export class GetFeeAgentsPaginatedUseCase {
-  constructor(private readonly repo: IFeeAgentRepository) {}
-  async execute(limit: number, cursor?: number, filters?: FeeAgentFilterDTO) {
-    return await this.repo.findWithCursorPagination(limit, cursor, filters);
-  }
-}
-
-export class UpdateFeeAgentUseCase {
-  constructor(private readonly repo: IFeeAgentRepository) {}
-  async execute(id: number, data: UpdateFeeAgentDTO) {
-    return await this.repo.update(id, data);
-  }
-}
-
-export class UploadBuktiFeeUseCase {
-  constructor(
-    private readonly repo: IFeeAgentRepository,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
-
-  async execute(
-    id: number,
-    fileBuffer: Buffer,
-    type: "bookingBukti" | "closingBukti" | "marketingBukti",
-  ) {
-    const existing = await this.repo.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Data Fee Agent tidak ditemukan");
-    }
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing[type]) {
-      await this.cloudinaryService.deleteImageByUrl(existing[type]);
-    }
-
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      `bumantara/fee/${type}`,
-    );
-
-    const updateData = { [type]: imageUrl };
-    return await this.repo.update(id, updateData);
   }
 }
 </file>
@@ -3430,41 +6618,6 @@ export class GetUserByIdUseCase {
 }
 </file>
 
-<file path="src/config/env.ts">
-import { z } from "zod";
-import dotenv from "dotenv";
-
-dotenv.config();
-const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-  PORT: z.coerce.number().default(3000),
-  DATABASE_URL: z.string().url(),
-  CORS_ORIGINS: z
-    .string()
-    .default("http://localhost:3000")
-    .transform((val) => val.split(",").map((origin) => origin.trim())),
-  JWT_SECRET: z.string().min(10, "JWT Secret minimal 10 karakter"),
-  CLOUDINARY_CLOUD_NAME: z.string().min(1),
-  CLOUDINARY_API_KEY: z.string().min(1),
-  CLOUDINARY_API_SECRET: z.string().min(1),
-  CLOUDINARY_URL: z.string().min(1),
-  SENTRY_DSN: z.string().min(1),
-  GEMINI_API_KEY: z.string().min(1),
-  TELEGRAM_BOT_TOKEN: z.string().min(5).default("supersecretbotkey"),
-});
-
-const _env = envSchema.safeParse(process.env);
-
-if (!_env.success) {
-  console.error("❌ Invalid environment variables:", _env.error.format());
-  process.exit(1);
-}
-
-export const env = _env.data;
-</file>
-
 <file path="src/domain/dtos/AuditLogDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { ActionType } from "@prisma/client";
@@ -3545,53 +6698,6 @@ export interface CreateDetailKavlingPajakDTO {
 export type UpdateDetailKavlingPajakDTO = Partial<
   Omit<CreateDetailKavlingPajakDTO, "penjualanId">
 >;
-</file>
-
-<file path="src/domain/dtos/FeeAgentDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-
-export interface CreateFeeAgentDTO {
-  agentId: number;
-  penjualanId: number;
-}
-
-export interface UpdateFeeAgentDTO {
-  bookingNominal?: number | undefined;
-  bookingTanggal?: string | Date | undefined;
-  closingNominal?: number | undefined;
-  closingTanggal?: string | Date | undefined;
-  marketingNominal?: number | undefined;
-  marketingTanggal?: string | Date | undefined;
-  bookingBukti?: string | null | undefined;
-  closingBukti?: string | null | undefined;
-  marketingBukti?: string | null | undefined;
-}
-
-export interface FeeAgentResponseDTO {
-  id: number;
-  agentId: number;
-  namaAgent: string;
-  penjualanId: number;
-  noTransaksi: string;
-  namaCustomer: string;
-  kavling: string;
-  bookingNominal: number | null;
-  bookingTanggal: Date | null;
-  bookingBukti: string | null;
-  closingNominal: number | null;
-  closingTanggal: Date | null;
-  closingBukti: string | null;
-  marketingNominal: number | null;
-  marketingTanggal: Date | null;
-  marketingBukti: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface FeeAgentFilterDTO extends BaseFilterDTO {
-  agentId?: number;
-  penjualanId?: number;
-}
 </file>
 
 <file path="src/domain/dtos/KavlingDTO.ts">
@@ -3764,25 +6870,6 @@ export interface CustomerEntity {
   dokumenLainnya: any;
   userId: number | null;
   hasAccount: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-</file>
-
-<file path="src/domain/entities/FeeAgent.ts">
-export interface FeeAgentEntity {
-  id: number;
-  agentId: number;
-  penjualanId: number;
-  bookingNominal: number | null;
-  bookingTanggal: Date | null;
-  bookingBukti: string | null;
-  closingNominal: number | null;
-  closingTanggal: Date | null;
-  closingBukti: string | null;
-  marketingNominal: number | null;
-  marketingTanggal: Date | null;
-  marketingBukti: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -4081,6 +7168,169 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
 }
 </file>
 
+<file path="src/domain/repositories/feeAgentRepo.ts">
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { IFeeAgentRepository } from "./IFeeAgentRepo.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { FeeAgentMapper } from "../../infrastructure/mapper/FeeAgentMapper.js";
+import type {
+  CreateFeeAgentDTO,
+  UpdateFeeAgentDTO,
+  FeeAgentFilterDTO,
+  FeeAgentResponseDTO,
+} from "../dtos/FeeAgentDTO.js";
+
+const includeRelations = {
+  agent: { select: { nama: true } },
+  penjualan: {
+    include: {
+      customer: { select: { nama: true } },
+      kavling: {
+        include: { perumahan: { select: { nama: true } } },
+      },
+    },
+  },
+} satisfies Prisma.FeeAgentInclude;
+
+export class FeeAgentRepository implements IFeeAgentRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO> {
+    const existing = await this.findByPenjualanId(data.penjualanId);
+    if (existing) {
+      throw new ConflictError("Data Fee Agent untuk Penjualan ini sudah ada.");
+    }
+
+    const result = await this.db.feeAgent.create({
+      data: {
+        agentId: data.agentId,
+        penjualanId: data.penjualanId,
+      },
+      include: includeRelations,
+    });
+
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async findById(id: number): Promise<FeeAgentResponseDTO | null> {
+    const result = await this.db.feeAgent.findUnique({
+      where: { id },
+      include: includeRelations,
+    });
+    if (!result) return null;
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async findByPenjualanId(
+    penjualanId: number,
+  ): Promise<FeeAgentResponseDTO | null> {
+    const result = await this.db.feeAgent.findUnique({
+      where: { penjualanId },
+      include: includeRelations,
+    });
+    if (!result) return null;
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async update(
+    id: number,
+    data: UpdateFeeAgentDTO,
+  ): Promise<FeeAgentResponseDTO> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Data Fee Agent tidak ditemukan");
+
+    const updateData: Prisma.FeeAgentUpdateInput = {};
+
+    if (data.bookingNominal !== undefined)
+      updateData.bookingNominal = data.bookingNominal;
+    if (data.bookingTanggal !== undefined) {
+      updateData.bookingTanggal = data.bookingTanggal
+        ? new Date(data.bookingTanggal)
+        : null;
+    }
+    if (data.bookingBukti !== undefined)
+      updateData.bookingBukti = data.bookingBukti;
+
+    if (data.closingNominal !== undefined)
+      updateData.closingNominal = data.closingNominal;
+    if (data.closingTanggal !== undefined) {
+      updateData.closingTanggal = data.closingTanggal
+        ? new Date(data.closingTanggal)
+        : null;
+    }
+    if (data.closingBukti !== undefined)
+      updateData.closingBukti = data.closingBukti;
+
+    if (data.marketingNominal !== undefined)
+      updateData.marketingNominal = data.marketingNominal;
+    if (data.marketingTanggal !== undefined) {
+      updateData.marketingTanggal = data.marketingTanggal
+        ? new Date(data.marketingTanggal)
+        : null;
+    }
+    if (data.marketingBukti !== undefined)
+      updateData.marketingBukti = data.marketingBukti;
+
+    const result = await this.db.feeAgent.update({
+      where: { id },
+      data: updateData,
+      include: includeRelations,
+    });
+
+    return FeeAgentMapper.toDomain(result as any);
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: FeeAgentFilterDTO,
+  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>> {
+    const where: Prisma.FeeAgentWhereInput = {
+      penjualan: {
+        status: {
+          not: "BATAL",
+        },
+      },
+    };
+
+    if (filters?.agentId) where.agentId = filters.agentId;
+    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
+
+    if (filters?.search) {
+      where.OR = [
+        { agent: { nama: { contains: filters.search } } },
+        { penjualan: { noTransaksi: { contains: filters.search } } },
+        { penjualan: { customer: { nama: { contains: filters.search } } } },
+      ];
+    }
+
+    const items = await this.db.feeAgent.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      include: includeRelations,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => FeeAgentMapper.toDomain(item as any)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+</file>
+
 <file path="src/domain/repositories/IAgentRepo.ts">
 import type { AgentEntity } from "../entities/Agent.js";
 import type {
@@ -4117,28 +7367,6 @@ export interface IAuditLogRepository {
     cursor?: number,
     filters?: AuditLogFilterDTO,
   ): Promise<CursorPaginatedData<AuditLogResponseDTO>>;
-}
-</file>
-
-<file path="src/domain/repositories/IFeeAgentRepo.ts">
-import type { CursorPaginatedData } from "../../types/response.js";
-import type {
-  CreateFeeAgentDTO,
-  UpdateFeeAgentDTO,
-  FeeAgentFilterDTO,
-  FeeAgentResponseDTO,
-} from "../dtos/FeeAgentDTO.js";
-
-export interface IFeeAgentRepository {
-  create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO>;
-  update(id: number, data: UpdateFeeAgentDTO): Promise<FeeAgentResponseDTO>;
-  findById(id: number): Promise<FeeAgentResponseDTO | null>;
-  findByPenjualanId(penjualanId: number): Promise<FeeAgentResponseDTO | null>;
-  findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: FeeAgentFilterDTO,
-  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>>;
 }
 </file>
 
@@ -4613,60 +7841,6 @@ export class CustomerMapper {
 }
 </file>
 
-<file path="src/infrastructure/mapper/FeeAgentMapper.ts">
-import type {
-  FeeAgent,
-  Agent,
-  Penjualan,
-  Customer,
-  Kavling,
-  Perumahan,
-} from "@prisma/client";
-import type { FeeAgentResponseDTO } from "../../domain/dtos/FeeAgentDTO.js";
-
-// Kita buat tipe eksplisit untuk menghindari Unsafe member access
-export type FeeAgentWithRelations = FeeAgent & {
-  agent: Pick<Agent, "nama">;
-  penjualan: Penjualan & {
-    customer: Pick<Customer, "nama">;
-    kavling: Kavling & {
-      perumahan: Pick<Perumahan, "nama">;
-    };
-  };
-};
-
-export class FeeAgentMapper {
-  static toDomain(prismaFee: FeeAgentWithRelations): FeeAgentResponseDTO {
-    return {
-      id: prismaFee.id,
-      agentId: prismaFee.agentId,
-      namaAgent: prismaFee.agent.nama,
-      penjualanId: prismaFee.penjualanId,
-      noTransaksi: prismaFee.penjualan.noTransaksi,
-      namaCustomer: prismaFee.penjualan.customer.nama,
-      kavling: `${prismaFee.penjualan.kavling.perumahan.nama} Blok ${prismaFee.penjualan.kavling.blok}-${prismaFee.penjualan.kavling.nomorUnit}`,
-      bookingNominal: prismaFee.bookingNominal
-        ? Number(prismaFee.bookingNominal)
-        : null,
-      bookingTanggal: prismaFee.bookingTanggal,
-      bookingBukti: prismaFee.bookingBukti,
-      closingNominal: prismaFee.closingNominal
-        ? Number(prismaFee.closingNominal)
-        : null,
-      closingTanggal: prismaFee.closingTanggal,
-      closingBukti: prismaFee.closingBukti,
-      marketingNominal: prismaFee.marketingNominal
-        ? Number(prismaFee.marketingNominal)
-        : null,
-      marketingTanggal: prismaFee.marketingTanggal,
-      marketingBukti: prismaFee.marketingBukti,
-      createdAt: prismaFee.createdAt,
-      updatedAt: prismaFee.updatedAt,
-    };
-  }
-}
-</file>
-
 <file path="src/infrastructure/mapper/PerusahaanAgentMapper.ts">
 import type { PerusahaanAgent as PrismaPerusahaanAgent } from "@prisma/client";
 import type { PerusahaanAgentEntity } from "../../domain/entities/PerusahaanAgent.js";
@@ -5009,98 +8183,6 @@ export class AuditLogController {
       res,
       StatusCodes.OK,
       "Data audit log berhasil diambil",
-      result,
-    );
-  };
-}
-</file>
-
-<file path="src/presentation/controllers/feeAgentController.ts">
-import type { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { sendResponse } from "../../utils/response.js";
-import type { TypedRequest } from "../../types/request.js";
-
-import type {
-  GetFeeAgentsPaginatedUseCase,
-  UpdateFeeAgentUseCase,
-  UploadBuktiFeeUseCase,
-} from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
-import type { updateFeeAgentSchema } from "../../validations/feeAgentSchema.js";
-import { getFeeAgentsPaginatedSchema } from "../../validations/feeAgentSchema.js";
-import type { FeeAgentFilterDTO } from "../../domain/dtos/FeeAgentDTO.js";
-
-export class FeeAgentController {
-  constructor(
-    private readonly getPaginatedUseCase: GetFeeAgentsPaginatedUseCase,
-    private readonly updateUseCase: UpdateFeeAgentUseCase,
-    private readonly uploadBuktiUseCase: UploadBuktiFeeUseCase,
-  ) {}
-
-  getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
-      getFeeAgentsPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
-
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      parsedCursor,
-      filters as FeeAgentFilterDTO,
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data fee agent berhasil diambil",
-      result,
-    );
-  };
-
-  update = async (
-    req: TypedRequest<
-      typeof updateFeeAgentSchema.body,
-      any,
-      typeof updateFeeAgentSchema.params
-    >,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const result = await this.updateUseCase.execute(id, req.body);
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Data fee agent berhasil diperbarui",
-      result,
-    );
-  };
-
-  uploadBukti = async (
-    req: Request<{ id: string; type: string }>,
-    res: Response,
-  ): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
-    const type = req.params.type;
-
-    if (!["bookingBukti", "closingBukti", "marketingBukti"].includes(type)) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "Tipe bukti tidak valid");
-      return;
-    }
-
-    if (!req.file?.buffer) {
-      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
-      return;
-    }
-
-    const result = await this.uploadBuktiUseCase.execute(
-      id,
-      req.file.buffer,
-      type as "bookingBukti" | "closingBukti" | "marketingBukti",
-    );
-
-    sendResponse(
-      res,
-      StatusCodes.OK,
-      "Bukti fee agent berhasil diunggah",
       result,
     );
   };
@@ -5559,6 +8641,52 @@ export const createDashboardRoutes = (
 };
 </file>
 
+<file path="src/presentation/routes/feeAgentRoutes.ts">
+import { Router } from "express";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  getFeeAgentsPaginatedSchema,
+  updateFeeAgentSchema,
+} from "../../validations/feeAgentSchema.js";
+import type { FeeAgentController } from "../controllers/feeAgentController.js";
+
+export const createFeeAgentRoutes = (
+  controller: FeeAgentController,
+): Router => {
+  const router = Router();
+
+  router.use(authenticate);
+
+  router.get(
+    "/",
+    requirePermission("FEE_AGENT", "read"),
+    validate(getFeeAgentsPaginatedSchema),
+    controller.getPaginated,
+  );
+
+  router.patch(
+    "/:id",
+    requirePermission("FEE_AGENT", "update"),
+    validate(updateFeeAgentSchema),
+    controller.update,
+  );
+
+  router.patch(
+    "/:id/upload/:type",
+    requirePermission("FEE_AGENT", "update"),
+    upload.single("file"),
+    controller.uploadBukti,
+  );
+
+  return router;
+};
+</file>
+
 <file path="src/presentation/routes/notarisRoutes.ts">
 import { Router } from "express";
 import {
@@ -5941,35 +9069,6 @@ export const generateAccountSchema = {
 };
 </file>
 
-<file path="src/validations/feeAgentSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-
-export const getFeeAgentsPaginatedSchema = {
-  query: cursorPaginationQuerySchema.extend({
-    agentId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
-    penjualanId: emptyAsUndefined(
-      z.coerce.number().int().positive().optional(),
-    ),
-  }),
-};
-
-export const updateFeeAgentSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
-  body: z.object({
-    bookingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    bookingTanggal: emptyAsUndefined(z.string().optional()),
-    closingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    closingTanggal: emptyAsUndefined(z.string().optional()),
-    marketingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
-    marketingTanggal: emptyAsUndefined(z.string().optional()),
-  }),
-};
-</file>
-
 <file path="src/validations/perumahanSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -6285,145 +9384,6 @@ export class GenerateAgentAccountUseCase {
         role: newUser.role,
       },
     };
-  }
-}
-</file>
-
-<file path="src/application/usecases/agent/GenerateSuratPernyataanPdfUseCase.ts">
-import PDFDocument from "pdfkit";
-
-export class GenerateSuratPernyataanPdfUseCase {
-  async execute(data: {
-    nama: string;
-    perusahaan: string;
-    alamat: string;
-  }): Promise<Buffer> {
-    let logoBuffer: Buffer | null = null;
-    try {
-      const response = await fetch(
-        "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
-      );
-      const arrayBuffer = await response.arrayBuffer();
-      logoBuffer = Buffer.from(arrayBuffer);
-    } catch (e) {
-      console.error("Gagal mendownload logo untuk Surat Pernyataan:", e);
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({ size: "A4", margin: 50 });
-        const buffers: Buffer[] = [];
-
-        doc.on("data", (b) => buffers.push(b));
-        doc.on("end", () => resolve(Buffer.concat(buffers)));
-
-        doc.on("error", (err) => {
-          reject(err instanceof Error ? err : new Error(String(err)));
-        });
-
-        if (logoBuffer) {
-          doc.image(logoBuffer, (doc.page.width - 120) / 2, 40, { width: 120 });
-          doc.y = 140;
-        } else {
-          doc.y = 80;
-        }
-        doc.moveDown(2);
-
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(14)
-          .text("Surat Pernyataan", { align: "center", underline: true });
-        doc.moveDown(2);
-
-        doc.font("Helvetica").fontSize(11);
-        doc.text("Yang bertanda tangan di bawah ini:");
-        doc.moveDown(0.5);
-
-        const startX = 50;
-        let y = doc.y;
-        doc.text("Nama", startX, y);
-        doc.text(
-          `: ${data.nama || "____________________________"}`,
-          startX + 100,
-          y,
-        );
-        y += 15;
-        doc.text("Perusahaan", startX, y);
-        doc.text(
-          `: ${data.perusahaan || "Independen / Pribadi"}`,
-          startX + 100,
-          y,
-        );
-        y += 15;
-        doc.text("Alamat", startX, y);
-        doc.text(
-          `: ${data.alamat || "____________________________"}`,
-          startX + 100,
-          y,
-        );
-        y += 25;
-
-        doc.text(
-          "Dengan ini menyatakan dan menyetujui hal-hal sebagai berikut:",
-          startX,
-          y,
-        );
-        y += 15;
-
-        const rules = [
-          "Bahwa saya akan menjalankan kegiatan pemasaran dan penjualan unit perumahan sesuai dengan ketentuan, SOP, kebijakan perusahaan, serta arahan manajemen developer.",
-          "Bahwa saya tidak akan memberikan informasi yang tidak benar, menyesatkan, dimanipulasi, atau berbeda dari data resmi perusahaan kepada calon konsumen.",
-          "Bahwa saya dilarang melakukan:\n  - Mark up harga unit; Pengambilan keuntungan pribadi; Double booking unit;\n  - Penahanan booking fee; Manipulasi data penjualan; Penjualan unit fiktif;\n  - Pengalihan konsumen secara tidak sah; Tindakan merugikan perusahaan/konsumen.",
-          "Bahwa seluruh pembayaran konsumen wajib dilakukan langsung ke rekening resmi perusahaan/developer dan saya dilarang menguasai dana konsumen dalam bentuk apa pun.",
-          "Bahwa saya dilarang menyebarluaskan atau memperjualbelikan data identitas, nomor telepon, dan dokumen pribadi konsumen tanpa izin tertulis dari perusahaan.",
-          "Bahwa saya dilarang bekerja sama dengan pihak internal maupun ketiga yang dapat menimbulkan konflik kepentingan atau kerugian bagi perusahaan.",
-          "Bahwa saya wajib menjaga nama baik perusahaan, kerahasiaan data, serta menjalankan etika profesi dalam kegiatan pemasaran dan penjualan.",
-          "Bahwa apabila terjadi pelanggaran, perusahaan berhak:\n  - Memberikan sanksi; Membatalkan komisi; Menonaktifkan akses kerja;\n  - Memberhentikan secara sepihak; Menempuh jalur hukum (pidana/perdata).",
-          "Bahwa saya membuat pernyataan ini dalam keadaan sadar, sehat jasmani dan rohani, tanpa paksaan, serta bersedia mematuhi seluruh ketentuan perusahaan.",
-        ];
-
-        rules.forEach((rule, index) => {
-          doc.text(`${index + 1}.`, startX, y);
-          doc.text(rule, startX + 15, y, { width: 480, align: "justify" });
-          y = doc.y + 5;
-        });
-
-        doc.moveDown(1);
-        doc.text(
-          "Demikian surat pernyataan ini dibuat untuk dipergunakan sebagaimana mestinya.",
-          startX,
-          doc.y,
-          { align: "justify" },
-        );
-
-        doc.moveDown(3);
-        const signatureY = doc.y;
-        doc.text("Yang Membuat Pernyataan,", 350, signatureY, {
-          align: "center",
-          width: 150,
-        });
-
-        doc.rect(385, signatureY + 20, 80, 40).stroke();
-        doc
-          .fontSize(8)
-          .fillColor("#999")
-          .text("Materai\n10.000", 385, signatureY + 30, {
-            width: 80,
-            align: "center",
-          });
-
-        doc.fontSize(11).fillColor("#000").font("Helvetica-Bold");
-        doc.text(data.nama || "( Nama Lengkap )", 350, signatureY + 80, {
-          align: "center",
-          width: 150,
-          underline: true,
-        });
-
-        doc.end();
-      } catch (error: unknown) {
-        reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
   }
 }
 </file>
@@ -7042,6 +10002,43 @@ export class SaveTagihanSignatureUseCase {
 }
 </file>
 
+<file path="src/config/env.ts">
+import { z } from "zod";
+import dotenv from "dotenv";
+
+dotenv.config();
+const envSchema = z.object({
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
+  PORT: z.coerce.number().default(3000),
+  DATABASE_URL: z.string().url(),
+  CORS_ORIGINS: z
+    .string()
+    .default("http://localhost:3000")
+    .transform((val) => val.split(",").map((origin) => origin.trim())),
+  JWT_SECRET: z.string().min(10, "JWT Secret minimal 10 karakter"),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1),
+  CLOUDINARY_API_KEY: z.string().min(1),
+  CLOUDINARY_API_SECRET: z.string().min(1),
+  CLOUDINARY_URL: z.string().min(1),
+  SENTRY_DSN: z.string().min(1),
+  GEMINI_API_KEY: z.string().min(1),
+  TELEGRAM_BOT_TOKEN: z.string().min(5).default("supersecretbotkey"),
+  SMTP_EMAIL: z.string().email().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+});
+
+const _env = envSchema.safeParse(process.env);
+
+if (!_env.success) {
+  console.error("❌ Invalid environment variables:", _env.error.format());
+  process.exit(1);
+}
+
+export const env = _env.data;
+</file>
+
 <file path="src/domain/dtos/NotarisDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 
@@ -7347,169 +10344,6 @@ export class CustomerRepository implements ICustomerRepository {
 }
 </file>
 
-<file path="src/domain/repositories/feeAgentRepo.ts">
-import type { Prisma, PrismaClient } from "@prisma/client";
-import type { IFeeAgentRepository } from "./IFeeAgentRepo.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-import { FeeAgentMapper } from "../../infrastructure/mapper/FeeAgentMapper.js";
-import type {
-  CreateFeeAgentDTO,
-  UpdateFeeAgentDTO,
-  FeeAgentFilterDTO,
-  FeeAgentResponseDTO,
-} from "../dtos/FeeAgentDTO.js";
-
-const includeRelations = {
-  agent: { select: { nama: true } },
-  penjualan: {
-    include: {
-      customer: { select: { nama: true } },
-      kavling: {
-        include: { perumahan: { select: { nama: true } } },
-      },
-    },
-  },
-} satisfies Prisma.FeeAgentInclude;
-
-export class FeeAgentRepository implements IFeeAgentRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO> {
-    const existing = await this.findByPenjualanId(data.penjualanId);
-    if (existing) {
-      throw new ConflictError("Data Fee Agent untuk Penjualan ini sudah ada.");
-    }
-
-    const result = await this.db.feeAgent.create({
-      data: {
-        agentId: data.agentId,
-        penjualanId: data.penjualanId,
-      },
-      include: includeRelations,
-    });
-
-    return FeeAgentMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<FeeAgentResponseDTO | null> {
-    const result = await this.db.feeAgent.findUnique({
-      where: { id },
-      include: includeRelations,
-    });
-    if (!result) return null;
-    return FeeAgentMapper.toDomain(result);
-  }
-
-  async findByPenjualanId(
-    penjualanId: number,
-  ): Promise<FeeAgentResponseDTO | null> {
-    const result = await this.db.feeAgent.findUnique({
-      where: { penjualanId },
-      include: includeRelations,
-    });
-    if (!result) return null;
-    return FeeAgentMapper.toDomain(result);
-  }
-
-  async update(
-    id: number,
-    data: UpdateFeeAgentDTO,
-  ): Promise<FeeAgentResponseDTO> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Data Fee Agent tidak ditemukan");
-
-    const updateData: Prisma.FeeAgentUpdateInput = {};
-
-    if (data.bookingNominal !== undefined)
-      updateData.bookingNominal = data.bookingNominal;
-    if (data.bookingTanggal !== undefined) {
-      updateData.bookingTanggal = data.bookingTanggal
-        ? new Date(data.bookingTanggal)
-        : null;
-    }
-    if (data.bookingBukti !== undefined)
-      updateData.bookingBukti = data.bookingBukti;
-
-    if (data.closingNominal !== undefined)
-      updateData.closingNominal = data.closingNominal;
-    if (data.closingTanggal !== undefined) {
-      updateData.closingTanggal = data.closingTanggal
-        ? new Date(data.closingTanggal)
-        : null;
-    }
-    if (data.closingBukti !== undefined)
-      updateData.closingBukti = data.closingBukti;
-
-    if (data.marketingNominal !== undefined)
-      updateData.marketingNominal = data.marketingNominal;
-    if (data.marketingTanggal !== undefined) {
-      updateData.marketingTanggal = data.marketingTanggal
-        ? new Date(data.marketingTanggal)
-        : null;
-    }
-    if (data.marketingBukti !== undefined)
-      updateData.marketingBukti = data.marketingBukti;
-
-    const result = await this.db.feeAgent.update({
-      where: { id },
-      data: updateData,
-      include: includeRelations,
-    });
-
-    return FeeAgentMapper.toDomain(result as any);
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: FeeAgentFilterDTO,
-  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>> {
-    const where: Prisma.FeeAgentWhereInput = {
-      penjualan: {
-        status: {
-          not: "BATAL",
-        },
-      },
-    };
-
-    if (filters?.agentId) where.agentId = filters.agentId;
-    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
-
-    if (filters?.search) {
-      where.OR = [
-        { agent: { nama: { contains: filters.search } } },
-        { penjualan: { noTransaksi: { contains: filters.search } } },
-        { penjualan: { customer: { nama: { contains: filters.search } } } },
-      ];
-    }
-
-    const items = await this.db.feeAgent.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ createdAt: "desc" }],
-      include: includeRelations,
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    return {
-      items: items.map((item) => FeeAgentMapper.toDomain(item as any)),
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-}
-</file>
-
 <file path="src/domain/repositories/notarisRepo.ts">
 import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
@@ -7664,6 +10498,57 @@ export class NotarisRepository implements INotarisRepository {
         );
       }
       throw error;
+    }
+  }
+}
+</file>
+
+<file path="src/infrastructure/external/EmailService.ts">
+import nodemailer from "nodemailer";
+import { env } from "../../config/env.js";
+
+export class EmailService {
+  private transporter: nodemailer.Transporter;
+
+  constructor() {
+    this.transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: env.SMTP_EMAIL,
+        pass: env.SMTP_PASSWORD,
+      },
+    });
+  }
+
+  async sendAgentRegistrationEmail(
+    to: string,
+    pdfBuffer: Buffer,
+    agentName: string,
+  ): Promise<void> {
+    if (!env.SMTP_EMAIL || !env.SMTP_PASSWORD) {
+      console.warn("SMTP credentials belum diset, email tidak dikirim.");
+      return;
+    }
+
+    const mailOptions = {
+      from: `"Puri Safana" <${env.SMTP_EMAIL}>`,
+      to,
+      subject: "Registrasi Agent Berhasil - Surat Pernyataan",
+      text: `Halo ${agentName},\n\nRegistrasi Berhasil!\nAkun portal Anda telah dibuat. Silakan Print / Cetak dokumen ini (PDF), beri Materai dan tanda tangan basah, lalu upload kembali di dalam Portal Agent.`,
+      attachments: [
+        {
+          filename: `Surat_Pernyataan_${agentName.replace(/\s+/g, "_")}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log(`Email registrasi berhasil dikirim ke ${to}`);
+    } catch (error) {
+      console.error(`Gagal mengirim email ke ${to}:`, error);
     }
   }
 }
@@ -8133,52 +11018,6 @@ export const createAuditLogRoutes = (
 };
 </file>
 
-<file path="src/presentation/routes/feeAgentRoutes.ts">
-import { Router } from "express";
-import {
-  authenticate,
-  requirePermission,
-} from "../../middlewares/authMiddleware.js";
-import { validate } from "../../middlewares/validate.js";
-import { upload } from "../../middlewares/upload.js";
-import {
-  getFeeAgentsPaginatedSchema,
-  updateFeeAgentSchema,
-} from "../../validations/feeAgentSchema.js";
-import type { FeeAgentController } from "../controllers/feeAgentController.js";
-
-export const createFeeAgentRoutes = (
-  controller: FeeAgentController,
-): Router => {
-  const router = Router();
-
-  router.use(authenticate);
-
-  router.get(
-    "/",
-    requirePermission("FEE_AGENT", "read"),
-    validate(getFeeAgentsPaginatedSchema),
-    controller.getPaginated,
-  );
-
-  router.patch(
-    "/:id",
-    requirePermission("FEE_AGENT", "update"),
-    validate(updateFeeAgentSchema),
-    controller.update,
-  );
-
-  router.patch(
-    "/:id/upload/:type",
-    requirePermission("FEE_AGENT", "update"),
-    upload.single("file"),
-    controller.uploadBukti,
-  );
-
-  return router;
-};
-</file>
-
 <file path="src/presentation/routes/kavlingRoutes.ts">
 import { Router } from "express";
 import {
@@ -8510,6 +11349,141 @@ export class GetAgentProfileUseCase {
 }
 </file>
 
+<file path="src/application/usecases/agent/GenerateSuratPernyataanPdfUseCase.ts">
+import PDFDocument from "pdfkit";
+
+export class GenerateSuratPernyataanPdfUseCase {
+  async execute(data: {
+    nama: string;
+    perusahaan: string;
+    alamat: string;
+  }): Promise<Buffer> {
+    let logoBuffer: Buffer | null = null;
+    try {
+      const response = await fetch(
+        "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
+      );
+      const arrayBuffer = await response.arrayBuffer();
+      logoBuffer = Buffer.from(arrayBuffer);
+    } catch (e) {
+      console.error("Gagal mendownload logo untuk Surat Pernyataan:", e);
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: "A4", margin: 50 });
+        const buffers: Buffer[] = [];
+
+        doc.on("data", (b) => buffers.push(b));
+        doc.on("end", () => resolve(Buffer.concat(buffers)));
+
+        doc.on("error", (err) => {
+          reject(err instanceof Error ? err : new Error(String(err)));
+        });
+
+        if (logoBuffer) {
+          doc.image(logoBuffer, (doc.page.width - 120) / 2, 40, { width: 120 });
+          doc.y = 140;
+        } else {
+          doc.y = 80;
+        }
+        doc.moveDown(2);
+
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(14)
+          .text("Surat Pernyataan", { align: "center", underline: true });
+        doc.moveDown(2);
+
+        doc.font("Helvetica").fontSize(11);
+        doc.text("Yang bertanda tangan di bawah ini:");
+        doc.moveDown(0.5);
+
+        const startX = 50;
+        let y = doc.y;
+        doc.text("Nama", startX, y);
+        doc.text(
+          `: ${data.nama || "____________________________"}`,
+          startX + 100,
+          y,
+        );
+        y += 15;
+        doc.text("Perusahaan", startX, y);
+        doc.text(`: ${data.perusahaan || "Pribadi"}`, startX + 100, y);
+        y += 15;
+        doc.text("Alamat", startX, y);
+        doc.text(
+          `: ${data.alamat || "____________________________"}`,
+          startX + 100,
+          y,
+        );
+        y += 25;
+
+        doc.text(
+          "Dengan ini menyatakan dan menyetujui hal-hal sebagai berikut:",
+          startX,
+          y,
+        );
+        y += 15;
+
+        const rules = [
+          "Bahwa saya akan menjalankan kegiatan pemasaran dan penjualan unit perumahan sesuai dengan ketentuan, SOP, kebijakan perusahaan, serta arahan manajemen developer.",
+          "Bahwa saya tidak akan memberikan informasi yang tidak benar, menyesatkan, dimanipulasi, atau berbeda dari data resmi perusahaan kepada calon konsumen.",
+          "Bahwa saya dilarang melakukan:\n  - Mark up harga unit; Pengambilan keuntungan pribadi; Double booking unit;\n  - Penahanan booking fee; Manipulasi data penjualan; Penjualan unit fiktif;\n  - Pengalihan konsumen secara tidak sah; Tindakan merugikan perusahaan/konsumen.",
+          "Bahwa seluruh pembayaran konsumen wajib dilakukan langsung ke rekening resmi perusahaan/developer dan saya dilarang menguasai dana konsumen dalam bentuk apa pun.",
+          "Bahwa saya dilarang menyebarluaskan atau memperjualbelikan data identitas, nomor telepon, dan dokumen pribadi konsumen tanpa izin tertulis dari perusahaan.",
+          "Bahwa saya dilarang bekerja sama dengan pihak internal maupun ketiga yang dapat menimbulkan konflik kepentingan atau kerugian bagi perusahaan.",
+          "Bahwa saya wajib menjaga nama baik perusahaan, kerahasiaan data, serta menjalankan etika profesi dalam kegiatan pemasaran dan penjualan.",
+          "Bahwa apabila terjadi pelanggaran, perusahaan berhak:\n  - Memberikan sanksi; Membatalkan komisi; Menonaktifkan akses kerja;\n  - Memberhentikan secara sepihak; Menempuh jalur hukum (pidana/perdata).",
+          "Bahwa saya membuat pernyataan ini dalam keadaan sadar, sehat jasmani dan rohani, tanpa paksaan, serta bersedia mematuhi seluruh ketentuan perusahaan.",
+        ];
+
+        rules.forEach((rule, index) => {
+          doc.text(`${index + 1}.`, startX, y);
+          doc.text(rule, startX + 15, y, { width: 480, align: "justify" });
+          y = doc.y + 5;
+        });
+
+        doc.moveDown(1);
+        doc.text(
+          "Demikian surat pernyataan ini dibuat untuk dipergunakan sebagaimana mestinya.",
+          startX,
+          doc.y,
+          { align: "justify" },
+        );
+
+        doc.moveDown(3);
+        const signatureY = doc.y;
+        doc.text("Yang Membuat Pernyataan,", 350, signatureY, {
+          align: "center",
+          width: 150,
+        });
+
+        doc.rect(385, signatureY + 20, 80, 40).stroke();
+        doc
+          .fontSize(8)
+          .fillColor("#999")
+          .text("Materai\n10.000", 385, signatureY + 30, {
+            width: 80,
+            align: "center",
+          });
+
+        doc.fontSize(11).fillColor("#000").font("Helvetica-Bold");
+        doc.text(data.nama || "( Nama Lengkap )", 350, signatureY + 80, {
+          align: "center",
+          width: 150,
+          underline: true,
+        });
+
+        doc.end();
+      } catch (error: unknown) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+}
+</file>
+
 <file path="src/application/usecases/auth/AgentLoginUseCase.ts">
 import jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
@@ -8576,100 +11550,6 @@ export class AgentLoginUseCase {
             type: agentProfile.type,
           }
         : null,
-    };
-  }
-}
-</file>
-
-<file path="src/application/usecases/auth/AgentRegisterUseCase.ts">
-import type { PrismaClient } from "@prisma/client";
-import { Role, AgentStatus, AgentType } from "@prisma/client";
-import { hashPassword } from "../../../utils/hashing.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import type { RegisterAgentDTO } from "../../../domain/dtos/AgentDTO.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { GenerateSuratPernyataanPdfUseCase } from "../agent/GenerateSuratPernyataanPdfUseCase.js";
-
-export class RegisterAgentUseCase {
-  constructor(
-    private readonly db: PrismaClient,
-    private readonly cloudinary: CloudinaryService,
-    private readonly generateSuratPernyataanPdf: GenerateSuratPernyataanPdfUseCase,
-  ) {}
-
-  async execute(data: RegisterAgentDTO) {
-    const result = await this.db.$transaction(async (tx) => {
-      const existingUser = await tx.user.findUnique({
-        where: { email: data.email },
-      });
-      if (existingUser)
-        throw new ConflictError("Email sudah terdaftar di sistem");
-
-      const existingAgent = await tx.agent.findUnique({
-        where: { nik: data.nik },
-      });
-      if (existingAgent) throw new ConflictError("NIK Agent sudah terdaftar");
-
-      const hashedPassword = await hashPassword(data.password);
-
-      const user = await tx.user.create({
-        data: {
-          username: data.nama,
-          email: data.email,
-          password: hashedPassword,
-          role: Role.AGENT,
-        },
-      });
-
-      const agent = await tx.agent.create({
-        data: {
-          userId: user.id,
-          nik: data.nik,
-          nama: data.nama,
-          noHp: data.noHp,
-          email: data.email,
-          alamat: data.alamat ?? null,
-          status: AgentStatus.PENDING,
-          type: data.type ?? AgentType.PRIBADI,
-          namaBank: data.namaBank ?? null,
-          noRekening: data.noRekening ?? null,
-          atasNamaRekening: data.atasNamaRekening ?? null,
-          perusahaanAgentId: data.perusahaanAgentId ?? null,
-          ttdData: data.ttdData ?? null,
-        },
-        include: { perusahaanAgent: true },
-      });
-
-      return { user, agent };
-    });
-
-    try {
-      const namaPerusahaan =
-        result.agent.perusahaanAgent?.nama ?? "Independen / Pribadi";
-      const pdfBuffer = await this.generateSuratPernyataanPdf.execute({
-        nama: result.agent.nama,
-        perusahaan: namaPerusahaan,
-        alamat: result.agent.alamat ?? "",
-      });
-
-      const pdfUrl = await this.cloudinary.uploadFile(
-        pdfBuffer,
-        "bumantara/agents/surat_pernyataan_default",
-      );
-
-      await this.db.agent.update({
-        where: { id: result.agent.id },
-        data: { defaultSuratPernyataan: pdfUrl },
-      });
-    } catch (err) {
-      console.error("Gagal generate/upload Surat Pernyataan Default:", err);
-    }
-
-    return {
-      id: result.user.id,
-      username: result.user.username,
-      email: result.user.email,
-      role: result.user.role,
     };
   }
 }
@@ -10620,6 +13500,100 @@ export class CancelPenjualanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
+import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
+import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
+import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
+
+export class UploadBuktiTagihanUseCase {
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly penjualanRepo: IPenjualanRepository,
+    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+
+    private readonly socketService: SocketService,
+  ) {}
+
+  async execute(
+    identifier: number | string,
+    fileBuffer: Buffer,
+    isCustomer = false,
+  ): Promise<TagihanResponseDTO> {
+    const existing =
+      typeof identifier === "number"
+        ? await this.repo.findById(identifier)
+        : await this.repo.findByNoTagihan(identifier);
+
+    if (!existing) {
+      throw new NotFoundError("Tagihan tidak ditemukan");
+    }
+
+    if (!fileBuffer) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File dokumen tidak boleh kosong",
+      );
+    }
+
+    if (existing.fileBukti) {
+      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
+    }
+
+    const imageUrl = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      "bumantara/tagihan",
+    );
+
+    const newStatus = "MENUNGGU_KONFIRMASI";
+
+    const updateData = {
+      fileBukti: imageUrl,
+      status: newStatus as any,
+    };
+
+    const updatedTagihan = await this.repo.update(existing.id, updateData);
+
+    if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
+      try {
+        const pdfBuffer = await this.generateSprPdfUseCase.execute(
+          existing.penjualanId,
+        );
+
+        const pdfUrl = await this.cloudinaryService.uploadFile(
+          pdfBuffer,
+          "bumantara/spr",
+        );
+
+        await this.penjualanRepo.update(existing.penjualanId, {
+          fileSpr: pdfUrl,
+        });
+      } catch (error) {
+        console.error("Gagal auto-generate SPR:", error);
+      }
+    }
+
+    if (isCustomer) {
+      this.socketService.notifyAdmin("notifikasi-admin", {
+        type: "UPLOAD_BUKTI",
+        title: "Bukti Pembayaran Baru",
+        message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
+        data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
+      });
+    }
+
+    return updatedTagihan;
+  }
+}
+</file>
+
 <file path="src/presentation/controllers/authController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -10988,6 +13962,104 @@ export const updateSelfSchema = {
 };
 </file>
 
+<file path="src/application/usecases/auth/AgentRegisterUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import { Role, AgentStatus, AgentType } from "@prisma/client";
+import { hashPassword } from "../../../utils/hashing.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import type { RegisterAgentDTO } from "../../../domain/dtos/AgentDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GenerateSuratPernyataanPdfUseCase } from "../agent/GenerateSuratPernyataanPdfUseCase.js";
+import type { EmailService } from "../../../infrastructure/external/EmailService.js";
+
+export class RegisterAgentUseCase {
+  constructor(
+    private readonly db: PrismaClient,
+    private readonly cloudinary: CloudinaryService,
+    private readonly generateSuratPernyataanPdf: GenerateSuratPernyataanPdfUseCase,
+    private readonly emailService: EmailService,
+  ) {}
+
+  async execute(data: RegisterAgentDTO) {
+    const result = await this.db.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { email: data.email },
+      });
+      if (existingUser)
+        throw new ConflictError("Email sudah terdaftar di sistem");
+
+      const existingAgent = await tx.agent.findUnique({
+        where: { nik: data.nik },
+      });
+      if (existingAgent) throw new ConflictError("NIK Agent sudah terdaftar");
+
+      const hashedPassword = await hashPassword(data.password);
+
+      const user = await tx.user.create({
+        data: {
+          username: data.nama,
+          email: data.email,
+          password: hashedPassword,
+          role: Role.AGENT,
+        },
+      });
+
+      const agent = await tx.agent.create({
+        data: {
+          userId: user.id,
+          nik: data.nik,
+          nama: data.nama,
+          noHp: data.noHp,
+          email: data.email,
+          alamat: data.alamat ?? null,
+          status: AgentStatus.PENDING,
+          type: data.type ?? AgentType.PRIBADI,
+          namaBank: data.namaBank ?? null,
+          noRekening: data.noRekening ?? null,
+          atasNamaRekening: data.atasNamaRekening ?? null,
+          perusahaanAgentId: data.perusahaanAgentId ?? null,
+          ttdData: data.ttdData ?? null,
+        },
+        include: { perusahaanAgent: true },
+      });
+
+      return { user, agent };
+    });
+
+    try {
+      const namaPerusahaan = result.agent.perusahaanAgent?.nama ?? "Pribadi";
+      const pdfBuffer = await this.generateSuratPernyataanPdf.execute({
+        nama: result.agent.nama,
+        perusahaan: namaPerusahaan,
+        alamat: result.agent.alamat ?? "",
+      });
+      this.emailService
+        .sendAgentRegistrationEmail(data.email, pdfBuffer, result.agent.nama)
+        .catch((err) => console.error("Gagal kirim email:", err));
+
+      const pdfUrl = await this.cloudinary.uploadFile(
+        pdfBuffer,
+        "bumantara/agents/surat_pernyataan_default",
+      );
+
+      await this.db.agent.update({
+        where: { id: result.agent.id },
+        data: { defaultSuratPernyataan: pdfUrl },
+      });
+    } catch (err) {
+      console.error("Gagal generate/upload Surat Pernyataan Default:", err);
+    }
+
+    return {
+      id: result.user.id,
+      username: result.user.username,
+      email: result.user.email,
+      role: result.user.role,
+    };
+  }
+}
+</file>
+
 <file path="src/application/usecases/penjualan/ApproveGantiKavlingUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
@@ -11130,100 +14202,6 @@ export class ApproveGantiKavlingUseCase {
     }
 
     return result;
-  }
-}
-</file>
-
-<file path="src/application/usecases/tagihan/UploadBuktiTagihanUseCase.ts">
-import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
-import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { TagihanResponseDTO } from "../../../domain/dtos/TagihanDTO.js";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { AppError } from "../../../domain/errors/AppError.js";
-import { StatusCodes } from "http-status-codes";
-
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
-import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
-
-export class UploadBuktiTagihanUseCase {
-  constructor(
-    private readonly repo: ITagihanRepository,
-    private readonly cloudinaryService: CloudinaryService,
-    private readonly penjualanRepo: IPenjualanRepository,
-    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
-
-    private readonly socketService: SocketService,
-  ) {}
-
-  async execute(
-    identifier: number | string,
-    fileBuffer: Buffer,
-    isCustomer = false,
-  ): Promise<TagihanResponseDTO> {
-    const existing =
-      typeof identifier === "number"
-        ? await this.repo.findById(identifier)
-        : await this.repo.findByNoTagihan(identifier);
-
-    if (!existing) {
-      throw new NotFoundError("Tagihan tidak ditemukan");
-    }
-
-    if (!fileBuffer) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "File dokumen tidak boleh kosong",
-      );
-    }
-
-    if (existing.fileBukti) {
-      await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
-    }
-
-    const imageUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      "bumantara/tagihan",
-    );
-
-    const newStatus = "MENUNGGU_KONFIRMASI";
-
-    const updateData = {
-      fileBukti: imageUrl,
-      status: newStatus as any,
-    };
-
-    const updatedTagihan = await this.repo.update(existing.id, updateData);
-
-    if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
-      try {
-        const pdfBuffer = await this.generateSprPdfUseCase.execute(
-          existing.penjualanId,
-        );
-
-        const pdfUrl = await this.cloudinaryService.uploadFile(
-          pdfBuffer,
-          "bumantara/spr",
-        );
-
-        await this.penjualanRepo.update(existing.penjualanId, {
-          fileSpr: pdfUrl,
-        });
-      } catch (error) {
-        console.error("Gagal auto-generate SPR:", error);
-      }
-    }
-
-    if (isCustomer) {
-      this.socketService.notifyAdmin("notifikasi-admin", {
-        type: "UPLOAD_BUKTI",
-        title: "Bukti Pembayaran Baru",
-        message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
-        data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
-      });
-    }
-
-    return updatedTagihan;
   }
 }
 </file>
@@ -11478,6 +14456,77 @@ export class TagihanController {
     );
   };
 }
+</file>
+
+<file path="src/presentation/routes/index.ts">
+import { Router } from "express";
+import { checkHealth } from "../controllers/healthController.js";
+import { createAuthRoutes } from "./authRoutes.js";
+import { createUserRoutes } from "./userRoutes.js";
+import { createOcrRoutes } from "./ocrRoutes.js";
+import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
+import { createCustomerRoutes } from "./customerRoutes.js";
+import { container } from "../../infrastructure/di/container.js";
+import { createPerumahanRoutes } from "./perumahanRoutes.js";
+import { createDashboardRoutes } from "./dashboardRoutes.js";
+import { createAgentRoutes } from "./agentRoutes.js";
+import { createNotarisRoutes } from "./notarisRoutes.js";
+import { createKavlingRoutes } from "./kavlingRoutes.js";
+import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
+import { createTagihanRoutes } from "./tagihanRoutes.js";
+import { createPenjualanRoutes } from "./penjualanRoutes.js";
+import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
+import { createVerifyRoutes } from "./verifyRoutes.js";
+import { createAuditLogRoutes } from "./auditLogRoutes.js";
+import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
+import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
+import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
+export const createMainRouter = (deps: typeof container): Router => {
+  const router = Router();
+
+  router.get("/health", checkHealth);
+  router.use("/verify", createVerifyRoutes(deps.verifyController));
+
+  router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/users", createUserRoutes(deps.userController));
+  router.use("/ocr", createOcrRoutes(deps.ocrController));
+
+  router.use(
+    "/bank-rekening",
+    createBankRekeningPtRoutes(deps.bankRekeningPtController),
+  );
+
+  router.use("/customers", createCustomerRoutes(deps.customerController));
+  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
+  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/agents", createAgentRoutes(deps.agentController));
+  router.use("/notaris", createNotarisRoutes(deps.notarisController));
+  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
+  router.use(
+    "/customer-kavling",
+    createCustomerKavlingRoutes(deps.customerKavlingController),
+  );
+  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
+  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
+  router.use(
+    "/progress-penjualan",
+    createProgressPenjualanRoutes(deps.progressPenjualanController),
+  );
+  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
+  router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
+  router.use(
+    "/role-permissions",
+    createRolePermissionRoutes(deps.rolePermissionController),
+  );
+  router.use(
+    "/perusahaan-agents",
+    createPerusahaanAgentRoutes(deps.perusahaanAgentController),
+  );
+  return router;
+};
+
+const router = createMainRouter(container);
+export default router;
 </file>
 
 <file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
@@ -12255,162 +15304,6 @@ export class CloudinaryService {
 }
 </file>
 
-<file path="src/presentation/routes/index.ts">
-import { Router } from "express";
-import { checkHealth } from "../controllers/healthController.js";
-import { createAuthRoutes } from "./authRoutes.js";
-import { createUserRoutes } from "./userRoutes.js";
-import { createOcrRoutes } from "./ocrRoutes.js";
-import { createBankRekeningPtRoutes } from "./bankRekeningPtRoutes.js";
-import { createCustomerRoutes } from "./customerRoutes.js";
-import { container } from "../../infrastructure/di/container.js";
-import { createPerumahanRoutes } from "./perumahanRoutes.js";
-import { createDashboardRoutes } from "./dashboardRoutes.js";
-import { createAgentRoutes } from "./agentRoutes.js";
-import { createNotarisRoutes } from "./notarisRoutes.js";
-import { createKavlingRoutes } from "./kavlingRoutes.js";
-import { createCustomerKavlingRoutes } from "./customerKavlingRoutes.js";
-import { createTagihanRoutes } from "./tagihanRoutes.js";
-import { createPenjualanRoutes } from "./penjualanRoutes.js";
-import { createFeeAgentRoutes } from "./feeAgentRoutes.js";
-import { createVerifyRoutes } from "./verifyRoutes.js";
-import { createAuditLogRoutes } from "./auditLogRoutes.js";
-import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
-import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
-import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
-export const createMainRouter = (deps: typeof container): Router => {
-  const router = Router();
-
-  router.get("/health", checkHealth);
-  router.use("/verify", createVerifyRoutes(deps.verifyController));
-
-  router.use("/auth", createAuthRoutes(deps.authController));
-  router.use("/users", createUserRoutes(deps.userController));
-  router.use("/ocr", createOcrRoutes(deps.ocrController));
-
-  router.use(
-    "/bank-rekening",
-    createBankRekeningPtRoutes(deps.bankRekeningPtController),
-  );
-
-  router.use("/customers", createCustomerRoutes(deps.customerController));
-  router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
-  router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
-  router.use("/agents", createAgentRoutes(deps.agentController));
-  router.use("/notaris", createNotarisRoutes(deps.notarisController));
-  router.use("/kavling", createKavlingRoutes(deps.kavlingController));
-  router.use(
-    "/customer-kavling",
-    createCustomerKavlingRoutes(deps.customerKavlingController),
-  );
-  router.use("/tagihan", createTagihanRoutes(deps.tagihanController));
-  router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
-  router.use(
-    "/progress-penjualan",
-    createProgressPenjualanRoutes(deps.progressPenjualanController),
-  );
-  router.use("/fee-agents", createFeeAgentRoutes(deps.feeAgentController));
-  router.use("/audit-logs", createAuditLogRoutes(deps.auditLogController));
-  router.use(
-    "/role-permissions",
-    createRolePermissionRoutes(deps.rolePermissionController),
-  );
-  router.use(
-    "/perusahaan-agents",
-    createPerusahaanAgentRoutes(deps.perusahaanAgentController),
-  );
-  return router;
-};
-
-const router = createMainRouter(container);
-export default router;
-</file>
-
-<file path="package.json">
-{
-  "name": "bumantara",
-  "version": "1.0.0",
-  "description": "Bumantara",
-  "license": "ISC",
-  "author": "Edawg",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format esm --clean",
-    "start": "node dist/server.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "prisma:generate": "prisma generate",
-    "db:migrate:dev": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:push:test": "dotenv -e .env.test -- npx prisma db push",
-    "test": "dotenv -e .env.test -- vitest",
-    "test:ui": "dotenv -e .env.test -- vitest --ui",
-    "seed": "tsx prisma/seed.ts"
-  },
-  "dependencies": {
-    "@google-cloud/vision": "^5.3.4",
-    "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "^6.19.2",
-    "@sentry/node": "^10.42.0",
-    "axios": "^1.16.0",
-    "bcrypt": "^6.0.0",
-    "cloudinary": "^2.9.0",
-    "compression": "^1.8.1",
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "exceljs": "^4.4.0",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
-    "helmet": "^8.1.0",
-    "hpp": "^0.2.3",
-    "http-status-codes": "^2.3.0",
-    "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.0",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.7.284",
-    "pdfkit": "^0.18.0",
-    "pino": "^10.3.1",
-    "pino-http": "^11.0.0",
-    "qrcode": "^1.5.4",
-    "sharp": "^0.34.5",
-    "socket.io": "^4.8.3",
-    "telegraf": "^4.16.3",
-    "xlsx": "^0.18.5",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "@faker-js/faker": "^10.3.0",
-    "@types/bcrypt": "^6.0.0",
-    "@types/compression": "^1.8.1",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/hpp": "^0.2.7",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/multer": "^2.0.0",
-    "@types/node": "^25.3.0",
-    "@types/pdfkit": "^0.17.5",
-    "@types/pg": "^8.16.0",
-    "@types/qrcode": "^1.5.6",
-    "@types/supertest": "^7.2.0",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
-    "dotenv-cli": "^11.0.0",
-    "eslint": "^9.39.3",
-    "pino-pretty": "^13.1.3",
-    "prisma": "^6.19.2",
-    "supertest": "^7.2.2",
-    "tsup": "^8.5.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1",
-    "vitest": "^3.2.4",
-    "vitest-mock-extended": "^3.1.0"
-  }
-}
-</file>
-
 <file path="src/domain/dtos/AgentDTO.ts">
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { AgentStatus, AgentType } from "@prisma/client";
@@ -12705,6 +15598,93 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
 
   return router;
 };
+</file>
+
+<file path="package.json">
+{
+  "name": "bumantara",
+  "version": "1.0.0",
+  "description": "Bumantara",
+  "license": "ISC",
+  "author": "Edawg",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --clean",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prisma:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:push:test": "dotenv -e .env.test -- npx prisma db push",
+    "test": "dotenv -e .env.test -- vitest",
+    "test:ui": "dotenv -e .env.test -- vitest --ui",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^5.3.4",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^6.19.2",
+    "@sentry/node": "^10.42.0",
+    "axios": "^1.16.0",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "hpp": "^0.2.3",
+    "http-status-codes": "^2.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.0",
+    "nodemailer": "^8.0.7",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.7.284",
+    "pdfkit": "^0.18.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
+    "telegraf": "^4.16.3",
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.3.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/hpp": "^0.2.7",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.3.0",
+    "@types/nodemailer": "^8.0.0",
+    "@types/pdfkit": "^0.17.5",
+    "@types/pg": "^8.16.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/supertest": "^7.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9.39.3",
+    "pino-pretty": "^13.1.3",
+    "prisma": "^6.19.2",
+    "supertest": "^7.2.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^3.2.4",
+    "vitest-mock-extended": "^3.1.0"
+  }
+}
 </file>
 
 <file path="src/presentation/routes/penjualanRoutes.ts">
@@ -15247,11 +18227,13 @@ import { PerusahaanAgentRepository } from "../../domain/repositories/perusahaanA
 import { PerusahaanAgentUseCases } from "../../application/usecases/perusahaanAgent/PerusahaanAgentUseCases.js";
 import { PerusahaanAgentController } from "../../presentation/controllers/perusahaanAgentController.js";
 import { GenerateSuratPernyataanPdfUseCase } from "../../application/usecases/agent/GenerateSuratPernyataanPdfUseCase.js";
+import { EmailService } from "../external/EmailService.js";
 
 export const createContainer = (dbClient: PrismaClient) => {
   const googleVisionService = new GoogleVisionService();
   const cloudinaryService = new CloudinaryService();
   const socketService = new SocketService();
+  const emailService = new EmailService();
 
   const userRepo = new UserRepository(dbClient);
   const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
@@ -15427,6 +18409,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     dbClient,
     cloudinaryService,
     generateSuratPernyataanPdfUseCase,
+    emailService,
   );
   const authController = new AuthController(
     registerUseCase,

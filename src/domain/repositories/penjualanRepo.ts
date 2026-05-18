@@ -426,6 +426,10 @@ export class PenjualanRepository implements IPenjualanRepository {
         luasBangunan: Number(item.kavling.luasBangunan),
         luasTanah: Number(item.kavling.luasTanah),
         nomorUnit: item.kavling.nomorUnit,
+        kavlingId: item.kavling.id,
+        filePbg: item.kavling.filePbg,
+        fileSertifikatTanah: item.kavling.fileSertifikatTanah,
+        fileNopPbb: item.kavling.fileNopPbb,
 
         plafonAwal: item.plafonAwal ? Number(item.plafonAwal) : null,
         plafonAcc: item.plafonAcc ? Number(item.plafonAcc) : null,

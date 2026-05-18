@@ -9,7 +9,7 @@ export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
   include: {
     customer: true;
     kavling: {
-      include: { perumahan: true; rekeningTujuan: true }; // <--- Menambahkan relasi rekeningTujuan di sini
+      include: { perumahan: true; rekeningTujuan: true };
     };
     rekeningTujuan: true;
     tagihan: true;
@@ -44,6 +44,10 @@ export interface PenjualanPaginatedItem {
   alasanBatal: string | null;
   nomorUnit: string;
   tipe: string;
+  kavlingId: number;
+  filePbg: string | null;
+  fileSertifikatTanah: string | null;
+  fileNopPbb: string | null;
   luasBangunan: number;
   luasTanah: number;
 
