@@ -449,19 +449,20 @@ export class GenerateSprPdfUseCase {
 
         y += 5;
 
-        // Render Kotak Bank Rekening
-        if (rekeningTujuan) {
+        const rekeningSPR = rekeningTujuan ?? kavling.rekeningTujuan;
+
+        if (rekeningSPR) {
           doc.rect(startX, y, 260, 40).stroke(); // Tinggi kotak diperkecil
           doc
             .font("Helvetica-Bold")
             .text(
-              `Bank ${rekeningTujuan.namaBank} No Rekening : ${rekeningTujuan.noRekening}`,
+              `Bank ${rekeningSPR.namaBank} No Rekening : ${rekeningSPR.noRekening}`,
               startX + 5,
               y + 8,
             );
           doc
             .font("Helvetica")
-            .text(`a/n ${rekeningTujuan.atasNama}`, startX + 5, y + 22);
+            .text(`a/n ${rekeningSPR.atasNama}`, startX + 5, y + 22);
         }
 
         // Render QR Code

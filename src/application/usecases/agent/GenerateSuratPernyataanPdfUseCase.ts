@@ -6,17 +6,6 @@ export class GenerateSuratPernyataanPdfUseCase {
     perusahaan: string;
     alamat: string;
   }): Promise<Buffer> {
-    let logoBuffer: Buffer | null = null;
-    try {
-      const response = await fetch(
-        "https://res.cloudinary.com/dbxzxfyw3/image/upload/v1776221608/LOGO_PURI_SAFANA-01_qq4lnw.png",
-      );
-      const arrayBuffer = await response.arrayBuffer();
-      logoBuffer = Buffer.from(arrayBuffer);
-    } catch (e) {
-      console.error("Gagal mendownload logo untuk Surat Pernyataan:", e);
-    }
-
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ size: "A4", margin: 50 });
@@ -29,12 +18,8 @@ export class GenerateSuratPernyataanPdfUseCase {
           reject(err instanceof Error ? err : new Error(String(err)));
         });
 
-        if (logoBuffer) {
-          doc.image(logoBuffer, (doc.page.width - 120) / 2, 40, { width: 120 });
-          doc.y = 140;
-        } else {
-          doc.y = 80;
-        }
+        // Logo dihapus, langsung mulai dari Y: 80
+        doc.y = 80;
         doc.moveDown(2);
 
         doc
@@ -67,23 +52,25 @@ export class GenerateSuratPernyataanPdfUseCase {
         );
         y += 25;
 
+        // Teks pembuka diubah
         doc.text(
-          "Dengan ini menyatakan dan menyetujui hal-hal sebagai berikut:",
+          "Saya bersedia untuk menjadi agent Perumahan Puri Safana Cikeas dan menyatakan menyetujui hal-hal sebagai berikut:",
           startX,
           y,
+          { width: 480, align: "justify" }, // Tambahkan batas lebar agar PDFKit bisa menghitung tinggi teks yang turun ke bawah
         );
-        y += 15;
-
+        y = doc.y + 15; // Ambil posisi Y otomatis dari PDFKit (doc.y) lalu tambah jarak spasi 15
+        // Aturan diubah (kata "perusahaan" diganti "Puri Safana Cikeas")
         const rules = [
-          "Bahwa saya akan menjalankan kegiatan pemasaran dan penjualan unit perumahan sesuai dengan ketentuan, SOP, kebijakan perusahaan, serta arahan manajemen developer.",
-          "Bahwa saya tidak akan memberikan informasi yang tidak benar, menyesatkan, dimanipulasi, atau berbeda dari data resmi perusahaan kepada calon konsumen.",
-          "Bahwa saya dilarang melakukan:\n  - Mark up harga unit; Pengambilan keuntungan pribadi; Double booking unit;\n  - Penahanan booking fee; Manipulasi data penjualan; Penjualan unit fiktif;\n  - Pengalihan konsumen secara tidak sah; Tindakan merugikan perusahaan/konsumen.",
-          "Bahwa seluruh pembayaran konsumen wajib dilakukan langsung ke rekening resmi perusahaan/developer dan saya dilarang menguasai dana konsumen dalam bentuk apa pun.",
-          "Bahwa saya dilarang menyebarluaskan atau memperjualbelikan data identitas, nomor telepon, dan dokumen pribadi konsumen tanpa izin tertulis dari perusahaan.",
-          "Bahwa saya dilarang bekerja sama dengan pihak internal maupun ketiga yang dapat menimbulkan konflik kepentingan atau kerugian bagi perusahaan.",
-          "Bahwa saya wajib menjaga nama baik perusahaan, kerahasiaan data, serta menjalankan etika profesi dalam kegiatan pemasaran dan penjualan.",
-          "Bahwa apabila terjadi pelanggaran, perusahaan berhak:\n  - Memberikan sanksi; Membatalkan komisi; Menonaktifkan akses kerja;\n  - Memberhentikan secara sepihak; Menempuh jalur hukum (pidana/perdata).",
-          "Bahwa saya membuat pernyataan ini dalam keadaan sadar, sehat jasmani dan rohani, tanpa paksaan, serta bersedia mematuhi seluruh ketentuan perusahaan.",
+          "Bahwa saya akan menjalankan kegiatan pemasaran dan penjualan unit perumahan sesuai dengan ketentuan, SOP, kebijakan Puri Safana Cikeas, serta arahan manajemen developer.",
+          "Bahwa saya tidak akan memberikan informasi yang tidak benar, menyesatkan, dimanipulasi, atau berbeda dari data resmi Puri Safana Cikeas kepada calon konsumen.",
+          "Bahwa saya dilarang melakukan:\n  - Mark up harga unit; Pengambilan keuntungan pribadi; Double booking unit;\n  - Penahanan booking fee; Manipulasi data penjualan; Penjualan unit fiktif;\n  - Pengalihan konsumen secara tidak sah; Tindakan merugikan Puri Safana Cikeas/konsumen.",
+          "Bahwa seluruh pembayaran konsumen wajib dilakukan langsung ke rekening resmi Puri Safana Cikeas dan saya dilarang menguasai dana konsumen dalam bentuk apa pun.",
+          "Bahwa saya dilarang menyebarluaskan atau memperjualbelikan data identitas, nomor telepon, dan dokumen pribadi konsumen tanpa izin tertulis dari Puri Safana Cikeas.",
+          "Bahwa saya dilarang bekerja sama dengan pihak internal maupun ketiga yang dapat menimbulkan konflik kepentingan atau kerugian bagi Puri Safana Cikeas.",
+          "Bahwa saya wajib menjaga nama baik Puri Safana Cikeas, kerahasiaan data, serta menjalankan etika profesi dalam kegiatan pemasaran dan penjualan.",
+          "Bahwa apabila terjadi pelanggaran, Puri Safana Cikeas berhak:\n  - Memberikan sanksi; Membatalkan komisi; Menonaktifkan akses kerja;\n  - Memberhentikan secara sepihak; Menempuh jalur hukum (pidana/perdata).",
+          "Bahwa saya membuat pernyataan ini dalam keadaan sadar, sehat jasmani dan rohani, tanpa paksaan, serta bersedia mematuhi seluruh ketentuan Puri Safana Cikeas.",
         ];
 
         rules.forEach((rule, index) => {
