@@ -44,9 +44,9 @@ export class AgentMapper {
       feeMarketingPct: prismaAgent.feeMarketingPct
         ? Number(prismaAgent.feeMarketingPct)
         : null,
-      feeClosingPct: prismaAgent.feeClosingPct
-        ? Number(prismaAgent.feeClosingPct)
-        : null,
+      feeClosingNominal: prismaAgent.feeClosingNominal
+        ? Number(prismaAgent.feeClosingNominal)
+        : null, // <-- Ubah ini
       potonganPph: prismaAgent.potonganPph
         ? Number(prismaAgent.potonganPph)
         : null,

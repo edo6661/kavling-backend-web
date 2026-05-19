@@ -21,7 +21,7 @@ export interface CreateAgentDTO {
   perusahaanAgentId?: number | undefined;
 
   feeMarketingPct?: number | undefined;
-  feeClosingPct?: number | undefined; // <-- TAMBAHKAN INI
+  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
   potonganPph?: number | undefined;
   pics?: PicAgentDTO[] | undefined;
 }
@@ -43,7 +43,7 @@ export interface UpdateAgentDTO {
   noRekening?: string | undefined;
   atasNamaRekening?: string | undefined;
   feeMarketingPct?: number | undefined;
-  feeClosingPct?: number | undefined; // <-- TAMBAHKAN INI
+  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
   potonganPph?: number | undefined;
   fileKtp?: string | undefined;
   fileNpwp?: string | undefined;
@@ -73,7 +73,7 @@ export interface AgentResponseDTO {
   atasNamaRekening: string | null;
 
   feeMarketingPct: number | null;
-  feeClosingPct: number | null; // <-- TAMBAHKAN INI
+  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
   potonganPph: number | null;
 
   fileKtp: string | null;

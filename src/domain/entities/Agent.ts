@@ -40,7 +40,7 @@ export interface AgentEntity {
   atasNamaRekening: string | null;
 
   feeMarketingPct: number | null;
-  feeClosingPct: number | null;
+  feeClosingNominal: number | null;
   potonganPph: number | null;
 
   fileKtp: string | null;

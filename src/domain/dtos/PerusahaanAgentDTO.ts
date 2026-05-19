@@ -2,10 +2,13 @@ import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 
 export interface CreatePerusahaanAgentDTO {
   nama: string;
+  npwp?: string;
+  namaBank?: string;
+  noRekening?: string;
+  atasNamaRekening?: string;
 }
 
-export interface UpdatePerusahaanAgentDTO {
-  nama?: string;
+export interface UpdatePerusahaanAgentDTO extends Partial<CreatePerusahaanAgentDTO> {
   akte?: string;
 }
 

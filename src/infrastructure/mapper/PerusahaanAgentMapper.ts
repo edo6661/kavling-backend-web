@@ -6,6 +6,10 @@ export class PerusahaanAgentMapper {
     return {
       id: prismaData.id,
       nama: prismaData.nama,
+      npwp: prismaData.npwp,
+      namaBank: prismaData.namaBank,
+      noRekening: prismaData.noRekening,
+      atasNamaRekening: prismaData.atasNamaRekening,
       akte: prismaData.akte,
       createdAt: prismaData.createdAt,
       updatedAt: prismaData.updatedAt,

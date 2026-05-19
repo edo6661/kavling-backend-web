@@ -157,6 +157,10 @@ model PicNotaris {
 model PerusahaanAgent {
   id        Int      @id @default(autoincrement())
   nama      String   @db.VarChar(150)
+  npwp             String?  @db.VarChar(50)
+  namaBank         String?  @map("nama_bank") @db.VarChar(100)
+  noRekening       String?  @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening String?  @map("atas_nama_rekening") @db.VarChar(150)
   akte      String?  @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -183,7 +187,7 @@ model Agent {
   atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
   
   feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
-  feeClosingPct   Decimal? @map("fee_closing_pct") @db.Decimal(5, 2)
+  feeClosingNominal  Decimal? @map("fee_closing_nominal") @db.Decimal(15, 2)
   potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
 
   

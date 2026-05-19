@@ -15,11 +15,16 @@ export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
 
   async create(data: CreatePerusahaanAgentDTO): Promise<PerusahaanAgentEntity> {
     const result = await this.db.perusahaanAgent.create({
-      data: { nama: data.nama },
+      data: {
+        nama: data.nama,
+        npwp: data.npwp ?? null,
+        namaBank: data.namaBank ?? null,
+        noRekening: data.noRekening ?? null,
+        atasNamaRekening: data.atasNamaRekening ?? null,
+      },
     });
     return PerusahaanAgentMapper.toDomain(result);
   }
-
   async findById(id: number): Promise<PerusahaanAgentEntity | null> {
     const result = await this.db.perusahaanAgent.findUnique({ where: { id } });
     if (!result) return null;
@@ -35,6 +40,11 @@ export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
 
     const updateData: Prisma.PerusahaanAgentUpdateInput = {};
     if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.npwp !== undefined) updateData.npwp = data.npwp;
+    if (data.namaBank !== undefined) updateData.namaBank = data.namaBank;
+    if (data.noRekening !== undefined) updateData.noRekening = data.noRekening;
+    if (data.atasNamaRekening !== undefined)
+      updateData.atasNamaRekening = data.atasNamaRekening;
     if (data.akte !== undefined) updateData.akte = data.akte;
 
     const result = await this.db.perusahaanAgent.update({
