@@ -29,6 +29,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         rekeningTujuan: true,
         tagihan: true,
         agent: true,
+        progressProyek: true,
       },
     });
   }
@@ -359,6 +360,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             orderBy: { createdAt: "desc" },
           },
           riwayatSpr: { orderBy: { createdAt: "desc" } },
+          progressProyek: true,
         },
       }),
       this.db.penjualan.count({ where }),
@@ -472,6 +474,12 @@ export class PenjualanRepository implements IPenjualanRepository {
         tagihan: item.tagihan || [],
         riwayatSpr: item.riwayatSpr || [],
         progressPenjualan: item.progressPenjualan ?? null,
+        progressProyek: item.progressProyek
+          ? {
+              persentase: Number(item.progressProyek.persentase),
+              pelaksana: item.progressProyek.pelaksana,
+            }
+          : null,
         createdBy: item.createdBy ?? "Admin",
         isPendingBatal,
         createdAt: item.createdAt.toISOString(),
@@ -498,6 +506,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       where: { id },
       include: {
         progressPenjualan: true,
+        progressProyek: true,
         customer: true,
         kavling: { include: { perumahan: true, rekeningTujuan: true } },
         rekeningTujuan: true,

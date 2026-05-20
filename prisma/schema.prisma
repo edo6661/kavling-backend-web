@@ -1,86 +1,31 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
-enum AgentType {
-  PRIBADI    @map("Pribadi")
-  PERUSAHAAN @map("Perusahaan")
-}
-enum Role {
-  SUPERADMIN @map("superadmin") 
-  ADMIN      @map("admin")
-  FINANCE    @map("finance")    
-  MARKETING  @map("marketing")
-  CUSTOMER   @map("customer")
-  BANK       @map("bank")
-  AGENT      @map("agent")
-}
-enum UnitStatus {
-  AVAILABLE  @map("Available")
-  BOOKING    @map("Booking")
-  TERJUAL    @map("Terjual")
-  HOLD       @map("Hold")
-}
-enum ActionType {
-  CREATE
-  UPDATE
-  DELETE
-}
-enum PaymentStatus {
-  BELUM_BAYAR         @map("Belum Bayar")
-  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi") 
-  LUNAS               @map("Lunas")
-}
-enum PaymentMethod {
-  CASH_KERAS    @map("CASH KERAS")
-  CASH_BERTAHAP @map("CASH BERTAHAP")
-  KPR           @map("KPR")
-}
-enum ProgressStatus {
-  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
-  DISETUJUI           @map("Disetujui")
-  REVISI              @map("Revisi")
-}
-enum PenjualanStatus {
-  BOOKED    @map("Booked")
-  PROSES    @map("Proses")
-  LUNAS     @map("Lunas")
-  BATAL     @map("Batal")
-}
-enum AgentStatus {
-  PENDING    @map("Pending") 
-  AKTIF      @map("Aktif")
-  NONAKTIF   @map("Nonaktif")
-}
-enum SP3R {
-  BANK  @map("BANK")
-  CASH  @map("Cash")
-}
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @db.VarChar(100)
-  email     String   @unique @db.VarChar(100)
-  password  String   @db.VarChar(255)
-  role      Role
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  auditLogs AuditLog[]
-  customers Customer[]
-  agents    Agent[]
-  pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
-  persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
-  pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
+  id                      Int                   @id @default(autoincrement())
+  username                String                @db.VarChar(100)
+  email                   String                @unique @db.VarChar(100)
+  password                String                @db.VarChar(255)
+  role                    Role
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+  agents                  Agent[]
+  auditLogs               AuditLog[]
+  customers               Customer[]
   persetujuanBatal        PengajuanBatal[]      @relation("PenyetujuBatal")
+  pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
+  persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
+  pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
+
   @@map("users")
 }
+
 model Customer {
   id                Int         @id @default(autoincrement())
   userId            Int?        @map("user_id")
@@ -92,57 +37,67 @@ model Customer {
   email             String?     @db.VarChar(100)
   pekerjaan         String?     @db.VarChar(100)
   perusahaan        String?     @db.VarChar(150)
-  bank              String?     @db.VarChar(100)
   alamatKoresponden String?     @map("alamat_korespondensi") @db.Text
   fileKtp           String?     @map("file_ktp") @db.VarChar(255)
   fileKk            String?     @map("file_kk") @db.VarChar(255)
   fileNpwp          String?     @map("file_npwp") @db.VarChar(255)
-  dokumenLainnya    Json?     @map("dokumen_lainnya") 
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
+  bank              String?     @db.VarChar(100)
+  dokumenLainnya    Json?       @map("dokumen_lainnya")
   user              User?       @relation(fields: [userId], references: [id])
   penjualan         Penjualan[]
   tagihan           Tagihan[]
+
+  @@index([userId], map: "customers_user_id_fkey")
   @@map("customers")
 }
+
 model Perumahan {
   id             Int              @id @default(autoincrement())
   nama           String           @unique @db.VarChar(150)
-  logo           String           @unique @db.VarChar(150)
-  alamat         String           @unique @db.VarChar(150)
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
-  kavlings       Kavling[]
+  alamat         String           @unique @db.VarChar(150)
+  logo           String           @unique @db.VarChar(150)
   bankRekeningPt BankRekeningPt[]
+  kavlings       Kavling[]
+
   @@map("perumahan")
 }
+
 model BankRekeningPt {
   id          Int         @id @default(autoincrement())
-  perumahanId Int         @map("perumahan_id")
   namaBank    String      @map("nama_bank") @db.VarChar(100)
   noRekening  String      @map("no_rekening") @db.VarChar(50)
   atasNama    String      @map("atas_nama") @db.VarChar(150)
   createdAt   DateTime    @default(now()) @map("created_at")
-  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  penjualan   Penjualan[]
+  perumahanId Int         @map("perumahan_id")
+  perumahan   Perumahan   @relation(fields: [perumahanId], references: [id])
   kavlings    Kavling[]
+  penjualan   Penjualan[]
+
+  @@index([perumahanId], map: "bank_rekening_pt_perumahan_id_fkey")
   @@map("bank_rekening_pt")
 }
+
 model Notaris {
   id                 Int                  @id @default(autoincrement())
   nama               String               @db.VarChar(150)
-  nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
-  nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
-  noHp               String?              @map("no_hp") @db.VarChar(20)   
-  alamat             String?              @db.Text                        
-  biayaAjb           Decimal?              @map("biaya_ajb") @db.Decimal(15, 2)
-  biayaPpjb           Decimal?              @map("biaya_ppjb") @db.Decimal(15, 2)
+  biayaAjb           Decimal?             @map("biaya_ajb") @db.Decimal(15, 2)
   createdAt          DateTime             @default(now()) @map("created_at")
   updatedAt          DateTime             @updatedAt @map("updated_at")
-  pics               PicNotaris[]
+  biayaPpjb          Decimal?             @map("biaya_ppjb") @db.Decimal(15, 2)
+  nomorIjin          String?              @map("nomor_ijin") @db.VarChar(50)
+  nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
+  alamat             String?              @db.Text
+  noHp               String?              @map("no_hp") @db.VarChar(20)
   detailKavlingPajak DetailKavlingPajak[]
+  pics               PicNotaris[]
+
   @@map("notaris")
 }
+
 model PicNotaris {
   id        Int      @id @default(autoincrement())
   notarisId Int      @map("notaris_id")
@@ -152,66 +107,66 @@ model PicNotaris {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   notaris   Notaris  @relation(fields: [notarisId], references: [id], onDelete: Cascade)
+
+  @@index([notarisId], map: "pic_notaris_notaris_id_fkey")
   @@map("pic_notaris")
 }
+
 model PerusahaanAgent {
-  id        Int      @id @default(autoincrement())
-  nama      String   @db.VarChar(150)
-  npwp             String?  @db.VarChar(50)
+  id               Int      @id @default(autoincrement())
+  nama             String   @db.VarChar(150)
+  akte             String?  @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  atasNamaRekening String?  @map("atas_nama_rekening") @db.VarChar(150)
   namaBank         String?  @map("nama_bank") @db.VarChar(100)
   noRekening       String?  @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening String?  @map("atas_nama_rekening") @db.VarChar(150)
-  akte      String?  @db.VarChar(255)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  agents    Agent[]
+  npwp             String?  @db.VarChar(50)
+  agents           Agent[]
 
   @@map("perusahaan_agents")
 }
+
 model Agent {
-  id        Int         @id @default(autoincrement())
-  userId    Int?        @map("user_id") 
-  nik       String      @unique @db.VarChar(20)
-  kodeSales String?     @unique @map("kode_sales") @db.VarChar(20)
-  nama      String      @db.VarChar(150)
-  alamat    String?     @db.Text
-  noHp      String      @map("no_hp") @db.VarChar(20)
-  email     String?     @db.VarChar(100)
-  status    AgentStatus @default(PENDING)
-  type      AgentType   @default(PRIBADI)
-  ttdData           String?          @db.LongText
-  perusahaanAgentId Int?             @map("perusahaan_agent_id")
+  id                     Int              @id @default(autoincrement())
+  nik                    String           @unique @db.VarChar(20)
+  kodeSales              String?          @unique @map("kode_sales") @db.VarChar(20)
+  nama                   String           @db.VarChar(150)
+  alamat                 String?          @db.Text
+  noHp                   String           @map("no_hp") @db.VarChar(20)
+  email                  String?          @db.VarChar(100)
+  status                 AgentStatus      @default(PENDING)
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+  fileKtp                String?          @map("file_ktp") @db.VarChar(255)
+  fileKtpDirektur        String?          @map("file_ktp_direktur") @db.VarChar(255)
+  fileNpwp               String?          @map("file_npwp") @db.VarChar(255)
+  fileNpwpPerusahaan     String?          @map("file_npwp_perusahaan") @db.VarChar(255)
+  fileSuratKeterangan    String?          @map("file_surat_keterangan") @db.VarChar(255)
+  kwitansiBookingFee     String?          @map("kwitansi_booking_fee") @db.VarChar(255)
+  type                   AgentType        @default(PRIBADI)
+  userId                 Int?             @map("user_id")
+  feeMarketingPct        Decimal?         @map("fee_marketing_pct") @db.Decimal(5, 2)
+  potonganPph            Decimal?         @map("potongan_pph") @db.Decimal(5, 2)
+  atasNamaRekening       String?          @map("atas_nama_rekening") @db.VarChar(150)
+  namaBank               String?          @map("nama_bank") @db.VarChar(100)
+  noRekening             String?          @map("no_rekening") @db.VarChar(50)
+  perusahaanAgentId      Int?             @map("perusahaan_agent_id")
+  ttdData                String?          @db.LongText
+  fileSuratPernyataan    String?          @map("file_surat_pernyataan") @db.VarChar(255)
+  defaultSuratPernyataan String?          @map("default_surat_pernyataan") @db.VarChar(255)
+  feeClosingNominal      Decimal?         @map("fee_closing_nominal") @db.Decimal(15, 2)
+  perusahaanAgent        PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id])
+  user                   User?            @relation(fields: [userId], references: [id])
+  fees                   FeeAgent[]
+  penjualan              Penjualan[]
+  pics                   PicAgent[]
 
-  namaBank           String?     @map("nama_bank") @db.VarChar(100)
-  noRekening         String?     @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
-  
-  feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
-  feeClosingNominal  Decimal? @map("fee_closing_nominal") @db.Decimal(15, 2)
-  potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
-
-  
-  fileKtp            String? @map("file_ktp") @db.VarChar(255)
-  fileNpwp           String? @map("file_npwp") @db.VarChar(255)
-  kwitansiBookingFee String? @map("kwitansi_booking_fee") @db.VarChar(255)
-
-  
-  fileSuratKeterangan String? @map("file_surat_keterangan") @db.VarChar(255)
-  fileKtpDirektur     String? @map("file_ktp_direktur") @db.VarChar(255)
-  fileNpwpPerusahaan  String? @map("file_npwp_perusahaan") @db.VarChar(255)
-  fileSuratPernyataan String? @map("file_surat_pernyataan") @db.VarChar(255)
-  defaultSuratPernyataan String? @map("default_surat_pernyataan") @db.VarChar(255)
-
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
-  
-  user      User?       @relation(fields: [userId], references: [id])
-  perusahaanAgent PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id], onDelete: SetNull)
-  pics      PicAgent[]
-  fees      FeeAgent[]
-  penjualan Penjualan[]
+  @@index([perusahaanAgentId], map: "agents_perusahaan_agent_id_fkey")
+  @@index([userId], map: "agents_user_id_fkey")
   @@map("agents")
 }
+
 model PicAgent {
   id        Int      @id @default(autoincrement())
   agentId   Int      @map("agent_id")
@@ -221,86 +176,96 @@ model PicAgent {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId], map: "pic_agents_agent_id_fkey")
   @@map("pic_agents")
 }
+
 model Kavling {
-  id                  Int              @id @default(autoincrement())
-  perumahanId         Int              @map("perumahan_id")
-  blok                String           @db.VarChar(10)
-  nomorUnit           String           @map("nomor_unit") @db.VarChar(10)
-  namaTipe            String           @map("nama_tipe") @db.VarChar(50)
-  luasBangunan        Decimal          @map("luas_bangunan") @db.Decimal(10, 2)
-  luasTanah           Decimal          @map("luas_tanah") @db.Decimal(10, 2)
-  hargaDasar          Decimal          @map("harga_dasar") @db.Decimal(15, 2)
-  status              UnitStatus       @default(AVAILABLE)
-  rekeningTujuanId    Int?             @map("rekening_tujuan_id")
-  filePbg             String?          @map("file_pbg") @db.VarChar(255)
-  fileSertifikatTanah String?          @map("file_sertifikat_tanah") @db.VarChar(255)
-  fileNopPbb          String?          @map("file_nop_pbb") @db.VarChar(255)
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
-  riwayatLama        RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
-  riwayatBaru        RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
-  perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
-  rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
+  id                  Int                   @id @default(autoincrement())
+  perumahanId         Int                   @map("perumahan_id")
+  blok                String                @db.VarChar(10)
+  nomorUnit           String                @map("nomor_unit") @db.VarChar(10)
+  status              UnitStatus            @default(AVAILABLE)
+  filePbg             String?               @map("file_pbg") @db.VarChar(255)
+  fileSertifikatTanah String?               @map("file_sertifikat_tanah") @db.VarChar(255)
+  fileNopPbb          String?               @map("file_nop_pbb") @db.VarChar(255)
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  luasBangunan        Decimal               @map("luas_bangunan") @db.Decimal(10, 2)
+  luasTanah           Decimal               @map("luas_tanah") @db.Decimal(10, 2)
+  namaTipe            String                @map("nama_tipe") @db.VarChar(50)
+  rekeningTujuanId    Int?                  @map("rekening_tujuan_id")
+  hargaDasar          Decimal               @map("harga_dasar") @db.Decimal(15, 2)
+  perumahan           Perumahan             @relation(fields: [perumahanId], references: [id])
+  rekeningTujuan      BankRekeningPt?       @relation(fields: [rekeningTujuanId], references: [id])
   penjualan           Penjualan[]
-  progressProyek      ProgressProyek[]
+  riwayatBaru         RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
+  riwayatLama         RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
+
   @@unique([perumahanId, blok, nomorUnit])
+  @@index([rekeningTujuanId], map: "kavling_rekening_tujuan_id_fkey")
   @@map("kavling")
 }
+
 model Penjualan {
-  id                Int                 @id @default(autoincrement())
-  noTransaksi       String              @unique @map("no_transaksi") @db.VarChar(50)
-  tanggal           DateTime            @db.Date
-  customerId        Int                 @map("customer_id")
-  kavlingId         Int                 @map("kavling_id")
-  agentId           Int?                @map("agent_id")
-  rekeningTujuanId  Int?                @map("rekening_tujuan_id")
-  caraPembayaran    PaymentMethod?       @map("cara_pembayaran")
-  termin            Int?                @map("termin")
-  hargaDasar          Decimal             @map("harga_dasar") @db.Decimal(15, 2)
-  plafonAwal          Decimal?             @map("plafon_awal") @db.Decimal(15, 2)
-  plafonAcc          Decimal?             @map("plafon_acc") @db.Decimal(15, 2)
-  biayaKpr            Decimal?            @map("biaya_kpr") @db.Decimal(15, 2) 
-  plafonKredit        Decimal?            @map("plafon_kredit") @db.Decimal(15, 2) 
-  dpTidakDibayar      Decimal?            @map("dp_tidak_dibayar") @db.Decimal(15, 2)
-  dpDibayar         Decimal?            @map("dp_dibayar") @db.Decimal(15, 2)
-  hargaJual         Decimal?            @map("harga_jual") @db.Decimal(15, 2)
-  dp                Decimal?            @db.Decimal(15, 2)
-  diskonPenjualan   Decimal?            @map("diskon_penjualan") @db.Decimal(15, 2)
-  hargaPromosi      Decimal?            @map("harga_promosi") @db.Decimal(15, 2)
-  bank              String?             @db.VarChar(100)
-  nilaiPengajuanKpr Decimal?            @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
-  bookingFee        Decimal?            @map("booking_fee") @db.Decimal(15, 2)
-  status            PenjualanStatus     @default(BOOKED)
-  alasanBatal       String?             @map("alasan_batal") @db.Text
-  keteranganAngsuran String?            @map("keterangan_angsuran") @db.Text
-  fileSpr           String?             @map("file_spr") @db.VarChar(255)
-  fileBuktiBooking  String?             @map("file_bukti_booking") @db.VarChar(255)
-  fileBuktiDp       String?             @map("file_bukti_dp") @db.VarChar(255)
-  ttdData           Json?               @map("ttd_data")
-  tambahanKpr       Json?               @map("tambahan_kpr")
-  createdBy           String?             @map("created_by") @db.VarChar(100) 
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  riwayatGantiKavling RiwayatGantiKavling[]
-  customer          Customer            @relation(fields: [customerId], references: [id])
-  kavling           Kavling             @relation(fields: [kavlingId], references: [id])
-  agent             Agent?              @relation(fields: [agentId], references: [id])
-  rekeningTujuan    BankRekeningPt?     @relation(fields: [rekeningTujuanId], references: [id])
-  tagihan           Tagihan[]
-  detailKavlingPajak DetailKavlingPajak?
-  feeAgent          FeeAgent?
+  id                  Int                   @id @default(autoincrement())
+  noTransaksi         String                @unique @map("no_transaksi") @db.VarChar(50)
+  tanggal             DateTime              @db.Date
+  customerId          Int                   @map("customer_id")
+  kavlingId           Int                   @map("kavling_id")
+  caraPembayaran      PaymentMethod?        @map("cara_pembayaran")
+  hargaJual           Decimal?              @map("harga_jual") @db.Decimal(15, 2)
+  dp                  Decimal?              @db.Decimal(15, 2)
+  diskonPenjualan     Decimal?              @map("diskon_penjualan") @db.Decimal(15, 2)
+  bank                String?               @db.VarChar(100)
+  nilaiPengajuanKpr   Decimal?              @map("nilai_pengajuan_kpr") @db.Decimal(15, 2)
+  bookingFee          Decimal?              @map("booking_fee") @db.Decimal(15, 2)
+  rekeningTujuanId    Int?                  @map("rekening_tujuan_id")
+  status              PenjualanStatus       @default(BOOKED)
+  alasanBatal         String?               @map("alasan_batal") @db.Text
+  fileSpr             String?               @map("file_spr") @db.VarChar(255)
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  agentId             Int?                  @map("agent_id")
+  fileBuktiBooking    String?               @map("file_bukti_booking") @db.VarChar(255)
+  fileBuktiDp         String?               @map("file_bukti_dp") @db.VarChar(255)
+  hargaPromosi        Decimal?              @map("harga_promosi") @db.Decimal(15, 2)
+  ttdData             Json?                 @map("ttd_data")
+  createdBy           String?               @map("created_by") @db.VarChar(100)
+  biayaKpr            Decimal?              @map("biaya_kpr") @db.Decimal(15, 2)
+  hargaDasar          Decimal               @map("harga_dasar") @db.Decimal(15, 2)
+  plafonAwal          Decimal?              @map("plafon_awal") @db.Decimal(15, 2)
+  dpTidakDibayar      Decimal?              @map("dp_tidak_dibayar") @db.Decimal(15, 2)
+  plafonKredit        Decimal?              @map("plafon_kredit") @db.Decimal(15, 2)
+  termin              Int?                  @map("termin")
+  keteranganAngsuran  String?               @map("keterangan_angsuran") @db.Text
+  tambahanKpr         Json?                 @map("tambahan_kpr")
+  plafonAcc           Decimal?              @map("plafon_acc") @db.Decimal(15, 2)
+  dpDibayar           Decimal?              @map("dp_dibayar") @db.Decimal(15, 2)
+  detailKavlingPajak  DetailKavlingPajak?
+  feeAgent            FeeAgent?
+  pengajuanBatal      PengajuanBatal[]
+  agent               Agent?                @relation(fields: [agentId], references: [id])
+  customer            Customer              @relation(fields: [customerId], references: [id])
+  kavling             Kavling               @relation(fields: [kavlingId], references: [id])
+  rekeningTujuan      BankRekeningPt?       @relation(fields: [rekeningTujuanId], references: [id])
   progressPenjualan   ProgressPenjualan?
-  pengajuanBatal PengajuanBatal[]
+  progressProyek      ProgressProyek?
+  riwayatGantiKavling RiwayatGantiKavling[]
   riwayatSpr          RiwayatSpr[]
+  tagihan             Tagihan[]
+
+  @@index([agentId], map: "penjualan_agent_id_fkey")
+  @@index([customerId], map: "penjualan_customer_id_fkey")
+  @@index([kavlingId], map: "penjualan_kavling_id_fkey")
+  @@index([rekeningTujuanId], map: "penjualan_rekening_tujuan_id_fkey")
   @@map("penjualan")
 }
+
 model DetailKavlingPajak {
   id                      Int       @id @default(autoincrement())
   penjualanId             Int       @unique @map("penjualan_id")
-  notarisId               Int?      @map("notaris_id")
-  biayaNotaris            Decimal?  @map("biaya_notaris") @db.Decimal(15, 2)
   lantai                  String?   @db.VarChar(10)
   luasBangunan            String?   @map("luas_bangunan") @db.VarChar(20)
   lokasiStrategis         String?   @map("lokasi_strategis") @db.VarChar(50)
@@ -310,7 +275,7 @@ model DetailKavlingPajak {
   tanggalPembayaranPph    DateTime? @map("tanggal_pembayaran_pph") @db.Date
   tanggalPembayaranBphtb  DateTime? @map("tanggal_pembayaran_bphtb") @db.Date
   pembiayaan              String?   @db.VarChar(100)
-  sp3r                    SP3R?     @default(BANK) 
+  sp3r                    SP3R?     @default(BANK)
   lebihTanah              Decimal?  @map("lebih_tanah") @db.Decimal(15, 2)
   biayaStrategis          Decimal?  @map("biaya_strategis") @db.Decimal(15, 2)
   nrBiayaKprAsuransi      Decimal?  @map("nr_biaya_kpr_asuransi") @db.Decimal(15, 2)
@@ -318,12 +283,9 @@ model DetailKavlingPajak {
   nrDiskonCash            Decimal?  @map("nr_diskon_cash") @db.Decimal(15, 2)
   nrBiayaBbn              Decimal?  @map("nr_biaya_bbn") @db.Decimal(15, 2)
   nrBiayaNotarisAjb       Decimal?  @map("nr_biaya_notaris_ajb") @db.Decimal(15, 2)
-  nrBiayaNotarisPpjb       Decimal?  @map("nr_biaya_notaris_ppjb") @db.Decimal(15, 2)
   nrBiayaAppraisal        Decimal?  @map("nr_biaya_appraisal") @db.Decimal(15, 2)
   nrBiayaBphtb            Decimal?  @map("nr_biaya_bphtb") @db.Decimal(15, 2)
   nrLainLain              Decimal?  @map("nr_lain_lain") @db.Decimal(15, 2)
-  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2) 
-  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2) 
   nrPpn                   Decimal?  @map("nr_ppn") @db.Decimal(15, 2)
   nrBphtb                 Decimal?  @map("nr_bphtb") @db.Decimal(15, 2)
   nrPph                   Decimal?  @map("nr_pph") @db.Decimal(15, 2)
@@ -335,51 +297,62 @@ model DetailKavlingPajak {
   pjBiayaAppraisal        Decimal?  @map("pj_biaya_appraisal") @db.Decimal(15, 2)
   pjBphtb                 Decimal?  @map("pj_bphtb") @db.Decimal(15, 2)
   pjLainLain              Decimal?  @map("pj_lain_lain") @db.Decimal(15, 2)
-  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2) 
-  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2) 
   pjPpn                   Decimal?  @map("pj_ppn") @db.Decimal(15, 2)
   pjBphtbPajak            Decimal?  @map("pj_bphtb_pajak") @db.Decimal(15, 2)
   pjPph                   Decimal?  @map("pj_pph") @db.Decimal(15, 2)
-  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2) 
   ajbNjopTanahPerMeter    Decimal?  @map("ajb_njop_tanah_per_meter") @db.Decimal(15, 2)
   ajbNjopTanah            Decimal?  @map("ajb_njop_tanah") @db.Decimal(15, 2)
   ajbNjopBangunanPerMeter Decimal?  @map("ajb_njop_bangunan_per_meter") @db.Decimal(15, 2)
   ajbNjopBangunan         Decimal?  @map("ajb_njop_bangunan") @db.Decimal(15, 2)
-  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2) 
   ajbPpn                  Decimal?  @map("ajb_ppn") @db.Decimal(15, 2)
   ajbBphtb                Decimal?  @map("ajb_bphtb") @db.Decimal(15, 2)
   ajbPph                  Decimal?  @map("ajb_pph") @db.Decimal(15, 2)
-  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2) 
   ajbSelisihPajakPbb      Decimal?  @map("ajb_selisih_pajak_pbb") @db.Decimal(15, 2)
   ajbUping                Decimal?  @map("ajb_uping") @db.Decimal(15, 2)
+  ajbNjopTotal            Decimal?  @map("ajb_njop_total") @db.Decimal(15, 2)
+  ajbTotalBphtbPph        Decimal?  @map("ajb_total_bphtb_pph") @db.Decimal(15, 2)
+  notarisId               Int?      @map("notaris_id")
+  nrNilaiPenyerahan       Decimal?  @map("nr_nilai_penyerahan") @db.Decimal(15, 2)
+  nrTotalSubsidi          Decimal?  @map("nr_total_subsidi") @db.Decimal(15, 2)
+  pjNilaiPenyerahan       Decimal?  @map("pj_nilai_penyerahan") @db.Decimal(15, 2)
+  pjTotalBphtbPph         Decimal?  @map("pj_total_bphtb_pph") @db.Decimal(15, 2)
+  pjTotalSubsidi          Decimal?  @map("pj_total_subsidi") @db.Decimal(15, 2)
+  nrBiayaNotarisPpjb      Decimal?  @map("nr_biaya_notaris_ppjb") @db.Decimal(15, 2)
+  biayaNotaris            Decimal?  @map("biaya_notaris") @db.Decimal(15, 2)
+  notaris                 Notaris?  @relation(fields: [notarisId], references: [id])
   penjualan               Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  notaris                 Notaris?  @relation(fields: [notarisId], references: [id], onDelete: SetNull)
+
+  @@index([notarisId], map: "detail_kavling_pajak_notaris_id_fkey")
   @@map("detail_kavling_pajak")
 }
+
 model Tagihan {
   id                 Int           @id @default(autoincrement())
   noTagihan          String        @unique @map("no_tagihan") @db.VarChar(50)
   customerId         Int           @map("customer_id")
   penjualanId        Int           @map("penjualan_id")
-  pembayaran         String        @db.VarChar(255)
   nominal            Decimal       @db.Decimal(15, 2)
   jatuhTempo         DateTime      @map("jatuh_tempo") @db.Date
   status             PaymentStatus @default(BELUM_BAYAR)
   fileBukti          String?       @map("file_bukti") @db.VarChar(255)
-  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
-  isRefunded         Boolean       @default(false) @map("is_refunded")
-  fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
-  ttdData            Json?         @map("ttd_data") 
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
+  pembayaran         String        @db.VarChar(255)
+  reminderBerikutnya DateTime?     @map("reminder_berikutnya") @db.Date
+  fileBuktiRefund    String?       @map("file_bukti_refund") @db.VarChar(255)
+  isRefunded         Boolean       @default(false) @map("is_refunded")
+  ttdData            Json?         @map("ttd_data")
   customer           Customer      @relation(fields: [customerId], references: [id])
   penjualan          Penjualan     @relation(fields: [penjualanId], references: [id])
+
+  @@index([customerId], map: "tagihan_customer_id_fkey")
+  @@index([penjualanId], map: "tagihan_penjualan_id_fkey")
   @@map("tagihan")
 }
+
 model FeeAgent {
   id               Int       @id @default(autoincrement())
   agentId          Int       @map("agent_id")
-  penjualanId      Int       @unique @map("penjualan_id")
   bookingNominal   Decimal?  @map("booking_nominal") @db.Decimal(15, 2)
   bookingTanggal   DateTime? @map("booking_tanggal") @db.Date
   bookingBukti     String?   @map("booking_bukti") @db.VarChar(255)
@@ -391,10 +364,14 @@ model FeeAgent {
   marketingBukti   String?   @map("marketing_bukti") @db.VarChar(255)
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
-  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  penjualanId      Int       @unique @map("penjualan_id")
   agent            Agent     @relation(fields: [agentId], references: [id])
+  penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+
+  @@index([agentId], map: "fee_agent_agent_id_fkey")
   @@map("fee_agent")
 }
+
 model Spk {
   id               Int      @id @default(autoincrement())
   noSpk            String   @unique @map("no_spk") @db.VarChar(100)
@@ -414,53 +391,81 @@ model Spk {
   fileSpk          String?  @map("file_spk") @db.VarChar(255)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
+
   @@map("spk")
 }
 model ProgressProyek {
-  id               Int            @id @default(autoincrement())
-  kavlingId        Int            @map("kavling_id")
-  pelaksana        String         @db.VarChar(150)
-  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
-  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
-  persentase       Int            @default(0)
-  keterangan       String         @db.Text
-  kendala          String?        @db.Text
-  fotoLapangan     Json?          @map("foto_lapangan")
-  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
+  id          Int      @id @default(autoincrement())
+  pelaksana   String?  @db.VarChar(150)
+  persentase  Decimal  @default(0.00) @db.Decimal(5, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  penjualanId Int      @unique @map("penjualan_id")
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+
+  
+  tahapan     TahapanProyek[] 
+
   @@map("progress_proyek")
 }
+
+model TahapanProyek {
+  id               Int      @id @default(autoincrement())
+  progressProyekId Int      @map("progress_proyek_id")
+  namaTahapan      String   @map("nama_tahapan") @db.VarChar(100)
+  persentase       Decimal  @default(0) @db.Decimal(5, 2)
+  deskripsi        String?  @db.Text
+  tanggal          DateTime @default(now())
+  foto             Json?    @map("foto") 
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  
+  progressProyek   ProgressProyek @relation(fields: [progressProyekId], references: [id], onDelete: Cascade)
+
+  @@map("tahapan_proyek")
+}
+
 model AuditLog {
-  id          Int        @id @default(autoincrement())
-  entityName  String     @map("entity_name") @db.VarChar(100) 
-  entityId    String     @map("entity_id") @db.VarChar(50)    
-  action      ActionType
-  changes     Json       
-  userId      Int?       @map("user_id") 
-  createdAt   DateTime   @default(now()) @map("created_at")
-  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id         Int        @id @default(autoincrement())
+  entityName String     @map("entity_name") @db.VarChar(100)
+  entityId   String     @map("entity_id") @db.VarChar(50)
+  action     ActionType
+  changes    Json
+  userId     Int?       @map("user_id")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  user       User?      @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "audit_logs_user_id_fkey")
   @@map("audit_logs")
 }
+
 model RiwayatGantiKavling {
   id            Int            @id @default(autoincrement())
   penjualanId   Int            @map("penjualan_id")
   kavlingLamaId Int            @map("kavling_lama_id")
   kavlingBaruId Int            @map("kavling_baru_id")
   alasan        String?        @db.Text
-  status        ApprovalStatus @default(PENDING)
-  requestedById Int?           @map("requested_by_id")
-  approvedById  Int?           @map("approved_by_id")
   createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") 
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  kavlingLama Kavling   @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id], onDelete: Restrict)
-  kavlingBaru Kavling   @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id], onDelete: Restrict)
-  requestedBy User?     @relation("PengajuGantiKavling", fields: [requestedById], references: [id], onDelete: SetNull)
-  approvedBy  User?     @relation("PenyetujuGantiKavling", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedById  Int?           @map("approved_by_id")
+  requestedById Int?           @map("requested_by_id")
+  status        ApprovalStatus @default(PENDING)
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+  approvedBy    User?          @relation("PenyetujuGantiKavling", fields: [approvedById], references: [id])
+  kavlingBaru   Kavling        @relation("RiwayatKavlingBaru", fields: [kavlingBaruId], references: [id])
+  kavlingLama   Kavling        @relation("RiwayatKavlingLama", fields: [kavlingLamaId], references: [id])
+  penjualan     Penjualan      @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  requestedBy   User?          @relation("PengajuGantiKavling", fields: [requestedById], references: [id])
+
+  @@index([approvedById], map: "riwayat_ganti_kavling_approved_by_id_fkey")
+  @@index([kavlingBaruId], map: "riwayat_ganti_kavling_kavling_baru_id_fkey")
+  @@index([kavlingLamaId], map: "riwayat_ganti_kavling_kavling_lama_id_fkey")
+  @@index([penjualanId], map: "riwayat_ganti_kavling_penjualan_id_fkey")
+  @@index([requestedById], map: "riwayat_ganti_kavling_requested_by_id_fkey")
   @@map("riwayat_ganti_kavling")
 }
+
 model PengajuanBatal {
   id            Int            @id @default(autoincrement())
   penjualanId   Int            @map("penjualan_id")
@@ -470,20 +475,28 @@ model PengajuanBatal {
   approvedById  Int?           @map("approved_by_id")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  requestedBy User?     @relation("PengajuBatal", fields: [requestedById], references: [id], onDelete: SetNull)
-  approvedBy  User?     @relation("PenyetujuBatal", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedBy    User?          @relation("PenyetujuBatal", fields: [approvedById], references: [id])
+  penjualan     Penjualan      @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  requestedBy   User?          @relation("PengajuBatal", fields: [requestedById], references: [id])
+
+  @@index([approvedById], map: "pengajuan_batal_approved_by_id_fkey")
+  @@index([penjualanId], map: "pengajuan_batal_penjualan_id_fkey")
+  @@index([requestedById], map: "pengajuan_batal_requested_by_id_fkey")
   @@map("pengajuan_batal")
 }
+
 model RiwayatSpr {
-  id          Int      @id @default(autoincrement())
-  penjualanId Int      @map("penjualan_id")
-  fileSpr     String   @map("file_spr") @db.VarChar(255)
-  keterangan  String?  @db.VarChar(255) 
-  createdAt   DateTime @default(now()) @map("created_at")
+  id          Int       @id @default(autoincrement())
+  penjualanId Int       @map("penjualan_id")
+  fileSpr     String    @map("file_spr") @db.VarChar(255)
+  keterangan  String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now()) @map("created_at")
   penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+
+  @@index([penjualanId], map: "riwayat_spr_penjualan_id_fkey")
   @@map("riwayat_spr")
 }
+
 model ProgressPenjualan {
   id                  Int       @id @default(autoincrement())
   penjualanId         Int       @unique @map("penjualan_id")
@@ -495,21 +508,21 @@ model ProgressPenjualan {
   biayaBphtb          Decimal?  @map("biaya_bphtb") @db.Decimal(15, 2)
   biayaPph            Decimal?  @map("biaya_pph") @db.Decimal(15, 2)
   fileAjb             String?   @map("file_ajb") @db.VarChar(255)
-  nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100) 
-  tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date       
   fileBast            String?   @map("file_bast") @db.VarChar(255)
-  checklistBast       Json?     @map("checklist_bast") 
+  checklistBast       Json?     @map("checklist_bast")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
+  nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100)
+  tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date
   penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+
   @@map("progress_penjualan")
 }
 
-
 model RolePermission {
   id        Int      @id @default(autoincrement())
-  role      Role     
-  resource  String   @db.VarChar(100) 
+  role      Role
+  resource  String   @db.VarChar(100)
   canCreate Boolean  @default(false)
   canRead   Boolean  @default(false)
   canUpdate Boolean  @default(false)
@@ -517,6 +530,70 @@ model RolePermission {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([role, resource]) 
+  @@unique([role, resource])
   @@map("role_permissions")
+}
+
+enum AgentType {
+  PRIBADI    @map("Pribadi")
+  PERUSAHAAN @map("Perusahaan")
+}
+
+enum Role {
+  SUPERADMIN @map("superadmin")
+  ADMIN      @map("admin")
+  FINANCE    @map("finance")
+  MARKETING  @map("marketing")
+  CUSTOMER   @map("customer")
+  BANK       @map("bank")
+  AGENT      @map("agent")
+}
+
+enum UnitStatus {
+  AVAILABLE @map("Available")
+  BOOKING   @map("Booking")
+  TERJUAL   @map("Terjual")
+  HOLD      @map("Hold")
+}
+
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum PaymentStatus {
+  BELUM_BAYAR         @map("Belum Bayar")
+  MENUNGGU_KONFIRMASI @map("Menunggu Konfirmasi")
+  LUNAS               @map("Lunas")
+}
+
+enum PaymentMethod {
+  CASH_KERAS    @map("CASH KERAS")
+  CASH_BERTAHAP @map("CASH BERTAHAP")
+  KPR           @map("KPR")
+}
+
+enum PenjualanStatus {
+  BOOKED @map("Booked")
+  PROSES @map("Proses")
+  LUNAS  @map("Lunas")
+  BATAL  @map("Batal")
+}
+
+enum AgentStatus {
+  PENDING  @map("Pending")
+  AKTIF    @map("Aktif")
+  NONAKTIF @map("Nonaktif")
+}
+
+enum SP3R {
+  BANK @map("BANK")
+  CASH @map("Cash")
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

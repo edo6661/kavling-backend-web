@@ -1,3 +1,11 @@
+import { ProgressProyekRepository } from "../../domain/repositories/progressProyekRepo.js";
+import {
+  CreateTahapanLogUseCase,
+  GetProgressProyekUseCase,
+  UpdateProgressProyekUseCase,
+  UploadTahapanPhotoUseCase,
+} from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
+import { ProgressProyekController } from "../../presentation/controllers/progressProyekController.js";
 import { UserRepository } from "../../domain/repositories/userRepo.js";
 import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
 import { CustomerRepository } from "../../domain/repositories/customerRepo.js";
@@ -559,6 +567,28 @@ export const createContainer = (dbClient: PrismaClient) => {
   const perusahaanAgentController = new PerusahaanAgentController(
     perusahaanAgentUseCases,
   );
+  const progressProyekRepo = new ProgressProyekRepository(dbClient);
+  const getProgressProyekUseCase = new GetProgressProyekUseCase(
+    progressProyekRepo,
+  );
+  const updateProgressProyekUseCase = new UpdateProgressProyekUseCase(
+    progressProyekRepo,
+  );
+  const uploadTahapanPhotoUseCase = new UploadTahapanPhotoUseCase(
+    progressProyekRepo,
+    cloudinaryService,
+  );
+  const createTahapanLogUseCase = new CreateTahapanLogUseCase(
+    progressProyekRepo,
+    cloudinaryService,
+  );
+  const progressProyekController = new ProgressProyekController(
+    getProgressProyekUseCase,
+    updateProgressProyekUseCase,
+    uploadTahapanPhotoUseCase,
+    createTahapanLogUseCase,
+  );
+
   return {
     authController,
     userRepo,
@@ -585,6 +615,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     rolePermissionController,
     socketService,
     perusahaanAgentController,
+    progressProyekController,
   };
 };
 

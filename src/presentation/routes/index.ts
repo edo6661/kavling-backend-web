@@ -20,6 +20,7 @@ import { createAuditLogRoutes } from "./auditLogRoutes.js";
 import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
 import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
 import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
+import { createProgressProyekRoutes } from "./progressProyekRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -60,6 +61,10 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use(
     "/perusahaan-agents",
     createPerusahaanAgentRoutes(deps.perusahaanAgentController),
+  );
+  router.use(
+    "/progress-proyek",
+    createProgressProyekRoutes(deps.progressProyekController),
   );
   return router;
 };

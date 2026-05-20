@@ -47,3 +47,15 @@ export const uploadProgressDocumentSchema = {
     ]),
   }),
 };
+
+export const addTahapanLogSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus angka"),
+  }),
+  body: z.object({
+    namaTahapan: z.string().min(1),
+    persentase: z.coerce.number().min(0).max(100),
+    deskripsi: z.string().optional().nullable(),
+    tanggal: z.string().datetime().or(z.string().min(1)),
+  }),
+};

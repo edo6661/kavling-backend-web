@@ -1,4 +1,4 @@
-kode backend:
+tolong ingat kode backend nya:
 
 <file path=".dockerignore">
 node_modules
@@ -1256,6 +1256,91 @@ export class DeletePerumahanUseCase {
 }
 </file>
 
+<file path="src/application/usecases/progressProyek/ProgressProyekUseCases.ts">
+import type { ProgressProyekEntity } from "../../../domain/entities/ProgressProyek.js";
+import type { UpdateProgressProyekDTO } from "../../../domain/dtos/ProgressProyekDTO.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+import type { IProgressProyekRepository } from "../../../domain/repositories/IProgressProyekRepo.js";
+
+export class GetProgressProyekUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(penjualanId: number): Promise<ProgressProyekEntity> {
+    let progress = await this.repo.findByPenjualanId(penjualanId);
+
+    progress ??= await this.repo.create({ penjualanId, pelaksana: "" });
+    return progress;
+  }
+}
+
+export class UpdateProgressProyekUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    penjualanId: number,
+    data: UpdateProgressProyekDTO,
+  ): Promise<ProgressProyekEntity> {
+    return await this.repo.update(penjualanId, data);
+  }
+}
+
+export class UploadTahapanPhotoUseCase {
+  constructor(
+    private readonly repo: IProgressProyekRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    penjualanId: number,
+    namaTahapan: string,
+    files: Buffer[],
+  ): Promise<ProgressProyekEntity> {
+    if (!files || files.length === 0) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File foto tidak boleh kosong",
+      );
+    }
+
+    const progress = await this.repo.findByPenjualanId(penjualanId);
+    if (!progress) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Progress proyek tidak ditemukan",
+      );
+    }
+
+    const tahapan = progress.tahapan.find((t) => t.namaTahapan === namaTahapan);
+    const existingPhotos = tahapan?.foto ?? [];
+
+    const uploadedUrls = await Promise.all(
+      files.map((fileBuffer) =>
+        this.cloudinaryService.uploadImage(
+          fileBuffer,
+          `bumantara/progress_proyek/${penjualanId}/${namaTahapan.replace(/\s+/g, "_")}`,
+        ),
+      ),
+    );
+
+    const newPhotos = [...existingPhotos, ...uploadedUrls];
+
+    return await this.repo.update(penjualanId, {
+      tahapan: [
+        {
+          namaTahapan,
+          persentase: tahapan?.persentase ?? 0,
+          deskripsi: tahapan?.deskripsi ?? null,
+          tanggal: tahapan?.tanggal ?? new Date(),
+          foto: newPhotos,
+        },
+      ],
+    });
+  }
+}
+</file>
+
 <file path="src/application/usecases/user/GetAllUsersUseCase.test.ts">
 import { describe, it, expect, beforeEach } from "vitest";
 import { mock, type MockProxy } from "vitest-mock-extended";
@@ -1629,6 +1714,37 @@ export interface PerumahanResponseDTO {
 export type PerumahanFilterDTO = BaseFilterDTO;
 </file>
 
+<file path="src/domain/dtos/ProgressProyekDTO.ts">
+export interface TahapanProyekDTO {
+  id?: number;
+  namaTahapan: string;
+  persentase: number;
+  deskripsi: string | null;
+  tanggal: Date;
+  foto: string[]; // Array of URL strings
+}
+
+export interface CreateProgressProyekDTO {
+  penjualanId: number;
+  pelaksana: string;
+}
+
+export interface UpdateProgressProyekDTO {
+  pelaksana?: string;
+  tahapan?: TahapanProyekDTO[];
+}
+
+export interface ProgressProyekResponseDTO {
+  id: number;
+  penjualanId: number;
+  pelaksana: string | null;
+  persentase: number;
+  tahapan: TahapanProyekDTO[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
 <file path="src/domain/entities/BankRekeningPt.ts">
 export interface BankRekeningPtEntity {
   id: number;
@@ -1727,6 +1843,28 @@ export interface PerumahanEntity {
   alamat: string;
   createdAt: Date;
   updatedAt: Date;
+}
+</file>
+
+<file path="src/domain/entities/ProgressProyek.ts">
+export interface TahapanProyekEntity {
+  id: number;
+  progressProyekId: number;
+  namaTahapan: string;
+  persentase: number;
+  deskripsi: string | null;
+  tanggal: Date;
+  foto: string[];
+}
+
+export interface ProgressProyekEntity {
+  id: number;
+  penjualanId: number;
+  pelaksana: string | null;
+  persentase: number;
+  createdAt: Date;
+  updatedAt: Date;
+  tahapan: TahapanProyekEntity[];
 }
 </file>
 
@@ -2247,6 +2385,169 @@ describe("Integration Test: CustomerRepository", () => {
 });
 </file>
 
+<file path="src/domain/repositories/feeAgentRepo.ts">
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { IFeeAgentRepository } from "./IFeeAgentRepo.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { FeeAgentMapper } from "../../infrastructure/mapper/FeeAgentMapper.js";
+import type {
+  CreateFeeAgentDTO,
+  UpdateFeeAgentDTO,
+  FeeAgentFilterDTO,
+  FeeAgentResponseDTO,
+} from "../dtos/FeeAgentDTO.js";
+
+const includeRelations = {
+  agent: { select: { nama: true } },
+  penjualan: {
+    include: {
+      customer: { select: { nama: true } },
+      kavling: {
+        include: { perumahan: { select: { nama: true } } },
+      },
+    },
+  },
+} satisfies Prisma.FeeAgentInclude;
+
+export class FeeAgentRepository implements IFeeAgentRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO> {
+    const existing = await this.findByPenjualanId(data.penjualanId);
+    if (existing) {
+      throw new ConflictError("Data Fee Agent untuk Penjualan ini sudah ada.");
+    }
+
+    const result = await this.db.feeAgent.create({
+      data: {
+        agentId: data.agentId,
+        penjualanId: data.penjualanId,
+      },
+      include: includeRelations,
+    });
+
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async findById(id: number): Promise<FeeAgentResponseDTO | null> {
+    const result = await this.db.feeAgent.findUnique({
+      where: { id },
+      include: includeRelations,
+    });
+    if (!result) return null;
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async findByPenjualanId(
+    penjualanId: number,
+  ): Promise<FeeAgentResponseDTO | null> {
+    const result = await this.db.feeAgent.findUnique({
+      where: { penjualanId },
+      include: includeRelations,
+    });
+    if (!result) return null;
+    return FeeAgentMapper.toDomain(result);
+  }
+
+  async update(
+    id: number,
+    data: UpdateFeeAgentDTO,
+  ): Promise<FeeAgentResponseDTO> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Data Fee Agent tidak ditemukan");
+
+    const updateData: Prisma.FeeAgentUpdateInput = {};
+
+    if (data.bookingNominal !== undefined)
+      updateData.bookingNominal = data.bookingNominal;
+    if (data.bookingTanggal !== undefined) {
+      updateData.bookingTanggal = data.bookingTanggal
+        ? new Date(data.bookingTanggal)
+        : null;
+    }
+    if (data.bookingBukti !== undefined)
+      updateData.bookingBukti = data.bookingBukti;
+
+    if (data.closingNominal !== undefined)
+      updateData.closingNominal = data.closingNominal;
+    if (data.closingTanggal !== undefined) {
+      updateData.closingTanggal = data.closingTanggal
+        ? new Date(data.closingTanggal)
+        : null;
+    }
+    if (data.closingBukti !== undefined)
+      updateData.closingBukti = data.closingBukti;
+
+    if (data.marketingNominal !== undefined)
+      updateData.marketingNominal = data.marketingNominal;
+    if (data.marketingTanggal !== undefined) {
+      updateData.marketingTanggal = data.marketingTanggal
+        ? new Date(data.marketingTanggal)
+        : null;
+    }
+    if (data.marketingBukti !== undefined)
+      updateData.marketingBukti = data.marketingBukti;
+
+    const result = await this.db.feeAgent.update({
+      where: { id },
+      data: updateData,
+      include: includeRelations,
+    });
+
+    return FeeAgentMapper.toDomain(result as any);
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: FeeAgentFilterDTO,
+  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>> {
+    const where: Prisma.FeeAgentWhereInput = {
+      penjualan: {
+        status: {
+          not: "BATAL",
+        },
+      },
+    };
+
+    if (filters?.agentId) where.agentId = filters.agentId;
+    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
+
+    if (filters?.search) {
+      where.OR = [
+        { agent: { nama: { contains: filters.search } } },
+        { penjualan: { noTransaksi: { contains: filters.search } } },
+        { penjualan: { customer: { nama: { contains: filters.search } } } },
+      ];
+    }
+
+    const items = await this.db.feeAgent.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      include: includeRelations,
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => FeeAgentMapper.toDomain(item as any)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+</file>
+
 <file path="src/domain/repositories/IBankRekeningPtRepo.ts">
 import type { BankRekeningPt } from "@prisma/client";
 import type {
@@ -2375,6 +2676,23 @@ export interface IPerumahanRepository {
     cursor?: number,
     filters?: PerumahanFilterDTO,
   ): Promise<CursorPaginatedData<Perumahan>>;
+}
+</file>
+
+<file path="src/domain/repositories/IProgressProyekRepo.ts">
+import type { ProgressProyekEntity } from "../entities/ProgressProyek.js";
+import type {
+  CreateProgressProyekDTO,
+  UpdateProgressProyekDTO,
+} from "../dtos/ProgressProyekDTO.js";
+
+export interface IProgressProyekRepository {
+  create(data: CreateProgressProyekDTO): Promise<ProgressProyekEntity>;
+  findByPenjualanId(penjualanId: number): Promise<ProgressProyekEntity | null>;
+  update(
+    penjualanId: number,
+    data: UpdateProgressProyekDTO,
+  ): Promise<ProgressProyekEntity>;
 }
 </file>
 
@@ -2512,6 +2830,122 @@ export class PerumahanRepository implements IPerumahanRepository {
       }
       throw error;
     }
+  }
+}
+</file>
+
+<file path="src/domain/repositories/progressProyekRepo.ts">
+import type { PrismaClient } from "@prisma/client";
+import type {
+  CreateProgressProyekDTO,
+  UpdateProgressProyekDTO,
+} from "../dtos/ProgressProyekDTO.js";
+import type { ProgressProyekEntity } from "../entities/ProgressProyek.js";
+import { ProgressProyekMapper } from "../../infrastructure/mapper/ProgressProyekMapper.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import type { IProgressProyekRepository } from "./IProgressProyekRepo.js";
+
+export class ProgressProyekRepository implements IProgressProyekRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreateProgressProyekDTO): Promise<ProgressProyekEntity> {
+    const existing = await this.findByPenjualanId(data.penjualanId);
+    if (existing) {
+      throw new ConflictError("Progress Proyek untuk penjualan ini sudah ada.");
+    }
+
+    const result = await this.db.progressProyek.create({
+      data: {
+        penjualanId: data.penjualanId,
+        pelaksana: data.pelaksana,
+        persentase: 0,
+      },
+      include: { tahapan: true },
+    });
+
+    return ProgressProyekMapper.toDomain(result);
+  }
+
+  async findByPenjualanId(
+    penjualanId: number,
+  ): Promise<ProgressProyekEntity | null> {
+    const result = await this.db.progressProyek.findUnique({
+      where: { penjualanId },
+      include: { tahapan: true },
+    });
+
+    if (!result) return null;
+    return ProgressProyekMapper.toDomain(result);
+  }
+
+  async update(
+    penjualanId: number,
+    data: UpdateProgressProyekDTO,
+  ): Promise<ProgressProyekEntity> {
+    const existing = await this.findByPenjualanId(penjualanId);
+    if (!existing) {
+      throw new NotFoundError("Progress Proyek tidak ditemukan.");
+    }
+
+    return await this.db.$transaction(async (tx) => {
+      if (data.pelaksana !== undefined) {
+        await tx.progressProyek.update({
+          where: { penjualanId },
+          data: { pelaksana: data.pelaksana },
+        });
+      }
+
+      if (data.tahapan && data.tahapan.length > 0) {
+        for (const t of data.tahapan) {
+          await tx.tahapanProyek.upsert({
+            where: {
+              progressProyekId_namaTahapan: {
+                progressProyekId: existing.id,
+                namaTahapan: t.namaTahapan,
+              },
+            },
+            update: {
+              persentase: t.persentase,
+              deskripsi: t.deskripsi,
+              tanggal: t.tanggal,
+              foto: t.foto,
+            },
+            create: {
+              progressProyekId: existing.id,
+              namaTahapan: t.namaTahapan,
+              persentase: t.persentase,
+              deskripsi: t.deskripsi,
+              tanggal: t.tanggal,
+              foto: t.foto,
+            },
+          });
+        }
+
+        const allTahapan = await tx.tahapanProyek.findMany({
+          where: { progressProyekId: existing.id },
+        });
+
+        const totalPersentase = allTahapan.reduce(
+          (sum, item) => sum + Number(item.persentase),
+          0,
+        );
+
+        const finalPersentase = totalPersentase > 100 ? 100 : totalPersentase;
+
+        await tx.progressProyek.update({
+          where: { penjualanId },
+          data: { persentase: finalPersentase },
+        });
+      }
+
+      const finalResult = await tx.progressProyek.findUniqueOrThrow({
+        where: { penjualanId },
+        include: { tahapan: true },
+      });
+
+      return ProgressProyekMapper.toDomain(finalResult);
+    });
   }
 }
 </file>
@@ -3057,6 +3491,39 @@ export class PerumahanMapper {
       alamat: prismaPerumahan.alamat,
       createdAt: prismaPerumahan.createdAt,
       updatedAt: prismaPerumahan.updatedAt,
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/ProgressProyekMapper.ts">
+import type { Prisma } from "@prisma/client";
+import type { ProgressProyekEntity } from "../../domain/entities/ProgressProyek.js";
+
+type ProgressProyekWithRelations = Prisma.ProgressProyekGetPayload<{
+  include: { tahapan: true };
+}>;
+
+export class ProgressProyekMapper {
+  static toDomain(
+    prismaProgress: ProgressProyekWithRelations,
+  ): ProgressProyekEntity {
+    return {
+      id: prismaProgress.id,
+      penjualanId: prismaProgress.penjualanId,
+      pelaksana: prismaProgress.pelaksana,
+      persentase: Number(prismaProgress.persentase),
+      createdAt: prismaProgress.createdAt,
+      updatedAt: prismaProgress.updatedAt,
+      tahapan: prismaProgress.tahapan.map((t) => ({
+        id: t.id,
+        progressProyekId: t.progressProyekId,
+        namaTahapan: t.namaTahapan,
+        persentase: Number(t.persentase),
+        deskripsi: t.deskripsi,
+        tanggal: t.tanggal,
+        foto: t.foto ? (t.foto as string[]) : [],
+      })),
     };
   }
 }
@@ -4675,6 +5142,98 @@ export class PerumahanController {
 }
 </file>
 
+<file path="src/presentation/controllers/progressProyekController.ts">
+import type { Response, Request } from "express";
+import { StatusCodes } from "http-status-codes";
+import { sendResponse } from "../../utils/response.js";
+import type { TypedRequest } from "../../types/request.js";
+
+import type {
+  GetProgressProyekUseCase,
+  UpdateProgressProyekUseCase,
+  UploadTahapanPhotoUseCase,
+} from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
+
+import type {
+  updateProgressProyekSchema,
+  getProgressProyekSchema,
+} from "../../validations/progressProyekSchema.js";
+
+export class ProgressProyekController {
+  constructor(
+    private readonly getUseCase: GetProgressProyekUseCase,
+    private readonly updateUseCase: UpdateProgressProyekUseCase,
+    private readonly uploadUseCase: UploadTahapanPhotoUseCase,
+  ) {}
+
+  getByPenjualanId = async (
+    req: TypedRequest<never, never, typeof getProgressProyekSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const penjualanId = parseInt(req.params.id, 10);
+    const result = await this.getUseCase.execute(penjualanId);
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data progress proyek berhasil diambil",
+      result,
+    );
+  };
+
+  update = async (
+    req: TypedRequest<
+      typeof updateProgressProyekSchema.body,
+      never,
+      typeof updateProgressProyekSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const penjualanId = parseInt(req.params.id, 10);
+    const result = await this.updateUseCase.execute(penjualanId, req.body);
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data progress proyek berhasil diperbarui",
+      result,
+    );
+  };
+
+  uploadPhoto = async (req: Request, res: Response): Promise<void> => {
+    // Parsing manual parameter karena ini memakai middleware multer khusus (array file)
+    const penjualanId = parseInt(req.params.id as string, 10);
+    const namaTahapan = req.params.namaTahapan as string;
+
+    const files = req.files as Express.Multer.File[] | undefined;
+
+    if (!files || files.length === 0) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File foto wajib diunggah (minimal 1)",
+      );
+      return;
+    }
+
+    const buffers = files.map((f) => f.buffer);
+
+    const result = await this.uploadUseCase.execute(
+      penjualanId,
+      namaTahapan,
+      buffers,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Foto untuk tahapan ${namaTahapan} berhasil diunggah`,
+      result,
+    );
+  };
+}
+</file>
+
 <file path="src/presentation/controllers/userController.test.ts">
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mock, type MockProxy } from "vitest-mock-extended";
@@ -5165,6 +5724,53 @@ export const createOcrRoutes = (controller: OcrController): Router => {
 };
 </file>
 
+<file path="src/presentation/routes/progressProyekRoutes.ts">
+import { Router } from "express";
+import {
+  authenticate,
+  requirePermission,
+} from "../../middlewares/authMiddleware.js";
+import { validate } from "../../middlewares/validate.js";
+import { upload } from "../../middlewares/upload.js";
+import {
+  getProgressProyekSchema,
+  updateProgressProyekSchema,
+  uploadTahapanPhotoSchema,
+} from "../../validations/progressProyekSchema.js";
+import type { ProgressProyekController } from "../controllers/progressProyekController.js";
+
+export const createProgressProyekRoutes = (
+  controller: ProgressProyekController,
+): Router => {
+  const router = Router();
+  router.use(authenticate);
+
+  router.get(
+    "/:id",
+    requirePermission("PROGRESS_PROYEK", "read"),
+    validate(getProgressProyekSchema),
+    controller.getByPenjualanId,
+  );
+
+  router.patch(
+    "/:id",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    validate(updateProgressProyekSchema),
+    controller.update,
+  );
+
+  router.patch(
+    "/:id/tahapan/:namaTahapan/foto",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    upload.array("foto", 10),
+    validate({ params: uploadTahapanPhotoSchema.params }),
+    controller.uploadPhoto,
+  );
+
+  return router;
+};
+</file>
+
 <file path="src/presentation/routes/userRoutes.test.ts">
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import request from "supertest";
@@ -5615,6 +6221,71 @@ import { z } from "zod";
 
 export const ocrExtractSchema = {
   body: z.object({}),
+};
+</file>
+
+<file path="src/validations/perumahanSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createPerumahanSchema = {
+  body: z.object({
+    nama: z.string().min(3, "Nama perumahan minimal 3 karakter"),
+    logo: z.string().min(1, "Logo wajib diisi"),
+    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
+  }),
+};
+
+export const updatePerumahanSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+  }),
+  body: z.object({
+    nama: emptyAsUndefined(z.string().min(3).optional()),
+    logo: emptyAsUndefined(z.string().min(1).optional()),
+    alamat: emptyAsUndefined(z.string().min(5).optional()),
+  }),
+};
+
+export const getPerumahanPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+</file>
+
+<file path="src/validations/progressProyekSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+
+const tahapanSchema = z.object({
+  namaTahapan: z.string().min(1, "Nama tahapan wajib diisi"),
+  persentase: z.coerce.number().min(0).max(100),
+  deskripsi: emptyAsUndefined(z.string().optional()),
+  tanggal: z.coerce.date(),
+  foto: z.array(z.string()).default([]),
+});
+
+export const updateProgressProyekSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
+  }),
+  body: z.object({
+    pelaksana: emptyAsUndefined(z.string().optional()),
+    tahapan: z.array(tahapanSchema).optional(),
+  }),
+};
+
+export const getProgressProyekSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
+  }),
+};
+
+export const uploadTahapanPhotoSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
+    namaTahapan: z.string().min(1, "Nama tahapan wajib diisi"),
+  }),
 };
 </file>
 
@@ -6651,21 +7322,6 @@ export interface KavlingFilterDTO extends BaseFilterDTO {
 }
 </file>
 
-<file path="src/domain/dtos/PerusahaanAgentDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-
-export interface CreatePerusahaanAgentDTO {
-  nama: string;
-}
-
-export interface UpdatePerusahaanAgentDTO {
-  nama?: string;
-  akte?: string;
-}
-
-export type PerusahaanAgentFilterDTO = BaseFilterDTO;
-</file>
-
 <file path="src/domain/dtos/RolePermissionDTO.ts">
 import type { Role } from "@prisma/client";
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
@@ -6777,16 +7433,6 @@ export interface CustomerEntity {
   dokumenLainnya: any;
   userId: number | null;
   hasAccount: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-</file>
-
-<file path="src/domain/entities/PerusahaanAgent.ts">
-export interface PerusahaanAgentEntity {
-  id: number;
-  nama: string;
-  akte: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -7075,169 +7721,6 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
 }
 </file>
 
-<file path="src/domain/repositories/feeAgentRepo.ts">
-import type { Prisma, PrismaClient } from "@prisma/client";
-import type { IFeeAgentRepository } from "./IFeeAgentRepo.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-import { FeeAgentMapper } from "../../infrastructure/mapper/FeeAgentMapper.js";
-import type {
-  CreateFeeAgentDTO,
-  UpdateFeeAgentDTO,
-  FeeAgentFilterDTO,
-  FeeAgentResponseDTO,
-} from "../dtos/FeeAgentDTO.js";
-
-const includeRelations = {
-  agent: { select: { nama: true } },
-  penjualan: {
-    include: {
-      customer: { select: { nama: true } },
-      kavling: {
-        include: { perumahan: { select: { nama: true } } },
-      },
-    },
-  },
-} satisfies Prisma.FeeAgentInclude;
-
-export class FeeAgentRepository implements IFeeAgentRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreateFeeAgentDTO): Promise<FeeAgentResponseDTO> {
-    const existing = await this.findByPenjualanId(data.penjualanId);
-    if (existing) {
-      throw new ConflictError("Data Fee Agent untuk Penjualan ini sudah ada.");
-    }
-
-    const result = await this.db.feeAgent.create({
-      data: {
-        agentId: data.agentId,
-        penjualanId: data.penjualanId,
-      },
-      include: includeRelations,
-    });
-
-    return FeeAgentMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<FeeAgentResponseDTO | null> {
-    const result = await this.db.feeAgent.findUnique({
-      where: { id },
-      include: includeRelations,
-    });
-    if (!result) return null;
-    return FeeAgentMapper.toDomain(result);
-  }
-
-  async findByPenjualanId(
-    penjualanId: number,
-  ): Promise<FeeAgentResponseDTO | null> {
-    const result = await this.db.feeAgent.findUnique({
-      where: { penjualanId },
-      include: includeRelations,
-    });
-    if (!result) return null;
-    return FeeAgentMapper.toDomain(result);
-  }
-
-  async update(
-    id: number,
-    data: UpdateFeeAgentDTO,
-  ): Promise<FeeAgentResponseDTO> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Data Fee Agent tidak ditemukan");
-
-    const updateData: Prisma.FeeAgentUpdateInput = {};
-
-    if (data.bookingNominal !== undefined)
-      updateData.bookingNominal = data.bookingNominal;
-    if (data.bookingTanggal !== undefined) {
-      updateData.bookingTanggal = data.bookingTanggal
-        ? new Date(data.bookingTanggal)
-        : null;
-    }
-    if (data.bookingBukti !== undefined)
-      updateData.bookingBukti = data.bookingBukti;
-
-    if (data.closingNominal !== undefined)
-      updateData.closingNominal = data.closingNominal;
-    if (data.closingTanggal !== undefined) {
-      updateData.closingTanggal = data.closingTanggal
-        ? new Date(data.closingTanggal)
-        : null;
-    }
-    if (data.closingBukti !== undefined)
-      updateData.closingBukti = data.closingBukti;
-
-    if (data.marketingNominal !== undefined)
-      updateData.marketingNominal = data.marketingNominal;
-    if (data.marketingTanggal !== undefined) {
-      updateData.marketingTanggal = data.marketingTanggal
-        ? new Date(data.marketingTanggal)
-        : null;
-    }
-    if (data.marketingBukti !== undefined)
-      updateData.marketingBukti = data.marketingBukti;
-
-    const result = await this.db.feeAgent.update({
-      where: { id },
-      data: updateData,
-      include: includeRelations,
-    });
-
-    return FeeAgentMapper.toDomain(result as any);
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: FeeAgentFilterDTO,
-  ): Promise<CursorPaginatedData<FeeAgentResponseDTO>> {
-    const where: Prisma.FeeAgentWhereInput = {
-      penjualan: {
-        status: {
-          not: "BATAL",
-        },
-      },
-    };
-
-    if (filters?.agentId) where.agentId = filters.agentId;
-    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
-
-    if (filters?.search) {
-      where.OR = [
-        { agent: { nama: { contains: filters.search } } },
-        { penjualan: { noTransaksi: { contains: filters.search } } },
-        { penjualan: { customer: { nama: { contains: filters.search } } } },
-      ];
-    }
-
-    const items = await this.db.feeAgent.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ createdAt: "desc" }],
-      include: includeRelations,
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    return {
-      items: items.map((item) => FeeAgentMapper.toDomain(item as any)),
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-}
-</file>
-
 <file path="src/domain/repositories/IAgentRepo.ts">
 import type { AgentEntity } from "../entities/Agent.js";
 import type {
@@ -7382,94 +7865,6 @@ export interface IUserRepository {
     cursor?: number,
     filters?: UserFilterDTO,
   ): Promise<CursorPaginatedData<UserEntity>>;
-}
-</file>
-
-<file path="src/domain/repositories/perusahaanAgentRepo.ts">
-import type { Prisma, PrismaClient } from "@prisma/client";
-import type { IPerusahaanAgentRepository } from "./IPerusahaanAgentRepo.js";
-import type { PerusahaanAgentEntity } from "../entities/PerusahaanAgent.js";
-import type {
-  CreatePerusahaanAgentDTO,
-  UpdatePerusahaanAgentDTO,
-  PerusahaanAgentFilterDTO,
-} from "../dtos/PerusahaanAgentDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { PerusahaanAgentMapper } from "../../infrastructure/mapper/PerusahaanAgentMapper.js";
-
-export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async create(data: CreatePerusahaanAgentDTO): Promise<PerusahaanAgentEntity> {
-    const result = await this.db.perusahaanAgent.create({
-      data: { nama: data.nama },
-    });
-    return PerusahaanAgentMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<PerusahaanAgentEntity | null> {
-    const result = await this.db.perusahaanAgent.findUnique({ where: { id } });
-    if (!result) return null;
-    return PerusahaanAgentMapper.toDomain(result);
-  }
-
-  async update(
-    id: number,
-    data: UpdatePerusahaanAgentDTO,
-  ): Promise<PerusahaanAgentEntity> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Perusahaan Agent tidak ditemukan");
-
-    const updateData: Prisma.PerusahaanAgentUpdateInput = {};
-    if (data.nama !== undefined) updateData.nama = data.nama;
-    if (data.akte !== undefined) updateData.akte = data.akte;
-
-    const result = await this.db.perusahaanAgent.update({
-      where: { id },
-      data: updateData,
-    });
-    return PerusahaanAgentMapper.toDomain(result);
-  }
-
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Perusahaan Agent tidak ditemukan");
-    await this.db.perusahaanAgent.delete({ where: { id } });
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: PerusahaanAgentFilterDTO,
-  ): Promise<CursorPaginatedData<PerusahaanAgentEntity>> {
-    const where: Prisma.PerusahaanAgentWhereInput = {};
-
-    if (filters?.search) {
-      where.nama = { contains: filters.search };
-    }
-
-    const items = await this.db.perusahaanAgent.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ createdAt: "desc" }],
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    return {
-      items: items.map((item) => PerusahaanAgentMapper.toDomain(item)),
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
 }
 </file>
 
@@ -7716,23 +8111,6 @@ export class CustomerMapper {
       hasAccount: prismaCustomer.userId !== null,
       createdAt: prismaCustomer.createdAt,
       updatedAt: prismaCustomer.updatedAt,
-    };
-  }
-}
-</file>
-
-<file path="src/infrastructure/mapper/PerusahaanAgentMapper.ts">
-import type { PerusahaanAgent as PrismaPerusahaanAgent } from "@prisma/client";
-import type { PerusahaanAgentEntity } from "../../domain/entities/PerusahaanAgent.js";
-
-export class PerusahaanAgentMapper {
-  static toDomain(prismaData: PrismaPerusahaanAgent): PerusahaanAgentEntity {
-    return {
-      id: prismaData.id,
-      nama: prismaData.nama,
-      akte: prismaData.akte,
-      createdAt: prismaData.createdAt,
-      updatedAt: prismaData.updatedAt,
     };
   }
 }
@@ -8949,60 +9327,6 @@ export const generateAccountSchema = {
 };
 </file>
 
-<file path="src/validations/perumahanSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-
-export const createPerumahanSchema = {
-  body: z.object({
-    nama: z.string().min(3, "Nama perumahan minimal 3 karakter"),
-    logo: z.string().min(1, "Logo wajib diisi"),
-    alamat: z.string().min(5, "Alamat minimal 5 karakter"),
-  }),
-};
-
-export const updatePerumahanSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
-  body: z.object({
-    nama: emptyAsUndefined(z.string().min(3).optional()),
-    logo: emptyAsUndefined(z.string().min(1).optional()),
-    alamat: emptyAsUndefined(z.string().min(5).optional()),
-  }),
-};
-
-export const getPerumahanPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
-</file>
-
-<file path="src/validations/perusahaanAgentSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-
-export const createPerusahaanAgentSchema = {
-  body: z.object({
-    nama: z.string().min(3, "Nama perusahaan minimal 3 karakter"),
-  }),
-};
-
-export const updatePerusahaanAgentSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
-  }),
-  body: z.object({
-    nama: emptyAsUndefined(z.string().min(3).optional()),
-  }),
-};
-
-export const getPerusahaanAgentPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
-};
-</file>
-
 <file path="src/validations/rolePermissionSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -9525,6 +9849,51 @@ export class UploadKavlingDocumentUseCase {
     );
     const updateData = { [docType]: fileUrl };
     return await this.repo.update(id, updateData);
+  }
+}
+</file>
+
+<file path="src/application/usecases/penjualan/CancelPenjualanUseCase.ts">
+import type { PrismaClient } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { ConflictError } from "../../../domain/errors/ConflictError.js";
+
+export class CancelPenjualanUseCase {
+  constructor(private readonly db: PrismaClient) {}
+
+  async execute(
+    noTransaksi: string,
+    alasanBatal: string,
+    requestedById: number,
+  ) {
+    return await this.db.$transaction(async (tx) => {
+      const penjualan = await tx.penjualan.findUnique({
+        where: { noTransaksi },
+        include: { pengajuanBatal: { where: { status: "PENDING" } } },
+      });
+
+      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
+      if (penjualan.status === "BATAL")
+        throw new ConflictError("Penjualan sudah dibatalkan sebelumnya");
+      if (penjualan.status === "LUNAS")
+        throw new ConflictError(
+          "Penjualan Lunas tidak bisa dibatalkan sembarangan",
+        );
+      if (penjualan.pengajuanBatal.length > 0) {
+        throw new ConflictError(
+          "Sudah ada pengajuan pembatalan yang menunggu persetujuan (PENDING).",
+        );
+      }
+
+      return await tx.pengajuanBatal.create({
+        data: {
+          penjualanId: penjualan.id,
+          alasan: alasanBatal,
+          status: "PENDING",
+          requestedById: requestedById,
+        },
+      });
+    });
   }
 }
 </file>
@@ -10087,6 +10456,24 @@ export interface NotarisResponseDTO {
 export type NotarisFilterDTO = BaseFilterDTO;
 </file>
 
+<file path="src/domain/dtos/PerusahaanAgentDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+
+export interface CreatePerusahaanAgentDTO {
+  nama: string;
+  npwp?: string;
+  namaBank?: string;
+  noRekening?: string;
+  atasNamaRekening?: string;
+}
+
+export interface UpdatePerusahaanAgentDTO extends Partial<CreatePerusahaanAgentDTO> {
+  akte?: string;
+}
+
+export type PerusahaanAgentFilterDTO = BaseFilterDTO;
+</file>
+
 <file path="src/domain/entities/Kavling.ts">
 import type { UnitStatus } from "@prisma/client";
 
@@ -10145,6 +10532,20 @@ export interface NotarisEntity {
 
   pics: PicNotarisEntity[];
   ajbDitangani?: AjbDitanganiEntity[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+</file>
+
+<file path="src/domain/entities/PerusahaanAgent.ts">
+export interface PerusahaanAgentEntity {
+  id: number;
+  nama: string;
+  npwp: string | null;
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
+  akte: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -10526,6 +10927,104 @@ export class NotarisRepository implements INotarisRepository {
 }
 </file>
 
+<file path="src/domain/repositories/perusahaanAgentRepo.ts">
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { IPerusahaanAgentRepository } from "./IPerusahaanAgentRepo.js";
+import type { PerusahaanAgentEntity } from "../entities/PerusahaanAgent.js";
+import type {
+  CreatePerusahaanAgentDTO,
+  UpdatePerusahaanAgentDTO,
+  PerusahaanAgentFilterDTO,
+} from "../dtos/PerusahaanAgentDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { PerusahaanAgentMapper } from "../../infrastructure/mapper/PerusahaanAgentMapper.js";
+
+export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async create(data: CreatePerusahaanAgentDTO): Promise<PerusahaanAgentEntity> {
+    const result = await this.db.perusahaanAgent.create({
+      data: {
+        nama: data.nama,
+        npwp: data.npwp ?? null,
+        namaBank: data.namaBank ?? null,
+        noRekening: data.noRekening ?? null,
+        atasNamaRekening: data.atasNamaRekening ?? null,
+      },
+    });
+    return PerusahaanAgentMapper.toDomain(result);
+  }
+  async findById(id: number): Promise<PerusahaanAgentEntity | null> {
+    const result = await this.db.perusahaanAgent.findUnique({ where: { id } });
+    if (!result) return null;
+    return PerusahaanAgentMapper.toDomain(result);
+  }
+
+  async update(
+    id: number,
+    data: UpdatePerusahaanAgentDTO,
+  ): Promise<PerusahaanAgentEntity> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Perusahaan Agent tidak ditemukan");
+
+    const updateData: Prisma.PerusahaanAgentUpdateInput = {};
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.npwp !== undefined) updateData.npwp = data.npwp;
+    if (data.namaBank !== undefined) updateData.namaBank = data.namaBank;
+    if (data.noRekening !== undefined) updateData.noRekening = data.noRekening;
+    if (data.atasNamaRekening !== undefined)
+      updateData.atasNamaRekening = data.atasNamaRekening;
+    if (data.akte !== undefined) updateData.akte = data.akte;
+
+    const result = await this.db.perusahaanAgent.update({
+      where: { id },
+      data: updateData,
+    });
+    return PerusahaanAgentMapper.toDomain(result);
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Perusahaan Agent tidak ditemukan");
+    await this.db.perusahaanAgent.delete({ where: { id } });
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: PerusahaanAgentFilterDTO,
+  ): Promise<CursorPaginatedData<PerusahaanAgentEntity>> {
+    const where: Prisma.PerusahaanAgentWhereInput = {};
+
+    if (filters?.search) {
+      where.nama = { contains: filters.search };
+    }
+
+    const items = await this.db.perusahaanAgent.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: [{ createdAt: "desc" }],
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => PerusahaanAgentMapper.toDomain(item)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+}
+</file>
+
 <file path="src/infrastructure/external/EmailService.ts">
 import nodemailer from "nodemailer";
 import { env } from "../../config/env.js";
@@ -10635,6 +11134,85 @@ export class KavlingMapper {
 
       createdAt: prismaKavling.createdAt,
       updatedAt: prismaKavling.updatedAt,
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/NotarisMapper.ts">
+import type { Prisma } from "@prisma/client";
+import type { NotarisEntity } from "../../domain/entities/Notaris.js";
+
+export type NotarisWithRelations = Prisma.NotarisGetPayload<{
+  include: {
+    pics: true;
+    detailKavlingPajak: {
+      include: {
+        penjualan: {
+          include: {
+            customer: { select: { nama: true } };
+            kavling: {
+              include: { perumahan: { select: { nama: true } } };
+            };
+          };
+        };
+      };
+    };
+  };
+}>;
+
+export class NotarisMapper {
+  static toDomain(prismaNotaris: NotarisWithRelations): NotarisEntity {
+    return {
+      id: prismaNotaris.id,
+      nama: prismaNotaris.nama,
+      nomorKtp: prismaNotaris.nomorKtp ?? null,
+      nomorIjin: prismaNotaris.nomorIjin ?? null,
+      noHp: prismaNotaris.noHp ?? null,
+      alamat: prismaNotaris.alamat ?? null,
+      biayaAjb: Number(prismaNotaris.biayaAjb),
+      createdAt: prismaNotaris.createdAt,
+      updatedAt: prismaNotaris.updatedAt,
+      pics: prismaNotaris.pics.map((pic) => ({
+        id: pic.id,
+        notarisId: pic.notarisId,
+        nama: pic.nama,
+        noHp: pic.noHp,
+        alamat: pic.alamat,
+        createdAt: pic.createdAt,
+        updatedAt: pic.updatedAt,
+      })),
+      ajbDitangani: prismaNotaris.detailKavlingPajak
+        ? prismaNotaris.detailKavlingPajak
+            .filter((detail) => detail.penjualan.status !== "BATAL")
+            .map((detail) => ({
+              id: detail.penjualan.noTransaksi,
+              customer: detail.penjualan.customer.nama,
+              kavling: `${detail.penjualan.kavling.perumahan.nama} (${detail.penjualan.kavling.blok}-${detail.penjualan.kavling.nomorUnit})`,
+              biayaAjbTransaksi: Number(detail.pjBiayaAjb),
+            }))
+        : [],
+    };
+  }
+}
+</file>
+
+<file path="src/infrastructure/mapper/PerusahaanAgentMapper.ts">
+import type { PerusahaanAgent as PrismaPerusahaanAgent } from "@prisma/client";
+import type { PerusahaanAgentEntity } from "../../domain/entities/PerusahaanAgent.js";
+
+export class PerusahaanAgentMapper {
+  static toDomain(prismaData: PrismaPerusahaanAgent): PerusahaanAgentEntity {
+    return {
+      id: prismaData.id,
+      nama: prismaData.nama,
+      npwp: prismaData.npwp,
+      namaBank: prismaData.namaBank,
+      noRekening: prismaData.noRekening,
+      atasNamaRekening: prismaData.atasNamaRekening,
+      akte: prismaData.akte,
+      createdAt: prismaData.createdAt,
+      updatedAt: prismaData.updatedAt,
     };
   }
 }
@@ -11240,6 +11818,37 @@ export const getNotarisPaginatedSchema = {
 };
 </file>
 
+<file path="src/validations/perusahaanAgentSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+
+export const createPerusahaanAgentSchema = {
+  body: z.object({
+    nama: z.string().min(3, "Nama perusahaan minimal 3 karakter"),
+    npwp: emptyAsUndefined(z.string().optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const updatePerusahaanAgentSchema = {
+  params: z.object({ id: z.string().regex(/^\d+$/, "ID harus berupa angka") }),
+  body: z.object({
+    nama: emptyAsUndefined(z.string().min(3).optional()),
+    npwp: emptyAsUndefined(z.string().optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
+  }),
+};
+
+export const getPerusahaanAgentPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
+</file>
+
 <file path="src/validations/tagihanSchema.ts">
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
@@ -11738,51 +12347,6 @@ export class UploadCustomerDocumentUseCase {
 }
 </file>
 
-<file path="src/application/usecases/penjualan/CancelPenjualanUseCase.ts">
-import type { PrismaClient } from "@prisma/client";
-import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import { ConflictError } from "../../../domain/errors/ConflictError.js";
-
-export class CancelPenjualanUseCase {
-  constructor(private readonly db: PrismaClient) {}
-
-  async execute(
-    noTransaksi: string,
-    alasanBatal: string,
-    requestedById: number,
-  ) {
-    return await this.db.$transaction(async (tx) => {
-      const penjualan = await tx.penjualan.findUnique({
-        where: { noTransaksi },
-        include: { pengajuanBatal: { where: { status: "PENDING" } } },
-      });
-
-      if (!penjualan) throw new NotFoundError("Data Penjualan tidak ditemukan");
-      if (penjualan.status === "BATAL")
-        throw new ConflictError("Penjualan sudah dibatalkan sebelumnya");
-      if (penjualan.status === "LUNAS")
-        throw new ConflictError(
-          "Penjualan Lunas tidak bisa dibatalkan sembarangan",
-        );
-      if (penjualan.pengajuanBatal.length > 0) {
-        throw new ConflictError(
-          "Sudah ada pengajuan pembatalan yang menunggu persetujuan (PENDING).",
-        );
-      }
-
-      return await tx.pengajuanBatal.create({
-        data: {
-          penjualanId: penjualan.id,
-          alasan: alasanBatal,
-          status: "PENDING",
-          requestedById: requestedById,
-        },
-      });
-    });
-  }
-}
-</file>
-
 <file path="src/application/usecases/penjualan/GantiKavlingUseCase.ts">
 import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
@@ -12200,60 +12764,194 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
 }
 </file>
 
-<file path="src/infrastructure/mapper/NotarisMapper.ts">
+<file path="src/domain/repositories/tagihanRepo.ts">
 import type { Prisma } from "@prisma/client";
-import type { NotarisEntity } from "../../domain/entities/Notaris.js";
+import type { PrismaClient } from "@prisma/client";
+import type { ITagihanRepository } from "./ITagihanRepo.js";
+import type {
+  CreateTagihanDTO,
+  UpdateTagihanDTO,
+  TagihanFilterDTO,
+  TagihanResponseDTO,
+} from "../dtos/TagihanDTO.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { TagihanMapper } from "../../infrastructure/mapper/TagihanMapper.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
-export type NotarisWithRelations = Prisma.NotarisGetPayload<{
-  include: {
-    pics: true;
-    detailKavlingPajak: {
-      include: {
-        penjualan: {
-          include: {
-            customer: { select: { nama: true } };
-            kavling: {
-              include: { perumahan: { select: { nama: true } } };
-            };
-          };
-        };
-      };
+const tagihanIncludeRelations = {
+  customer: { select: { nama: true } },
+  penjualan: {
+    include: {
+      kavling: {
+        include: {
+          perumahan: { select: { nama: true } },
+          rekeningTujuan: true,
+        },
+      },
+      rekeningTujuan: true,
+    },
+  },
+} satisfies Prisma.TagihanInclude;
+
+export class TagihanRepository implements ITagihanRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async count(): Promise<number> {
+    return await this.db.tagihan.count();
+  }
+
+  async create(
+    data: CreateTagihanDTO,
+    noTagihan: string,
+  ): Promise<TagihanResponseDTO> {
+    const parseDate = (d: string | Date) => new Date(d);
+
+    const result = await this.db.tagihan.create({
+      data: {
+        noTagihan,
+        customerId: data.customerId,
+        penjualanId: data.penjualanId,
+        pembayaran: data.pembayaran,
+        nominal: data.nominal,
+        jatuhTempo: parseDate(data.jatuhTempo),
+        reminderBerikutnya: data.reminderBerikutnya
+          ? parseDate(data.reminderBerikutnya)
+          : null,
+        status: "BELUM_BAYAR",
+      },
+      include: tagihanIncludeRelations,
+    });
+
+    return TagihanMapper.toDomain(result);
+  }
+
+  async findById(id: number): Promise<TagihanResponseDTO | null> {
+    const result = await this.db.tagihan.findUnique({
+      where: { id },
+      include: tagihanIncludeRelations,
+    });
+    if (!result) return null;
+    return TagihanMapper.toDomain(result);
+  }
+
+  async update(
+    id: number,
+    data: UpdateTagihanDTO,
+  ): Promise<TagihanResponseDTO> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
+
+    const updateData: Prisma.TagihanUpdateInput = {};
+    if (data.pembayaran !== undefined) updateData.pembayaran = data.pembayaran;
+    if (data.nominal !== undefined) updateData.nominal = data.nominal;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.fileBukti !== undefined) updateData.fileBukti = data.fileBukti;
+    if (data.jatuhTempo !== undefined)
+      updateData.jatuhTempo = new Date(data.jatuhTempo);
+    if (data.reminderBerikutnya !== undefined) {
+      updateData.reminderBerikutnya = data.reminderBerikutnya
+        ? new Date(data.reminderBerikutnya)
+        : null;
+    }
+
+    const result = await this.db.tagihan.update({
+      where: { id },
+      data: updateData,
+      include: tagihanIncludeRelations,
+    });
+
+    return TagihanMapper.toDomain(result);
+  }
+
+  async findWithOffsetPagination(
+    page: number,
+    limit: number,
+    filters?: TagihanFilterDTO,
+  ): Promise<OffsetPaginatedData<TagihanResponseDTO>> {
+    const where: Prisma.TagihanWhereInput = {
+      penjualan: {
+        status: { not: "BATAL" },
+      },
     };
-  };
-}>;
 
-export class NotarisMapper {
-  static toDomain(prismaNotaris: NotarisWithRelations): NotarisEntity {
+    if (filters?.customerId) where.customerId = filters.customerId;
+    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
+    if (filters?.status) where.status = filters.status;
+
+    if (filters?.search) {
+      where.OR = [
+        { noTagihan: { contains: filters.search } },
+        { pembayaran: { contains: filters.search } },
+        { customer: { nama: { contains: filters.search } } },
+      ];
+    }
+
+    // Penambahan Filter Tanggal (Berdasarkan Update/Bayar)
+    if (filters?.startDate || filters?.endDate) {
+      where.updatedAt = {};
+      if (filters.startDate) {
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        where.updatedAt.gte = start;
+      }
+      if (filters.endDate) {
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.updatedAt.lte = end;
+      }
+    }
+
+    // Penambahan Dinamis Order By
+    let orderByClause: Prisma.TagihanOrderByWithRelationInput[] = [
+      { updatedAt: "desc" }, // Default Sort
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      if (["createdAt", "updatedAt", "nominal"].includes(field)) {
+        orderByClause = [{ [field]: direction }];
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [items, totalItems] = await Promise.all([
+      this.db.tagihan.findMany({
+        take: limit,
+        skip,
+        where,
+        orderBy: orderByClause,
+        include: tagihanIncludeRelations,
+      }),
+      this.db.tagihan.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit) || 1;
+
     return {
-      id: prismaNotaris.id,
-      nama: prismaNotaris.nama,
-      nomorKtp: prismaNotaris.nomorKtp ?? null,
-      nomorIjin: prismaNotaris.nomorIjin ?? null,
-      noHp: prismaNotaris.noHp ?? null,
-      alamat: prismaNotaris.alamat ?? null,
-      biayaAjb: Number(prismaNotaris.biayaAjb),
-      createdAt: prismaNotaris.createdAt,
-      updatedAt: prismaNotaris.updatedAt,
-      pics: prismaNotaris.pics.map((pic) => ({
-        id: pic.id,
-        notarisId: pic.notarisId,
-        nama: pic.nama,
-        noHp: pic.noHp,
-        alamat: pic.alamat,
-        createdAt: pic.createdAt,
-        updatedAt: pic.updatedAt,
-      })),
-      ajbDitangani: prismaNotaris.detailKavlingPajak
-        ? prismaNotaris.detailKavlingPajak
-            .filter((detail) => detail.penjualan.status !== "BATAL")
-            .map((detail) => ({
-              id: detail.penjualan.noTransaksi,
-              customer: detail.penjualan.customer.nama,
-              kavling: `${detail.penjualan.kavling.perumahan.nama} (${detail.penjualan.kavling.blok}-${detail.penjualan.kavling.nomorUnit})`,
-              biayaAjbTransaksi: Number(detail.pjBiayaAjb),
-            }))
-        : [],
+      items: items.map((item) => TagihanMapper.toDomain(item as any)),
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     };
+  }
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
+    await this.db.tagihan.delete({ where: { id } });
+  }
+  async findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null> {
+    const result = await this.db.tagihan.findUnique({
+      where: { noTagihan },
+      include: tagihanIncludeRelations,
+    });
+    if (!result) return null;
+    return TagihanMapper.toDomain(result);
   }
 }
 </file>
@@ -13422,198 +14120,6 @@ export class UploadBuktiTagihanUseCase {
 }
 </file>
 
-<file path="src/domain/repositories/tagihanRepo.ts">
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { ITagihanRepository } from "./ITagihanRepo.js";
-import type {
-  CreateTagihanDTO,
-  UpdateTagihanDTO,
-  TagihanFilterDTO,
-  TagihanResponseDTO,
-} from "../dtos/TagihanDTO.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { TagihanMapper } from "../../infrastructure/mapper/TagihanMapper.js";
-import type { OffsetPaginatedData } from "../../types/response.js";
-
-const tagihanIncludeRelations = {
-  customer: { select: { nama: true } },
-  penjualan: {
-    include: {
-      kavling: {
-        include: {
-          perumahan: { select: { nama: true } },
-          rekeningTujuan: true,
-        },
-      },
-      rekeningTujuan: true,
-    },
-  },
-} satisfies Prisma.TagihanInclude;
-
-export class TagihanRepository implements ITagihanRepository {
-  constructor(private readonly db: PrismaClient) {}
-
-  async count(): Promise<number> {
-    return await this.db.tagihan.count();
-  }
-
-  async create(
-    data: CreateTagihanDTO,
-    noTagihan: string,
-  ): Promise<TagihanResponseDTO> {
-    const parseDate = (d: string | Date) => new Date(d);
-
-    const result = await this.db.tagihan.create({
-      data: {
-        noTagihan,
-        customerId: data.customerId,
-        penjualanId: data.penjualanId,
-        pembayaran: data.pembayaran,
-        nominal: data.nominal,
-        jatuhTempo: parseDate(data.jatuhTempo),
-        reminderBerikutnya: data.reminderBerikutnya
-          ? parseDate(data.reminderBerikutnya)
-          : null,
-        status: "BELUM_BAYAR",
-      },
-      include: tagihanIncludeRelations,
-    });
-
-    return TagihanMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<TagihanResponseDTO | null> {
-    const result = await this.db.tagihan.findUnique({
-      where: { id },
-      include: tagihanIncludeRelations,
-    });
-    if (!result) return null;
-    return TagihanMapper.toDomain(result);
-  }
-
-  async update(
-    id: number,
-    data: UpdateTagihanDTO,
-  ): Promise<TagihanResponseDTO> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
-
-    const updateData: Prisma.TagihanUpdateInput = {};
-    if (data.pembayaran !== undefined) updateData.pembayaran = data.pembayaran;
-    if (data.nominal !== undefined) updateData.nominal = data.nominal;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.fileBukti !== undefined) updateData.fileBukti = data.fileBukti;
-    if (data.jatuhTempo !== undefined)
-      updateData.jatuhTempo = new Date(data.jatuhTempo);
-    if (data.reminderBerikutnya !== undefined) {
-      updateData.reminderBerikutnya = data.reminderBerikutnya
-        ? new Date(data.reminderBerikutnya)
-        : null;
-    }
-
-    const result = await this.db.tagihan.update({
-      where: { id },
-      data: updateData,
-      include: tagihanIncludeRelations,
-    });
-
-    return TagihanMapper.toDomain(result);
-  }
-
-  async findWithOffsetPagination(
-    page: number,
-    limit: number,
-    filters?: TagihanFilterDTO,
-  ): Promise<OffsetPaginatedData<TagihanResponseDTO>> {
-    const where: Prisma.TagihanWhereInput = {
-      penjualan: {
-        status: { not: "BATAL" },
-      },
-    };
-
-    if (filters?.customerId) where.customerId = filters.customerId;
-    if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
-    if (filters?.status) where.status = filters.status;
-
-    if (filters?.search) {
-      where.OR = [
-        { noTagihan: { contains: filters.search } },
-        { pembayaran: { contains: filters.search } },
-        { customer: { nama: { contains: filters.search } } },
-      ];
-    }
-
-    // Penambahan Filter Tanggal (Berdasarkan Update/Bayar)
-    if (filters?.startDate || filters?.endDate) {
-      where.updatedAt = {};
-      if (filters.startDate) {
-        const start = new Date(filters.startDate);
-        start.setHours(0, 0, 0, 0);
-        where.updatedAt.gte = start;
-      }
-      if (filters.endDate) {
-        const end = new Date(filters.endDate);
-        end.setHours(23, 59, 59, 999);
-        where.updatedAt.lte = end;
-      }
-    }
-
-    // Penambahan Dinamis Order By
-    let orderByClause: Prisma.TagihanOrderByWithRelationInput[] = [
-      { updatedAt: "desc" }, // Default Sort
-    ];
-
-    if (filters?.orderBy) {
-      const { field, direction } = filters.orderBy;
-      if (["createdAt", "updatedAt", "nominal"].includes(field)) {
-        orderByClause = [{ [field]: direction }];
-      }
-    }
-
-    const skip = (page - 1) * limit;
-
-    const [items, totalItems] = await Promise.all([
-      this.db.tagihan.findMany({
-        take: limit,
-        skip,
-        where,
-        orderBy: orderByClause,
-        include: tagihanIncludeRelations,
-      }),
-      this.db.tagihan.count({ where }),
-    ]);
-
-    const totalPages = Math.ceil(totalItems / limit) || 1;
-
-    return {
-      items: items.map((item) => TagihanMapper.toDomain(item as any)),
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    };
-  }
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
-    await this.db.tagihan.delete({ where: { id } });
-  }
-  async findByNoTagihan(noTagihan: string): Promise<TagihanResponseDTO | null> {
-    const result = await this.db.tagihan.findUnique({
-      where: { noTagihan },
-      include: tagihanIncludeRelations,
-    });
-    if (!result) return null;
-    return TagihanMapper.toDomain(result);
-  }
-}
-</file>
-
 <file path="src/presentation/controllers/authController.ts">
 import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -13845,82 +14351,6 @@ export const createCustomerRoutes = (
   );
 
   return router;
-};
-</file>
-
-<file path="src/validations/agentSchema.ts">
-import { z } from "zod";
-import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
-import { AgentStatus, AgentType } from "@prisma/client";
-
-// Schema untuk nested PIC
-const picSchema = z.object({
-  nama: z.string().min(3, "Nama PIC minimal 3 karakter"),
-  noHp: z.string().min(9, "Nomor HP PIC minimal 9 karakter"),
-  alamat: emptyAsUndefined(z.string().optional()),
-});
-export const createAgentSchema = {
-  body: z.object({
-    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
-    nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
-    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
-    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
-    alamat: emptyAsUndefined(z.string().optional()),
-    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
-    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
-    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
-    namaBank: emptyAsUndefined(z.string().optional()),
-    noRekening: emptyAsUndefined(z.string().optional()),
-    atasNamaRekening: emptyAsUndefined(z.string().optional()),
-    feeMarketingPct: emptyAsUndefined(
-      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
-    ),
-    feeClosingPct: emptyAsUndefined(
-      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
-    ), // <-- TAMBAHKAN INI
-    potonganPph: emptyAsUndefined(
-      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
-    ),
-    pics: emptyAsUndefined(z.array(picSchema).optional()),
-  }),
-};
-export const updateAgentSchema = {
-  params: z.object({ id: z.string().regex(/^\d+$/, "ID harus berupa angka") }),
-  body: z.object({
-    nik: emptyAsUndefined(
-      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
-    ),
-    nama: emptyAsUndefined(z.string().min(3).optional()),
-    noHp: emptyAsUndefined(z.string().min(9).optional()),
-    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
-    alamat: emptyAsUndefined(z.string().optional()),
-    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
-    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
-    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
-    namaBank: emptyAsUndefined(z.string().optional()),
-    noRekening: emptyAsUndefined(z.string().optional()),
-    atasNamaRekening: emptyAsUndefined(z.string().optional()),
-    feeMarketingPct: emptyAsUndefined(
-      z.coerce.number().min(0).max(100).optional(),
-    ),
-    feeClosingPct: emptyAsUndefined(
-      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
-    ), // <-- TAMBAHKAN INI
-    potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
-    pics: emptyAsUndefined(z.array(picSchema).optional()),
-  }),
-};
-export const generateAgentAccountSchema = {
-  params: z.object({
-    id: z.string().regex(/^\d+$/, "ID Agent harus berupa angka"),
-  }),
-  body: z.object({
-    password: z.string().min(6, "Password minimal 6 karakter"),
-  }),
-};
-export const getAgentsPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
 };
 </file>
 
@@ -14226,68 +14656,6 @@ export class ApproveGantiKavlingUseCase {
 }
 </file>
 
-<file path="src/domain/entities/Agent.ts">
-import type { AgentStatus } from "@prisma/client";
-import type { AgentType } from "@prisma/client";
-
-export interface PicAgentEntity {
-  id: number;
-  agentId: number;
-  nama: string;
-  noHp: string;
-  alamat: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PenjualanAgentEntity {
-  id: number;
-  noTransaksi: string;
-  tanggal: Date;
-  hargaJual: number;
-  status: string;
-  customer: { nama: string } | null;
-  kavling: {
-    blok: string;
-    nomorUnit: string;
-    perumahan: { nama: string } | null;
-  } | null;
-}
-export interface AgentEntity {
-  id: number;
-  userId: number | null;
-  nik: string;
-  kodeSales: string | null;
-  nama: string;
-  alamat: string | null;
-  noHp: string;
-  email: string | null;
-  status: AgentStatus;
-  type: AgentType;
-  namaBank: string | null;
-  noRekening: string | null;
-  atasNamaRekening: string | null;
-
-  feeMarketingPct: number | null;
-  feeClosingPct: number | null;
-  potonganPph: number | null;
-
-  fileKtp: string | null;
-  fileNpwp: string | null;
-  kwitansiBookingFee: string | null;
-  fileSuratPernyataan: string | null;
-  defaultSuratPernyataan: string | null;
-  fileSuratKeterangan: string | null;
-  fileKtpDirektur: string | null;
-  fileNpwpPerusahaan: string | null;
-  hasAccount: boolean;
-  pics: PicAgentEntity[];
-  penjualan?: PenjualanAgentEntity[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-</file>
-
 <file path="src/presentation/routes/index.ts">
 import { Router } from "express";
 import { checkHealth } from "../controllers/healthController.js";
@@ -14311,6 +14679,7 @@ import { createAuditLogRoutes } from "./auditLogRoutes.js";
 import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
 import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
 import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
+import { createProgressProyekRoutes } from "./progressProyekRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -14352,11 +14721,87 @@ export const createMainRouter = (deps: typeof container): Router => {
     "/perusahaan-agents",
     createPerusahaanAgentRoutes(deps.perusahaanAgentController),
   );
+  router.use(
+    "/progress-proyek",
+    createProgressProyekRoutes(deps.progressProyekController),
+  );
   return router;
 };
 
 const router = createMainRouter(container);
 export default router;
+</file>
+
+<file path="src/validations/agentSchema.ts">
+import { z } from "zod";
+import { emptyAsUndefined } from "./emptySchema.js";
+import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { AgentStatus, AgentType } from "@prisma/client";
+
+// Schema untuk nested PIC
+const picSchema = z.object({
+  nama: z.string().min(3, "Nama PIC minimal 3 karakter"),
+  noHp: z.string().min(9, "Nomor HP PIC minimal 9 karakter"),
+  alamat: emptyAsUndefined(z.string().optional()),
+});
+export const createAgentSchema = {
+  body: z.object({
+    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
+    noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
+    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
+    feeClosingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()), // <-- Ganti menjadi ini (tanpa max 100) // <-- TAMBAHKAN INI
+    potonganPph: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
+    pics: emptyAsUndefined(z.array(picSchema).optional()),
+  }),
+};
+export const updateAgentSchema = {
+  params: z.object({ id: z.string().regex(/^\d+$/, "ID harus berupa angka") }),
+  body: z.object({
+    nik: emptyAsUndefined(
+      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
+    ),
+    nama: emptyAsUndefined(z.string().min(3).optional()),
+    noHp: emptyAsUndefined(z.string().min(9).optional()),
+    email: emptyAsUndefined(z.string().email("Format email salah").optional()),
+    alamat: emptyAsUndefined(z.string().optional()),
+    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
+    namaBank: emptyAsUndefined(z.string().optional()),
+    noRekening: emptyAsUndefined(z.string().optional()),
+    atasNamaRekening: emptyAsUndefined(z.string().optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100).optional(),
+    ),
+    feeClosingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()), // <-- Ganti menjadi ini (tanpa max 100) // <-- TAMBAHKAN INI
+    potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
+    pics: emptyAsUndefined(z.array(picSchema).optional()),
+  }),
+};
+export const generateAgentAccountSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID Agent harus berupa angka"),
+  }),
+  body: z.object({
+    password: z.string().min(6, "Password minimal 6 karakter"),
+  }),
+};
+export const getAgentsPaginatedSchema = {
+  query: cursorPaginationQuerySchema,
+};
 </file>
 
 <file path="src/application/usecases/verify/VerifyDocumentUseCase.ts">
@@ -14507,299 +14952,65 @@ export class VerifyDocumentUseCase {
 }
 </file>
 
-<file path="src/domain/repositories/agentRepo.ts">
-import { AgentStatus, type Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
-import type { IAgentRepository } from "./IAgentRepo.js";
-import type { AgentEntity } from "../entities/Agent.js";
-import type {
-  CreateAgentDTO,
-  UpdateAgentDTO,
-  AgentFilterDTO,
-} from "../dtos/AgentDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
-import { NotFoundError } from "../errors/NotFoundError.js";
-import { ConflictError } from "../errors/ConflictError.js";
-import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
+<file path="src/domain/entities/Agent.ts">
+import type { AgentStatus } from "@prisma/client";
+import type { AgentType } from "@prisma/client";
 
-export class AgentRepository implements IAgentRepository {
-  constructor(private readonly db: PrismaClient) {}
+export interface PicAgentEntity {
+  id: number;
+  agentId: number;
+  nama: string;
+  noHp: string;
+  alamat: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-  async create(data: CreateAgentDTO): Promise<AgentEntity> {
-    const checkDuplicate = await this.db.agent.findFirst({
-      where: { nik: data.nik },
-    });
+export interface PenjualanAgentEntity {
+  id: number;
+  noTransaksi: string;
+  tanggal: Date;
+  hargaJual: number;
+  status: string;
+  customer: { nama: string } | null;
+  kavling: {
+    blok: string;
+    nomorUnit: string;
+    perumahan: { nama: string } | null;
+  } | null;
+}
+export interface AgentEntity {
+  id: number;
+  userId: number | null;
+  nik: string;
+  kodeSales: string | null;
+  nama: string;
+  alamat: string | null;
+  noHp: string;
+  email: string | null;
+  status: AgentStatus;
+  type: AgentType;
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
 
-    if (checkDuplicate) {
-      throw new ConflictError("NIK Agent sudah terdaftar");
-    }
+  feeMarketingPct: number | null;
+  feeClosingNominal: number | null;
+  potonganPph: number | null;
 
-    const createData: Prisma.AgentCreateInput = {
-      nik: data.nik,
-      nama: data.nama,
-      noHp: data.noHp,
-      email: data.email ?? null,
-      alamat: data.alamat ?? null,
-      namaBank: data.namaBank ?? null,
-      noRekening: data.noRekening ?? null,
-      atasNamaRekening: data.atasNamaRekening ?? null,
-      status: AgentStatus.AKTIF,
-    };
-
-    if (data.status) createData.status = data.status;
-    if (data.type) createData.type = data.type;
-    if (data.perusahaanAgentId !== undefined) {
-      createData.perusahaanAgent = { connect: { id: data.perusahaanAgentId } };
-    }
-    if (data.feeMarketingPct !== undefined)
-      createData.feeMarketingPct = data.feeMarketingPct;
-    if (data.feeClosingPct !== undefined)
-      createData.feeClosingPct = data.feeClosingPct;
-    if (data.potonganPph !== undefined)
-      createData.potonganPph = data.potonganPph;
-
-    if (data.pics && data.pics.length > 0) {
-      createData.pics = {
-        create: data.pics.map((p) => ({
-          nama: p.nama,
-          noHp: p.noHp,
-          alamat: p.alamat ?? null,
-        })),
-      };
-    }
-
-    const result = await this.db.agent.create({
-      data: createData,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return AgentMapper.toDomain(result);
-  }
-
-  async findById(id: number): Promise<AgentEntity | null> {
-    const result = await this.db.agent.findUnique({
-      where: { id },
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-    if (!result) return null;
-    return AgentMapper.toDomain(result);
-  }
-  async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Agent tidak ditemukan");
-    }
-
-    const updateData: Prisma.AgentUncheckedUpdateInput = {};
-
-    if (data.userId !== undefined) updateData.userId = data.userId;
-    if (data.nik !== undefined) updateData.nik = data.nik;
-    if (data.nama !== undefined) updateData.nama = data.nama;
-    if (data.noHp !== undefined) updateData.noHp = data.noHp;
-    if (data.email !== undefined) updateData.email = data.email ?? null;
-    if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.type !== undefined) updateData.type = data.type;
-    if (data.perusahaanAgentId !== undefined) {
-      updateData.perusahaanAgentId = data.perusahaanAgentId;
-    }
-    if (data.namaBank !== undefined)
-      updateData.namaBank = data.namaBank ?? null;
-    if (data.noRekening !== undefined)
-      updateData.noRekening = data.noRekening ?? null;
-    if (data.atasNamaRekening !== undefined)
-      updateData.atasNamaRekening = data.atasNamaRekening ?? null;
-
-    if (data.feeMarketingPct !== undefined)
-      updateData.feeMarketingPct = data.feeMarketingPct ?? null;
-    if (data.feeClosingPct !== undefined)
-      updateData.feeClosingPct = data.feeClosingPct ?? null;
-    if (data.potonganPph !== undefined)
-      updateData.potonganPph = data.potonganPph ?? null;
-
-    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
-    if (data.fileNpwp !== undefined)
-      updateData.fileNpwp = data.fileNpwp ?? null;
-    if (data.kwitansiBookingFee !== undefined)
-      updateData.kwitansiBookingFee = data.kwitansiBookingFee ?? null;
-    if (data.fileSuratPernyataan !== undefined)
-      updateData.fileSuratPernyataan = data.fileSuratPernyataan ?? null;
-    if (data.fileSuratKeterangan !== undefined)
-      updateData.fileSuratKeterangan = data.fileSuratKeterangan ?? null;
-    if (data.fileKtpDirektur !== undefined)
-      updateData.fileKtpDirektur = data.fileKtpDirektur ?? null;
-    if (data.fileNpwpPerusahaan !== undefined)
-      updateData.fileNpwpPerusahaan = data.fileNpwpPerusahaan ?? null;
-
-    if (data.pics) {
-      updateData.pics = {
-        deleteMany: {},
-        create: data.pics.map((p) => ({
-          nama: p.nama,
-          noHp: p.noHp,
-          alamat: p.alamat ?? null,
-        })),
-      };
-    }
-
-    const result = await this.db.agent.update({
-      where: { id },
-      data: updateData,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return AgentMapper.toDomain(result);
-  }
-
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: AgentFilterDTO,
-  ): Promise<CursorPaginatedData<AgentEntity>> {
-    const where: Prisma.AgentWhereInput = {};
-
-    if (filters?.search) {
-      where.OR = [
-        { nama: { contains: filters.search } },
-        { nik: { contains: filters.search } },
-      ];
-    }
-
-    let orderByClause: Prisma.AgentOrderByWithRelationInput[] = [
-      { nama: "asc" },
-    ];
-
-    if (filters?.orderBy) {
-      const { field, direction } = filters.orderBy;
-      const validFields = ["nama", "nik", "createdAt"];
-      if (validFields.includes(field)) {
-        orderByClause = [{ [field]: direction }, { id: "asc" }];
-      }
-    }
-
-    const items = await this.db.agent.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: orderByClause,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
-
-    return {
-      items: items.map((item) => AgentMapper.toDomain(item)),
-      meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
-      },
-    };
-  }
-
-  async delete(id: number): Promise<void> {
-    const existing = await this.findById(id);
-    if (!existing) {
-      throw new NotFoundError("Agent tidak ditemukan");
-    }
-
-    await this.db.agent.delete({ where: { id } });
-  }
-  async findByUserId(userId: number): Promise<AgentEntity | null> {
-    const result = await this.db.agent.findFirst({
-      where: { userId },
-      include: { pics: true },
-    });
-    if (!result) return null;
-    return AgentMapper.toDomain(result as any);
-  }
+  fileKtp: string | null;
+  fileNpwp: string | null;
+  kwitansiBookingFee: string | null;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
+  fileSuratKeterangan: string | null;
+  fileKtpDirektur: string | null;
+  fileNpwpPerusahaan: string | null;
+  hasAccount: boolean;
+  pics: PicAgentEntity[];
+  penjualan?: PenjualanAgentEntity[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 </file>
 
@@ -15428,111 +15639,299 @@ export const createPenjualanRoutes = (
 };
 </file>
 
-<file path="src/domain/dtos/AgentDTO.ts">
-import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { AgentStatus, AgentType } from "@prisma/client";
+<file path="src/domain/repositories/agentRepo.ts">
+import { AgentStatus, type Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import type { IAgentRepository } from "./IAgentRepo.js";
+import type { AgentEntity } from "../entities/Agent.js";
+import type {
+  CreateAgentDTO,
+  UpdateAgentDTO,
+  AgentFilterDTO,
+} from "../dtos/AgentDTO.js";
+import type { CursorPaginatedData } from "../../types/response.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
 
-export interface PicAgentDTO {
-  id?: number | undefined;
-  nama: string;
-  noHp: string;
-  alamat?: string | undefined;
-}
-export interface CreateAgentDTO {
-  nik: string;
-  nama: string;
-  alamat?: string | undefined;
-  noHp: string;
-  email?: string | undefined;
-  status?: AgentStatus | undefined;
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  perusahaanAgentId?: number | undefined;
+export class AgentRepository implements IAgentRepository {
+  constructor(private readonly db: PrismaClient) {}
 
-  feeMarketingPct?: number | undefined;
-  feeClosingPct?: number | undefined; // <-- TAMBAHKAN INI
-  potonganPph?: number | undefined;
-  pics?: PicAgentDTO[] | undefined;
-}
+  async create(data: CreateAgentDTO): Promise<AgentEntity> {
+    const checkDuplicate = await this.db.agent.findFirst({
+      where: { nik: data.nik },
+    });
 
-export interface UpdateAgentDTO {
-  userId?: number | undefined;
-  nik?: string | undefined;
-  nama?: string | undefined;
-  alamat?: string | undefined;
-  noHp?: string | undefined;
-  fileSuratPernyataan: string | null;
-  defaultSuratPernyataan: string | null;
-  email?: string | undefined;
-  status?: AgentStatus | undefined;
-  perusahaanAgentId?: number | undefined;
+    if (checkDuplicate) {
+      throw new ConflictError("NIK Agent sudah terdaftar");
+    }
 
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  feeMarketingPct?: number | undefined;
-  feeClosingPct?: number | undefined; // <-- TAMBAHKAN INI
-  potonganPph?: number | undefined;
-  fileKtp?: string | undefined;
-  fileNpwp?: string | undefined;
-  kwitansiBookingFee?: string | undefined;
-  fileSuratKeterangan?: string | undefined;
-  fileKtpDirektur?: string | undefined;
-  fileNpwpPerusahaan?: string | undefined;
-  pics?: PicAgentDTO[] | undefined;
-}
+    const createData: Prisma.AgentCreateInput = {
+      nik: data.nik,
+      nama: data.nama,
+      noHp: data.noHp,
+      email: data.email ?? null,
+      alamat: data.alamat ?? null,
+      namaBank: data.namaBank ?? null,
+      noRekening: data.noRekening ?? null,
+      atasNamaRekening: data.atasNamaRekening ?? null,
+      status: AgentStatus.AKTIF,
+    };
 
-export interface AgentResponseDTO {
-  id: number;
-  userId: number | null;
-  nik: string;
-  kodeSales: string | null;
-  nama: string;
-  alamat: string | null;
-  noHp: string;
-  email: string | null;
-  status: AgentStatus;
-  type: AgentType;
-  fileSuratPernyataan: string | null;
-  defaultSuratPernyataan: string | null;
+    if (data.status) createData.status = data.status;
+    if (data.type) createData.type = data.type;
+    if (data.perusahaanAgentId !== undefined) {
+      createData.perusahaanAgent = { connect: { id: data.perusahaanAgentId } };
+    }
+    if (data.feeMarketingPct !== undefined)
+      createData.feeMarketingPct = data.feeMarketingPct;
+    if (data.feeClosingNominal !== undefined)
+      createData.feeClosingNominal = data.feeClosingNominal;
+    if (data.potonganPph !== undefined)
+      createData.potonganPph = data.potonganPph;
 
-  namaBank: string | null;
-  noRekening: string | null;
-  atasNamaRekening: string | null;
+    if (data.pics && data.pics.length > 0) {
+      createData.pics = {
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
 
-  feeMarketingPct: number | null;
-  feeClosingPct: number | null; // <-- TAMBAHKAN INI
-  potonganPph: number | null;
+    const result = await this.db.agent.create({
+      data: createData,
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
 
-  fileKtp: string | null;
-  fileNpwp: string | null;
-  kwitansiBookingFee: string | null;
-  fileSuratKeterangan: string | null;
-  fileKtpDirektur: string | null;
-  fileNpwpPerusahaan: string | null;
+    return AgentMapper.toDomain(result);
+  }
 
-  hasAccount: boolean;
-  pics: PicAgentDTO[];
-  createdAt: Date;
-}
-export type AgentFilterDTO = BaseFilterDTO;
+  async findById(id: number): Promise<AgentEntity | null> {
+    const result = await this.db.agent.findUnique({
+      where: { id },
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!result) return null;
+    return AgentMapper.toDomain(result);
+  }
+  async update(id: number, data: UpdateAgentDTO): Promise<AgentEntity> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
+    }
 
-export interface RegisterAgentDTO {
-  nik: string;
-  nama: string;
-  noHp: string;
-  email: string;
-  password: string;
-  alamat?: string | undefined;
-  type?: AgentType | undefined;
-  namaBank?: string | undefined;
-  noRekening?: string | undefined;
-  atasNamaRekening?: string | undefined;
-  perusahaanAgentId?: number | undefined;
-  ttdData?: string | undefined;
+    const updateData: Prisma.AgentUncheckedUpdateInput = {};
+
+    if (data.userId !== undefined) updateData.userId = data.userId;
+    if (data.nik !== undefined) updateData.nik = data.nik;
+    if (data.nama !== undefined) updateData.nama = data.nama;
+    if (data.noHp !== undefined) updateData.noHp = data.noHp;
+    if (data.email !== undefined) updateData.email = data.email ?? null;
+    if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.perusahaanAgentId !== undefined) {
+      updateData.perusahaanAgentId = data.perusahaanAgentId;
+    }
+    if (data.namaBank !== undefined)
+      updateData.namaBank = data.namaBank ?? null;
+    if (data.noRekening !== undefined)
+      updateData.noRekening = data.noRekening ?? null;
+    if (data.atasNamaRekening !== undefined)
+      updateData.atasNamaRekening = data.atasNamaRekening ?? null;
+
+    if (data.feeMarketingPct !== undefined)
+      updateData.feeMarketingPct = data.feeMarketingPct ?? null;
+    if (data.feeClosingNominal !== undefined)
+      updateData.feeClosingNominal = data.feeClosingNominal ?? null;
+    if (data.potonganPph !== undefined)
+      updateData.potonganPph = data.potonganPph ?? null;
+
+    if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
+    if (data.fileNpwp !== undefined)
+      updateData.fileNpwp = data.fileNpwp ?? null;
+    if (data.kwitansiBookingFee !== undefined)
+      updateData.kwitansiBookingFee = data.kwitansiBookingFee ?? null;
+    if (data.fileSuratPernyataan !== undefined)
+      updateData.fileSuratPernyataan = data.fileSuratPernyataan ?? null;
+    if (data.fileSuratKeterangan !== undefined)
+      updateData.fileSuratKeterangan = data.fileSuratKeterangan ?? null;
+    if (data.fileKtpDirektur !== undefined)
+      updateData.fileKtpDirektur = data.fileKtpDirektur ?? null;
+    if (data.fileNpwpPerusahaan !== undefined)
+      updateData.fileNpwpPerusahaan = data.fileNpwpPerusahaan ?? null;
+
+    if (data.pics) {
+      updateData.pics = {
+        deleteMany: {},
+        create: data.pics.map((p) => ({
+          nama: p.nama,
+          noHp: p.noHp,
+          alamat: p.alamat ?? null,
+        })),
+      };
+    }
+
+    const result = await this.db.agent.update({
+      where: { id },
+      data: updateData,
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return AgentMapper.toDomain(result);
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: AgentFilterDTO,
+  ): Promise<CursorPaginatedData<AgentEntity>> {
+    const where: Prisma.AgentWhereInput = {};
+
+    if (filters?.search) {
+      where.OR = [
+        { nama: { contains: filters.search } },
+        { nik: { contains: filters.search } },
+      ];
+    }
+
+    let orderByClause: Prisma.AgentOrderByWithRelationInput[] = [
+      { nama: "asc" },
+    ];
+
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["nama", "nik", "createdAt"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+
+    const items = await this.db.agent.findMany({
+      take: limit + 1,
+      ...(cursor && { skip: 1, cursor: { id: cursor } }),
+      where,
+      orderBy: orderByClause,
+      include: {
+        pics: true,
+        perusahaanAgent: true,
+        penjualan: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noTransaksi: true,
+            tanggal: true,
+            hargaJual: true,
+            status: true,
+            customer: { select: { nama: true } },
+            kavling: {
+              select: {
+                blok: true,
+                nomorUnit: true,
+                perumahan: { select: { nama: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let hasNextPage = false;
+    if (items.length > limit) {
+      hasNextPage = true;
+      items.pop();
+    }
+
+    return {
+      items: items.map((item) => AgentMapper.toDomain(item)),
+      meta: {
+        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
+        hasNextPage,
+      },
+    };
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Agent tidak ditemukan");
+    }
+
+    await this.db.agent.delete({ where: { id } });
+  }
+  async findByUserId(userId: number): Promise<AgentEntity | null> {
+    const result = await this.db.agent.findFirst({
+      where: { userId },
+      include: { pics: true },
+    });
+    if (!result) return null;
+    return AgentMapper.toDomain(result as any);
+  }
 }
 </file>
 
@@ -15583,9 +15982,9 @@ export class AgentMapper {
       feeMarketingPct: prismaAgent.feeMarketingPct
         ? Number(prismaAgent.feeMarketingPct)
         : null,
-      feeClosingPct: prismaAgent.feeClosingPct
-        ? Number(prismaAgent.feeClosingPct)
-        : null,
+      feeClosingNominal: prismaAgent.feeClosingNominal
+        ? Number(prismaAgent.feeClosingNominal)
+        : null, // <-- Ubah ini
       potonganPph: prismaAgent.potonganPph
         ? Number(prismaAgent.potonganPph)
         : null,
@@ -15981,6 +16380,114 @@ export class UpdateCustomerKavlingUseCase {
       message: "Data Kavling Customer berhasil diperbarui",
     };
   }
+}
+</file>
+
+<file path="src/domain/dtos/AgentDTO.ts">
+import type { BaseFilterDTO } from "./BaseFilterDTO.js";
+import type { AgentStatus, AgentType } from "@prisma/client";
+
+export interface PicAgentDTO {
+  id?: number | undefined;
+  nama: string;
+  noHp: string;
+  alamat?: string | undefined;
+}
+export interface CreateAgentDTO {
+  nik: string;
+  nama: string;
+  alamat?: string | undefined;
+  noHp: string;
+  email?: string | undefined;
+  status?: AgentStatus | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  perusahaanAgentId?: number | undefined;
+
+  feeMarketingPct?: number | undefined;
+  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
+  potonganPph?: number | undefined;
+  pics?: PicAgentDTO[] | undefined;
+}
+
+export interface UpdateAgentDTO {
+  userId?: number | undefined;
+  nik?: string | undefined;
+  nama?: string | undefined;
+  alamat?: string | undefined;
+  noHp?: string | undefined;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
+  email?: string | undefined;
+  status?: AgentStatus | undefined;
+  perusahaanAgentId?: number | undefined;
+
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  feeMarketingPct?: number | undefined;
+  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
+  potonganPph?: number | undefined;
+  fileKtp?: string | undefined;
+  fileNpwp?: string | undefined;
+  kwitansiBookingFee?: string | undefined;
+  fileSuratKeterangan?: string | undefined;
+  fileKtpDirektur?: string | undefined;
+  fileNpwpPerusahaan?: string | undefined;
+  pics?: PicAgentDTO[] | undefined;
+}
+
+export interface AgentResponseDTO {
+  id: number;
+  userId: number | null;
+  nik: string;
+  kodeSales: string | null;
+  nama: string;
+  alamat: string | null;
+  noHp: string;
+  email: string | null;
+  status: AgentStatus;
+  type: AgentType;
+  fileSuratPernyataan: string | null;
+  defaultSuratPernyataan: string | null;
+
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
+
+  feeMarketingPct: number | null;
+  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
+  potonganPph: number | null;
+
+  fileKtp: string | null;
+  fileNpwp: string | null;
+  kwitansiBookingFee: string | null;
+  fileSuratKeterangan: string | null;
+  fileKtpDirektur: string | null;
+  fileNpwpPerusahaan: string | null;
+
+  hasAccount: boolean;
+  pics: PicAgentDTO[];
+  createdAt: Date;
+}
+export type AgentFilterDTO = BaseFilterDTO;
+
+export interface RegisterAgentDTO {
+  nik: string;
+  nama: string;
+  noHp: string;
+  email: string;
+  password: string;
+  alamat?: string | undefined;
+  type?: AgentType | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+  perusahaanAgentId?: number | undefined;
+  ttdData?: string | undefined;
 }
 </file>
 
@@ -18094,6 +18601,13 @@ export class PenjualanRepository implements IPenjualanRepository {
 </file>
 
 <file path="src/infrastructure/di/container.ts">
+import { ProgressProyekRepository } from "../../domain/repositories/progressProyekRepo.js";
+import {
+  GetProgressProyekUseCase,
+  UpdateProgressProyekUseCase,
+  UploadTahapanPhotoUseCase,
+} from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
+import { ProgressProyekController } from "../../presentation/controllers/progressProyekController.js";
 import { UserRepository } from "../../domain/repositories/userRepo.js";
 import { BankRekeningPtRepository } from "../../domain/repositories/bankRekeningPtRepo.js";
 import { CustomerRepository } from "../../domain/repositories/customerRepo.js";
@@ -18655,6 +19169,23 @@ export const createContainer = (dbClient: PrismaClient) => {
   const perusahaanAgentController = new PerusahaanAgentController(
     perusahaanAgentUseCases,
   );
+  const progressProyekRepo = new ProgressProyekRepository(dbClient);
+  const getProgressProyekUseCase = new GetProgressProyekUseCase(
+    progressProyekRepo,
+  );
+  const updateProgressProyekUseCase = new UpdateProgressProyekUseCase(
+    progressProyekRepo,
+  );
+  const uploadTahapanPhotoUseCase = new UploadTahapanPhotoUseCase(
+    progressProyekRepo,
+    cloudinaryService,
+  );
+
+  const progressProyekController = new ProgressProyekController(
+    getProgressProyekUseCase,
+    updateProgressProyekUseCase,
+    uploadTahapanPhotoUseCase,
+  );
   return {
     authController,
     userRepo,
@@ -18681,6 +19212,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     rolePermissionController,
     socketService,
     perusahaanAgentController,
+    progressProyekController,
   };
 };
 
@@ -18729,11 +19261,7 @@ enum PaymentMethod {
   CASH_BERTAHAP @map("CASH BERTAHAP")
   KPR           @map("KPR")
 }
-enum ProgressStatus {
-  MENUNGGU_VERIFIKASI @map("Menunggu Verifikasi")
-  DISETUJUI           @map("Disetujui")
-  REVISI              @map("Revisi")
-}
+
 enum PenjualanStatus {
   BOOKED    @map("Booked")
   PROSES    @map("Proses")
@@ -18847,6 +19375,10 @@ model PicNotaris {
 model PerusahaanAgent {
   id        Int      @id @default(autoincrement())
   nama      String   @db.VarChar(150)
+  npwp             String?  @db.VarChar(50)
+  namaBank         String?  @map("nama_bank") @db.VarChar(100)
+  noRekening       String?  @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening String?  @map("atas_nama_rekening") @db.VarChar(150)
   akte      String?  @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -18873,7 +19405,7 @@ model Agent {
   atasNamaRekening   String?     @map("atas_nama_rekening") @db.VarChar(150)
   
   feeMarketingPct Decimal? @map("fee_marketing_pct") @db.Decimal(5, 2)
-  feeClosingPct   Decimal? @map("fee_closing_pct") @db.Decimal(5, 2)
+  feeClosingNominal  Decimal? @map("fee_closing_nominal") @db.Decimal(15, 2)
   potonganPph     Decimal? @map("potongan_pph") @db.Decimal(5, 2)
 
   
@@ -18930,7 +19462,6 @@ model Kavling {
   perumahan           Perumahan        @relation(fields: [perumahanId], references: [id], onDelete: Restrict)
   rekeningTujuan      BankRekeningPt?  @relation(fields: [rekeningTujuanId], references: [id])
   penjualan           Penjualan[]
-  progressProyek      ProgressProyek[]
   @@unique([perumahanId, blok, nomorUnit])
   @@map("kavling")
 }
@@ -18980,6 +19511,7 @@ model Penjualan {
   progressPenjualan   ProgressPenjualan?
   pengajuanBatal PengajuanBatal[]
   riwayatSpr          RiwayatSpr[]
+  progressProyek      ProgressProyek?
   @@map("penjualan")
 }
 model DetailKavlingPajak {
@@ -19103,20 +19635,36 @@ model Spk {
   @@map("spk")
 }
 model ProgressProyek {
-  id               Int            @id @default(autoincrement())
-  kavlingId        Int            @map("kavling_id")
-  pelaksana        String         @db.VarChar(150)
-  tanggalLaporan   DateTime       @map("tanggal_laporan") @db.Date
-  tahapanPekerjaan String         @map("tahapan_pekerjaan") @db.VarChar(150)
-  persentase       Int            @default(0)
-  keterangan       String         @db.Text
-  kendala          String?        @db.Text
-  fotoLapangan     Json?          @map("foto_lapangan")
-  status           ProgressStatus @default(MENUNGGU_VERIFIKASI)
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  kavling          Kavling        @relation(fields: [kavlingId], references: [id])
+  id          Int      @id @default(autoincrement())
+  penjualanId Int      @unique @map("penjualan_id")
+  pelaksana   String?  @db.VarChar(150)
+  persentase  Decimal  @default(0) @db.Decimal(5, 2) 
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  penjualan   Penjualan       @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  tahapan     TahapanProyek[]
+
   @@map("progress_proyek")
+}
+
+model TahapanProyek {
+  id               Int      @id @default(autoincrement())
+  progressProyekId Int      @map("progress_proyek_id")
+  namaTahapan      String   @map("nama_tahapan") @db.VarChar(100) 
+  persentase       Decimal  @default(0) @db.Decimal(5, 2)
+  deskripsi        String?  @db.Text
+  tanggal          DateTime @default(now())
+  foto             Json?    @map("foto") 
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  progressProyek   ProgressProyek @relation(fields: [progressProyekId], references: [id], onDelete: Cascade)
+
+  @@unique([progressProyekId, namaTahapan]) 
+  @@map("tahapan_proyek")
 }
 model AuditLog {
   id          Int        @id @default(autoincrement())

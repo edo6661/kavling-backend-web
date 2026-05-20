@@ -56,28 +56,28 @@ export class GetDashboardSummaryUseCase {
       date: p.createdAt.toISOString().substring(0, 10),
     }));
 
-    const latestProgress = await this.db.progressProyek.findMany({
-      take: 5,
-      orderBy: { tanggalLaporan: "desc" },
-      include: {
-        kavling: {
-          include: {
-            penjualan: {
-              include: { customer: { select: { nama: true } } },
-              take: 1,
-            },
-          },
-        },
-      },
-    });
+    // const latestProgress = await this.db.progressProyek.findMany({
+    //   take: 5,
+    //   orderBy: { tanggalLaporan: "desc" },
+    //   include: {
+    //     kavling: {
+    //       include: {
+    //         penjualan: {
+    //           include: { customer: { select: { nama: true } } },
+    //           take: 1,
+    //         },
+    //       },
+    //     },
+    //   },
+    // });
 
-    const progressData = latestProgress.map((prog) => ({
-      kavling: `Blok ${prog.kavling.blok} - ${prog.kavling.nomorUnit}`,
-      customer: prog.kavling.penjualan[0]?.customer?.nama ?? "Unknown",
-      progress: prog.persentase,
-      tahap: prog.tahapanPekerjaan,
-      isLate: false,
-    }));
+    // const progressData = latestProgress.map((prog) => ({
+    //   kavling: `Blok ${prog.kavling.blok} - ${prog.kavling.nomorUnit}`,
+    //   customer: prog.kavling.penjualan[0]?.customer?.nama ?? "Unknown",
+    //   progress: prog.persentase,
+    //   tahap: prog.tahapanPekerjaan,
+    //   isLate: false,
+    // }));
 
     const topAgentsData = await this.db.penjualan.groupBy({
       by: ["agentId"],
@@ -148,7 +148,7 @@ export class GetDashboardSummaryUseCase {
         rataRataProgress: Number(progressProyek._avg.persentase ?? 0),
       },
       recentTransactions,
-      progressData,
+      // progressData,
       topAgents,
       documentAlerts,
     };

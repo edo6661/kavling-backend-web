@@ -14,6 +14,7 @@ export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
     rekeningTujuan: true;
     tagihan: true;
     agent: true;
+    progressProyek: true;
   };
 }>;
 
@@ -84,6 +85,10 @@ export interface PenjualanPaginatedItem {
   riwayatGantiKavling?: any[];
   tagihan?: any[];
   progressPenjualan?: any;
+  progressProyek?: {
+    persentase: number;
+    pelaksana: string | null;
+  } | null;
 
   createdBy?: string;
   isPendingBatal?: boolean;
