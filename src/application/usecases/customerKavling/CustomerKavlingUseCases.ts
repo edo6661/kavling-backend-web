@@ -48,7 +48,10 @@ export class GetCustomerKavlingsPaginatedUseCase {
     }
 
     const mappedItems = items.map((p) => {
-      const { id: _, ...restDetailPajak } = p.detailKavlingPajak ?? {};
+      // Omit `pembiayaan` from detail spread: it is a separate DetailKavlingPajak column
+      // and null rows would overwrite Penjualan.caraPembayaran (the real payment method).
+      const { id: _, pembiayaan: _detailPembiayaan, ...restDetailPajak } =
+        p.detailKavlingPajak ?? {};
 
       return {
         id: p.id.toString(),
@@ -68,7 +71,7 @@ export class GetCustomerKavlingsPaginatedUseCase {
         diskonPenjualan: Number(p.diskonPenjualan ?? 0),
         totalHargaJual: Number(p.hargaJual),
 
-        pembiayaan: p.caraPembayaran,
+        pembiayaan: p.caraPembayaran ?? _detailPembiayaan,
         agent: p.agent?.nama ?? "Nama Agent",
 
         ...restDetailPajak,
