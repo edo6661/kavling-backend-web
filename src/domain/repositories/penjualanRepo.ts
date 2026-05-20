@@ -423,6 +423,8 @@ export class PenjualanRepository implements IPenjualanRepository {
         perusahaan: item.customer.perusahaan ?? "",
         alamatKoresponden: item.customer.alamatKoresponden ?? "",
         perumahan: item.kavling.perumahan.nama,
+        termin: item.termin ?? null,
+        keteranganAngsuran: item.keteranganAngsuran ?? null,
         blok: item.kavling.blok,
         tipe: item.kavling.namaTipe,
         luasBangunan: Number(item.kavling.luasBangunan),

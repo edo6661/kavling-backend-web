@@ -231,8 +231,10 @@ export class UpdatePenjualanUseCase {
           ? (data.biayaTambahanKpr as any)
           : Prisma.DbNull;
       }
-      if (currentCaraPembayaran === "CASH_BERTAHAP" && data.termin) {
-        updateData.termin = data.termin;
+      if (currentCaraPembayaran === "CASH_BERTAHAP") {
+        if (data.termin !== undefined && data.termin !== null) {
+          updateData.termin = data.termin;
+        }
       } else {
         updateData.termin = null;
       }
@@ -317,14 +319,29 @@ export class UpdatePenjualanUseCase {
           },
         });
 
-        if (existingCicilans.length === 0 && sisaPembayaran > 0) {
-          const baseDate = new Date(old.tanggal);
+        const parseCicilanIndex = (pembayaran: string): number => {
+          const m = /^Cicilan Ke-(\d+)$/.exec(pembayaran.trim());
+          return m ? parseInt(m[1]!, 10) : 0;
+        };
 
-          for (let i = 1; i <= data.termin; i++) {
-            const jatuhTempoCicilan = new Date(baseDate);
+        const byIndex = new Map<
+          number,
+          (typeof existingCicilans)[number]
+        >();
+        for (const c of existingCicilans) {
+          const idx = parseCicilanIndex(c.pembayaran);
+          if (idx > 0) byIndex.set(idx, c);
+        }
 
-            jatuhTempoCicilan.setMonth(jatuhTempoCicilan.getMonth() + i);
+        const baseDate = new Date(old.tanggal);
 
+        for (let i = 1; i <= data.termin; i++) {
+          const jatuhTempoCicilan = new Date(baseDate);
+          jatuhTempoCicilan.setMonth(jatuhTempoCicilan.getMonth() + i);
+
+          const existing = byIndex.get(i);
+          if (!existing) {
+            if (sisaPembayaran <= 0) continue;
             await tx.tagihan.create({
               data: {
                 noTagihan: `INV-CCL-${noTransaksi}-${i}`,
@@ -336,15 +353,34 @@ export class UpdatePenjualanUseCase {
                 status: "BELUM_BAYAR",
               },
             });
-          }
-        } else if (existingCicilans.length === data.termin) {
-          for (const cicilan of existingCicilans) {
-            if (Number(cicilan.nominal) !== cicilanPerBulan) {
+          } else {
+            const patch: { nominal?: number; jatuhTempo?: Date } = {};
+            if (Number(existing.nominal) !== cicilanPerBulan) {
+              patch.nominal = cicilanPerBulan;
+            }
+            if (
+              existing.status === "BELUM_BAYAR" &&
+              existing.jatuhTempo.getTime() !== jatuhTempoCicilan.getTime()
+            ) {
+              patch.jatuhTempo = jatuhTempoCicilan;
+            }
+            if (Object.keys(patch).length > 0) {
               await tx.tagihan.update({
-                where: { id: cicilan.id },
-                data: { nominal: cicilanPerBulan },
+                where: { id: existing.id },
+                data: patch,
               });
             }
+          }
+        }
+
+        for (const [idx, cicilan] of byIndex) {
+          if (idx <= data.termin) continue;
+          if (cicilan.status === "BELUM_BAYAR") {
+            await tx.tagihan.delete({ where: { id: cicilan.id } });
+          } else {
+            throw new ConflictError(
+              `Tidak dapat memperpendek termin: cicilan ke-${idx} sudah lunas atau menunggu konfirmasi.`,
+            );
           }
         }
       }
