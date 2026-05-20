@@ -384,7 +384,7 @@ export const createContainer = (dbClient: PrismaClient) => {
 
   const tagihanRepo = new TagihanRepository(dbClient);
   const createTagihanUseCase = new CreateTagihanUseCase(tagihanRepo);
-  const updateTagihanUseCase = new UpdateTagihanUseCase(tagihanRepo);
+  const updateTagihanUseCase = new UpdateTagihanUseCase(tagihanRepo, dbClient);
   const getTagihanByIdUseCase = new GetTagihanByIdUseCase(tagihanRepo);
   const getTagihansPaginatedUseCase = new GetTagihansPaginatedUseCase(
     tagihanRepo,
