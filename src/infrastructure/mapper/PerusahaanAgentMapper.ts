@@ -10,6 +10,15 @@ export class PerusahaanAgentMapper {
       namaBank: prismaData.namaBank,
       noRekening: prismaData.noRekening,
       atasNamaRekening: prismaData.atasNamaRekening,
+      feeMarketingPct: prismaData.feeMarketingPct
+        ? Number(prismaData.feeMarketingPct)
+        : null,
+      feeClosingNominal: prismaData.feeClosingNominal
+        ? Number(prismaData.feeClosingNominal)
+        : null,
+      potonganPph: prismaData.potonganPph
+        ? Number(prismaData.potonganPph)
+        : null,
       akte: prismaData.akte,
       createdAt: prismaData.createdAt,
       updatedAt: prismaData.updatedAt,

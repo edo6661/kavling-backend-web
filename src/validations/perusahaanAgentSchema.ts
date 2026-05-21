@@ -9,6 +9,13 @@ export const createPerusahaanAgentSchema = {
     namaBank: emptyAsUndefined(z.string().optional()),
     noRekening: emptyAsUndefined(z.string().optional()),
     atasNamaRekening: emptyAsUndefined(z.string().optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
+    feeClosingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    potonganPph: emptyAsUndefined(
+      z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
+    ),
   }),
 };
 
@@ -20,6 +27,11 @@ export const updatePerusahaanAgentSchema = {
     namaBank: emptyAsUndefined(z.string().optional()),
     noRekening: emptyAsUndefined(z.string().optional()),
     atasNamaRekening: emptyAsUndefined(z.string().optional()),
+    feeMarketingPct: emptyAsUndefined(
+      z.coerce.number().min(0).max(100).optional(),
+    ),
+    feeClosingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
   }),
 };
 

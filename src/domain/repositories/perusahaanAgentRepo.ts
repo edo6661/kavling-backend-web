@@ -21,6 +21,9 @@ export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
         namaBank: data.namaBank ?? null,
         noRekening: data.noRekening ?? null,
         atasNamaRekening: data.atasNamaRekening ?? null,
+        feeMarketingPct: data.feeMarketingPct ?? null,
+        feeClosingNominal: data.feeClosingNominal ?? null,
+        potonganPph: data.potonganPph ?? null,
       },
     });
     return PerusahaanAgentMapper.toDomain(result);
@@ -45,6 +48,11 @@ export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
     if (data.noRekening !== undefined) updateData.noRekening = data.noRekening;
     if (data.atasNamaRekening !== undefined)
       updateData.atasNamaRekening = data.atasNamaRekening;
+    if (data.feeMarketingPct !== undefined)
+      updateData.feeMarketingPct = data.feeMarketingPct;
+    if (data.feeClosingNominal !== undefined)
+      updateData.feeClosingNominal = data.feeClosingNominal;
+    if (data.potonganPph !== undefined) updateData.potonganPph = data.potonganPph;
     if (data.akte !== undefined) updateData.akte = data.akte;
 
     const result = await this.db.perusahaanAgent.update({

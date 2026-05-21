@@ -6,6 +6,9 @@ export interface CreatePerusahaanAgentDTO {
   namaBank?: string;
   noRekening?: string;
   atasNamaRekening?: string;
+  feeMarketingPct?: number;
+  feeClosingNominal?: number;
+  potonganPph?: number;
 }
 
 export interface UpdatePerusahaanAgentDTO extends Partial<CreatePerusahaanAgentDTO> {

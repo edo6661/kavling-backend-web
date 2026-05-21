@@ -5,6 +5,9 @@ export interface PerusahaanAgentEntity {
   namaBank: string | null;
   noRekening: string | null;
   atasNamaRekening: string | null;
+  feeMarketingPct: number | null;
+  feeClosingNominal: number | null;
+  potonganPph: number | null;
   akte: string | null;
   createdAt: Date;
   updatedAt: Date;
