@@ -276,43 +276,6 @@ export class UpdatePenjualanUseCase {
       }
 
       if (
-        dp > 0 &&
-        (currentCaraPembayaran === "KPR" ||
-          currentCaraPembayaran === "CASH_BERTAHAP")
-      ) {
-        const existingDp = await tx.tagihan.findFirst({
-          where: {
-            penjualanId: old.id,
-            OR: [
-              { noTagihan: `INV-DP-${noTransaksi}` },
-              { pembayaran: { contains: "Down Payment" } },
-            ],
-          },
-        });
-        if (!existingDp) {
-          const dpDueDate = new Date(old.tanggal);
-          dpDueDate.setDate(dpDueDate.getDate() + 14);
-          await tx.tagihan.create({
-            data: {
-              noTagihan: `INV-DP-${noTransaksi}`,
-              customerId: old.customerId,
-              penjualanId: old.id,
-              pembayaran: "Down Payment (DP)",
-              tujuan: "DP",
-              nominal: dp,
-              jatuhTempo: dpDueDate,
-              status: "BELUM_BAYAR",
-            },
-          });
-        } else if (Number(existingDp.nominal) !== dp) {
-          await tx.tagihan.update({
-            where: { id: existingDp.id },
-            data: { nominal: dp, tujuan: "DP" },
-          });
-        }
-      }
-
-      if (
         currentCaraPembayaran === "CASH_BERTAHAP" &&
         data.termin &&
         data.termin > 0

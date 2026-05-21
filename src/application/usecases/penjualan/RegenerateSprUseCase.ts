@@ -40,33 +40,6 @@ export class RegenerateSprUseCase {
           },
         });
       }
-      const dpTagihan = penjualan.tagihan.find(
-        (t) =>
-          t.noTagihan === `INV-DP-${penjualan.noTransaksi}` ||
-          t.pembayaran.toLowerCase().includes("down payment"),
-      );
-      if (
-        !dpTagihan &&
-        penjualan.dp &&
-        Number(penjualan.dp) > 0 &&
-        (penjualan.caraPembayaran === "KPR" ||
-          penjualan.caraPembayaran === "CASH_BERTAHAP")
-      ) {
-        const dpDueDate = new Date(penjualan.tanggal);
-        dpDueDate.setDate(dpDueDate.getDate() + 14);
-        await tx.tagihan.create({
-          data: {
-            noTagihan: `INV-DP-${penjualan.noTransaksi}`,
-            customerId: penjualan.customerId,
-            penjualanId: penjualan.id,
-            pembayaran: "Down Payment (DP)",
-            tujuan: "DP",
-            nominal: penjualan.dp,
-            jatuhTempo: dpDueDate,
-            status: "BELUM_BAYAR",
-          },
-        });
-      }
       return penjualan.id;
     });
     const penjualanToUpdate = await this.db.penjualan.findUnique({

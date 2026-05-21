@@ -277,24 +277,6 @@ export class PenjualanRepository implements IPenjualanRepository {
         });
       }
 
-      if (dp > 0) {
-        const dpDueDate = new Date(data.tanggal);
-        dpDueDate.setDate(dpDueDate.getDate() + 14);
-
-        await tx.tagihan.create({
-          data: {
-            noTagihan: `INV-DP-${noTransaksi}`,
-            customerId: customer.id,
-            penjualanId: penjualan.id,
-            pembayaran: "Down Payment (DP)",
-            tujuan: "DP",
-            nominal: dp,
-            jatuhTempo: dpDueDate,
-            status: "BELUM_BAYAR",
-          },
-        });
-      }
-
       await tx.auditLog.create({
         data: {
           entityName: "Penjualan",

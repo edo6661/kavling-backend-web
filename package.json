@@ -18,7 +18,8 @@
     "db:push:test": "dotenv -e .env.test -- npx prisma db push",
     "test": "dotenv -e .env.test -- vitest",
     "test:ui": "dotenv -e .env.test -- vitest --ui",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "backfill:fee-agent": "tsx prisma/backfill-fee-agent.ts"
   },
   "dependencies": {
     "@google-cloud/vision": "^5.3.4",
