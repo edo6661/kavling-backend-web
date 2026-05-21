@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type Role } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { IUserRepository } from "./IUserRepo";
 import type { UserEntity } from "../entities/User";
@@ -140,6 +140,15 @@ export class UserRepository implements IUserRepository {
     });
     return results.map((u) => UserMapper.toDomain(u));
   }
+
+  async findByRole(role: Role) {
+    return await this.db.user.findMany({
+      where: { role },
+      select: { id: true, username: true },
+      orderBy: { username: "asc" },
+    });
+  }
+
   async delete(id: number): Promise<void> {
     const existing = await this.db.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("User tidak ditemukan");

@@ -20,6 +20,12 @@ export const createProgressProyekRoutes = (
   router.use(authenticate);
 
   router.get(
+    "/mandors",
+    requirePermission("PROGRESS_PROYEK", "read"),
+    controller.listMandors,
+  );
+
+  router.get(
     "/:id",
     requirePermission("PROGRESS_PROYEK", "read"),
     validate(getProgressProyekSchema),

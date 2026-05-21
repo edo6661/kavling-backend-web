@@ -22,6 +22,8 @@ model User {
   pengajuanBatal          PengajuanBatal[]      @relation("PengajuBatal")
   persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
   pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
+  progressProyekAsMandor  ProgressProyek[]      @relation("ProgressMandor")
+  tahapanReports          TahapanProyek[]       @relation("TahapanReporter")
 
   @@map("users")
 }
@@ -398,16 +400,17 @@ model Spk {
 }
 model ProgressProyek {
   id          Int      @id @default(autoincrement())
-  pelaksana   String?  @db.VarChar(150)
+  mandorId    Int?     @map("mandor_id")
   persentase  Decimal  @default(0.00) @db.Decimal(5, 2)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   penjualanId Int      @unique @map("penjualan_id")
   penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  mandor      User?    @relation("ProgressMandor", fields: [mandorId], references: [id])
 
-  
-  tahapan     TahapanProyek[] 
+  tahapan     TahapanProyek[]
 
+  @@index([mandorId], map: "progress_proyek_mandor_id_fkey")
   @@map("progress_proyek")
 }
 
@@ -418,14 +421,16 @@ model TahapanProyek {
   persentase       Decimal  @default(0) @db.Decimal(5, 2)
   deskripsi        String?  @db.Text
   tanggal          DateTime @default(now())
-  foto             Json?    @map("foto") 
+  foto             Json?    @map("foto")
+  reportedById     Int?     @map("reported_by_id")
 
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  
   progressProyek   ProgressProyek @relation(fields: [progressProyekId], references: [id], onDelete: Cascade)
+  reportedBy       User?          @relation("TahapanReporter", fields: [reportedById], references: [id])
 
+  @@index([reportedById], map: "tahapan_proyek_reported_by_id_fkey")
   @@map("tahapan_proyek")
 }
 
@@ -549,6 +554,7 @@ enum Role {
   CUSTOMER   @map("customer")
   BANK       @map("bank")
   AGENT      @map("agent")
+  MANDOR     @map("mandor")
 }
 
 enum UnitStatus {

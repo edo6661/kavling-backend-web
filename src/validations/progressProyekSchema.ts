@@ -14,7 +14,9 @@ export const updateProgressProyekSchema = {
     id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
   }),
   body: z.object({
-    pelaksana: emptyAsUndefined(z.string().optional()),
+    mandorId: z
+      .union([z.coerce.number().int().positive(), z.null()])
+      .optional(),
     tahapan: z.array(tahapanSchema).optional(),
   }),
 };

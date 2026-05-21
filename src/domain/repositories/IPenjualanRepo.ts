@@ -87,7 +87,8 @@ export interface PenjualanPaginatedItem {
   progressPenjualan?: any;
   progressProyek?: {
     persentase: number;
-    pelaksana: string | null;
+    mandorId: number | null;
+    mandor: { id: number; username: string } | null;
   } | null;
 
   createdBy?: string;

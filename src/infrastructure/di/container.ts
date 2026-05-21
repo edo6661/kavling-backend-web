@@ -2,6 +2,7 @@ import { ProgressProyekRepository } from "../../domain/repositories/progressProy
 import {
   CreateTahapanLogUseCase,
   GetProgressProyekUseCase,
+  ListMandorsUseCase,
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoUseCase,
 } from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
@@ -582,11 +583,13 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressProyekRepo,
     cloudinaryService,
   );
+  const listMandorsUseCase = new ListMandorsUseCase(userRepo);
   const progressProyekController = new ProgressProyekController(
     getProgressProyekUseCase,
     updateProgressProyekUseCase,
     uploadTahapanPhotoUseCase,
     createTahapanLogUseCase,
+    listMandorsUseCase,
   );
 
   return {

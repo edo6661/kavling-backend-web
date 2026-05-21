@@ -33,7 +33,9 @@ export class PenjualanRepository implements IPenjualanRepository {
         rekeningTujuan: true,
         tagihan: true,
         agent: true,
-        progressProyek: true,
+        progressProyek: {
+          include: { mandor: { select: { id: true, username: true } } },
+        },
       },
     });
   }
@@ -312,6 +314,10 @@ export class PenjualanRepository implements IPenjualanRepository {
       where.status = filters.status as any;
     }
 
+    if (filters?.mandorUserId) {
+      where.progressProyek = { is: { mandorId: filters.mandorUserId } };
+    }
+
     let orderByClause: Prisma.PenjualanOrderByWithRelationInput[] = [
       { createdAt: "desc" },
     ];
@@ -348,7 +354,9 @@ export class PenjualanRepository implements IPenjualanRepository {
             orderBy: { createdAt: "desc" },
           },
           riwayatSpr: { orderBy: { createdAt: "desc" } },
-          progressProyek: true,
+          progressProyek: {
+            include: { mandor: { select: { id: true, username: true } } },
+          },
         },
       }),
       this.db.penjualan.count({ where }),
@@ -462,7 +470,8 @@ export class PenjualanRepository implements IPenjualanRepository {
         progressProyek: item.progressProyek
           ? {
               persentase: Number(item.progressProyek.persentase),
-              pelaksana: item.progressProyek.pelaksana,
+              mandorId: item.progressProyek.mandorId,
+              mandor: item.progressProyek.mandor,
             }
           : null,
         createdBy: item.createdBy ?? "Admin",
@@ -491,7 +500,9 @@ export class PenjualanRepository implements IPenjualanRepository {
       where: { id },
       include: {
         progressPenjualan: true,
-        progressProyek: true,
+        progressProyek: {
+          include: { mandor: { select: { id: true, username: true } } },
+        },
         customer: true,
         kavling: { include: { perumahan: true, rekeningTujuan: true } },
         rekeningTujuan: true,

@@ -19,6 +19,7 @@ export interface IProgressProyekRepository {
       deskripsi: string;
       tanggal: Date;
       foto: string[];
+      reportedById?: number | null;
     },
   ): Promise<ProgressProyekEntity>;
 }

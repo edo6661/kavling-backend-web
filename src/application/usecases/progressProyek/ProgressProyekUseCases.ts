@@ -4,14 +4,33 @@ import type { CloudinaryService } from "../../../infrastructure/external/Cloudin
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import type { IProgressProyekRepository } from "../../../domain/repositories/IProgressProyekRepo.js";
+import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
+import { Role } from "@prisma/client";
+import {
+  assertAssignedMandor,
+  assertMandorCanMutate,
+  isMandorRole,
+  type ProgressRequestContext,
+} from "./mandorAccess.js";
 
 export class GetProgressProyekUseCase {
   constructor(private readonly repo: IProgressProyekRepository) {}
 
-  async execute(penjualanId: number): Promise<ProgressProyekEntity> {
+  async execute(
+    penjualanId: number,
+    ctx?: ProgressRequestContext,
+  ): Promise<ProgressProyekEntity> {
     let progress = await this.repo.findByPenjualanId(penjualanId);
 
-    progress ??= await this.repo.create({ penjualanId, pelaksana: "" });
+    if (isMandorRole(ctx?.role)) {
+      if (!ctx?.userId) {
+        throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+      }
+      assertAssignedMandor(progress, ctx.userId);
+      return progress;
+    }
+
+    progress ??= await this.repo.create({ penjualanId, mandorId: null });
     return progress;
   }
 }
@@ -22,7 +41,23 @@ export class UpdateProgressProyekUseCase {
   async execute(
     penjualanId: number,
     data: UpdateProgressProyekDTO,
+    ctx?: ProgressRequestContext,
   ): Promise<ProgressProyekEntity> {
+    const progress = await this.repo.findByPenjualanId(penjualanId);
+
+    if (isMandorRole(ctx?.role)) {
+      if (!ctx?.userId) {
+        throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+      }
+      assertAssignedMandor(progress, ctx.userId);
+      if (data.mandorId !== undefined) {
+        throw new AppError(
+          StatusCodes.FORBIDDEN,
+          "Mandor tidak dapat mengubah penugasan proyek",
+        );
+      }
+    }
+
     return await this.repo.update(penjualanId, data);
   }
 }
@@ -37,6 +72,7 @@ export class UploadTahapanPhotoUseCase {
     penjualanId: number,
     namaTahapan: string,
     files: Buffer[],
+    ctx?: ProgressRequestContext,
   ): Promise<ProgressProyekEntity> {
     if (!files || files.length === 0) {
       throw new AppError(
@@ -46,6 +82,8 @@ export class UploadTahapanPhotoUseCase {
     }
 
     const progress = await this.repo.findByPenjualanId(penjualanId);
+    assertMandorCanMutate(progress, ctx);
+
     if (!progress) {
       throw new AppError(
         StatusCodes.NOT_FOUND,
@@ -94,7 +132,12 @@ export class CreateTahapanLogUseCase {
     deskripsi: string,
     tanggal: string,
     files: Buffer[],
+    reportedById?: number | null,
+    ctx?: ProgressRequestContext,
   ) {
+    const progress = await this.repo.findByPenjualanId(penjualanId);
+    assertMandorCanMutate(progress, ctx);
+
     const photoUrls = await Promise.all(
       files.map((file) =>
         this.cloudinary.uploadImage(
@@ -110,6 +153,15 @@ export class CreateTahapanLogUseCase {
       deskripsi,
       tanggal: new Date(tanggal),
       foto: photoUrls,
+      reportedById: reportedById ?? null,
     });
+  }
+}
+
+export class ListMandorsUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute() {
+    return await this.userRepo.findByRole(Role.MANDOR);
   }
 }

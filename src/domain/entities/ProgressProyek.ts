@@ -1,3 +1,8 @@
+export interface MandorSummary {
+  id: number;
+  username: string;
+}
+
 export interface TahapanProyekEntity {
   id: number;
   progressProyekId: number;
@@ -6,12 +11,14 @@ export interface TahapanProyekEntity {
   deskripsi: string | null;
   tanggal: Date;
   foto: string[];
+  reportedBy: MandorSummary | null;
 }
 
 export interface ProgressProyekEntity {
   id: number;
   penjualanId: number;
-  pelaksana: string | null;
+  mandorId: number | null;
+  mandor: MandorSummary | null;
   persentase: number;
   createdAt: Date;
   updatedAt: Date;

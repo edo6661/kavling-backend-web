@@ -57,7 +57,10 @@ export interface PenjualanResponseDTO {
   status: PenjualanStatus;
   createdAt: Date;
 }
-export type PenjualanFilterDTO = BaseFilterDTO;
+export interface PenjualanFilterDTO extends BaseFilterDTO {
+  /** Filter proyek yang ditugaskan ke mandor tertentu */
+  mandorUserId?: number;
+}
 
 export interface BiayaTambahanDTO {
   nama: string;

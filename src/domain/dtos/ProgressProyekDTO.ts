@@ -1,26 +1,33 @@
+export interface MandorSummaryDTO {
+  id: number;
+  username: string;
+}
+
 export interface TahapanProyekDTO {
   id?: number;
   namaTahapan: string;
   persentase: number;
   deskripsi: string | null;
   tanggal: Date;
-  foto: string[]; // Array of URL strings
+  foto: string[];
+  reportedBy?: MandorSummaryDTO | null;
 }
 
 export interface CreateProgressProyekDTO {
   penjualanId: number;
-  pelaksana: string;
+  mandorId?: number | null;
 }
 
 export interface UpdateProgressProyekDTO {
-  pelaksana?: string | undefined;
+  mandorId?: number | null | undefined;
   tahapan?: TahapanProyekDTO[] | undefined;
 }
 
 export interface ProgressProyekResponseDTO {
   id: number;
   penjualanId: number;
-  pelaksana: string | null;
+  mandorId: number | null;
+  mandor: MandorSummaryDTO | null;
   persentase: number;
   tahapan: TahapanProyekDTO[];
   createdAt: Date;

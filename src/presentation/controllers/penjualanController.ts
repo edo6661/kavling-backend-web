@@ -29,6 +29,7 @@ import type {
   CreatePenjualanDTO,
   PenjualanFilterDTO,
 } from "../../domain/dtos/PenjualanDTO.js";
+import { Role } from "@prisma/client";
 import { NotFoundError } from "../../domain/errors/NotFoundError.js";
 import type { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
 
@@ -78,10 +79,18 @@ export class PenjualanController {
       req.query,
     );
 
+    const filterDto: PenjualanFilterDTO & { status?: string } = {
+      ...filters,
+    };
+
+    if (req.user?.role === Role.MANDOR && req.user.userId) {
+      filterDto.mandorUserId = req.user.userId;
+    }
+
     const result = await this.getPaginatedUseCase.execute(
       page,
       limit,
-      filters as PenjualanFilterDTO & { status?: string },
+      filterDto,
     );
 
     sendResponse(

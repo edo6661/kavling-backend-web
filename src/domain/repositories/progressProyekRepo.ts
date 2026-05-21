@@ -5,7 +5,9 @@ import type {
   UpdateProgressProyekDTO,
 } from "../dtos/ProgressProyekDTO.js";
 import type { ProgressProyekEntity } from "../entities/ProgressProyek.js";
-import { ProgressProyekMapper } from "../../infrastructure/mapper/ProgressProyekMapper.js";
+import {
+  ProgressProyekMapper,
+} from "../../infrastructure/mapper/ProgressProyekMapper.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import type { IProgressProyekRepository } from "./IProgressProyekRepo.js";
@@ -22,10 +24,10 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     const result = await this.db.progressProyek.create({
       data: {
         penjualanId: data.penjualanId,
-        pelaksana: data.pelaksana,
+        mandorId: data.mandorId ?? null,
         persentase: 0,
       },
-      include: { tahapan: true },
+      include: ProgressProyekMapper.include,
     });
 
     return ProgressProyekMapper.toDomain(result);
@@ -36,12 +38,13 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
   ): Promise<ProgressProyekEntity | null> {
     const result = await this.db.progressProyek.findUnique({
       where: { penjualanId },
-      include: { tahapan: true },
+      include: ProgressProyekMapper.include,
     });
 
     if (!result) return null;
     return ProgressProyekMapper.toDomain(result);
   }
+
   async update(
     penjualanId: number,
     data: UpdateProgressProyekDTO,
@@ -52,10 +55,10 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     }
 
     return await this.db.$transaction(async (tx) => {
-      if (data.pelaksana !== undefined) {
+      if (data.mandorId !== undefined) {
         await tx.progressProyek.update({
           where: { penjualanId },
-          data: { pelaksana: data.pelaksana },
+          data: { mandorId: data.mandorId },
         });
       }
 
@@ -73,43 +76,18 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
           });
         }
 
-        const allTahapan = await tx.tahapanProyek.findMany({
-          where: { progressProyekId: existing.id },
-          orderBy: [{ tanggal: "desc" }, { id: "desc" }],
-        });
-
-        const uniqueTahapan = new Map<string, number>();
-        allTahapan.forEach((t) => {
-          if (!uniqueTahapan.has(t.namaTahapan)) {
-            uniqueTahapan.set(t.namaTahapan, Number(t.persentase));
-          }
-        });
-
-        const totalSum = Array.from(uniqueTahapan.values()).reduce(
-          (sum, val) => sum + val,
-          0,
-        );
-
-        const TOTAL_TAHAPAN = 9;
-        const rataRataProgress = totalSum / TOTAL_TAHAPAN;
-        const finalTotal = Math.min(rataRataProgress, 100);
-
-        await tx.progressProyek.update({
-          where: { penjualanId },
-          data: {
-            persentase: new Prisma.Decimal(finalTotal.toFixed(2)),
-          },
-        });
+        await this.recalculatePersentase(tx, existing.id, penjualanId);
       }
 
       const finalResult = await tx.progressProyek.findUniqueOrThrow({
         where: { penjualanId },
-        include: { tahapan: true },
+        include: ProgressProyekMapper.include,
       });
 
       return ProgressProyekMapper.toDomain(finalResult);
     });
   }
+
   async addTahapanLog(
     penjualanId: number,
     logData: {
@@ -118,13 +96,17 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       deskripsi: string;
       tanggal: Date;
       foto: string[];
+      reportedById?: number | null;
     },
   ): Promise<ProgressProyekEntity> {
     return await this.db.$transaction(async (tx) => {
       let progress = await tx.progressProyek.findUnique({
         where: { penjualanId },
       });
-      progress ??= await tx.progressProyek.create({ data: { penjualanId } });
+      progress ??= await tx.progressProyek.create({
+        data: { penjualanId },
+        include: ProgressProyekMapper.include,
+      });
 
       await tx.tahapanProyek.create({
         data: {
@@ -134,42 +116,50 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
           deskripsi: logData.deskripsi,
           tanggal: logData.tanggal,
           foto: logData.foto as Prisma.InputJsonValue,
+          reportedById: logData.reportedById ?? null,
         },
       });
 
-      const allTahapan = await tx.tahapanProyek.findMany({
-        where: { progressProyekId: progress.id },
-        orderBy: [{ tanggal: "desc" }, { id: "desc" }],
-      });
-
-      const uniqueTahapan = new Map<string, number>();
-      allTahapan.forEach((t) => {
-        if (!uniqueTahapan.has(t.namaTahapan)) {
-          uniqueTahapan.set(t.namaTahapan, Number(t.persentase));
-        }
-      });
-
-      const totalSum = Array.from(uniqueTahapan.values()).reduce(
-        (acc, val) => acc + val,
-        0,
-      );
-
-      const TOTAL_TAHAPAN = 9;
-      const rataRataProgress = totalSum / TOTAL_TAHAPAN;
-
-      const finalTotal = Math.min(rataRataProgress, 100);
-
-      await tx.progressProyek.update({
-        where: { id: progress.id },
-        data: { persentase: new Prisma.Decimal(finalTotal.toFixed(2)) },
-      });
+      await this.recalculatePersentase(tx, progress.id, penjualanId);
 
       const updated = await tx.progressProyek.findUniqueOrThrow({
         where: { id: progress.id },
-        include: { tahapan: true },
+        include: ProgressProyekMapper.include,
       });
 
       return ProgressProyekMapper.toDomain(updated);
+    });
+  }
+
+  private async recalculatePersentase(
+    tx: Prisma.TransactionClient,
+    progressId: number,
+    penjualanId: number,
+  ) {
+    const allTahapan = await tx.tahapanProyek.findMany({
+      where: { progressProyekId: progressId },
+      orderBy: [{ tanggal: "desc" }, { id: "desc" }],
+    });
+
+    const uniqueTahapan = new Map<string, number>();
+    allTahapan.forEach((t) => {
+      if (!uniqueTahapan.has(t.namaTahapan)) {
+        uniqueTahapan.set(t.namaTahapan, Number(t.persentase));
+      }
+    });
+
+    const totalSum = Array.from(uniqueTahapan.values()).reduce(
+      (acc, val) => acc + val,
+      0,
+    );
+
+    const TOTAL_TAHAPAN = 9;
+    const rataRataProgress = totalSum / TOTAL_TAHAPAN;
+    const finalTotal = Math.min(rataRataProgress, 100);
+
+    await tx.progressProyek.update({
+      where: { penjualanId },
+      data: { persentase: new Prisma.Decimal(finalTotal.toFixed(2)) },
     });
   }
 }

@@ -6,9 +6,11 @@ import type { TypedRequest } from "../../types/request.js";
 import type {
   CreateTahapanLogUseCase,
   GetProgressProyekUseCase,
+  ListMandorsUseCase,
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoUseCase,
 } from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
+import type { ProgressRequestContext } from "../../application/usecases/progressProyek/mandorAccess.js";
 
 import type {
   updateProgressProyekSchema,
@@ -21,14 +23,27 @@ export class ProgressProyekController {
     private readonly updateUseCase: UpdateProgressProyekUseCase,
     private readonly uploadUseCase: UploadTahapanPhotoUseCase,
     private readonly createTahapanLogUseCase: CreateTahapanLogUseCase,
+    private readonly listMandorsUseCase: ListMandorsUseCase,
   ) {}
+
+  private requestContext(req: Request): ProgressRequestContext {
+    return { role: req.user?.role, userId: req.user?.userId };
+  }
+
+  listMandors = async (_req: Request, res: Response): Promise<void> => {
+    const result = await this.listMandorsUseCase.execute();
+    sendResponse(res, StatusCodes.OK, "Daftar mandor berhasil diambil", result);
+  };
 
   getByPenjualanId = async (
     req: TypedRequest<never, never, typeof getProgressProyekSchema.params>,
     res: Response,
   ): Promise<void> => {
     const penjualanId = parseInt(req.params.id, 10);
-    const result = await this.getUseCase.execute(penjualanId);
+    const result = await this.getUseCase.execute(
+      penjualanId,
+      this.requestContext(req),
+    );
 
     sendResponse(
       res,
@@ -47,7 +62,11 @@ export class ProgressProyekController {
     res: Response,
   ): Promise<void> => {
     const penjualanId = parseInt(req.params.id, 10);
-    const result = await this.updateUseCase.execute(penjualanId, req.body);
+    const result = await this.updateUseCase.execute(
+      penjualanId,
+      req.body,
+      this.requestContext(req),
+    );
 
     sendResponse(
       res,
@@ -78,6 +97,7 @@ export class ProgressProyekController {
       penjualanId,
       namaTahapan,
       buffers,
+      this.requestContext(req),
     );
 
     sendResponse(
@@ -87,20 +107,19 @@ export class ProgressProyekController {
       result,
     );
   };
-  addLog = async (
-    req: Request, // Gunakan Request dari express
-    res: Response,
-  ): Promise<void> => {
+
+  addLog = async (req: Request, res: Response): Promise<void> => {
     const penjualanId = parseInt(req.params.id as string, 10);
     const { namaTahapan, persentase, deskripsi, tanggal } = req.body;
 
-    // Mengambil files dengan cara yang aman dari multer
     const files = req.files as Express.Multer.File[] | undefined;
 
     if (!files || files.length === 0) {
       sendResponse(res, StatusCodes.BAD_REQUEST, "File foto wajib diunggah");
       return;
     }
+
+    const reportedById = req.user?.userId ?? null;
 
     const result = await this.createTahapanLogUseCase.execute(
       penjualanId,
@@ -109,6 +128,8 @@ export class ProgressProyekController {
       String(deskripsi ?? ""),
       String(tanggal),
       files.map((f) => f.buffer),
+      reportedById,
+      this.requestContext(req),
     );
 
     sendResponse(

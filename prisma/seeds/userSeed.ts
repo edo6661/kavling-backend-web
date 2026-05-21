@@ -30,6 +30,12 @@ export async function seedUser(prisma: PrismaClient) {
         password: await bcrypt.hash("eva123", 10),
         role: Role.MARKETING,
       },
+      {
+        username: "Mandor Surya",
+        email: "mandor@gmail.com",
+        password: await bcrypt.hash("mandor123", 10),
+        role: Role.MANDOR,
+      },
     ],
   });
 }
