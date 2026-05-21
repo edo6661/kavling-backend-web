@@ -11,6 +11,7 @@ import type { OffsetPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import { inferTagihanTujuanFromPembayaran } from "../../../domain/tagihan/tagihanTujuan.js";
 
 type ITtdData = Record<
   string,
@@ -26,7 +27,9 @@ export class CreateTagihanUseCase {
   async execute(data: CreateTagihanDTO): Promise<TagihanResponseDTO> {
     const count = await this.repo.count();
     const noTagihan = `INV-${String(count + 1).padStart(3, "0")}`;
-    return await this.repo.create(data, noTagihan);
+    const tujuan =
+      data.tujuan ?? inferTagihanTujuanFromPembayaran(data.pembayaran);
+    return await this.repo.create({ ...data, tujuan }, noTagihan);
   }
 }
 
@@ -49,11 +52,18 @@ export class UpdateTagihanUseCase {
       data.nominal !== undefined ? Number(data.nominal) : before.nominal;
     const nominalChanged =
       data.nominal !== undefined && newNominal !== before.nominal;
-    const isDpLine = before.pembayaran.toLowerCase().includes("down payment");
+
+    const penjualanRow = await this.db.penjualan.findUnique({
+      where: { id: before.penjualanId },
+      select: { noTransaksi: true },
+    });
+    const isCanonicalDpInvoice =
+      !!penjualanRow &&
+      before.noTagihan === `INV-DP-${penjualanRow.noTransaksi}`;
 
     if (
       nominalChanged &&
-      isDpLine &&
+      isCanonicalDpInvoice &&
       before.penjualanId &&
       newNominal > 0
     ) {
@@ -148,7 +158,10 @@ export class UpdateTagihanUseCase {
     const existingCicilans = await tx.tagihan.findMany({
       where: {
         penjualanId: args.penjualanId,
-        pembayaran: { startsWith: "Cicilan Ke-" },
+        OR: [
+          { noTagihan: { startsWith: `INV-CCL-${args.noTransaksi}-` } },
+          { pembayaran: { startsWith: "Cicilan Ke-" } },
+        ],
       },
     });
 
@@ -178,6 +191,7 @@ export class UpdateTagihanUseCase {
             customerId: args.customerId,
             penjualanId: args.penjualanId,
             pembayaran: `Cicilan Ke-${i}`,
+            tujuan: "HARGA_JUAL",
             nominal: cicilanPerBulan,
             jatuhTempo: jatuhTempoCicilan,
             status: "BELUM_BAYAR",

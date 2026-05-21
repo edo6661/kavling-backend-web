@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import type { Prisma } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
+import { effectiveTagihanTujuan } from "../../../domain/tagihan/tagihanTujuan.js";
 import QRCode from "qrcode";
 
 export class GenerateSprPdfUseCase {
@@ -261,12 +262,8 @@ export class GenerateSprPdfUseCase {
 
         const tagihanAwal =
           tagihan?.filter((t) => {
-            const namaPembayaran = t.pembayaran.toLowerCase();
-            return (
-              namaPembayaran.includes("booking") ||
-              namaPembayaran.includes("dp") ||
-              namaPembayaran.includes("down")
-            );
+            const eff = effectiveTagihanTujuan(t);
+            return eff === "BOOKING_FEE" || eff === "DP";
           }) || [];
 
         // Render tagihan

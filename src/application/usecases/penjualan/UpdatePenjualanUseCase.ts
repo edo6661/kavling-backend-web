@@ -247,7 +247,10 @@ export class UpdatePenjualanUseCase {
         const existingBf = await tx.tagihan.findFirst({
           where: {
             penjualanId: old.id,
-            pembayaran: { contains: "Booking" },
+            OR: [
+              { noTagihan: `INV-BF-${noTransaksi}` },
+              { pembayaran: { contains: "Booking" } },
+            ],
           },
         });
 
@@ -258,6 +261,7 @@ export class UpdatePenjualanUseCase {
               customerId: old.customerId,
               penjualanId: old.id,
               pembayaran: "Booking Fee",
+              tujuan: "BOOKING_FEE",
               nominal: currentBookingFee,
               jatuhTempo: new Date(old.tanggal),
               status: "BELUM_BAYAR",
@@ -266,7 +270,7 @@ export class UpdatePenjualanUseCase {
         } else if (Number(existingBf.nominal) !== currentBookingFee) {
           await tx.tagihan.update({
             where: { id: existingBf.id },
-            data: { nominal: currentBookingFee },
+            data: { nominal: currentBookingFee, tujuan: "BOOKING_FEE" },
           });
         }
       }
@@ -279,7 +283,10 @@ export class UpdatePenjualanUseCase {
         const existingDp = await tx.tagihan.findFirst({
           where: {
             penjualanId: old.id,
-            pembayaran: { contains: "Down Payment" },
+            OR: [
+              { noTagihan: `INV-DP-${noTransaksi}` },
+              { pembayaran: { contains: "Down Payment" } },
+            ],
           },
         });
         if (!existingDp) {
@@ -291,6 +298,7 @@ export class UpdatePenjualanUseCase {
               customerId: old.customerId,
               penjualanId: old.id,
               pembayaran: "Down Payment (DP)",
+              tujuan: "DP",
               nominal: dp,
               jatuhTempo: dpDueDate,
               status: "BELUM_BAYAR",
@@ -299,7 +307,7 @@ export class UpdatePenjualanUseCase {
         } else if (Number(existingDp.nominal) !== dp) {
           await tx.tagihan.update({
             where: { id: existingDp.id },
-            data: { nominal: dp },
+            data: { nominal: dp, tujuan: "DP" },
           });
         }
       }
@@ -315,7 +323,10 @@ export class UpdatePenjualanUseCase {
         const existingCicilans = await tx.tagihan.findMany({
           where: {
             penjualanId: old.id,
-            pembayaran: { startsWith: "Cicilan Ke-" },
+            OR: [
+              { noTagihan: { startsWith: `INV-CCL-${noTransaksi}-` } },
+              { pembayaran: { startsWith: "Cicilan Ke-" } },
+            ],
           },
         });
 
@@ -348,6 +359,7 @@ export class UpdatePenjualanUseCase {
                 customerId: old.customerId,
                 penjualanId: old.id,
                 pembayaran: `Cicilan Ke-${i}`,
+                tujuan: "HARGA_JUAL",
                 nominal: cicilanPerBulan,
                 jatuhTempo: jatuhTempoCicilan,
                 status: "BELUM_BAYAR",
@@ -404,6 +416,7 @@ export class UpdatePenjualanUseCase {
               customerId: old.customerId,
               penjualanId: old.id,
               pembayaran: namaBiaya,
+              tujuan: "LAINNYA",
               nominal: nominalBiaya,
               jatuhTempo: dueDate,
               status: "BELUM_BAYAR",

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TagihanTujuan } from "@prisma/client";
 import { emptyAsUndefined } from "./emptySchema.js";
 import {
   cursorPaginationQuerySchema,
@@ -17,6 +18,7 @@ export const createTagihanSchema = {
     nominal: z.coerce.number().positive("Nominal harus lebih dari 0"),
     jatuhTempo: z.string().min(1, "Jatuh tempo wajib diisi"),
     reminderBerikutnya: emptyAsUndefined(z.string().optional()),
+    tujuan: z.nativeEnum(TagihanTujuan).optional(),
   }),
 };
 
@@ -30,6 +32,7 @@ export const updateTagihanSchema = {
     jatuhTempo: emptyAsUndefined(z.string().optional()),
     reminderBerikutnya: emptyAsUndefined(z.string().optional()),
     status: emptyAsUndefined(z.nativeEnum(PaymentStatus).optional()),
+    tujuan: emptyAsUndefined(z.nativeEnum(TagihanTujuan).optional()),
   }),
 };
 

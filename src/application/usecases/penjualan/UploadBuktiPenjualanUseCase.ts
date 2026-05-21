@@ -55,9 +55,20 @@ export class UploadBuktiPenjualanUseCase {
       data: updateData,
     });
     const keyword = type === "booking" ? "booking" : "dp";
-    const tagihanTerkait = penjualan.tagihan.find((t) =>
-      t.pembayaran.toLowerCase().includes(keyword),
-    );
+    const tagihanTerkait =
+      type === "booking"
+        ? penjualan.tagihan.find(
+            (t) => t.noTagihan === `INV-BF-${penjualan.noTransaksi}`,
+          ) ??
+          penjualan.tagihan.find((t) =>
+            t.pembayaran.toLowerCase().includes(keyword),
+          )
+        : penjualan.tagihan.find(
+            (t) => t.noTagihan === `INV-DP-${penjualan.noTransaksi}`,
+          ) ??
+          penjualan.tagihan.find((t) =>
+            t.pembayaran.toLowerCase().includes("down payment"),
+          );
     if (tagihanTerkait) {
       await this.db.tagihan.update({
         where: { id: tagihanTerkait.id },

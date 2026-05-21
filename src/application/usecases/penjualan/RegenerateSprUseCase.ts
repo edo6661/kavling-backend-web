@@ -17,8 +17,10 @@ export class RegenerateSprUseCase {
       if (!penjualan) {
         throw new NotFoundError("Data Penjualan tidak ditemukan");
       }
-      const bfTagihan = penjualan.tagihan.find((t) =>
-        t.pembayaran.toLowerCase().includes("booking"),
+      const bfTagihan = penjualan.tagihan.find(
+        (t) =>
+          t.noTagihan === `INV-BF-${penjualan.noTransaksi}` ||
+          t.pembayaran.toLowerCase().includes("booking"),
       );
       if (
         !bfTagihan &&
@@ -31,6 +33,7 @@ export class RegenerateSprUseCase {
             customerId: penjualan.customerId,
             penjualanId: penjualan.id,
             pembayaran: "Booking Fee",
+            tujuan: "BOOKING_FEE",
             nominal: penjualan.bookingFee,
             jatuhTempo: penjualan.tanggal,
             status: "BELUM_BAYAR",
@@ -39,8 +42,8 @@ export class RegenerateSprUseCase {
       }
       const dpTagihan = penjualan.tagihan.find(
         (t) =>
-          t.pembayaran.toLowerCase().includes("down payment") ||
-          t.pembayaran.toLowerCase().includes("dp"),
+          t.noTagihan === `INV-DP-${penjualan.noTransaksi}` ||
+          t.pembayaran.toLowerCase().includes("down payment"),
       );
       if (
         !dpTagihan &&
@@ -57,6 +60,7 @@ export class RegenerateSprUseCase {
             customerId: penjualan.customerId,
             penjualanId: penjualan.id,
             pembayaran: "Down Payment (DP)",
+            tujuan: "DP",
             nominal: penjualan.dp,
             jatuhTempo: dpDueDate,
             status: "BELUM_BAYAR",

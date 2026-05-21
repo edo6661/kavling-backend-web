@@ -287,12 +287,14 @@ export async function seedPenjualan(prisma: PrismaClient) {
         update: {
           nominal: calcBookingFee,
           jatuhTempo: tanggalAkadPpjb ?? new Date(),
+          tujuan: "BOOKING_FEE",
         },
         create: {
           noTagihan: noTagihanBf,
           customerId: customer.id,
           penjualanId: penjualan.id,
           pembayaran: "Booking Fee",
+          tujuan: "BOOKING_FEE",
           nominal: calcBookingFee,
           jatuhTempo: tanggalAkadPpjb ?? new Date(),
           status: "BELUM_BAYAR",
@@ -314,12 +316,14 @@ export async function seedPenjualan(prisma: PrismaClient) {
           update: {
             nominal: calcDp,
             jatuhTempo: dpDueDate,
+            tujuan: "DP",
           },
           create: {
             noTagihan: noTagihanDp,
             customerId: customer.id,
             penjualanId: penjualan.id,
             pembayaran: "Down Payment (DP)",
+            tujuan: "DP",
             nominal: calcDp,
             jatuhTempo: dpDueDate,
             status: "BELUM_BAYAR",

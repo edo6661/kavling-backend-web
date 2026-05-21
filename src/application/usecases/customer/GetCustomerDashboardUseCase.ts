@@ -53,6 +53,7 @@ export class GetCustomerDashboardUseCase {
         tagihan: p.tagihan.map((t) => ({
           id: t.id, // 👇 TAMBAHKAN BARIS INI 👇
           noTagihan: t.noTagihan,
+          tujuan: t.tujuan,
           pembayaran: t.pembayaran,
           nominal: t.nominal,
           jatuhTempo: t.jatuhTempo,

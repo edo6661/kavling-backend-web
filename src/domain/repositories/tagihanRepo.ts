@@ -45,6 +45,7 @@ export class TagihanRepository implements ITagihanRepository {
         customerId: data.customerId,
         penjualanId: data.penjualanId,
         pembayaran: data.pembayaran,
+        tujuan: data.tujuan ?? "LAINNYA",
         nominal: data.nominal,
         jatuhTempo: parseDate(data.jatuhTempo),
         reminderBerikutnya: data.reminderBerikutnya
@@ -76,6 +77,7 @@ export class TagihanRepository implements ITagihanRepository {
 
     const updateData: Prisma.TagihanUpdateInput = {};
     if (data.pembayaran !== undefined) updateData.pembayaran = data.pembayaran;
+    if (data.tujuan !== undefined) updateData.tujuan = data.tujuan;
     if (data.nominal !== undefined) updateData.nominal = data.nominal;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.fileBukti !== undefined) updateData.fileBukti = data.fileBukti;

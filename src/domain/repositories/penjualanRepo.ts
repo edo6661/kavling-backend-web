@@ -12,6 +12,10 @@ import type {
   PenjualanFilterDTO,
 } from "../dtos/PenjualanDTO.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
+import {
+  effectiveTagihanTujuan,
+  isCicilanHargaJualTagihan,
+} from "../tagihan/tagihanTujuan.js";
 
 export class PenjualanRepository implements IPenjualanRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -265,6 +269,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             customerId: customer.id,
             penjualanId: penjualan.id,
             pembayaran: "Booking Fee",
+            tujuan: "BOOKING_FEE",
             nominal: bookingFee,
             jatuhTempo: new Date(data.tanggal),
             status: "BELUM_BAYAR",
@@ -282,6 +287,7 @@ export class PenjualanRepository implements IPenjualanRepository {
             customerId: customer.id,
             penjualanId: penjualan.id,
             pembayaran: "Down Payment (DP)",
+            tujuan: "DP",
             nominal: dp,
             jatuhTempo: dpDueDate,
             status: "BELUM_BAYAR",
@@ -381,22 +387,17 @@ export class PenjualanRepository implements IPenjualanRepository {
     );
 
     const mappedItems: PenjualanPaginatedItem[] = items.map((item) => {
-      const bfTagihan = item.tagihan?.find((t) =>
-        t.pembayaran.toLowerCase().includes("booking"),
+      const bfTagihan = item.tagihan?.find(
+        (t) => effectiveTagihanTujuan(t) === "BOOKING_FEE",
       );
       const dpTagihan = item.tagihan?.find(
         (t) =>
-          t.pembayaran.toLowerCase().includes("dp") ||
-          t.pembayaran.toLowerCase().includes("down"),
+          t.noTagihan === `INV-DP-${item.noTransaksi}` ||
+          (effectiveTagihanTujuan(t) === "DP" &&
+            t.pembayaran.toLowerCase().includes("down payment")),
       );
       const daftarCicilan =
-        item.tagihan?.filter(
-          (t) =>
-            !t.pembayaran.toLowerCase().includes("booking") &&
-            !t.pembayaran.toLowerCase().includes("dp") &&
-            !t.pembayaran.toLowerCase().includes("down") &&
-            !t.pembayaran.toLowerCase().includes("uang muka"),
-        ) || [];
+        item.tagihan?.filter((t) => isCicilanHargaJualTagihan(t)) || [];
       const cicilanTerbayar = daftarCicilan.filter(
         (t) => t.status === "LUNAS",
       ).length;

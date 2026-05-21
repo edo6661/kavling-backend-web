@@ -112,6 +112,7 @@ export class VerifyDocumentUseCase {
       data: {
         noDokumen: requestedNumber,
         pembayaran: tagihan.pembayaran,
+        tujuan: tagihan.tujuan,
         nominal: Number(tagihan.nominal),
         jatuhTempo: tagihan.jatuhTempo,
         status: tagihan.status,

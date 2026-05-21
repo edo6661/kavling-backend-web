@@ -29,6 +29,7 @@ export class TagihanMapper {
       perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
       blok: prismaTagihan.penjualan.kavling.blok,
       nomorUnit: prismaTagihan.penjualan.kavling.nomorUnit,
+      tujuan: prismaTagihan.tujuan,
       pembayaran: prismaTagihan.pembayaran,
       nominal: Number(prismaTagihan.nominal),
       jatuhTempo: prismaTagihan.jatuhTempo,
