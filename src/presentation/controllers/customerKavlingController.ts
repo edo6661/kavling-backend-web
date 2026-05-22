@@ -18,13 +18,12 @@ export class CustomerKavlingController {
   ) {}
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
+    const { page, limit, ...filters } =
       getCustomerKavlingsPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
 
     const result = await this.getPaginatedUseCase.execute(
+      page,
       limit,
-      parsedCursor,
       filters as CustomerKavlingFilterDTO,
     );
 

@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 import { UnitStatus, SP3R } from "@prisma/client";
 
 export const getCustomerKavlingsPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
+  query: offsetPaginationQuerySchema,
 };
 
 export const updateCustomerKavlingSchema = {

@@ -59,4 +59,7 @@ export interface UpdateCustomerKavlingDTO {
   ajbSelisihPajakPbb?: number | undefined;
   ajbUping?: number | undefined;
 }
-export type CustomerKavlingFilterDTO = BaseFilterDTO;
+export type CustomerKavlingFilterDTO = BaseFilterDTO & {
+  status?: string;
+  caraPembayaran?: string;
+};

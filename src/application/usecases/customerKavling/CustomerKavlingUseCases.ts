@@ -7,7 +7,7 @@ import type {
   CustomerKavlingFilterDTO,
 } from "../../../domain/dtos/CustomerKavlingDTO.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
+import type { OffsetPaginatedData } from "../../../types/response.js";
 import type {
   CreateDetailKavlingPajakDTO,
   UpdateDetailKavlingPajakDTO,
@@ -16,36 +16,129 @@ export class GetCustomerKavlingsPaginatedUseCase {
   constructor(private readonly db: PrismaClient) {}
 
   async execute(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: CustomerKavlingFilterDTO,
-  ): Promise<CursorPaginatedData<any>> {
+  ): Promise<OffsetPaginatedData<any>> {
     const where: Prisma.PenjualanWhereInput = {
       status: { in: ["BOOKED", "PROSES", "LUNAS"] },
     };
 
     if (filters?.search) {
-      where.customer = { nama: { contains: filters.search } };
+      where.OR = [
+        { customer: { nama: { contains: filters.search } } },
+        { kavling: { blok: { contains: filters.search } } },
+        { kavling: { nomorUnit: { contains: filters.search } } },
+      ];
     }
 
-    const items = await this.db.penjualan.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: [{ id: "desc" }],
-      include: {
-        customer: { select: { nama: true } },
-        kavling: { include: { perumahan: true } },
-        detailKavlingPajak: { include: { notaris: true } },
-        agent: { select: { nama: true } },
-      },
-    });
-
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
+    if (filters?.status) {
+      where.status = filters.status as "BOOKED" | "PROSES" | "LUNAS";
     }
+
+    if (filters?.caraPembayaran) {
+      where.caraPembayaran = filters.caraPembayaran as
+        | "KPR"
+        | "CASH_KERAS"
+        | "CASH_BERTAHAP";
+    }
+
+    const listInclude = {
+      customer: { select: { nama: true } },
+      kavling: { include: { perumahan: true } },
+      detailKavlingPajak: { include: { notaris: true } },
+      agent: { select: { nama: true } },
+    } satisfies Prisma.PenjualanInclude;
+
+    const sortField = filters?.orderBy?.field;
+    const sortByKavling =
+      sortField === "nomorUnit" || sortField === "blokNomorUnit";
+
+    let orderByClause: Prisma.PenjualanOrderByWithRelationInput[] = [
+      { id: "desc" },
+    ];
+
+    if (filters?.orderBy && !sortByKavling) {
+      const { field, direction } = filters.orderBy;
+      if (field === "nama") {
+        orderByClause = [{ customer: { nama: direction } }, { id: "desc" }];
+      } else if (field === "totalHargaJual") {
+        orderByClause = [{ hargaJual: direction }, { id: "desc" }];
+      } else {
+        orderByClause = [{ [field]: direction }, { id: "desc" }];
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const parseNomorUnit = (val: string) => {
+      const n = Number.parseInt(String(val).trim(), 10);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    type PenjualanListRow = Prisma.PenjualanGetPayload<{
+      include: typeof listInclude;
+    }>;
+
+    let items: PenjualanListRow[];
+    let totalItems: number;
+
+    if (sortByKavling) {
+      const direction = filters!.orderBy!.direction;
+
+      const matching = await this.db.penjualan.findMany({
+        where,
+        select: {
+          id: true,
+          kavling: { select: { blok: true, nomorUnit: true } },
+        },
+      });
+
+      matching.sort((a, b) => {
+        if (sortField === "blokNomorUnit") {
+          const blokCmp = a.kavling.blok.localeCompare(b.kavling.blok, "id", {
+            numeric: true,
+            sensitivity: "base",
+          });
+          if (blokCmp !== 0) {
+            return direction === "asc" ? blokCmp : -blokCmp;
+          }
+        }
+        const diff =
+          parseNomorUnit(a.kavling.nomorUnit) -
+          parseNomorUnit(b.kavling.nomorUnit);
+        return direction === "asc" ? diff : -diff;
+      });
+
+      totalItems = matching.length;
+      const pageIds = matching.slice(skip, skip + limit).map((r) => r.id);
+
+      if (pageIds.length === 0) {
+        items = [];
+      } else {
+        const unsorted = await this.db.penjualan.findMany({
+          where: { id: { in: pageIds } },
+          include: listInclude,
+        });
+        const orderMap = new Map(pageIds.map((id, i) => [id, i]));
+        items = [...unsorted].sort(
+          (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+        );
+      }
+    } else {
+      [items, totalItems] = await Promise.all([
+        this.db.penjualan.findMany({
+          take: limit,
+          skip,
+          where,
+          orderBy: orderByClause,
+          include: listInclude,
+        }),
+        this.db.penjualan.count({ where }),
+      ]);
+    }
+
+    const totalPages = Math.ceil(totalItems / limit) || 1;
 
     const mappedItems = items.map((p) => {
       // Omit `pembiayaan` from detail spread: it is a separate DetailKavlingPajak column
@@ -84,8 +177,12 @@ export class GetCustomerKavlingsPaginatedUseCase {
     return {
       items: mappedItems,
       meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
     };
   }
