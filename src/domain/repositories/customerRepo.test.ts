@@ -163,6 +163,56 @@ describe("Integration Test: CustomerRepository", () => {
       expect(resultSearchNik.items).toHaveLength(1);
       expect(resultSearchNik.items[0]?.nama).toBe("Budi");
     });
+
+    it("harus bisa mencari customer berdasarkan blok atau nomor unit kavling", async () => {
+      const customer = await repo.create({
+        nikKtp: "4444444444444444",
+        nama: "Customer Kavling",
+        noHp: "084",
+        alamatKtp: "Alamat",
+      });
+
+      const perumahan = await prismaTest.perumahan.create({
+        data: {
+          nama: "Perumahan Test",
+          alamat: "Jl. Test Kavling",
+          logo: "logo-test.png",
+        },
+      });
+
+      const kavling = await prismaTest.kavling.create({
+        data: {
+          perumahanId: perumahan.id,
+          blok: "Z9",
+          nomorUnit: "17",
+          namaTipe: "Tipe Test",
+          luasTanah: 100,
+          luasBangunan: 50,
+          hargaDasar: 500000000,
+        },
+      });
+
+      await prismaTest.penjualan.create({
+        data: {
+          noTransaksi: "TRX-TEST-Z9-17",
+          tanggal: new Date("2026-01-01"),
+          customerId: customer.id,
+          kavlingId: kavling.id,
+          hargaDasar: 500000000,
+          status: "BOOKED",
+        },
+      });
+
+      const byBlok = await repo.findWithOffsetPagination(1, 10, {
+        search: "Z9",
+      });
+      expect(byBlok.items.some((c) => c.id === customer.id)).toBe(true);
+
+      const byNomorUnit = await repo.findWithOffsetPagination(1, 10, {
+        search: "17",
+      });
+      expect(byNomorUnit.items.some((c) => c.id === customer.id)).toBe(true);
+    });
   });
 
   describe("delete", () => {

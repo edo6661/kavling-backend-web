@@ -102,6 +102,19 @@ export class CustomerRepository implements ICustomerRepository {
         { nama: { contains: filters.search } },
         { nikKtp: { contains: filters.search } },
         { noHp: { contains: filters.search } },
+        {
+          penjualan: {
+            some: {
+              status: { not: "BATAL" },
+              kavling: {
+                OR: [
+                  { blok: { contains: filters.search } },
+                  { nomorUnit: { contains: filters.search } },
+                ],
+              },
+            },
+          },
+        },
       ];
     }
 
