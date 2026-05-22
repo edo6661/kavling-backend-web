@@ -55,6 +55,8 @@ export async function seedKavling(prisma: PrismaClient) {
         ? String(rawBlokSuffix).trim()
         : "";
     const blok = `${blokPrefix}${blokSuffix}`;
+    console.log(`Row ${i}: blokPrefix="${blokPrefix}", blokSuffix="${blokSuffix}"`);
+    console.log(`Row ${i}: rawUnit="${rawUnit}"`);
     const nomorUnit =
       rawUnit !== undefined && rawUnit !== null ? String(rawUnit).trim() : "";
     const lb = Math.round(Number(rawLb) || 0);
