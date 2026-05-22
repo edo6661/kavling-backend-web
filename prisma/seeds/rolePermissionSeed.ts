@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { Prisma, PrismaClient, Role } from "@prisma/client";
 
 export async function seedRolePermission(prisma: PrismaClient) {
   console.log("Seeding role permissions (Bypass All for testing)...");
@@ -9,6 +9,8 @@ export async function seedRolePermission(prisma: PrismaClient) {
     Role.FINANCE,
     Role.MARKETING,
     Role.CUSTOMER,
+    Role.MANDOR,
+    
   ];
 
   const resources = [
@@ -32,7 +34,7 @@ export async function seedRolePermission(prisma: PrismaClient) {
     "PROGRESS_PROYEK",
   ];
 
-  const permissionsToInsert = [];
+  const permissionsToInsert: Prisma.RolePermissionCreateManyInput[] = [];
 
   for (const role of roles) {
     for (const resource of resources) {

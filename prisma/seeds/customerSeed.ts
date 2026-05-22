@@ -16,19 +16,7 @@ export async function seedCustomer(prisma: PrismaClient) {
         bank: "BCA",
         alamatKoresponden: "Sama dengan KTP",
       },
-      {
-        userId: null,
-        nikKtp: "3671000033334444",
-        nama: "Siti Rahmawati",
-        noHp: "081998877665",
-        alamatKtp: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
-        alamatTinggal: "Perumahan Dasana Indah Blok BA No. 4, Tangerang",
-        email: "sitirahma@example.com",
-        pekerjaan: "Wiraswasta",
-        perusahaan: "Toko Kelontong Rahma",
-        bank: "Mandiri",
-        alamatKoresponden: "Sama dengan KTP",
-      },
+     
     ],
   });
 }

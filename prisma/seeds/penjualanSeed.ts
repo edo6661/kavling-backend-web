@@ -1,4 +1,14 @@
-import { PrismaClient, PaymentMethod, PenjualanStatus } from "@prisma/client";
+import {
+  PrismaClient,
+  PaymentMethod,
+  PenjualanStatus,
+  AgentStatus,
+  UnitStatus,
+  PaymentStatus,
+  TagihanTujuan,
+  type Agent,
+  type Notaris,
+} from "@prisma/client";
 import * as xlsx from "xlsx";
 import path from "path";
 import fs from "fs";
@@ -62,9 +72,9 @@ export async function seedPenjualan(prisma: PrismaClient) {
     if (rawKso !== undefined) {
       const ksoStr = String(rawKso).trim().toLowerCase();
       if (ksoStr.includes("gajah")) {
-        rekeningTujuanId = 1;
+        rekeningTujuanId = 3;
       } else if (ksoStr.includes("mahligai")) {
-        rekeningTujuanId = 2;
+        rekeningTujuanId = 4;
       }
     }
     const rawBank = getCell("D");
@@ -144,7 +154,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
             luasTanah: lt,
             hargaDasar: hargaJual ?? 0,
             rekeningTujuanId: rekeningTujuanId,
-            status: "TERJUAL",
+            status: UnitStatus.TERJUAL,
           },
         });
       }
@@ -170,7 +180,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
         });
       }
       const namaAgent = rawAgentNama ? String(rawAgentNama).trim() : null;
-      let agent = null;
+      let agent: Agent | null = null;
       if (namaAgent) {
         agent = await prisma.agent.findFirst({
           where: { nama: namaAgent },
@@ -181,13 +191,13 @@ export async function seedPenjualan(prisma: PrismaClient) {
               nik: `IMP-${i}-${Date.now() % 100000}`,
               nama: namaAgent,
               noHp: "-",
-              status: "AKTIF",
+              status: AgentStatus.AKTIF,
             },
           });
         }
       }
       const namaNotaris = rawNamaNotaris ? String(rawNamaNotaris).trim() : null;
-      let notaris = null;
+      let notaris: Notaris | null = null;
       if (namaNotaris) {
         notaris = await prisma.notaris.findFirst({
           where: { nama: namaNotaris },
@@ -287,17 +297,17 @@ export async function seedPenjualan(prisma: PrismaClient) {
         update: {
           nominal: calcBookingFee,
           jatuhTempo: tanggalAkadPpjb ?? new Date(),
-          tujuan: "BOOKING_FEE",
+          tujuan: TagihanTujuan.BOOKING_FEE,
         },
         create: {
           noTagihan: noTagihanBf,
           customerId: customer.id,
           penjualanId: penjualan.id,
           pembayaran: "Booking Fee",
-          tujuan: "BOOKING_FEE",
+          tujuan: TagihanTujuan.BOOKING_FEE,
           nominal: calcBookingFee,
           jatuhTempo: tanggalAkadPpjb ?? new Date(),
-          status: "BELUM_BAYAR",
+          status: PaymentStatus.BELUM_BAYAR,
         },
       });
 
@@ -316,17 +326,17 @@ export async function seedPenjualan(prisma: PrismaClient) {
           update: {
             nominal: calcDp,
             jatuhTempo: dpDueDate,
-            tujuan: "DP",
+            tujuan: TagihanTujuan.DP,
           },
           create: {
             noTagihan: noTagihanDp,
             customerId: customer.id,
             penjualanId: penjualan.id,
             pembayaran: "Down Payment (DP)",
-            tujuan: "DP",
+            tujuan: TagihanTujuan.DP,
             nominal: calcDp,
             jatuhTempo: dpDueDate,
-            status: "BELUM_BAYAR",
+            status: PaymentStatus.BELUM_BAYAR,
           },
         });
       }
@@ -348,7 +358,7 @@ export async function seedPenjualan(prisma: PrismaClient) {
       });
       await prisma.kavling.update({
         where: { id: kavling.id },
-        data: { status: "TERJUAL" },
+        data: { status: UnitStatus.TERJUAL },
       });
       successCount++;
       console.log(
