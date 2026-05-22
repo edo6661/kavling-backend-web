@@ -71,14 +71,13 @@ export class AgentController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } = getAgentsPaginatedSchema.query.parse(
+    const { page, limit, ...filters } = getAgentsPaginatedSchema.query.parse(
       req.query,
     );
-    const parsedCursor = cursor ? Number(cursor) : undefined;
 
     const result = await this.getPaginatedUseCase.execute(
+      page,
       limit,
-      parsedCursor,
       filters as AgentFilterDTO,
     );
     sendResponse(res, StatusCodes.OK, "Daftar agent berhasil diambil", result);

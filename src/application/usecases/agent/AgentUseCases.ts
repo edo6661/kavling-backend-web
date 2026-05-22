@@ -4,7 +4,7 @@ import type {
   UpdateAgentDTO,
   AgentFilterDTO,
 } from "../../../domain/dtos/AgentDTO.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
+import type { OffsetPaginatedData } from "../../../types/response.js";
 import type { AgentEntity } from "../../../domain/entities/Agent.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
@@ -35,11 +35,11 @@ export class GetAgentByIdUseCase {
 export class GetAgentsPaginatedUseCase {
   constructor(private readonly repo: IAgentRepository) {}
   async execute(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: AgentFilterDTO,
-  ): Promise<CursorPaginatedData<AgentEntity>> {
-    return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  ): Promise<OffsetPaginatedData<AgentEntity>> {
+    return await this.repo.findWithOffsetPagination(page, limit, filters);
   }
 }
 export class DeleteAgentUseCase {

@@ -1,6 +1,11 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { AgentStatus, AgentType } from "@prisma/client";
 
+export interface AgentFilterDTO extends BaseFilterDTO {
+  status?: AgentStatus | undefined;
+  type?: AgentType | undefined;
+}
+
 export interface PicAgentDTO {
   id?: number | undefined;
   nama: string;
@@ -87,8 +92,6 @@ export interface AgentResponseDTO {
   pics: PicAgentDTO[];
   createdAt: Date;
 }
-export type AgentFilterDTO = BaseFilterDTO;
-
 export interface RegisterAgentDTO {
   nik: string;
   nama: string;

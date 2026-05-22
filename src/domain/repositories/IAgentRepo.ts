@@ -4,17 +4,17 @@ import type {
   UpdateAgentDTO,
   AgentFilterDTO,
 } from "../dtos/AgentDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
 export interface IAgentRepository {
   create(data: CreateAgentDTO): Promise<AgentEntity>;
   findById(id: number): Promise<AgentEntity | null>;
   update(id: number, data: UpdateAgentDTO): Promise<AgentEntity>;
   delete(id: number): Promise<void>;
-  findWithCursorPagination(
+  findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: AgentFilterDTO,
-  ): Promise<CursorPaginatedData<AgentEntity>>;
+  ): Promise<OffsetPaginatedData<AgentEntity>>;
   findByUserId(userId: number): Promise<AgentEntity | null>;
 }

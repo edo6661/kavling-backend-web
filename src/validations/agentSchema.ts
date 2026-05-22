@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 import { AgentStatus, AgentType } from "@prisma/client";
 
 // Schema untuk nested PIC
@@ -65,5 +65,8 @@ export const generateAgentAccountSchema = {
   }),
 };
 export const getAgentsPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
+  query: offsetPaginationQuerySchema.extend({
+    status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
+    type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
+  }),
 };

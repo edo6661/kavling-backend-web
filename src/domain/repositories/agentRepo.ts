@@ -7,7 +7,7 @@ import type {
   UpdateAgentDTO,
   AgentFilterDTO,
 } from "../dtos/AgentDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
@@ -223,72 +223,90 @@ export class AgentRepository implements IAgentRepository {
     }
   }
 
-  async findWithCursorPagination(
+  private agentListInclude = {
+    pics: true,
+    perusahaanAgent: true,
+    penjualan: {
+      orderBy: { createdAt: "desc" as const },
+      select: {
+        id: true,
+        noTransaksi: true,
+        tanggal: true,
+        hargaJual: true,
+        status: true,
+        customer: { select: { nama: true } },
+        kavling: {
+          select: {
+            blok: true,
+            nomorUnit: true,
+            perumahan: { select: { nama: true } },
+          },
+        },
+      },
+    },
+  };
+
+  async findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: AgentFilterDTO,
-  ): Promise<CursorPaginatedData<AgentEntity>> {
+  ): Promise<OffsetPaginatedData<AgentEntity>> {
     const where: Prisma.AgentWhereInput = {};
 
     if (filters?.search) {
       where.OR = [
         { nama: { contains: filters.search } },
         { nik: { contains: filters.search } },
+        { noHp: { contains: filters.search } },
+        { email: { contains: filters.search } },
       ];
     }
 
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+
+    if (filters?.type) {
+      where.type = filters.type;
+    }
+
     let orderByClause: Prisma.AgentOrderByWithRelationInput[] = [
-      { nama: "asc" },
+      { createdAt: "desc" },
+      { id: "asc" },
     ];
 
     if (filters?.orderBy) {
       const { field, direction } = filters.orderBy;
-      const validFields = ["nama", "nik", "createdAt"];
+      const validFields = ["nama", "nik", "createdAt", "status"];
       if (validFields.includes(field)) {
         orderByClause = [{ [field]: direction }, { id: "asc" }];
       }
     }
 
-    const items = await this.db.agent.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: orderByClause,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
-              },
-            },
-          },
-        },
-      },
-    });
+    const skip = (page - 1) * limit;
 
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
-    }
+    const [rows, totalItems] = await Promise.all([
+      this.db.agent.findMany({
+        take: limit,
+        skip,
+        where,
+        orderBy: orderByClause,
+        include: this.agentListInclude,
+      }),
+      this.db.agent.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit) || 1;
 
     return {
-      items: items.map((item) => AgentMapper.toDomain(item)),
+      items: rows.map((item) => AgentMapper.toDomain(item)),
       meta: {
-        nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
-        hasNextPage,
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
     };
   }
