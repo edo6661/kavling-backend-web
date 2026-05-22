@@ -60,6 +60,9 @@ export interface PenjualanResponseDTO {
 export interface PenjualanFilterDTO extends BaseFilterDTO {
   /** Filter proyek yang ditugaskan ke mandor tertentu */
   mandorUserId?: number;
+  /** Kecualikan status tertentu (mis. BATAL di halaman progress) */
+  excludeStatus?: string;
+  caraPembayaran?: PaymentMethod;
 }
 
 export interface BiayaTambahanDTO {

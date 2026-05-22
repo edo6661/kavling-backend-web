@@ -307,6 +307,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       where.OR = [
         { noTransaksi: { contains: filters.search } },
         { customer: { nama: { contains: filters.search } } },
+        { kavling: { blok: { contains: filters.search } } },
       ];
     }
 
@@ -314,15 +315,47 @@ export class PenjualanRepository implements IPenjualanRepository {
       where.status = filters.status as any;
     }
 
+    if (filters?.excludeStatus) {
+      where.status = { not: filters.excludeStatus as any };
+    }
+
     if (filters?.mandorUserId) {
       where.progressProyek = { is: { mandorId: filters.mandorUserId } };
     }
+
+    if (filters?.caraPembayaran) {
+      where.caraPembayaran = filters.caraPembayaran;
+    }
+
+    const listInclude = {
+      customer: true,
+      progressPenjualan: true,
+      kavling: { include: { perumahan: true, rekeningTujuan: true } },
+      agent: true,
+      tagihan: true,
+      pengajuanBatal: { where: { status: "PENDING" as const } },
+      riwayatGantiKavling: {
+        include: {
+          kavlingLama: { include: { perumahan: true } },
+          kavlingBaru: { include: { perumahan: true } },
+        },
+        orderBy: { createdAt: "desc" as const },
+      },
+      riwayatSpr: { orderBy: { createdAt: "desc" as const } },
+      progressProyek: {
+        include: { mandor: { select: { id: true, username: true } } },
+      },
+    } satisfies Prisma.PenjualanInclude;
+
+    const sortField = filters?.orderBy?.field;
+    const sortByKavling =
+      sortField === "nomorUnit" || sortField === "blokNomorUnit";
 
     let orderByClause: Prisma.PenjualanOrderByWithRelationInput[] = [
       { createdAt: "desc" },
     ];
 
-    if (filters?.orderBy) {
+    if (filters?.orderBy && !sortByKavling) {
       const { field, direction } = filters.orderBy;
       if (field === "nama") {
         orderByClause = [{ customer: { nama: direction } }];
@@ -333,38 +366,77 @@ export class PenjualanRepository implements IPenjualanRepository {
 
     const skip = (page - 1) * limit;
 
-    const [items, totalItems, summaryData] = await Promise.all([
-      this.db.penjualan.findMany({
-        take: limit,
-        skip,
+    const parseNomorUnit = (val: string) => {
+      const n = Number.parseInt(String(val).trim(), 10);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    type PenjualanListRow = Prisma.PenjualanGetPayload<{
+      include: typeof listInclude;
+    }>;
+
+    let items: PenjualanListRow[];
+    let totalItems: number;
+
+    if (sortByKavling) {
+      const direction = filters!.orderBy!.direction;
+
+      const matching = await this.db.penjualan.findMany({
         where,
-        orderBy: orderByClause,
-        include: {
-          customer: true,
-          progressPenjualan: true,
-          kavling: { include: { perumahan: true, rekeningTujuan: true } },
-          agent: true,
-          tagihan: true,
-          pengajuanBatal: { where: { status: "PENDING" } },
-          riwayatGantiKavling: {
-            include: {
-              kavlingLama: { include: { perumahan: true } },
-              kavlingBaru: { include: { perumahan: true } },
-            },
-            orderBy: { createdAt: "desc" },
-          },
-          riwayatSpr: { orderBy: { createdAt: "desc" } },
-          progressProyek: {
-            include: { mandor: { select: { id: true, username: true } } },
-          },
+        select: {
+          id: true,
+          kavling: { select: { blok: true, nomorUnit: true } },
         },
-      }),
-      this.db.penjualan.count({ where }),
-      this.db.penjualan.groupBy({
-        by: ["status"],
-        _count: { id: true },
-      }),
-    ]);
+      });
+
+      matching.sort((a, b) => {
+        if (sortField === "blokNomorUnit") {
+          const blokCmp = a.kavling.blok.localeCompare(b.kavling.blok, "id", {
+            numeric: true,
+            sensitivity: "base",
+          });
+          if (blokCmp !== 0) {
+            return direction === "asc" ? blokCmp : -blokCmp;
+          }
+        }
+        const diff =
+          parseNomorUnit(a.kavling.nomorUnit) -
+          parseNomorUnit(b.kavling.nomorUnit);
+        return direction === "asc" ? diff : -diff;
+      });
+
+      totalItems = matching.length;
+      const pageIds = matching.slice(skip, skip + limit).map((r) => r.id);
+
+      if (pageIds.length === 0) {
+        items = [];
+      } else {
+        const unsorted = await this.db.penjualan.findMany({
+          where: { id: { in: pageIds } },
+          include: listInclude,
+        });
+        const orderMap = new Map(pageIds.map((id, i) => [id, i]));
+        items = [...unsorted].sort(
+          (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+        );
+      }
+    } else {
+      [items, totalItems] = await Promise.all([
+        this.db.penjualan.findMany({
+          take: limit,
+          skip,
+          where,
+          orderBy: orderByClause,
+          include: listInclude,
+        }),
+        this.db.penjualan.count({ where }),
+      ]);
+    }
+
+    const summaryData = await this.db.penjualan.groupBy({
+      by: ["status"],
+      _count: { id: true },
+    });
 
     const totalPages = Math.ceil(totalItems / limit) || 1;
 

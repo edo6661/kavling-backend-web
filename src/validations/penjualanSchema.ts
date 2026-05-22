@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import type { PaymentMethod } from "@prisma/client";
-import { PenjualanStatus } from "@prisma/client";
+import { PaymentMethod, PenjualanStatus } from "@prisma/client";
 import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 
 export const createPenjualanSchema = {
@@ -48,6 +48,10 @@ export const createPenjualanSchema = {
 export const getPenjualanPaginatedSchema = {
   query: offsetPaginationQuerySchema.extend({
     status: emptyAsUndefined(z.nativeEnum(PenjualanStatus).optional()),
+    excludeStatus: emptyAsUndefined(z.nativeEnum(PenjualanStatus).optional()),
+    caraPembayaran: emptyAsUndefined(
+      z.nativeEnum(PaymentMethod).optional(),
+    ),
   }),
 };
 export const cancelPenjualanSchema = {
