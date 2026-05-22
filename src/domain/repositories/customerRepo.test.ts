@@ -127,7 +127,7 @@ describe("Integration Test: CustomerRepository", () => {
     });
   });
 
-  describe("findWithCursorPagination", () => {
+  describe("findWithOffsetPagination", () => {
     it("harus mengembalikan data sesuai limit dan bisa difilter (search)", async () => {
       await repo.create({
         nikKtp: "1111",
@@ -148,23 +148,18 @@ describe("Integration Test: CustomerRepository", () => {
         alamatKtp: "Z",
       });
 
-      // Test limit
-      const resultLimit = await repo.findWithCursorPagination(2);
+      const resultLimit = await repo.findWithOffsetPagination(1, 2);
       expect(resultLimit.items).toHaveLength(2);
-      expect(resultLimit.meta.hasNextPage).toBe(true);
+      expect(resultLimit.meta.totalPages).toBeGreaterThanOrEqual(2);
 
-      // Test search berdasarkan nama
-      const resultSearch = await repo.findWithCursorPagination(10, undefined, {
+      const resultSearch = await repo.findWithOffsetPagination(1, 10, {
         search: "Ahmad",
       });
-      expect(resultSearch.items).toHaveLength(2); // "Ahmad" dan "Ahmad Budi"
+      expect(resultSearch.items).toHaveLength(2);
 
-      // Test search berdasarkan NIK
-      const resultSearchNik = await repo.findWithCursorPagination(
-        10,
-        undefined,
-        { search: "2222" },
-      );
+      const resultSearchNik = await repo.findWithOffsetPagination(1, 10, {
+        search: "2222",
+      });
       expect(resultSearchNik.items).toHaveLength(1);
       expect(resultSearchNik.items[0]?.nama).toBe("Budi");
     });

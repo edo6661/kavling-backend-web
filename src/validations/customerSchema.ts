@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import { cursorPaginationQuerySchema } from "./paginationSchema.js";
+import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 
 export const createCustomerSchema = {
   body: z.object({
@@ -40,7 +40,7 @@ export const updateCustomerSchema = {
 };
 
 export const getCustomersPaginatedSchema = {
-  query: cursorPaginationQuerySchema,
+  query: offsetPaginationQuerySchema,
 };
 
 export const generateAccountSchema = {

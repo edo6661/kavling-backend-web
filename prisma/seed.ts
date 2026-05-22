@@ -14,7 +14,7 @@ async function main() {
   console.log("Memulai proses seeding...");
 
   // clearDatabase(prisma);
-  // seedUser(prisma);
+  seedUser(prisma);
   // seedPerumahan(prisma);
   // seedBankRekeningPt(prisma);
   // seedPenjualan(prisma);

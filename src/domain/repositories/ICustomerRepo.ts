@@ -4,7 +4,7 @@ import type {
   UpdateCustomerDTO,
   CustomerFilterDTO,
 } from "../dtos/CustomerDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 
 export interface ICustomerRepository {
   create(data: CreateCustomerDTO): Promise<Customer>;
@@ -13,9 +13,9 @@ export interface ICustomerRepository {
   findByNik(nikKtp: string): Promise<Customer | null>;
   update(id: number, data: UpdateCustomerDTO): Promise<Customer>;
   delete(id: number): Promise<void>;
-  findWithCursorPagination(
+  findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: CustomerFilterDTO,
-  ): Promise<CursorPaginatedData<Customer>>;
+  ): Promise<OffsetPaginatedData<Customer>>;
 }

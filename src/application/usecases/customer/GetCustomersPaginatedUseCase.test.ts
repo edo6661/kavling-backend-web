@@ -31,25 +31,27 @@ describe("GetCustomersPaginatedUseCase", () => {
           updatedAt: new Date(),
         },
       ],
-      meta: { nextCursor: null, hasNextPage: false },
+      meta: {
+        page: 1,
+        limit: 10,
+        totalItems: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
 
-    customerRepoMock.findWithCursorPagination.mockResolvedValue(
+    customerRepoMock.findWithOffsetPagination.mockResolvedValue(
       mockResult as any,
     );
 
-    const limit = 10;
-    const result = await getCustomersPaginatedUseCase.execute(
-      limit,
-      undefined,
-      { search: "Budi" },
-    );
+    const result = await getCustomersPaginatedUseCase.execute(1, 10, {
+      search: "Budi",
+    });
 
-    expect(customerRepoMock.findWithCursorPagination).toHaveBeenCalledWith(
-      limit,
-      undefined,
-      { search: "Budi" },
-    );
+    expect(customerRepoMock.findWithOffsetPagination).toHaveBeenCalledWith(1, 10, {
+      search: "Budi",
+    });
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.nama).toBe("Budi Santoso");
     expect(result.meta).toEqual(mockResult.meta);

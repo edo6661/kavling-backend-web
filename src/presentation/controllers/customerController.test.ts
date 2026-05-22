@@ -113,22 +113,27 @@ describe("CustomerController", () => {
 
   it("getPaginated - harus memparsing query dan memanggil usecase, lalu return 200 OK", async () => {
     // Controller melakukan parsing menggunakan Zod, jadi berikan data yang valid
-    req.query = { limit: "10", search: "Budi" };
+    req.query = { page: "1", limit: "10", search: "Budi" };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockResult: any = {
       items: [{ id: 1, nama: "Budi Santoso" }],
-      meta: { nextCursor: null, hasNextPage: false },
+      meta: {
+        page: 1,
+        limit: 10,
+        totalItems: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
     getPaginatedUseCaseMock.execute.mockResolvedValue(mockResult);
 
     await controller.getPaginated(req as Request, res as Response);
 
-    expect(getPaginatedUseCaseMock.execute).toHaveBeenCalledWith(
-      10, // limit diparsing jadi number oleh zod
-      undefined, // cursor kosong
-      { search: "Budi" }, // filters
-    );
+    expect(getPaginatedUseCaseMock.execute).toHaveBeenCalledWith(1, 10, {
+      search: "Budi",
+    });
     expect(sendResponse).toHaveBeenCalledWith(
       res,
       StatusCodes.OK,

@@ -6,7 +6,7 @@ import type {
   UpdateCustomerDTO,
   CustomerFilterDTO,
 } from "../dtos/CustomerDTO.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 
@@ -84,11 +84,11 @@ export class CustomerRepository implements ICustomerRepository {
       data: updateData,
     });
   }
-  async findWithCursorPagination(
+  async findWithOffsetPagination(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: CustomerFilterDTO,
-  ): Promise<CursorPaginatedData<Customer>> {
+  ): Promise<OffsetPaginatedData<Customer>> {
     const where: Prisma.CustomerWhereInput = {};
 
     if (filters?.startDate || filters?.endDate) {
@@ -105,12 +105,16 @@ export class CustomerRepository implements ICustomerRepository {
       ];
     }
 
+    const sortField = filters?.orderBy?.field;
+    const sortByKavling = sortField === "blokNomorUnit";
+    const skip = (page - 1) * limit;
+
     let orderByClause: Prisma.CustomerOrderByWithRelationInput[] = [
       { createdAt: "desc" },
       { id: "asc" },
     ];
 
-    if (filters?.orderBy) {
+    if (filters?.orderBy && !sortByKavling) {
       const { field, direction } = filters.orderBy;
       const validFields = ["nama", "nikKtp", "noHp", "createdAt"];
       if (validFields.includes(field)) {
@@ -118,22 +122,102 @@ export class CustomerRepository implements ICustomerRepository {
       }
     }
 
-    const items = await this.db.customer.findMany({
-      take: limit + 1,
-      ...(cursor && { skip: 1, cursor: { id: cursor } }),
-      where,
-      orderBy: orderByClause,
-    });
+    const parseNomorUnit = (val: string) => {
+      const n = Number.parseInt(String(val).trim(), 10);
+      return Number.isFinite(n) ? n : 0;
+    };
 
-    let hasNextPage = false;
-    if (items.length > limit) {
-      hasNextPage = true;
-      items.pop();
+    const compareKavling = (
+      a: { blok: string; nomorUnit: string },
+      b: { blok: string; nomorUnit: string },
+      direction: "asc" | "desc",
+    ) => {
+      const blokCmp = a.blok.localeCompare(b.blok, "id", {
+        numeric: true,
+        sensitivity: "base",
+      });
+      if (blokCmp !== 0) {
+        return direction === "asc" ? blokCmp : -blokCmp;
+      }
+      const diff = parseNomorUnit(a.nomorUnit) - parseNomorUnit(b.nomorUnit);
+      return direction === "asc" ? diff : -diff;
+    };
+
+    const pickPrimaryKavling = (
+      penjualan: { kavling: { blok: string; nomorUnit: string } }[],
+    ) => {
+      if (penjualan.length === 0) return null;
+      return [...penjualan]
+        .map((p) => p.kavling)
+        .sort((a, b) => compareKavling(a, b, "asc"))[0]!;
+    };
+
+    let items: Customer[];
+    let totalItems: number;
+
+    if (sortByKavling) {
+      const direction = filters!.orderBy!.direction;
+
+      const matching = await this.db.customer.findMany({
+        where,
+        select: {
+          id: true,
+          penjualan: {
+            where: { status: { not: "BATAL" } },
+            select: { kavling: { select: { blok: true, nomorUnit: true } } },
+          },
+        },
+      });
+
+      matching.sort((a, b) => {
+        const kavA = pickPrimaryKavling(a.penjualan);
+        const kavB = pickPrimaryKavling(b.penjualan);
+        if (!kavA && !kavB) return a.id - b.id;
+        if (!kavA) return 1;
+        if (!kavB) return -1;
+        const cmp = compareKavling(kavA, kavB, direction);
+        return cmp !== 0 ? cmp : a.id - b.id;
+      });
+
+      totalItems = matching.length;
+      const pageIds = matching.slice(skip, skip + limit).map((r) => r.id);
+
+      if (pageIds.length === 0) {
+        items = [];
+      } else {
+        const unsorted = await this.db.customer.findMany({
+          where: { id: { in: pageIds } },
+        });
+        const orderMap = new Map(pageIds.map((id, i) => [id, i]));
+        items = [...unsorted].sort(
+          (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+        );
+      }
+    } else {
+      [items, totalItems] = await Promise.all([
+        this.db.customer.findMany({
+          take: limit,
+          skip,
+          where,
+          orderBy: orderByClause,
+        }),
+        this.db.customer.count({ where }),
+      ]);
     }
 
-    const nextCursor = hasNextPage ? (items.at(-1)?.id ?? null) : null;
+    const totalPages = Math.ceil(totalItems / limit) || 1;
 
-    return { items, meta: { nextCursor, hasNextPage } };
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    };
   }
   async delete(id: number): Promise<void> {
     const existing = await this.findById(id);

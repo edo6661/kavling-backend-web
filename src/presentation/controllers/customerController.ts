@@ -74,13 +74,12 @@ export class CustomerController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, ...filters } =
+    const { page, limit, ...filters } =
       getCustomersPaginatedSchema.query.parse(req.query);
-    const parsedCursor = cursor ? Number(cursor) : undefined;
 
     const result = await this.getCustomersPaginatedUseCase.execute(
+      page,
       limit,
-      parsedCursor,
       filters as CustomerFilterDTO,
     );
     sendResponse(
