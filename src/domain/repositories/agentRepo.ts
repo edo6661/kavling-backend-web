@@ -1,4 +1,4 @@
-import { AgentStatus, type Prisma } from "@prisma/client";
+import { AgentStatus, Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { IAgentRepository } from "./IAgentRepo.js";
 import type { AgentEntity } from "../entities/Agent.js";
@@ -122,6 +122,15 @@ export class AgentRepository implements IAgentRepository {
       throw new NotFoundError("Agent tidak ditemukan");
     }
 
+    if (data.nik && data.nik !== existing.nik) {
+      const checkDuplicate = await this.db.agent.findFirst({
+        where: { nik: data.nik, id: { not: id } },
+      });
+      if (checkDuplicate) {
+        throw new ConflictError("NIK Agent sudah terdaftar");
+      }
+    }
+
     const updateData: Prisma.AgentUncheckedUpdateInput = {};
 
     if (data.userId !== undefined) updateData.userId = data.userId;
@@ -174,34 +183,44 @@ export class AgentRepository implements IAgentRepository {
       };
     }
 
-    const result = await this.db.agent.update({
-      where: { id },
-      data: updateData,
-      include: {
-        pics: true,
-        perusahaanAgent: true,
-        penjualan: {
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            noTransaksi: true,
-            tanggal: true,
-            hargaJual: true,
-            status: true,
-            customer: { select: { nama: true } },
-            kavling: {
-              select: {
-                blok: true,
-                nomorUnit: true,
-                perumahan: { select: { nama: true } },
+    try {
+      const result = await this.db.agent.update({
+        where: { id },
+        data: updateData,
+        include: {
+          pics: true,
+          perusahaanAgent: true,
+          penjualan: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              noTransaksi: true,
+              tanggal: true,
+              hargaJual: true,
+              status: true,
+              customer: { select: { nama: true } },
+              kavling: {
+                select: {
+                  blok: true,
+                  nomorUnit: true,
+                  perumahan: { select: { nama: true } },
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    return AgentMapper.toDomain(result);
+      return AgentMapper.toDomain(result);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictError("NIK Agent sudah terdaftar");
+      }
+      throw error;
+    }
   }
 
   async findWithCursorPagination(
