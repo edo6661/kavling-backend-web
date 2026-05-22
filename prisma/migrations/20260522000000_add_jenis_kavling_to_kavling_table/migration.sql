@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `kavling` ADD COLUMN `jenis_kavling` ENUM('PERUMAHAN', 'RUKO') NOT NULL DEFAULT 'PERUMAHAN';

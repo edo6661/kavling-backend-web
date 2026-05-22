@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import { offsetPaginationQuerySchema } from "./paginationSchema.js";
-import { UnitStatus } from "@prisma/client";
+import { UnitStatus, JenisKavling } from "@prisma/client";
 
 export const createKavlingSchema = {
   body: z.object({
@@ -21,6 +21,7 @@ export const createKavlingSchema = {
     luasBangunan: z.coerce.number().min(0),
     luasTanah: z.coerce.number().min(0),
     hargaDasar: z.coerce.number().min(0),
+    jenisKavling: emptyAsUndefined(z.nativeEnum(JenisKavling).optional()),
     status: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
     rekeningTujuanId: emptyAsUndefined(
       z.coerce.number().int().positive().optional(),
@@ -57,6 +58,7 @@ export const updateKavlingSchema = {
     luasBangunan: emptyAsUndefined(z.coerce.number().min(0).optional()),
     luasTanah: emptyAsUndefined(z.coerce.number().min(0).optional()),
     hargaDasar: emptyAsUndefined(z.coerce.number().min(0).optional()),
+    jenisKavling: emptyAsUndefined(z.nativeEnum(JenisKavling).optional()),
     status: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
     rekeningTujuanId: emptyAsUndefined(
       z.coerce.number().int().positive().optional(),
@@ -79,6 +81,7 @@ export const getKavlingPaginatedSchema = {
       z.coerce.number().int().positive().optional(),
     ),
     status: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
+    jenisKavling: emptyAsUndefined(z.nativeEnum(JenisKavling).optional()),
   }),
 };
 

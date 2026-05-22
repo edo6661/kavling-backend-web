@@ -1,9 +1,10 @@
-import type { UnitStatus } from "@prisma/client";
+import type { UnitStatus, JenisKavling } from "@prisma/client";
 
 export interface KavlingEntity {
   id: number;
   perumahanId: number;
   perumahan?: { id: number; nama: string } | undefined;
+  jenisKavling: JenisKavling;
   blok: string;
   nomorUnit: string;
   namaTipe: string;

@@ -199,9 +199,11 @@ model Kavling {
   updatedAt           DateTime              @updatedAt @map("updated_at")
   luasBangunan        Decimal               @map("luas_bangunan") @db.Decimal(10, 2)
   luasTanah           Decimal               @map("luas_tanah") @db.Decimal(10, 2)
-  namaTipe            String                @map("nama_tipe") @db.VarChar(50)
+  namaTipe            String?                @map("nama_tipe") @db.VarChar(50)
   rekeningTujuanId    Int?                  @map("rekening_tujuan_id")
   hargaDasar          Decimal               @map("harga_dasar") @db.Decimal(15, 2)
+  jenisKavling JenisKavling @default(PERUMAHAN) @map("jenis_kavling")
+
   perumahan           Perumahan             @relation(fields: [perumahanId], references: [id])
   rekeningTujuan      BankRekeningPt?       @relation(fields: [rekeningTujuanId], references: [id])
   penjualan           Penjualan[]
@@ -566,6 +568,11 @@ enum UnitStatus {
   TERJUAL   @map("Terjual")
   HOLD      @map("Hold")
 }
+enum JenisKavling {
+  PERUMAHAN
+  RUKO
+}
+
 
 enum ActionType {
   CREATE

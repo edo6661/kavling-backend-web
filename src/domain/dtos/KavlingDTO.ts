@@ -1,5 +1,5 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
-import type { UnitStatus } from "@prisma/client";
+import type { UnitStatus, JenisKavling } from "@prisma/client";
 import type { KavlingEntity } from "../entities/Kavling.js";
 
 export interface CreateKavlingDTO {
@@ -11,6 +11,7 @@ export interface CreateKavlingDTO {
 
   luasTanah: number;
   hargaDasar: number;
+  jenisKavling?: JenisKavling | undefined;
   status?: UnitStatus | undefined;
   rekeningTujuanId?: number | undefined;
   filePbg?: string | undefined;
@@ -26,6 +27,7 @@ export interface UpdateKavlingDTO {
   luasBangunan?: number | undefined;
   luasTanah?: number | undefined;
   hargaDasar?: number | undefined;
+  jenisKavling?: JenisKavling | undefined;
   status?: UnitStatus | undefined;
   rekeningTujuanId?: number | undefined;
   filePbg?: string | undefined;
@@ -38,4 +40,5 @@ export type KavlingResponseDTO = KavlingEntity;
 export interface KavlingFilterDTO extends BaseFilterDTO {
   perumahanId?: number | undefined;
   status?: UnitStatus | undefined;
+  jenisKavling?: JenisKavling | undefined;
 }

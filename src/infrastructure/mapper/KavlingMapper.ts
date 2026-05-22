@@ -26,6 +26,7 @@ export class KavlingMapper {
             nama: prismaKavling.perumahan.nama,
           }
         : undefined,
+      jenisKavling: prismaKavling.jenisKavling,
       blok: prismaKavling.blok,
       nomorUnit: prismaKavling.nomorUnit,
       namaTipe: prismaKavling.namaTipe,

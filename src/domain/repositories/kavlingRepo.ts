@@ -35,6 +35,7 @@ export class KavlingRepository implements IKavlingRepository {
         luasBangunan: data.luasBangunan,
         luasTanah: data.luasTanah,
         hargaDasar: data.hargaDasar,
+        jenisKavling: data.jenisKavling,
         rekeningTujuanId: data.rekeningTujuanId ?? null,
         filePbg: data.filePbg ?? null,
         fileSertifikatTanah: data.fileSertifikatTanah ?? null,
@@ -83,6 +84,7 @@ export class KavlingRepository implements IKavlingRepository {
       updateData.luasBangunan = data.luasBangunan;
     if (data.luasTanah !== undefined) updateData.luasTanah = data.luasTanah;
     if (data.hargaDasar !== undefined) updateData.hargaDasar = data.hargaDasar;
+    if (data.jenisKavling !== undefined) updateData.jenisKavling = data.jenisKavling;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.rekeningTujuanId !== undefined)
       updateData.rekeningTujuanId = data.rekeningTujuanId ?? null;
@@ -119,6 +121,7 @@ export class KavlingRepository implements IKavlingRepository {
     const where: Prisma.KavlingWhereInput = {};
     if (filters?.perumahanId) where.perumahanId = filters.perumahanId;
     if (filters?.status) where.status = filters.status;
+    if (filters?.jenisKavling) where.jenisKavling = filters.jenisKavling;
     if (filters?.search) {
       where.OR = [
         { blok: { contains: filters.search } },
