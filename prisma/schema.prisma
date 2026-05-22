@@ -586,7 +586,6 @@ enum PaymentStatus {
   LUNAS               @map("Lunas")
 }
 
-/// Alokasi semantik tagihan (invoice). Setiap pembayaran tetap lewat satu baris tagihan.
 enum TagihanTujuan {
   BOOKING_FEE
   DP
