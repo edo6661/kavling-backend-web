@@ -42,9 +42,9 @@ export async function seedKavling(prisma: PrismaClient) {
     const bankStr = String(rawBank).trim().toUpperCase();
     let rekeningTujuanId = null;
     if (bankStr === "BMS") {
-      rekeningTujuanId = 4;
+      rekeningTujuanId = 1;
     } else if (bankStr === "SGMP") {
-      rekeningTujuanId = 3;
+      rekeningTujuanId = 2;
     }
     const blokPrefix =
       rawBlokPrefix !== undefined && rawBlokPrefix !== null
