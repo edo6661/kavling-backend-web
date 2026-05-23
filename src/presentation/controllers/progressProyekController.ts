@@ -5,11 +5,15 @@ import type { TypedRequest } from "../../types/request.js";
 
 import type {
   CreateTahapanLogUseCase,
+  GetProgressProyekListPaginatedUseCase,
   GetProgressProyekUseCase,
   ListMandorsUseCase,
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoUseCase,
 } from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
+import type { ProgressProyekListFilterDTO } from "../../domain/dtos/ProgressProyekDTO.js";
+import { getProgressProyekListSchema } from "../../validations/progressProyekSchema.js";
+import { Role } from "@prisma/client";
 import type { ProgressRequestContext } from "../../application/usecases/progressProyek/mandorAccess.js";
 
 import type {
@@ -19,6 +23,7 @@ import type {
 
 export class ProgressProyekController {
   constructor(
+    private readonly getListUseCase: GetProgressProyekListPaginatedUseCase,
     private readonly getUseCase: GetProgressProyekUseCase,
     private readonly updateUseCase: UpdateProgressProyekUseCase,
     private readonly uploadUseCase: UploadTahapanPhotoUseCase,
@@ -33,6 +38,24 @@ export class ProgressProyekController {
   listMandors = async (_req: Request, res: Response): Promise<void> => {
     const result = await this.listMandorsUseCase.execute();
     sendResponse(res, StatusCodes.OK, "Daftar mandor berhasil diambil", result);
+  };
+
+  getProyekList = async (req: Request, res: Response): Promise<void> => {
+    const { page, limit } = getProgressProyekListSchema.query.parse(req.query);
+
+    const filters: ProgressProyekListFilterDTO = {};
+    if (req.user?.role === Role.MANDOR && req.user.userId) {
+      filters.mandorUserId = req.user.userId;
+    }
+
+    const result = await this.getListUseCase.execute(page, limit, filters);
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar proyek progress berhasil diambil",
+      result,
+    );
   };
 
   getByPenjualanId = async (

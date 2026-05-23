@@ -6,6 +6,7 @@ import {
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
+  getProgressProyekListSchema,
   getProgressProyekSchema,
   updateProgressProyekSchema,
   uploadTahapanPhotoSchema,
@@ -23,6 +24,13 @@ export const createProgressProyekRoutes = (
     "/mandors",
     requirePermission("PROGRESS_PROYEK", "read"),
     controller.listMandors,
+  );
+
+  router.get(
+    "/proyek",
+    requirePermission("PROGRESS_PROYEK", "read"),
+    validate(getProgressProyekListSchema),
+    controller.getProyekList,
   );
 
   router.get(

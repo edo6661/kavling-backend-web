@@ -21,6 +21,7 @@ import { createProgressPenjualanRoutes } from "./progressPenjualanRoutes.js";
 import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
 import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
 import { createProgressProyekRoutes } from "./progressProyekRoutes.js";
+import { createSpkRoutes } from "./spkRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -66,6 +67,7 @@ export const createMainRouter = (deps: typeof container): Router => {
     "/progress-proyek",
     createProgressProyekRoutes(deps.progressProyekController),
   );
+  router.use("/spk", createSpkRoutes(deps.spkController));
   return router;
 };
 

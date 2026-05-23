@@ -19,7 +19,6 @@ export interface CreateProgressProyekDTO {
 }
 
 export interface UpdateProgressProyekDTO {
-  mandorId?: number | null | undefined;
   tahapan?: TahapanProyekDTO[] | undefined;
 }
 
@@ -32,4 +31,23 @@ export interface ProgressProyekResponseDTO {
   tahapan: TahapanProyekDTO[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ProgressProyekListFilterDTO {
+  mandorUserId?: number;
+}
+
+export interface ProgressProyekListItemDTO {
+  kavlingId: number;
+  penjualanId: number | null;
+  penjualanNoTransaksi: string | null;
+  blok: string;
+  nomorUnit: string;
+  nama: string;
+  status: string;
+  progressProyek: {
+    persentase: number;
+    mandorId: number | null;
+    mandor: MandorSummaryDTO | null;
+  } | null;
 }

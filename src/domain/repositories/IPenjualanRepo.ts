@@ -5,16 +5,33 @@ import type {
 } from "../dtos/PenjualanDTO.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 
+export const penjualanKavlingWithSpkInclude = {
+  perumahan: true,
+  rekeningTujuan: true,
+  spkItem: {
+    include: {
+      spk: {
+        include: { mandor: { select: { id: true, username: true } } },
+      },
+    },
+  },
+} as const;
+
 export type PenjualanWithCompleteRelations = Prisma.PenjualanGetPayload<{
   include: {
     customer: true;
     kavling: {
-      include: { perumahan: true; rekeningTujuan: true };
+      include: {
+        perumahan: true;
+        rekeningTujuan: true;
+      };
     };
     rekeningTujuan: true;
     tagihan: true;
     agent: true;
-    progressProyek: true;
+    progressProyek: {
+      include: { mandor: { select: { id: true, username: true } } };
+    };
   };
 }>;
 

@@ -5,6 +5,7 @@ import type {
   PenjualanWithCompleteRelations,
   PenjualanWithRelations,
 } from "./IPenjualanRepo.js";
+import { penjualanKavlingWithSpkInclude } from "./IPenjualanRepo.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import type {
@@ -17,6 +18,78 @@ import {
   isCicilanHargaJualTagihan,
 } from "../tagihan/tagihanTujuan.js";
 
+type ProgressProyekSummary = NonNullable<
+  PenjualanPaginatedItem["progressProyek"]
+>;
+
+type KavlingWithSpkRelation = {
+  spkItem?: {
+    spk: {
+      mandorId: number;
+      mandor: { id: number; username: string };
+    };
+  } | null;
+};
+
+const penjualanCompleteInclude = {
+  customer: true,
+  kavling: { include: penjualanKavlingWithSpkInclude },
+  rekeningTujuan: true,
+  tagihan: true,
+  agent: true,
+  progressProyek: {
+    include: { mandor: { select: { id: true, username: true } } },
+  },
+} as const;
+
+type PenjualanListRow = Prisma.PenjualanGetPayload<{
+  include: {
+    customer: true;
+    progressPenjualan: true;
+    kavling: {
+      include: {
+        perumahan: true;
+        rekeningTujuan: true;
+      };
+    };
+    agent: true;
+    tagihan: true;
+    pengajuanBatal: { where: { status: "PENDING" } };
+    riwayatGantiKavling: {
+      include: {
+        kavlingLama: { include: { perumahan: true } };
+        kavlingBaru: { include: { perumahan: true } };
+      };
+      orderBy: { createdAt: "desc" };
+    };
+    riwayatSpr: { orderBy: { createdAt: "desc" } };
+    progressProyek: {
+      include: { mandor: { select: { id: true; username: true } } };
+    };
+  };
+}>;
+
+const resolveProgressProyekSummary = (
+  item: PenjualanListRow,
+): ProgressProyekSummary | null => {
+  if (item.progressProyek) {
+    return {
+      persentase: Number(item.progressProyek.persentase),
+      mandorId: item.progressProyek.mandorId,
+      mandor: item.progressProyek.mandor,
+    };
+  }
+
+  const spk = (item.kavling as KavlingWithSpkRelation).spkItem?.spk;
+  if (!spk) return null;
+
+  return {
+    persentase: 0,
+    mandorId: spk.mandorId,
+    mandor: spk.mandor,
+  };
+};
+
 export class PenjualanRepository implements IPenjualanRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -24,20 +97,12 @@ export class PenjualanRepository implements IPenjualanRepository {
     id: number,
     data: Partial<Prisma.PenjualanUpdateInput>,
   ): Promise<PenjualanWithCompleteRelations> {
-    return await this.db.penjualan.update({
+    const result = await this.db.penjualan.update({
       where: { id },
       data,
-      include: {
-        customer: true,
-        kavling: { include: { perumahan: true, rekeningTujuan: true } },
-        rekeningTujuan: true,
-        tagihan: true,
-        agent: true,
-        progressProyek: {
-          include: { mandor: { select: { id: true, username: true } } },
-        },
-      },
+      include: penjualanCompleteInclude as Prisma.PenjualanInclude,
     });
+    return result as unknown as PenjualanWithCompleteRelations;
   }
 
   async createWithTransaction(
@@ -320,7 +385,18 @@ export class PenjualanRepository implements IPenjualanRepository {
     }
 
     if (filters?.mandorUserId) {
-      where.progressProyek = { is: { mandorId: filters.mandorUserId } };
+      const mandorUserId = filters.mandorUserId;
+      const mandorScope: Prisma.PenjualanWhereInput = {
+        OR: [
+          { progressProyek: { mandorId: mandorUserId } },
+          {
+            kavling: {
+              spkItem: { spk: { mandorId: mandorUserId } },
+            } as Prisma.KavlingWhereInput,
+          },
+        ],
+      };
+      where.AND = [...(where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : []), mandorScope];
     }
 
     if (filters?.caraPembayaran) {
@@ -330,7 +406,7 @@ export class PenjualanRepository implements IPenjualanRepository {
     const listInclude = {
       customer: true,
       progressPenjualan: true,
-      kavling: { include: { perumahan: true, rekeningTujuan: true } },
+      kavling: { include: penjualanKavlingWithSpkInclude },
       agent: true,
       tagihan: true,
       pengajuanBatal: { where: { status: "PENDING" as const } },
@@ -345,7 +421,7 @@ export class PenjualanRepository implements IPenjualanRepository {
       progressProyek: {
         include: { mandor: { select: { id: true, username: true } } },
       },
-    } satisfies Prisma.PenjualanInclude;
+    };
 
     const sortField = filters?.orderBy?.field;
     const sortByKavling =
@@ -370,10 +446,6 @@ export class PenjualanRepository implements IPenjualanRepository {
       const n = Number.parseInt(String(val).trim(), 10);
       return Number.isFinite(n) ? n : 0;
     };
-
-    type PenjualanListRow = Prisma.PenjualanGetPayload<{
-      include: typeof listInclude;
-    }>;
 
     let items: PenjualanListRow[];
     let totalItems: number;
@@ -489,7 +561,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         termin: item.termin ?? null,
         keteranganAngsuran: item.keteranganAngsuran ?? null,
         blok: item.kavling.blok,
-        tipe: item.kavling.namaTipe,
+        tipe: item.kavling.namaTipe ?? "",
         luasBangunan: Number(item.kavling.luasBangunan),
         luasTanah: Number(item.kavling.luasTanah),
         nomorUnit: item.kavling.nomorUnit,
@@ -539,13 +611,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         tagihan: item.tagihan || [],
         riwayatSpr: item.riwayatSpr || [],
         progressPenjualan: item.progressPenjualan ?? null,
-        progressProyek: item.progressProyek
-          ? {
-              persentase: Number(item.progressProyek.persentase),
-              mandorId: item.progressProyek.mandorId,
-              mandor: item.progressProyek.mandor,
-            }
-          : null,
+        progressProyek: resolveProgressProyekSummary(item),
         createdBy: item.createdBy ?? "Admin",
         isPendingBatal,
         createdAt: item.createdAt.toISOString(),
@@ -576,7 +642,7 @@ export class PenjualanRepository implements IPenjualanRepository {
           include: { mandor: { select: { id: true, username: true } } },
         },
         customer: true,
-        kavling: { include: { perumahan: true, rekeningTujuan: true } },
+        kavling: { include: penjualanKavlingWithSpkInclude },
         rekeningTujuan: true,
         tagihan: { orderBy: { jatuhTempo: "asc" } },
         agent: true,

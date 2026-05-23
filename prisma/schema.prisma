@@ -23,6 +23,7 @@ model User {
   persetujuanGantiKavling RiwayatGantiKavling[] @relation("PenyetujuGantiKavling")
   pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
   progressProyekAsMandor  ProgressProyek[]      @relation("ProgressMandor")
+  spkAsMandor             Spk[]                 @relation("SpkMandor")
   tahapanReports          TahapanProyek[]       @relation("TahapanReporter")
 
   @@map("users")
@@ -207,6 +208,7 @@ model Kavling {
   perumahan           Perumahan             @relation(fields: [perumahanId], references: [id])
   rekeningTujuan      BankRekeningPt?       @relation(fields: [rekeningTujuanId], references: [id])
   penjualan           Penjualan[]
+  spkItem             SpkPenjualan?
   riwayatBaru         RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
   riwayatLama         RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
 
@@ -382,26 +384,35 @@ model FeeAgent {
 }
 
 model Spk {
-  id               Int      @id @default(autoincrement())
-  noSpk            String   @unique @map("no_spk") @db.VarChar(100)
-  tanggalSpk       DateTime @map("tanggal_spk") @db.Date
-  judulPekerjaan   String   @map("judul_pekerjaan") @db.VarChar(255)
-  lokasi           String   @db.Text
-  jangkaWaktu      Int      @map("jangka_waktu")
-  nilaiKontrak     Decimal  @map("nilai_kontrak") @db.Decimal(15, 2)
-  namaPihakPertama String   @map("nama_pihak_pertama") @db.VarChar(150)
-  nikPihakPertama  String   @map("nik_pihak_pertama") @db.VarChar(20)
-  namaPihakKedua   String   @map("nama_pihak_kedua") @db.VarChar(150)
-  nikPihakKedua    String   @map("nik_pihak_kedua") @db.VarChar(20)
-  alamatPihakKedua String   @map("alamat_pihak_kedua") @db.Text
-  namaBank         String   @map("nama_bank") @db.VarChar(100)
-  noRekening       String   @map("no_rekening") @db.VarChar(50)
-  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
-  fileSpk          String?  @map("file_spk") @db.VarChar(255)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id             Int       @id @default(autoincrement())
+  noSpk          String    @unique @map("no_spk") @db.VarChar(100)
+  tanggalSpk     DateTime  @default(dbgenerated("(CURDATE())")) @map("tanggal_spk") @db.Date
+  judulPekerjaan String    @map("judul_pekerjaan") @db.VarChar(255)
+  nilaiKontrak   Decimal   @map("nilai_kontrak") @db.Decimal(15, 2)
+  notesPekerjaan String?   @map("notes_pekerjaan") @db.Text
+  jatuhTempo     DateTime? @map("jatuh_tempo") @db.Date
+  fileSpk        String?   @map("file_spk") @db.VarChar(255)
+  mandorId       Int       @map("mandor_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  mandor         User           @relation("SpkMandor", fields: [mandorId], references: [id])
+  penjualanItems SpkPenjualan[]
+
+  @@index([mandorId], map: "spk_mandor_id_fkey")
   @@map("spk")
+}
+
+model SpkPenjualan {
+  id        Int @id @default(autoincrement())
+  spkId     Int @map("spk_id")
+  kavlingId Int @unique @map("kavling_id")
+
+  spk     Spk     @relation(fields: [spkId], references: [id], onDelete: Cascade)
+  kavling Kavling @relation(fields: [kavlingId], references: [id], onDelete: Cascade)
+
+  @@index([spkId], map: "spk_penjualan_spk_id_fkey")
+  @@map("spk_penjualan")
 }
 model ProgressProyek {
   id          Int      @id @default(autoincrement())

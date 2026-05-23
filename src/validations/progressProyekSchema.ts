@@ -1,5 +1,10 @@
 import { z } from "zod";
+import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 import { emptyAsUndefined } from "./emptySchema.js";
+
+export const getProgressProyekListSchema = {
+  query: offsetPaginationQuerySchema,
+};
 
 const tahapanSchema = z.object({
   namaTahapan: z.string().min(1, "Nama tahapan wajib diisi"),
@@ -14,9 +19,6 @@ export const updateProgressProyekSchema = {
     id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
   }),
   body: z.object({
-    mandorId: z
-      .union([z.coerce.number().int().positive(), z.null()])
-      .optional(),
     tahapan: z.array(tahapanSchema).optional(),
   }),
 };

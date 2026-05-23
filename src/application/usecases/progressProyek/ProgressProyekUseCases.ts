@@ -4,6 +4,7 @@ import type { CloudinaryService } from "../../../infrastructure/external/Cloudin
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import type { IProgressProyekRepository } from "../../../domain/repositories/IProgressProyekRepo.js";
+import type { ProgressProyekListFilterDTO } from "../../../domain/dtos/ProgressProyekDTO.js";
 import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
 import { Role } from "@prisma/client";
 import {
@@ -50,12 +51,6 @@ export class UpdateProgressProyekUseCase {
         throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
       }
       assertAssignedMandor(progress, ctx.userId);
-      if (data.mandorId !== undefined) {
-        throw new AppError(
-          StatusCodes.FORBIDDEN,
-          "Mandor tidak dapat mengubah penugasan proyek",
-        );
-      }
     }
 
     return await this.repo.update(penjualanId, data);
@@ -163,5 +158,17 @@ export class ListMandorsUseCase {
 
   async execute() {
     return await this.userRepo.findByRole(Role.MANDOR);
+  }
+}
+
+export class GetProgressProyekListPaginatedUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    page: number,
+    limit: number,
+    filters?: ProgressProyekListFilterDTO,
+  ) {
+    return await this.repo.findProyekListPaginated(page, limit, filters);
   }
 }

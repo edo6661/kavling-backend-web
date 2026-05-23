@@ -1,7 +1,17 @@
 import { ProgressProyekRepository } from "../../domain/repositories/progressProyekRepo.js";
+import { SpkRepository } from "../../domain/repositories/spkRepo.js";
+import {
+  CreateSpkUseCase,
+  UpdateSpkUseCase,
+  GetSpkByIdUseCase,
+  GetSpkPaginatedUseCase,
+  DeleteSpkUseCase,
+} from "../../application/usecases/spk/SpkUseCases.js";
+import { SpkController } from "../../presentation/controllers/spkController.js";
 import {
   CreateTahapanLogUseCase,
   GetProgressProyekUseCase,
+  GetProgressProyekListPaginatedUseCase,
   ListMandorsUseCase,
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoUseCase,
@@ -572,6 +582,8 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getProgressProyekUseCase = new GetProgressProyekUseCase(
     progressProyekRepo,
   );
+  const getProgressProyekListPaginatedUseCase =
+    new GetProgressProyekListPaginatedUseCase(progressProyekRepo);
   const updateProgressProyekUseCase = new UpdateProgressProyekUseCase(
     progressProyekRepo,
   );
@@ -585,11 +597,26 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const listMandorsUseCase = new ListMandorsUseCase(userRepo);
   const progressProyekController = new ProgressProyekController(
+    getProgressProyekListPaginatedUseCase,
     getProgressProyekUseCase,
     updateProgressProyekUseCase,
     uploadTahapanPhotoUseCase,
     createTahapanLogUseCase,
     listMandorsUseCase,
+  );
+
+  const spkRepo = new SpkRepository(dbClient);
+  const createSpkUseCase = new CreateSpkUseCase(spkRepo, cloudinaryService);
+  const updateSpkUseCase = new UpdateSpkUseCase(spkRepo, cloudinaryService);
+  const getSpkByIdUseCase = new GetSpkByIdUseCase(spkRepo);
+  const getSpkPaginatedUseCase = new GetSpkPaginatedUseCase(spkRepo);
+  const deleteSpkUseCase = new DeleteSpkUseCase(spkRepo);
+  const spkController = new SpkController(
+    createSpkUseCase,
+    updateSpkUseCase,
+    getSpkByIdUseCase,
+    getSpkPaginatedUseCase,
+    deleteSpkUseCase,
   );
 
   return {
@@ -619,6 +646,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     socketService,
     perusahaanAgentController,
     progressProyekController,
+    spkController,
   };
 };
 
