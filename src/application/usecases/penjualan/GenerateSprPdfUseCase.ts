@@ -2,7 +2,7 @@ import PDFDocument from "pdfkit";
 import type { Prisma } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import { effectiveTagihanTujuan } from "../../../domain/tagihan/tagihanTujuan.js";
+import { buildSprPembayaranAwalRows } from "../../../domain/penjualan/sprPembayaranAwal.js";
 import QRCode from "qrcode";
 
 export class GenerateSprPdfUseCase {
@@ -15,7 +15,7 @@ export class GenerateSprPdfUseCase {
       throw new NotFoundError("Data Penjualan tidak ditemukan");
     }
 
-    const { customer, kavling, rekeningTujuan, tagihan } = penjualan;
+    const { customer, kavling, rekeningTujuan } = penjualan;
 
     // --- 1. PRE-FETCH DATA TANDA TANGAN & LOGO (ASINKRON) ---
     const sigData = ["Pemesan", "Marketing", "Supervisor", "Manager"];
@@ -260,15 +260,10 @@ export class GenerateSprPdfUseCase {
         let totalNilai = 0;
         doc.font("Helvetica").fontSize(9);
 
-        const tagihanAwal =
-          tagihan?.filter((t) => {
-            const eff = effectiveTagihanTujuan(t);
-            return eff === "BOOKING_FEE" || eff === "DP";
-          }) || [];
+        const pembayaranAwal = buildSprPembayaranAwalRows(penjualan);
 
-        // Render tagihan
-        if (tagihanAwal.length > 0) {
-          tagihanAwal.forEach((p, idx) => {
+        if (pembayaranAwal.length > 0) {
+          pembayaranAwal.forEach((p, idx) => {
             checkY(rowHeight);
 
             const dateStr = p.jatuhTempo
@@ -281,7 +276,7 @@ export class GenerateSprPdfUseCase {
 
             doc.rect(startX, y, contentWidth, rowHeight).stroke();
             doc.text(`${idx + 1}.`, colNo + 5, y + 5);
-            doc.text(p.pembayaran, colKet + 5, y + 5);
+            doc.text(p.keterangan, colKet + 5, y + 5);
             doc.text(dateStr, colTempo + 5, y + 5);
             doc.text(formatRp(p.nominal), colNilai + 5, y + 5);
 
@@ -299,10 +294,7 @@ export class GenerateSprPdfUseCase {
               .lineTo(colNilai, y + rowHeight)
               .stroke();
 
-            totalNilai +=
-              typeof p.nominal === "object" && "toNumber" in p.nominal
-                ? p.nominal.toNumber()
-                : Number(p.nominal);
+            totalNilai += p.nominal;
 
             y += rowHeight;
           });
