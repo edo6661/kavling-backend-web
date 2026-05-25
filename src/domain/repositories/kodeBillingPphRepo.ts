@@ -99,8 +99,9 @@ export class KodeBillingPphRepository {
   async findByPenjualanId(
     penjualanId: number,
   ): Promise<KodeBillingPphResponseDTO | null> {
-    const result = await this.db.kodeBillingPph.findUnique({
+    const result = await this.db.kodeBillingPph.findFirst({
       where: { penjualanId },
+      orderBy: { updatedAt: "desc" },
       include: includeRelations,
     });
     return result ? this.enrichOne(result) : null;

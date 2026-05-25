@@ -5,6 +5,36 @@ import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { isPdfBuffer, unlockPdf } from "../utils/pdfUtils.js";
 
+function assertSecureUrl(
+  result: { secure_url?: string } | null | undefined,
+): string {
+  const url = result?.secure_url?.trim();
+  if (!url || !url.startsWith("http")) {
+    throw new AppError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      "Gagal mendapatkan URL file dari penyimpanan cloud. Silakan coba unggah lagi.",
+    );
+  }
+  return url;
+}
+
+/** Ambil public_id lengkap dari URL Cloudinary untuk operasi destroy. */
+export function extractCloudinaryPublicId(imageUrl: string): string | null {
+  const uploadIdx = imageUrl.indexOf("/upload/");
+  if (uploadIdx === -1) return null;
+  let path = imageUrl.slice(uploadIdx + "/upload/".length);
+  // Lewati segmen transformasi (berisi koma) hingga path folder/file
+  const segments = path.split("/");
+  while (segments.length > 0 && segments[0]!.includes(",")) {
+    segments.shift();
+  }
+  path = segments.join("/");
+  if (!path) return null;
+  const lastDot = path.lastIndexOf(".");
+  if (lastDot > 0) return path.slice(0, lastDot);
+  return path;
+}
+
 function toCloudinaryUploadErrorMessage(
   error: { message?: string } | string | undefined,
 ): string {
@@ -55,13 +85,16 @@ export class CloudinaryService {
     folder = "bumantara",
     pdfPassword?: string,
   ): Promise<string> {
-    const finalBuffer = isPdfBuffer(buffer)
-      ? unlockPdf(buffer, pdfPassword)
-      : buffer;
+    const isPdf = isPdfBuffer(buffer);
+    const finalBuffer = isPdf ? unlockPdf(buffer, pdfPassword) : buffer;
+    // PDF → raw (stabil di production). Non-PDF (gambar/dll) → auto seperti sebelumnya.
+    const uploadOptions = isPdf
+      ? { folder, resource_type: "raw" as const, format: "pdf" as const }
+      : { folder, resource_type: "auto" as const };
 
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: "auto" },
+        uploadOptions,
         (error, result) => {
           if (error) {
             return reject(
@@ -71,7 +104,11 @@ export class CloudinaryService {
               ),
             );
           }
-          resolve(result!.secure_url);
+          try {
+            resolve(assertSecureUrl(result));
+          } catch (err) {
+            reject(err);
+          }
         },
       );
       uploadStream.end(finalBuffer);
@@ -109,15 +146,11 @@ export class CloudinaryService {
                 ),
               );
             }
-            if (!result) {
-              return reject(
-                new AppError(
-                  StatusCodes.INTERNAL_SERVER_ERROR,
-                  "Gagal mendapatkan respon dari penyimpanan cloud.",
-                ),
-              );
+            try {
+              resolve(assertSecureUrl(result));
+            } catch (err) {
+              reject(err);
             }
-            resolve(result.secure_url);
           },
         );
         uploadStream.end(compressedBuffer);
@@ -138,13 +171,13 @@ export class CloudinaryService {
   }
   async deleteImageByUrl(imageUrl: string): Promise<void> {
     try {
-      const urlParts = imageUrl.split("/");
-      const filenameWithExt = urlParts.pop();
-      const folder = urlParts.pop();
-      if (!filenameWithExt || !folder) return;
-      const filename = filenameWithExt.split(".")[0];
-      const publicId = `${folder}/${filename}`;
-      await cloudinary.uploader.destroy(publicId);
+      const trimmed = imageUrl?.trim();
+      if (!trimmed) return;
+      const publicId = extractCloudinaryPublicId(trimmed);
+      if (!publicId) return;
+      // Coba kedua tipe — file lama bisa image/upload atau raw/upload
+      await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+      await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
       console.log(`Berhasil rollback file dari Cloudinary: ${publicId}`);
     } catch (error) {
       console.error("Gagal melakukan rollback file di Cloudinary:", error);

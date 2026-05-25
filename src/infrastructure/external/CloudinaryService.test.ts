@@ -5,6 +5,15 @@ import { AppError } from "../../domain/errors/AppError";
 import sharp from "sharp";
 
 vi.mock("cloudinary");
+vi.mock("../utils/pdfUtils.js", () => ({
+  isPdfBuffer: (buf: Buffer) =>
+    buf.length > 4 &&
+    buf[0] === 0x25 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x44 &&
+    buf[3] === 0x46,
+  unlockPdf: (buf: Buffer) => buf,
+}));
 vi.mock("sharp", () => ({
   default: () => ({
     resize: () => ({
@@ -61,7 +70,36 @@ describe("CloudinaryService", () => {
     (cloudinary.uploader.upload_stream as any) = mockUploadStream;
 
     await expect(service.uploadImage(Buffer.from("image"))).rejects.toThrow(
-      "Gagal mendapatkan respon",
+      /penyimpanan cloud/,
+    );
+  });
+
+  it("uploadFile non-PDF memakai resource_type auto (gambar kavling/progress)", async () => {
+    const mockUploadStream = vi.fn((options, callback) => {
+      expect(options.resource_type).toBe("auto");
+      expect(options.format).toBeUndefined();
+      callback(null, { secure_url: "https://cloudinary.com/kavling.jpg" });
+      return { end: vi.fn() };
+    });
+    (cloudinary.uploader.upload_stream as any) = mockUploadStream;
+
+    const result = await service.uploadFile(Buffer.from("not-a-pdf"));
+    expect(result).toBe("https://cloudinary.com/kavling.jpg");
+  });
+
+  it("harus melempar AppError jika upload PDF (raw) tidak mengembalikan secure_url", async () => {
+    const pdfHeader = Buffer.from("%PDF-1.4 dummy");
+    const mockUploadStream = vi.fn((options, callback) => {
+      expect(options.resource_type).toBe("raw");
+      expect(options.format).toBe("pdf");
+      callback(null, { public_id: "bumantara/kode-billing-pph/x" });
+      return { end: vi.fn() };
+    });
+
+    (cloudinary.uploader.upload_stream as any) = mockUploadStream;
+
+    await expect(service.uploadImage(pdfHeader)).rejects.toThrow(
+      /penyimpanan cloud/,
     );
   });
 });

@@ -104,11 +104,20 @@ export class UploadKodeBillingPphUseCase {
       );
     }
 
-    const fileUrl = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      "bumantara/kode-billing-pph",
-      pdfPassword,
-    );
+    const fileUrl = (
+      await this.cloudinaryService.uploadImage(
+        fileBuffer,
+        "bumantara/kode-billing-pph",
+        pdfPassword,
+      )
+    ).trim();
+
+    if (!fileUrl.startsWith("http")) {
+      throw new AppError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "File PDF berhasil diproses tetapi gagal disimpan ke cloud. Silakan coba unggah lagi.",
+      );
+    }
 
     const existingRecord = await this.repo.findByPenjualanId(penjualanId);
 
