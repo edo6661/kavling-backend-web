@@ -9,6 +9,7 @@ import {
   uploadKodeBillingPphSchema,
   getKodeBillingPphPaginatedSchema,
   kodeBillingPphIdParamsSchema,
+  kodeBillingPphPenjualanParamsSchema,
 } from "../../validations/kodeBillingPphSchema.js";
 import type { KodeBillingPphController } from "../controllers/kodeBillingPphController.js";
 
@@ -25,6 +26,13 @@ export const createKodeBillingPphRoutes = (
     upload.single("file"),
     validate(uploadKodeBillingPphSchema),
     controller.upload,
+  );
+
+  router.get(
+    "/penjualan/:penjualanId",
+    requirePermission("PROGRESS_PENJUALAN", "read"),
+    validate(kodeBillingPphPenjualanParamsSchema),
+    controller.getByPenjualan,
   );
 
   router.get(

@@ -175,8 +175,15 @@ import {
   UploadKodeBillingPphUseCase,
   UploadBuktiBayarKodeBillingPphUseCase,
   GetKodeBillingPphPaginatedUseCase,
+  GetKodeBillingPphByPenjualanUseCase,
 } from "../../application/usecases/kodeBillingPph/KodeBillingPphUseCases.js";
 import { KodeBillingPphController } from "../../presentation/controllers/kodeBillingPphController.js";
+import { SuketPphRepository } from "../../domain/repositories/suketPphRepo.js";
+import {
+  UploadSuketPphUseCase,
+  GetSuketPphByPenjualanUseCase,
+} from "../../application/usecases/suketPph/SuketPphUseCases.js";
+import { SuketPphController } from "../../presentation/controllers/suketPphController.js";
 import { SocketService } from "../websocket/SocketService.js";
 import { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
 import { GenerateAgentAccountUseCase } from "../../application/usecases/agent/GenerateAgentAccountUseCase.js";
@@ -504,6 +511,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     kodeBillingPphRepo,
     dbClient,
     cloudinaryService,
+    googleVisionService,
   );
   const uploadBuktiBayarKodeBillingPphUseCase =
     new UploadBuktiBayarKodeBillingPphUseCase(
@@ -513,11 +521,30 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getKodeBillingPphPaginatedUseCase = new GetKodeBillingPphPaginatedUseCase(
     kodeBillingPphRepo,
   );
+  const getKodeBillingPphByPenjualanUseCase = new GetKodeBillingPphByPenjualanUseCase(
+    kodeBillingPphRepo,
+  );
   const kodeBillingPphController = new KodeBillingPphController(
     uploadKodeBillingPphUseCase,
     uploadBuktiBayarKodeBillingPphUseCase,
     getKodeBillingPphPaginatedUseCase,
+    getKodeBillingPphByPenjualanUseCase,
   );
+
+  const suketPphRepo = new SuketPphRepository(dbClient);
+  const uploadSuketPphUseCase = new UploadSuketPphUseCase(
+    suketPphRepo,
+    dbClient,
+    cloudinaryService,
+  );
+  const getSuketPphByPenjualanUseCase = new GetSuketPphByPenjualanUseCase(
+    suketPphRepo,
+  );
+  const suketPphController = new SuketPphController(
+    uploadSuketPphUseCase,
+    getSuketPphByPenjualanUseCase,
+  );
+
   const feeAgentRepo = new FeeAgentRepository(dbClient);
   const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
     feeAgentRepo,
@@ -664,6 +691,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerKavlingController,
     tagihanController,
     kodeBillingPphController,
+    suketPphController,
     penjualanController,
     feeAgentController,
     verifyController,

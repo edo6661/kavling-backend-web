@@ -4,6 +4,44 @@ import { AppError } from "../../domain/errors/AppError";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { isPdfBuffer, unlockPdf } from "../utils/pdfUtils.js";
+
+function toCloudinaryUploadErrorMessage(
+  error: { message?: string } | string | undefined,
+): string {
+  const raw =
+    typeof error === "string" ? error : (error?.message?.trim() ?? "");
+  const msg = raw.toLowerCase();
+
+  if (
+    msg.includes("timeout") ||
+    msg.includes("timed out") ||
+    msg.includes("econnaborted") ||
+    msg.includes("etimedout")
+  ) {
+    return "Unggah file gagal karena koneksi terlalu lama. Periksa koneksi internet Anda, kurangi ukuran file, lalu coba lagi.";
+  }
+
+  if (
+    msg.includes("network") ||
+    msg.includes("econnreset") ||
+    msg.includes("enotfound") ||
+    msg.includes("socket") ||
+    msg.includes("getaddrinfo")
+  ) {
+    return "Unggah file gagal karena gangguan jaringan. Silakan coba lagi dalam beberapa saat.";
+  }
+
+  if (msg.includes("file size") || msg.includes("too large")) {
+    return "Ukuran file terlalu besar. Silakan unggah file yang lebih kecil.";
+  }
+
+  if (msg.includes("invalid") || msg.includes("unsupported")) {
+    return "Format file tidak didukung. Gunakan gambar (JPG/PNG) atau PDF.";
+  }
+
+  return "Gagal mengunggah file ke penyimpanan cloud. Silakan coba lagi.";
+}
+
 export class CloudinaryService {
   constructor() {
     cloudinary.config({
@@ -29,7 +67,7 @@ export class CloudinaryService {
             return reject(
               new AppError(
                 StatusCodes.INTERNAL_SERVER_ERROR,
-                `Gagal upload file: ${error.message || "Unknown Cloudinary Error"}`,
+                toCloudinaryUploadErrorMessage(error),
               ),
             );
           }
@@ -67,7 +105,7 @@ export class CloudinaryService {
               return reject(
                 new AppError(
                   StatusCodes.INTERNAL_SERVER_ERROR,
-                  "Gagal mengunggah gambar ke penyimpanan cloud.",
+                  toCloudinaryUploadErrorMessage(error),
                 ),
               );
             }
@@ -91,14 +129,9 @@ export class CloudinaryService {
         throw error;
       }
 
-      const errMessage =
-        error instanceof Error
-          ? error.message
-          : "File rusak atau format tidak didukung.";
-
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `Gagal memproses gambar: ${errMessage}`,
+        "File rusak atau format tidak didukung. Pastikan file gambar/PDF valid.",
         true,
       );
     }

@@ -6,6 +6,7 @@ import type {
   UploadKodeBillingPphUseCase,
   UploadBuktiBayarKodeBillingPphUseCase,
   GetKodeBillingPphPaginatedUseCase,
+  GetKodeBillingPphByPenjualanUseCase,
 } from "../../application/usecases/kodeBillingPph/KodeBillingPphUseCases.js";
 import type { uploadKodeBillingPphSchema } from "../../validations/kodeBillingPphSchema.js";
 import { getKodeBillingPphPaginatedSchema } from "../../validations/kodeBillingPphSchema.js";
@@ -25,6 +26,7 @@ export class KodeBillingPphController {
     private readonly uploadUseCase: UploadKodeBillingPphUseCase,
     private readonly uploadBuktiUseCase: UploadBuktiBayarKodeBillingPphUseCase,
     private readonly getPaginatedUseCase: GetKodeBillingPphPaginatedUseCase,
+    private readonly getByPenjualanUseCase: GetKodeBillingPphByPenjualanUseCase,
   ) {}
 
   upload = async (
@@ -55,18 +57,30 @@ export class KodeBillingPphController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { page, limit, search, status, customerId, orderBy } =
+    const { page, limit, search, status, customerId, penjualanId, orderBy } =
       getKodeBillingPphPaginatedSchema.query.parse(req.query);
 
     const filters: KodeBillingPphFilterDTO = {
       search,
       customerId,
+      penjualanId,
       orderBy: parseOrderBy(orderBy),
       status: status && status !== "ALL" ? status : undefined,
     };
 
     const result = await this.getPaginatedUseCase.execute(page, limit, filters);
     sendResponse(res, StatusCodes.OK, "Data kode billing PPh berhasil diambil", result);
+  };
+
+  getByPenjualan = async (req: Request, res: Response): Promise<void> => {
+    const penjualanId = parseInt(req.params.penjualanId as string, 10);
+    const result = await this.getByPenjualanUseCase.execute(penjualanId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      result ? "Data kode billing PPh berhasil diambil" : "Belum ada kode billing PPh",
+      result,
+    );
   };
 
   uploadBuktiBayar = async (req: Request, res: Response): Promise<void> => {

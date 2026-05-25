@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import type { KodeBillingPphRepository } from "../../../domain/repositories/kodeBillingPphRepo.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type {
@@ -12,21 +12,17 @@ import { StatusCodes } from "http-status-codes";
 import {
   extractKodeBillingFromText,
   extractTextFromPdf,
-  KODE_BILLING_PPH_DOC_NAME,
+  isPdfLikelyScanned,
 } from "../../../infrastructure/utils/billingPphPdfUtils.js";
-import { isPdfBuffer } from "../../../infrastructure/utils/pdfUtils.js";
-
-interface IDokumenLainnya {
-  id: string;
-  nama: string;
-  fileUrl: string | string[];
-}
+import { isPdfBuffer, unlockPdf } from "../../../infrastructure/utils/pdfUtils.js";
+import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
 
 export class UploadKodeBillingPphUseCase {
   constructor(
     private readonly repo: KodeBillingPphRepository,
     private readonly db: PrismaClient,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly googleVisionService: GoogleVisionService,
   ) {}
 
   async execute(params: {
@@ -61,6 +57,16 @@ export class UploadKodeBillingPphUseCase {
     });
     if (!customer) throw new NotFoundError("Customer tidak ditemukan");
 
+    const penjualan = await this.db.penjualan.findFirst({
+      where: { id: penjualanId, customerId },
+    });
+    if (!penjualan) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Penjualan tidak ditemukan untuk customer ini.",
+      );
+    }
+
     let text: string;
     try {
       text = await extractTextFromPdf(fileBuffer, pdfPassword);
@@ -72,11 +78,28 @@ export class UploadKodeBillingPphUseCase {
       );
     }
 
-    const kodeBilling = extractKodeBillingFromText(text);
+    let kodeBilling = extractKodeBillingFromText(text);
+
     if (!kodeBilling) {
+      const pdfForOcr = isPdfBuffer(fileBuffer)
+        ? unlockPdf(fileBuffer, pdfPassword)
+        : fileBuffer;
+      const ocrKode =
+        await this.googleVisionService.extractKodeBillingFromScannedPdf(
+          pdfForOcr,
+        );
+      kodeBilling = ocrKode
+        ? extractKodeBillingFromText(ocrKode) ?? ocrKode
+        : null;
+    }
+
+    if (!kodeBilling) {
+      const scannedHint = isPdfLikelyScanned(text)
+        ? " Dokumen tampak hasil scan — pastikan gambar jelas dan tidak buram."
+        : "";
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "PDF tidak berisi kode billing PPh. Pastikan file adalah dokumen Kode Billing DJP yang valid.",
+        `PDF tidak berisi kode billing PPh. Pastikan file adalah dokumen Kode Billing DJP yang valid.${scannedHint}`,
         true,
       );
     }
@@ -109,40 +132,6 @@ export class UploadKodeBillingPphUseCase {
         uploadedBy: uploadedBy ?? null,
       });
     }
-
-    const currentDocs: IDokumenLainnya[] = Array.isArray(customer.dokumenLainnya)
-      ? (customer.dokumenLainnya as unknown as IDokumenLainnya[])
-      : [];
-
-    const docIndex = currentDocs.findIndex(
-      (d) => d.nama.toLowerCase() === KODE_BILLING_PPH_DOC_NAME.toLowerCase(),
-    );
-
-    if (docIndex >= 0) {
-      const doc = currentDocs[docIndex]!;
-      const prevUrls = Array.isArray(doc.fileUrl)
-        ? doc.fileUrl
-        : doc.fileUrl
-          ? [doc.fileUrl]
-          : [];
-      for (const oldUrl of prevUrls) {
-        if (oldUrl !== fileUrl) {
-          await this.cloudinaryService.deleteImageByUrl(oldUrl);
-        }
-      }
-      currentDocs[docIndex] = { ...doc, fileUrl: [fileUrl] };
-    } else {
-      currentDocs.push({
-        id: Date.now().toString(),
-        nama: KODE_BILLING_PPH_DOC_NAME,
-        fileUrl: [fileUrl],
-      });
-    }
-
-    await this.db.customer.update({
-      where: { id: customerId },
-      data: { dokumenLainnya: currentDocs as unknown as Prisma.InputJsonValue },
-    });
 
     return record;
   }
@@ -184,5 +173,13 @@ export class GetKodeBillingPphPaginatedUseCase {
     filters?: KodeBillingPphFilterDTO,
   ): Promise<OffsetPaginatedData<KodeBillingPphResponseDTO>> {
     return await this.repo.findWithOffsetPagination(page, limit, filters);
+  }
+}
+
+export class GetKodeBillingPphByPenjualanUseCase {
+  constructor(private readonly repo: KodeBillingPphRepository) {}
+
+  async execute(penjualanId: number): Promise<KodeBillingPphResponseDTO | null> {
+    return await this.repo.findByPenjualanId(penjualanId);
   }
 }

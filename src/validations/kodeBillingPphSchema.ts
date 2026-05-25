@@ -25,3 +25,9 @@ export const kodeBillingPphIdParamsSchema = {
     id: z.coerce.number().int().positive(),
   }),
 };
+
+export const kodeBillingPphPenjualanParamsSchema = {
+  params: z.object({
+    penjualanId: z.coerce.number().int().positive(),
+  }),
+};

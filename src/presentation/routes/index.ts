@@ -23,6 +23,7 @@ import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
 import { createProgressProyekRoutes } from "./progressProyekRoutes.js";
 import { createSpkRoutes } from "./spkRoutes.js";
 import { createKodeBillingPphRoutes } from "./kodeBillingPphRoutes.js";
+import { createSuketPphRoutes } from "./suketPphRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -53,6 +54,7 @@ export const createMainRouter = (deps: typeof container): Router => {
     "/kode-billing-pph",
     createKodeBillingPphRoutes(deps.kodeBillingPphController),
   );
+  router.use("/suket-pph", createSuketPphRoutes(deps.suketPphController));
   router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
   router.use(
     "/progress-penjualan",

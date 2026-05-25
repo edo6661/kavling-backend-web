@@ -24,7 +24,10 @@ type KodeBillingPphRow = Prisma.KodeBillingPphGetPayload<{
   include: typeof includeRelations;
 }>;
 
-function toDomain(row: KodeBillingPphRow): KodeBillingPphResponseDTO {
+function toDomain(
+  row: KodeBillingPphRow,
+  fileSuket: string | null = null,
+): KodeBillingPphResponseDTO {
   return {
     id: row.id,
     customerId: row.customerId,
@@ -35,6 +38,7 @@ function toDomain(row: KodeBillingPphRow): KodeBillingPphResponseDTO {
     nomorUnit: row.penjualan?.kavling?.nomorUnit ?? null,
     kodeBilling: row.kodeBilling,
     fileBilling: row.fileBilling,
+    fileSuket,
     fileBuktiBayar: row.fileBuktiBayar,
     status: row.status as StatusKodeBillingPph,
     paidAt: row.paidAt?.toISOString() ?? null,
@@ -43,8 +47,33 @@ function toDomain(row: KodeBillingPphRow): KodeBillingPphResponseDTO {
   };
 }
 
+async function fetchSuketMapByPenjualanIds(
+  db: PrismaClient,
+  penjualanIds: number[],
+): Promise<Map<number, string>> {
+  if (penjualanIds.length === 0) return new Map();
+  const rows = await db.suketPph.findMany({
+    where: { penjualanId: { in: penjualanIds } },
+    select: { penjualanId: true, fileSuket: true },
+  });
+  return new Map(rows.map((r) => [r.penjualanId, r.fileSuket]));
+}
+
 export class KodeBillingPphRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  private async enrichOne(row: KodeBillingPphRow): Promise<KodeBillingPphResponseDTO> {
+    const suketMap = await fetchSuketMapByPenjualanIds(this.db, [row.penjualanId]);
+    return toDomain(row, suketMap.get(row.penjualanId) ?? null);
+  }
+
+  private async enrichMany(rows: KodeBillingPphRow[]): Promise<KodeBillingPphResponseDTO[]> {
+    const suketMap = await fetchSuketMapByPenjualanIds(
+      this.db,
+      rows.map((r) => r.penjualanId),
+    );
+    return rows.map((row) => toDomain(row, suketMap.get(row.penjualanId) ?? null));
+  }
 
   async create(data: {
     customerId: number;
@@ -64,7 +93,7 @@ export class KodeBillingPphRepository {
       },
       include: includeRelations,
     });
-    return toDomain(result);
+    return this.enrichOne(result);
   }
 
   async findByPenjualanId(
@@ -74,7 +103,7 @@ export class KodeBillingPphRepository {
       where: { penjualanId },
       include: includeRelations,
     });
-    return result ? toDomain(result) : null;
+    return result ? this.enrichOne(result) : null;
   }
 
   async replaceBilling(
@@ -97,7 +126,7 @@ export class KodeBillingPphRepository {
       },
       include: includeRelations,
     });
-    return toDomain(result);
+    return this.enrichOne(result);
   }
 
   async findById(id: number): Promise<KodeBillingPphResponseDTO | null> {
@@ -105,7 +134,7 @@ export class KodeBillingPphRepository {
       where: { id },
       include: includeRelations,
     });
-    return result ? toDomain(result) : null;
+    return result ? this.enrichOne(result) : null;
   }
 
   async findWithOffsetPagination(
@@ -151,7 +180,7 @@ export class KodeBillingPphRepository {
 
     const totalPages = Math.ceil(totalItems / limit) || 1;
     return {
-      items: items.map(toDomain),
+      items: await this.enrichMany(items),
       meta: {
         page,
         limit,
@@ -176,6 +205,6 @@ export class KodeBillingPphRepository {
       },
       include: includeRelations,
     });
-    return toDomain(result);
+    return this.enrichOne(result);
   }
 }

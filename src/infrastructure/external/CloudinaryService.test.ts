@@ -8,8 +8,10 @@ vi.mock("cloudinary");
 vi.mock("sharp", () => ({
   default: () => ({
     resize: () => ({
-      jpeg: () => ({
-        toBuffer: vi.fn().mockResolvedValue(Buffer.from("resized-buffer")),
+      flatten: () => ({
+        jpeg: () => ({
+          toBuffer: vi.fn().mockResolvedValue(Buffer.from("resized-buffer")),
+        }),
       }),
     }),
   }),
@@ -37,16 +39,16 @@ describe("CloudinaryService", () => {
     expect(mockUploadStream).toHaveBeenCalled();
   });
 
-  it("harus melempar AppError jika upload gagal (Error dari Cloudinary)", async () => {
+  it("harus melempar AppError dengan pesan ramah pengguna jika upload gagal (Error dari Cloudinary)", async () => {
     const mockUploadStream = vi.fn((options, callback) => {
-      callback(new Error("Cloudinary down"), null);
+      callback(new Error("Request Timeout"), null);
       return { end: vi.fn() };
     });
 
     (cloudinary.uploader.upload_stream as any) = mockUploadStream;
 
     await expect(service.uploadImage(Buffer.from("image"))).rejects.toThrow(
-      AppError,
+      /koneksi terlalu lama/,
     );
   });
 

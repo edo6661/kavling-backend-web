@@ -100,4 +100,74 @@ export class GoogleVisionService {
       );
     }
   }
+
+  /**
+   * OCR PDF scan / gambar — untuk dokumen Kode Billing DJP tanpa text layer.
+   * Mengembalikan kode billing (10–20 digit) atau null jika tidak terbaca.
+   */
+  async extractKodeBillingFromScannedPdf(
+    pdfBuffer: Buffer,
+  ): Promise<string | null> {
+    try {
+      const billingSchema: Schema = {
+        type: SchemaType.OBJECT,
+        properties: {
+          kodeBilling: {
+            type: SchemaType.STRING,
+            description:
+              "Kode Billing DJP: 10–20 digit angka saja (biasanya 15 digit). Ambil dari baris KODE BILLING di dokumen.",
+          },
+        },
+        required: ["kodeBilling"],
+      };
+
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: billingSchema,
+          temperature: 0.0,
+        },
+      });
+
+      const pdfPart = {
+        inlineData: {
+          data: pdfBuffer.toString("base64"),
+          mimeType: "application/pdf",
+        },
+      };
+
+      const prompt = `
+Anda mengekstrak Kode Billing PPh dari dokumen DJP (Kementerian Keuangan / Direktorat Jenderal Pajak).
+
+TUGAS: Temukan "KODE BILLING" pada dokumen dan ambil angka kode billing-nya.
+
+ATURAN KETAT:
+1. Hanya angka yang benar-benar terlihat di dokumen. Dilarang mengarang.
+2. Kode billing biasanya 15 digit (contoh: 041924081839773 atau 042079769810908).
+3. Prioritas: baris "KODE BILLING :" di bagian bawah (instruksi pembayaran), lalu angka besar di bawah judul "KODE BILLING" / "K O D E B I L L I N G".
+4. Jangan ambil NPWP (16 digit), NOP (18 digit), atau nominal uang.
+5. Jika tidak terbaca dengan yakin, set kodeBilling ke null.
+6. Output hanya digit 0-9 tanpa spasi atau titik.
+`;
+
+      const result = await model.generateContent([prompt, pdfPart]);
+      const responseText = result.response.text();
+
+      interface ExpectedBillingJson {
+        kodeBilling?: string | null;
+      }
+
+      const parsed = JSON.parse(responseText) as ExpectedBillingJson;
+      const raw = parsed.kodeBilling?.replace(/\D/g, "") ?? "";
+      if (raw.length >= 10 && raw.length <= 20) return raw;
+      return null;
+    } catch (error) {
+      console.error("Gemini Kode Billing PDF OCR Error:", error);
+      throw new AppError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Gagal memproses PDF scan Kode Billing.",
+      );
+    }
+  }
 }

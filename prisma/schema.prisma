@@ -52,6 +52,7 @@ model Customer {
   penjualan         Penjualan[]
   tagihan           Tagihan[]
   kodeBillingPph    KodeBillingPph[]
+  suketPph          SuketPph[]
 
   @@index([userId], map: "customers_user_id_fkey")
   @@map("customers")
@@ -266,6 +267,7 @@ model Penjualan {
   riwayatSpr          RiwayatSpr[]
   tagihan             Tagihan[]
   kodeBillingPph      KodeBillingPph[]
+  suketPph            SuketPph[]
 
   @@index([agentId], map: "penjualan_agent_id_fkey")
   @@index([customerId], map: "penjualan_customer_id_fkey")
@@ -297,6 +299,21 @@ model KodeBillingPph {
   @@index([customerId], map: "kode_billing_pph_customer_id_fkey")
   @@index([kodeBilling], map: "kode_billing_pph_kode_billing_idx")
   @@map("kode_billing_pph")
+}
+
+model SuketPph {
+  id          Int       @id @default(autoincrement())
+  customerId  Int       @map("customer_id")
+  penjualanId Int       @unique @map("penjualan_id")
+  fileSuket   String    @map("file_suket") @db.VarChar(500)
+  uploadedBy  Int?      @map("uploaded_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id])
+
+  @@index([customerId], map: "suket_pph_customer_id_fkey")
+  @@map("suket_pph")
 }
 
 model DetailKavlingPajak {

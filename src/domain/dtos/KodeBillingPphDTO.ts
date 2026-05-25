@@ -18,6 +18,7 @@ export interface KodeBillingPphResponseDTO {
   nomorUnit: string | null;
   kodeBilling: string;
   fileBilling: string;
+  fileSuket: string | null;
   fileBuktiBayar: string | null;
   status: StatusKodeBillingPph;
   paidAt: string | null;
