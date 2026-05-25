@@ -51,6 +51,7 @@ model Customer {
   user              User?       @relation(fields: [userId], references: [id])
   penjualan         Penjualan[]
   tagihan           Tagihan[]
+  kodeBillingPph    KodeBillingPph[]
 
   @@index([userId], map: "customers_user_id_fkey")
   @@map("customers")
@@ -264,12 +265,38 @@ model Penjualan {
   riwayatGantiKavling RiwayatGantiKavling[]
   riwayatSpr          RiwayatSpr[]
   tagihan             Tagihan[]
+  kodeBillingPph      KodeBillingPph[]
 
   @@index([agentId], map: "penjualan_agent_id_fkey")
   @@index([customerId], map: "penjualan_customer_id_fkey")
   @@index([kavlingId], map: "penjualan_kavling_id_fkey")
   @@index([rekeningTujuanId], map: "penjualan_rekening_tujuan_id_fkey")
   @@map("penjualan")
+}
+
+enum StatusKodeBillingPph {
+  MENUNGGU_BAYAR
+  SUDAH_BAYAR
+}
+
+model KodeBillingPph {
+  id             Int                  @id @default(autoincrement())
+  customerId     Int                  @map("customer_id")
+  penjualanId    Int                  @unique @map("penjualan_id")
+  kodeBilling    String               @map("kode_billing") @db.VarChar(30)
+  fileBilling    String               @map("file_billing") @db.VarChar(500)
+  fileBuktiBayar String?              @map("file_bukti_bayar") @db.VarChar(500)
+  status         StatusKodeBillingPph @default(MENUNGGU_BAYAR)
+  uploadedBy     Int?                 @map("uploaded_by")
+  paidAt         DateTime?            @map("paid_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  customer       Customer             @relation(fields: [customerId], references: [id])
+  penjualan      Penjualan            @relation(fields: [penjualanId], references: [id])
+
+  @@index([customerId], map: "kode_billing_pph_customer_id_fkey")
+  @@index([kodeBilling], map: "kode_billing_pph_kode_billing_idx")
+  @@map("kode_billing_pph")
 }
 
 model DetailKavlingPajak {

@@ -170,6 +170,13 @@ import { RolePermissionController } from "../../presentation/controllers/rolePer
 import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
 import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
 import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
+import { KodeBillingPphRepository } from "../../domain/repositories/kodeBillingPphRepo.js";
+import {
+  UploadKodeBillingPphUseCase,
+  UploadBuktiBayarKodeBillingPphUseCase,
+  GetKodeBillingPphPaginatedUseCase,
+} from "../../application/usecases/kodeBillingPph/KodeBillingPphUseCases.js";
+import { KodeBillingPphController } from "../../presentation/controllers/kodeBillingPphController.js";
 import { SocketService } from "../websocket/SocketService.js";
 import { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
 import { GenerateAgentAccountUseCase } from "../../application/usecases/agent/GenerateAgentAccountUseCase.js";
@@ -491,6 +498,26 @@ export const createContainer = (dbClient: PrismaClient) => {
     saveTagihanSignatureUseCase,
     approveBuktiTagihanUseCase,
   );
+
+  const kodeBillingPphRepo = new KodeBillingPphRepository(dbClient);
+  const uploadKodeBillingPphUseCase = new UploadKodeBillingPphUseCase(
+    kodeBillingPphRepo,
+    dbClient,
+    cloudinaryService,
+  );
+  const uploadBuktiBayarKodeBillingPphUseCase =
+    new UploadBuktiBayarKodeBillingPphUseCase(
+      kodeBillingPphRepo,
+      cloudinaryService,
+    );
+  const getKodeBillingPphPaginatedUseCase = new GetKodeBillingPphPaginatedUseCase(
+    kodeBillingPphRepo,
+  );
+  const kodeBillingPphController = new KodeBillingPphController(
+    uploadKodeBillingPphUseCase,
+    uploadBuktiBayarKodeBillingPphUseCase,
+    getKodeBillingPphPaginatedUseCase,
+  );
   const feeAgentRepo = new FeeAgentRepository(dbClient);
   const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
     feeAgentRepo,
@@ -636,6 +663,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     kavlingController,
     customerKavlingController,
     tagihanController,
+    kodeBillingPphController,
     penjualanController,
     feeAgentController,
     verifyController,
