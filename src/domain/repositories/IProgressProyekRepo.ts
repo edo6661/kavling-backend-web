@@ -1,5 +1,6 @@
 import type { ProgressProyekEntity } from "../entities/ProgressProyek.js";
 import type {
+  CreateProgressProyekByKavlingDTO,
   CreateProgressProyekDTO,
   ProgressProyekListFilterDTO,
   ProgressProyekListItemDTO,
@@ -14,7 +15,15 @@ export interface IProgressProyekRepository {
     filters?: ProgressProyekListFilterDTO,
   ): Promise<OffsetPaginatedData<ProgressProyekListItemDTO>>;
   create(data: CreateProgressProyekDTO): Promise<ProgressProyekEntity>;
+  createByKavlingId(
+    data: CreateProgressProyekByKavlingDTO,
+  ): Promise<ProgressProyekEntity>;
   findByPenjualanId(penjualanId: number): Promise<ProgressProyekEntity | null>;
+  findByKavlingId(kavlingId: number): Promise<ProgressProyekEntity | null>;
+  attachKavlingProgressToPenjualan(
+    kavlingId: number,
+    penjualanId: number,
+  ): Promise<void>;
   update(
     penjualanId: number,
     data: UpdateProgressProyekDTO,
@@ -29,5 +38,20 @@ export interface IProgressProyekRepository {
       foto: string[];
       reportedById?: number | null;
     },
+  ): Promise<ProgressProyekEntity>;
+  addTahapanLogByKavlingId(
+    kavlingId: number,
+    logData: {
+      namaTahapan: string;
+      persentase: number;
+      deskripsi: string;
+      tanggal: Date;
+      foto: string[];
+      reportedById?: number | null;
+    },
+  ): Promise<ProgressProyekEntity>;
+  updateByKavlingId(
+    kavlingId: number,
+    data: UpdateProgressProyekDTO,
   ): Promise<ProgressProyekEntity>;
 }

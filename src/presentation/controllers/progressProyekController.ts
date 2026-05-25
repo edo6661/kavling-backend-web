@@ -4,11 +4,14 @@ import { sendResponse } from "../../utils/response.js";
 import type { TypedRequest } from "../../types/request.js";
 
 import type {
+  CreateTahapanLogByKavlingUseCase,
   CreateTahapanLogUseCase,
+  GetProgressProyekByKavlingUseCase,
   GetProgressProyekListPaginatedUseCase,
   GetProgressProyekUseCase,
   ListMandorsUseCase,
   UpdateProgressProyekUseCase,
+  UploadTahapanPhotoByKavlingUseCase,
   UploadTahapanPhotoUseCase,
 } from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
 import type { ProgressProyekListFilterDTO } from "../../domain/dtos/ProgressProyekDTO.js";
@@ -17,6 +20,7 @@ import { Role } from "@prisma/client";
 import type { ProgressRequestContext } from "../../application/usecases/progressProyek/mandorAccess.js";
 
 import type {
+  getProgressProyekByKavlingSchema,
   updateProgressProyekSchema,
   getProgressProyekSchema,
 } from "../../validations/progressProyekSchema.js";
@@ -25,9 +29,12 @@ export class ProgressProyekController {
   constructor(
     private readonly getListUseCase: GetProgressProyekListPaginatedUseCase,
     private readonly getUseCase: GetProgressProyekUseCase,
+    private readonly getByKavlingUseCase: GetProgressProyekByKavlingUseCase,
     private readonly updateUseCase: UpdateProgressProyekUseCase,
     private readonly uploadUseCase: UploadTahapanPhotoUseCase,
+    private readonly uploadByKavlingUseCase: UploadTahapanPhotoByKavlingUseCase,
     private readonly createTahapanLogUseCase: CreateTahapanLogUseCase,
+    private readonly createTahapanLogByKavlingUseCase: CreateTahapanLogByKavlingUseCase,
     private readonly listMandorsUseCase: ListMandorsUseCase,
   ) {}
 
@@ -65,6 +72,24 @@ export class ProgressProyekController {
     const penjualanId = parseInt(req.params.id, 10);
     const result = await this.getUseCase.execute(
       penjualanId,
+      this.requestContext(req),
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data progress proyek berhasil diambil",
+      result,
+    );
+  };
+
+  getByKavlingId = async (
+    req: TypedRequest<never, never, typeof getProgressProyekByKavlingSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const kavlingId = parseInt(req.params.kavlingId, 10);
+    const result = await this.getByKavlingUseCase.execute(
+      kavlingId,
       this.requestContext(req),
     );
 
@@ -127,6 +152,64 @@ export class ProgressProyekController {
       res,
       StatusCodes.OK,
       `Foto untuk tahapan ${namaTahapan} berhasil diunggah`,
+      result,
+    );
+  };
+
+  uploadPhotoByKavling = async (req: Request, res: Response): Promise<void> => {
+    const kavlingId = parseInt(req.params.kavlingId as string, 10);
+    const namaTahapan = req.params.namaTahapan as string;
+    const files = req.files as Express.Multer.File[] | undefined;
+
+    if (!files || files.length === 0) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File foto wajib diunggah (minimal 1)",
+      );
+      return;
+    }
+
+    const result = await this.uploadByKavlingUseCase.execute(
+      kavlingId,
+      namaTahapan,
+      files.map((f) => f.buffer),
+      this.requestContext(req),
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Foto untuk tahapan ${namaTahapan} berhasil diunggah`,
+      result,
+    );
+  };
+
+  addLogByKavling = async (req: Request, res: Response): Promise<void> => {
+    const kavlingId = parseInt(req.params.kavlingId as string, 10);
+    const { namaTahapan, persentase, deskripsi, tanggal } = req.body;
+    const files = req.files as Express.Multer.File[] | undefined;
+
+    if (!files || files.length === 0) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File foto wajib diunggah");
+      return;
+    }
+
+    const result = await this.createTahapanLogByKavlingUseCase.execute(
+      kavlingId,
+      String(namaTahapan),
+      Number(persentase),
+      String(deskripsi ?? ""),
+      String(tanggal),
+      files.map((f) => f.buffer),
+      req.user?.userId ?? null,
+      this.requestContext(req),
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Log tahapan berhasil ditambahkan",
       result,
     );
   };

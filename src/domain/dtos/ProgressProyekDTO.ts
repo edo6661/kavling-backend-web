@@ -18,13 +18,19 @@ export interface CreateProgressProyekDTO {
   mandorId?: number | null;
 }
 
+export interface CreateProgressProyekByKavlingDTO {
+  kavlingId: number;
+  mandorId?: number | null;
+}
+
 export interface UpdateProgressProyekDTO {
   tahapan?: TahapanProyekDTO[] | undefined;
 }
 
 export interface ProgressProyekResponseDTO {
   id: number;
-  penjualanId: number;
+  penjualanId: number | null;
+  kavlingId: number | null;
   mandorId: number | null;
   mandor: MandorSummaryDTO | null;
   persentase: number;

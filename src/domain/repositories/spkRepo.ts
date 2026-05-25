@@ -94,7 +94,14 @@ export class SpkRepository implements ISpkRepository {
         select: { id: true },
       });
 
-      if (!penjualan) continue;
+      if (!penjualan) {
+        await tx.progressProyek.upsert({
+          where: { kavlingId },
+          create: { kavlingId, mandorId },
+          update: { mandorId },
+        });
+        continue;
+      }
 
       await tx.progressProyek.upsert({
         where: { penjualanId: penjualan.id },

@@ -35,3 +35,28 @@ export const uploadTahapanPhotoSchema = {
     namaTahapan: z.string().min(1, "Nama tahapan wajib diisi"),
   }),
 };
+
+export const getProgressProyekByKavlingSchema = {
+  params: z.object({
+    kavlingId: z.string().regex(/^\d+$/, "ID Kavling harus berupa angka"),
+  }),
+};
+
+export const uploadTahapanPhotoByKavlingSchema = {
+  params: z.object({
+    kavlingId: z.string().regex(/^\d+$/, "ID Kavling harus berupa angka"),
+    namaTahapan: z.string().min(1, "Nama tahapan wajib diisi"),
+  }),
+};
+
+export const addTahapanLogByKavlingSchema = {
+  params: z.object({
+    kavlingId: z.string().regex(/^\d+$/, "ID Kavling harus berupa angka"),
+  }),
+  body: z.object({
+    namaTahapan: z.string().min(1),
+    persentase: z.coerce.number().min(0).max(100),
+    deskripsi: z.string().optional().nullable(),
+    tanggal: z.string().datetime().or(z.string().min(1)),
+  }),
+};

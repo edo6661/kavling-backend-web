@@ -24,6 +24,7 @@ export class ProgressProyekMapper {
     return {
       id: prismaProgress.id,
       penjualanId: prismaProgress.penjualanId,
+      kavlingId: prismaProgress.kavlingId,
       mandorId: prismaProgress.mandorId,
       mandor: prismaProgress.mandor,
       persentase: Number(prismaProgress.persentase),

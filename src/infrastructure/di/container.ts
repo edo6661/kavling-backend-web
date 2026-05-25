@@ -9,11 +9,14 @@ import {
 } from "../../application/usecases/spk/SpkUseCases.js";
 import { SpkController } from "../../presentation/controllers/spkController.js";
 import {
+  CreateTahapanLogByKavlingUseCase,
   CreateTahapanLogUseCase,
+  GetProgressProyekByKavlingUseCase,
   GetProgressProyekUseCase,
   GetProgressProyekListPaginatedUseCase,
   ListMandorsUseCase,
   UpdateProgressProyekUseCase,
+  UploadTahapanPhotoByKavlingUseCase,
   UploadTahapanPhotoUseCase,
 } from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
 import { ProgressProyekController } from "../../presentation/controllers/progressProyekController.js";
@@ -636,6 +639,9 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getProgressProyekUseCase = new GetProgressProyekUseCase(
     progressProyekRepo,
   );
+  const getProgressProyekByKavlingUseCase = new GetProgressProyekByKavlingUseCase(
+    progressProyekRepo,
+  );
   const getProgressProyekListPaginatedUseCase =
     new GetProgressProyekListPaginatedUseCase(progressProyekRepo);
   const updateProgressProyekUseCase = new UpdateProgressProyekUseCase(
@@ -645,7 +651,16 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressProyekRepo,
     cloudinaryService,
   );
+  const uploadTahapanPhotoByKavlingUseCase =
+    new UploadTahapanPhotoByKavlingUseCase(
+      progressProyekRepo,
+      cloudinaryService,
+    );
   const createTahapanLogUseCase = new CreateTahapanLogUseCase(
+    progressProyekRepo,
+    cloudinaryService,
+  );
+  const createTahapanLogByKavlingUseCase = new CreateTahapanLogByKavlingUseCase(
     progressProyekRepo,
     cloudinaryService,
   );
@@ -653,9 +668,12 @@ export const createContainer = (dbClient: PrismaClient) => {
   const progressProyekController = new ProgressProyekController(
     getProgressProyekListPaginatedUseCase,
     getProgressProyekUseCase,
+    getProgressProyekByKavlingUseCase,
     updateProgressProyekUseCase,
     uploadTahapanPhotoUseCase,
+    uploadTahapanPhotoByKavlingUseCase,
     createTahapanLogUseCase,
+    createTahapanLogByKavlingUseCase,
     listMandorsUseCase,
   );
 

@@ -210,6 +210,7 @@ model Kavling {
   perumahan           Perumahan             @relation(fields: [perumahanId], references: [id])
   rekeningTujuan      BankRekeningPt?       @relation(fields: [rekeningTujuanId], references: [id])
   penjualan           Penjualan[]
+  progressProyek      ProgressProyek?
   spkItem             SpkPenjualan?
   riwayatBaru         RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
   riwayatLama         RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
@@ -459,14 +460,16 @@ model SpkPenjualan {
   @@map("spk_penjualan")
 }
 model ProgressProyek {
-  id          Int      @id @default(autoincrement())
-  mandorId    Int?     @map("mandor_id")
-  persentase  Decimal  @default(0.00) @db.Decimal(5, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  penjualanId Int      @unique @map("penjualan_id")
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
-  mandor      User?    @relation("ProgressMandor", fields: [mandorId], references: [id])
+  id          Int       @id @default(autoincrement())
+  mandorId    Int?      @map("mandor_id")
+  persentase  Decimal   @default(0.00) @db.Decimal(5, 2)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  penjualanId Int?      @unique @map("penjualan_id")
+  kavlingId   Int?      @unique @map("kavling_id")
+  penjualan   Penjualan? @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  kavling     Kavling?   @relation(fields: [kavlingId], references: [id], onDelete: Cascade)
+  mandor      User?     @relation("ProgressMandor", fields: [mandorId], references: [id])
 
   tahapan     TahapanProyek[]
 

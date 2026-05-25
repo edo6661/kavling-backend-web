@@ -7,8 +7,11 @@ import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
   getProgressProyekListSchema,
+  getProgressProyekByKavlingSchema,
   getProgressProyekSchema,
   updateProgressProyekSchema,
+  addTahapanLogByKavlingSchema,
+  uploadTahapanPhotoByKavlingSchema,
   uploadTahapanPhotoSchema,
 } from "../../validations/progressProyekSchema.js";
 import type { ProgressProyekController } from "../controllers/progressProyekController.js";
@@ -31,6 +34,29 @@ export const createProgressProyekRoutes = (
     requirePermission("PROGRESS_PROYEK", "read"),
     validate(getProgressProyekListSchema),
     controller.getProyekList,
+  );
+
+  router.get(
+    "/kavling/:kavlingId",
+    requirePermission("PROGRESS_PROYEK", "read"),
+    validate(getProgressProyekByKavlingSchema),
+    controller.getByKavlingId,
+  );
+
+  router.patch(
+    "/kavling/:kavlingId/tahapan/:namaTahapan/foto",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    upload.array("foto", 10),
+    validate({ params: uploadTahapanPhotoByKavlingSchema.params }),
+    controller.uploadPhotoByKavling,
+  );
+
+  router.patch(
+    "/kavling/:kavlingId/tahapan/log",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    upload.array("foto", 10),
+    validate(addTahapanLogByKavlingSchema),
+    controller.addLogByKavling,
   );
 
   router.get(

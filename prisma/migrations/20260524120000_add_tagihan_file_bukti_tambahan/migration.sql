@@ -1,0 +1,1 @@
+-- No-op: folder migrasi sebelumnya kosong; tidak ada perubahan skema yang tertinggal di schema.prisma.

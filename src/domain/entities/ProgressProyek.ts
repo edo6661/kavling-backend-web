@@ -16,7 +16,8 @@ export interface TahapanProyekEntity {
 
 export interface ProgressProyekEntity {
   id: number;
-  penjualanId: number;
+  penjualanId: number | null;
+  kavlingId: number | null;
   mandorId: number | null;
   mandor: MandorSummary | null;
   persentase: number;

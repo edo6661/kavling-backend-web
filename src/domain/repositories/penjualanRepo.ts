@@ -320,6 +320,21 @@ export class PenjualanRepository implements IPenjualanRepository {
         },
       });
 
+      const kavlingProgress = await tx.progressProyek.findUnique({
+        where: { kavlingId: kavling.id },
+      });
+      if (kavlingProgress) {
+        const penjualanProgress = await tx.progressProyek.findUnique({
+          where: { penjualanId: penjualan.id },
+        });
+        if (!penjualanProgress || penjualanProgress.id === kavlingProgress.id) {
+          await tx.progressProyek.update({
+            where: { id: kavlingProgress.id },
+            data: { penjualanId: penjualan.id, kavlingId: null },
+          });
+        }
+      }
+
       if (agent) {
         await tx.feeAgent.create({
           data: {

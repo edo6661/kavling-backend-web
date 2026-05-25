@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import type { Prisma as PrismaTypes } from "@prisma/client";
 import type {
+  CreateProgressProyekByKavlingDTO,
   CreateProgressProyekDTO,
   ProgressProyekListFilterDTO,
   ProgressProyekListItemDTO,
@@ -126,15 +127,24 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
 
     const kavlingWhere: PrismaTypes.KavlingWhereInput = {
       penjualan: { none: { status: { not: "BATAL" } } },
-      spkItem: filters?.mandorUserId
-        ? { is: { spk: { mandorId: filters.mandorUserId } } }
-        : { isNot: null },
     };
+
+    if (filters?.mandorUserId) {
+      kavlingWhere.OR = [
+        { spkItem: { is: { spk: { mandorId: filters.mandorUserId } } } },
+        { progressProyek: { mandorId: filters.mandorUserId } },
+      ];
+    } else {
+      kavlingWhere.spkItem = { isNot: null };
+    }
 
     const kavlingOnlyRows = await this.db.kavling.findMany({
       where: kavlingWhere,
       include: {
         spkItem: penjualanKavlingWithSpkInclude.spkItem,
+        progressProyek: {
+          include: { mandor: { select: { id: true, username: true } } },
+        },
       },
     });
 
@@ -160,14 +170,10 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
 
     const kavlingOnlyItems: ProgressProyekListItemDTO[] = kavlingOnlyRows.map(
       (k) => {
-        const spk = k.spkItem?.spk;
-        const progressProyek: ProgressProyekSummary | null = spk
-          ? {
-              persentase: 0,
-              mandorId: spk.mandorId,
-              mandor: spk.mandor,
-            }
-          : null;
+        const progressProyek = this.resolveProgressProyekSummary(
+          k.progressProyek,
+          k.spkItem,
+        );
 
         return {
           kavlingId: k.id,
@@ -215,15 +221,9 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     };
   }
 
-  private async getSpkMandorForPenjualan(penjualanId: number) {
-    const penjualan = await this.db.penjualan.findUnique({
-      where: { id: penjualanId },
-      select: { kavlingId: true },
-    });
-    if (!penjualan) return null;
-
+  private async getSpkMandorForKavling(kavlingId: number) {
     const link = await this.db.spkPenjualan.findUnique({
-      where: { kavlingId: penjualan.kavlingId },
+      where: { kavlingId },
       include: {
         spk: {
           include: { mandor: { select: { id: true, username: true } } },
@@ -236,6 +236,16 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       mandorId: link.spk.mandorId,
       mandor: link.spk.mandor,
     };
+  }
+
+  private async getSpkMandorForPenjualan(penjualanId: number) {
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { id: penjualanId },
+      select: { kavlingId: true },
+    });
+    if (!penjualan) return null;
+
+    return this.getSpkMandorForKavling(penjualan.kavlingId);
   }
 
   private applySpkMandorFallback(
@@ -274,6 +284,32 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     return ProgressProyekMapper.toDomain(result);
   }
 
+  async createByKavlingId(
+    data: CreateProgressProyekByKavlingDTO,
+  ): Promise<ProgressProyekEntity> {
+    const existing = await this.findByKavlingId(data.kavlingId);
+    if (existing) {
+      throw new ConflictError("Progress Proyek untuk kavling ini sudah ada.");
+    }
+
+    let mandorId = data.mandorId ?? null;
+    if (mandorId === null) {
+      const spkMandor = await this.getSpkMandorForKavling(data.kavlingId);
+      mandorId = spkMandor?.mandorId ?? null;
+    }
+
+    const result = await this.db.progressProyek.create({
+      data: {
+        kavlingId: data.kavlingId,
+        mandorId,
+        persentase: 0,
+      },
+      include: ProgressProyekMapper.include,
+    });
+
+    return ProgressProyekMapper.toDomain(result);
+  }
+
   async findByPenjualanId(
     penjualanId: number,
   ): Promise<ProgressProyekEntity | null> {
@@ -287,6 +323,42 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     const entity = ProgressProyekMapper.toDomain(result);
     const spkMandor = await this.getSpkMandorForPenjualan(penjualanId);
     return this.applySpkMandorFallback(entity, spkMandor);
+  }
+
+  async findByKavlingId(kavlingId: number): Promise<ProgressProyekEntity | null> {
+    const result = await this.db.progressProyek.findUnique({
+      where: { kavlingId },
+      include: ProgressProyekMapper.include,
+    });
+
+    if (!result) return null;
+
+    const entity = ProgressProyekMapper.toDomain(result);
+    const spkMandor = await this.getSpkMandorForKavling(kavlingId);
+    return this.applySpkMandorFallback(entity, spkMandor);
+  }
+
+  async attachKavlingProgressToPenjualan(
+    kavlingId: number,
+    penjualanId: number,
+  ): Promise<void> {
+    const kavlingProgress = await this.db.progressProyek.findUnique({
+      where: { kavlingId },
+    });
+    if (!kavlingProgress) return;
+
+    const penjualanProgress = await this.db.progressProyek.findUnique({
+      where: { penjualanId },
+    });
+
+    if (penjualanProgress && penjualanProgress.id !== kavlingProgress.id) {
+      return;
+    }
+
+    await this.db.progressProyek.update({
+      where: { id: kavlingProgress.id },
+      data: { penjualanId, kavlingId: null },
+    });
   }
 
   async update(
@@ -313,11 +385,47 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
           });
         }
 
-        await this.recalculatePersentase(tx, existing.id, penjualanId);
+        await this.recalculatePersentase(tx, existing.id);
       }
 
       const finalResult = await tx.progressProyek.findUniqueOrThrow({
-        where: { penjualanId },
+        where: { id: existing.id },
+        include: ProgressProyekMapper.include,
+      });
+
+      return ProgressProyekMapper.toDomain(finalResult);
+    });
+  }
+
+  async updateByKavlingId(
+    kavlingId: number,
+    data: UpdateProgressProyekDTO,
+  ): Promise<ProgressProyekEntity> {
+    const existing = await this.findByKavlingId(kavlingId);
+    if (!existing) {
+      throw new NotFoundError("Progress Proyek tidak ditemukan.");
+    }
+
+    return await this.db.$transaction(async (tx) => {
+      if (data.tahapan && data.tahapan.length > 0) {
+        for (const t of data.tahapan) {
+          await tx.tahapanProyek.create({
+            data: {
+              progressProyekId: existing.id,
+              namaTahapan: t.namaTahapan,
+              persentase: new Prisma.Decimal(t.persentase),
+              deskripsi: t.deskripsi,
+              tanggal: t.tanggal,
+              foto: t.foto as Prisma.InputJsonValue,
+            },
+          });
+        }
+
+        await this.recalculatePersentase(tx, existing.id);
+      }
+
+      const finalResult = await tx.progressProyek.findUniqueOrThrow({
+        where: { id: existing.id },
         include: ProgressProyekMapper.include,
       });
 
@@ -357,7 +465,57 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
         },
       });
 
-      await this.recalculatePersentase(tx, progress.id, penjualanId);
+      await this.recalculatePersentase(tx, progress.id);
+
+      const updated = await tx.progressProyek.findUniqueOrThrow({
+        where: { id: progress.id },
+        include: ProgressProyekMapper.include,
+      });
+
+      return ProgressProyekMapper.toDomain(updated);
+    });
+  }
+
+  async addTahapanLogByKavlingId(
+    kavlingId: number,
+    logData: {
+      namaTahapan: string;
+      persentase: number;
+      deskripsi: string;
+      tanggal: Date;
+      foto: string[];
+      reportedById?: number | null;
+    },
+  ): Promise<ProgressProyekEntity> {
+    return await this.db.$transaction(async (tx) => {
+      let progress = await tx.progressProyek.findUnique({
+        where: { kavlingId },
+      });
+
+      if (!progress) {
+        const spkMandor = await this.getSpkMandorForKavling(kavlingId);
+        progress = await tx.progressProyek.create({
+          data: {
+            kavlingId,
+            mandorId: spkMandor?.mandorId ?? null,
+          },
+          include: ProgressProyekMapper.include,
+        });
+      }
+
+      await tx.tahapanProyek.create({
+        data: {
+          progressProyekId: progress.id,
+          namaTahapan: logData.namaTahapan,
+          persentase: new Prisma.Decimal(logData.persentase),
+          deskripsi: logData.deskripsi,
+          tanggal: logData.tanggal,
+          foto: logData.foto as Prisma.InputJsonValue,
+          reportedById: logData.reportedById ?? null,
+        },
+      });
+
+      await this.recalculatePersentase(tx, progress.id);
 
       const updated = await tx.progressProyek.findUniqueOrThrow({
         where: { id: progress.id },
@@ -371,7 +529,6 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
   private async recalculatePersentase(
     tx: Prisma.TransactionClient,
     progressId: number,
-    penjualanId: number,
   ) {
     const allTahapan = await tx.tahapanProyek.findMany({
       where: { progressProyekId: progressId },
@@ -395,7 +552,7 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     const finalTotal = Math.min(rataRataProgress, 100);
 
     await tx.progressProyek.update({
-      where: { penjualanId },
+      where: { id: progressId },
       data: { persentase: new Prisma.Decimal(finalTotal.toFixed(2)) },
     });
   }

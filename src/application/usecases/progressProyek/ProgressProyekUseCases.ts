@@ -36,6 +36,29 @@ export class GetProgressProyekUseCase {
   }
 }
 
+export class GetProgressProyekByKavlingUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    kavlingId: number,
+    ctx?: ProgressRequestContext,
+  ): Promise<ProgressProyekEntity> {
+    let progress = await this.repo.findByKavlingId(kavlingId);
+
+    if (isMandorRole(ctx?.role)) {
+      if (!ctx?.userId) {
+        throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+      }
+      progress ??= await this.repo.createByKavlingId({ kavlingId, mandorId: null });
+      assertAssignedMandor(progress, ctx.userId);
+      return progress;
+    }
+
+    progress ??= await this.repo.createByKavlingId({ kavlingId, mandorId: null });
+    return progress;
+  }
+}
+
 export class UpdateProgressProyekUseCase {
   constructor(private readonly repo: IProgressProyekRepository) {}
 
@@ -149,6 +172,105 @@ export class CreateTahapanLogUseCase {
       tanggal: new Date(tanggal),
       foto: photoUrls,
       reportedById: reportedById ?? null,
+    });
+  }
+}
+
+export class CreateTahapanLogByKavlingUseCase {
+  constructor(
+    private readonly repo: IProgressProyekRepository,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
+
+  async execute(
+    kavlingId: number,
+    namaTahapan: string,
+    persentase: number,
+    deskripsi: string,
+    tanggal: string,
+    files: Buffer[],
+    reportedById?: number | null,
+    ctx?: ProgressRequestContext,
+  ) {
+    let progress = await this.repo.findByKavlingId(kavlingId);
+    if (isMandorRole(ctx?.role) && !progress) {
+      progress = await this.repo.createByKavlingId({ kavlingId, mandorId: null });
+    }
+    assertMandorCanMutate(progress, ctx);
+
+    const photoUrls = await Promise.all(
+      files.map((file) =>
+        this.cloudinary.uploadImage(
+          file,
+          `bumantara/progress/kavling/${kavlingId}/${namaTahapan}`,
+        ),
+      ),
+    );
+
+    return await this.repo.addTahapanLogByKavlingId(kavlingId, {
+      namaTahapan,
+      persentase,
+      deskripsi,
+      tanggal: new Date(tanggal),
+      foto: photoUrls,
+      reportedById: reportedById ?? null,
+    });
+  }
+}
+
+export class UploadTahapanPhotoByKavlingUseCase {
+  constructor(
+    private readonly repo: IProgressProyekRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    kavlingId: number,
+    namaTahapan: string,
+    files: Buffer[],
+    ctx?: ProgressRequestContext,
+  ): Promise<ProgressProyekEntity> {
+    if (!files || files.length === 0) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "File foto tidak boleh kosong",
+      );
+    }
+
+    const progress = await this.repo.findByKavlingId(kavlingId);
+    assertMandorCanMutate(progress, ctx);
+
+    if (!progress) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Progress proyek tidak ditemukan",
+      );
+    }
+
+    const tahapan = progress.tahapan.find((t) => t.namaTahapan === namaTahapan);
+    const existingPhotos = tahapan?.foto ?? [];
+
+    const uploadedUrls = await Promise.all(
+      files.map((fileBuffer) =>
+        this.cloudinaryService.uploadImage(
+          fileBuffer,
+          `bumantara/progress_proyek/kavling/${kavlingId}/${namaTahapan.replace(/\s+/g, "_")}`,
+        ),
+      ),
+    );
+
+    const newPhotos = [...existingPhotos, ...uploadedUrls];
+
+    return await this.repo.updateByKavlingId(kavlingId, {
+      tahapan: [
+        {
+          namaTahapan,
+          persentase: tahapan?.persentase ?? 0,
+          deskripsi: tahapan?.deskripsi ?? null,
+          tanggal: tahapan?.tanggal ?? new Date(),
+          foto: newPhotos,
+        },
+      ],
     });
   }
 }
