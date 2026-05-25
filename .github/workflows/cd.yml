@@ -16,6 +16,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+            set -e
             cd ~/apps/kavling-backend
 
             git pull origin main
@@ -45,6 +46,6 @@ jobs:
 
             docker compose up -d --build
 
-            docker compose exec -T app npx prisma db push
+            docker compose exec -T app npx prisma migrate deploy
 
             docker image prune -af
