@@ -2,7 +2,16 @@ import type { PrismaClient } from "@prisma/client";
 import type {
   DashboardResponseDTO,
   DocumentAlertDTO,
+  KavlingRekeningBreakdownDTO,
 } from "../../../domain/dtos/DashboardDTO.js";
+
+function rekeningLabelFromAtasNama(atasNama: string): string {
+  const upper = atasNama.toUpperCase();
+  if (upper.includes("GAJAH")) return "Gajah";
+  if (upper.includes("MAHLIGAI")) return "Mahligai";
+  const words = atasNama.trim().split(/\s+/);
+  return words[words.length - 1] ?? atasNama;
+}
 
 export class GetDashboardSummaryUseCase {
   constructor(private readonly db: PrismaClient) {}
@@ -20,6 +29,47 @@ export class GetDashboardSummaryUseCase {
     });
 
     const totalKavlingCount = await this.db.kavling.count();
+
+    const bankRekenings = await this.db.bankRekeningPt.findMany({
+      orderBy: { id: "asc" },
+    });
+
+    const kavlingByRekening: KavlingRekeningBreakdownDTO[] =
+      await Promise.all(
+        bankRekenings.map(async (bank) => {
+          const whereBase = { rekeningTujuanId: bank.id };
+          const [total, terjual] = await Promise.all([
+            this.db.kavling.count({ where: whereBase }),
+            this.db.kavling.count({
+              where: { ...whereBase, status: "TERJUAL" },
+            }),
+          ]);
+
+          return {
+            rekeningId: bank.id,
+            label: rekeningLabelFromAtasNama(bank.atasNama),
+            atasNama: bank.atasNama,
+            total,
+            terjual,
+          };
+        }),
+      );
+
+    const [tanpaRekeningTotal, tanpaRekeningTerjual] = await Promise.all([
+      this.db.kavling.count({ where: { rekeningTujuanId: null } }),
+      this.db.kavling.count({
+        where: { rekeningTujuanId: null, status: "TERJUAL" },
+      }),
+    ]);
+    if (tanpaRekeningTotal > 0) {
+      kavlingByRekening.push({
+        rekeningId: 0,
+        label: "Tanpa Rekening",
+        atasNama: "-",
+        total: tanpaRekeningTotal,
+        terjual: tanpaRekeningTerjual,
+      });
+    }
 
     const tagihanJatuhTempo = await this.db.tagihan.aggregate({
       _sum: { nominal: true },
@@ -142,6 +192,7 @@ export class GetDashboardSummaryUseCase {
         totalPendapatan: Number(totalTagihanLunas._sum.nominal ?? 0),
         kavlingTerjual: kavlingTerjualCount,
         totalKavling: totalKavlingCount,
+        kavlingByRekening,
         tagihanJatuhTempo: Number(tagihanJatuhTempo._sum.nominal ?? 0),
         customerJatuhTempo: customerJatuhTempo.length,
         proyekAktif: proyekAktifCount,

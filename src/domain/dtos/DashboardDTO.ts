@@ -1,7 +1,16 @@
+export interface KavlingRekeningBreakdownDTO {
+  rekeningId: number;
+  label: string;
+  atasNama: string;
+  total: number;
+  terjual: number;
+}
+
 export interface DashboardStatsDTO {
   totalPendapatan: number;
   kavlingTerjual: number;
   totalKavling: number;
+  kavlingByRekening: KavlingRekeningBreakdownDTO[];
   tagihanJatuhTempo: number;
   customerJatuhTempo: number;
   proyekAktif: number;
