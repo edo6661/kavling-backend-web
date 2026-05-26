@@ -196,17 +196,28 @@ export interface SpkPembayaranStatusRow {
   mengurangiTermin?: SpkKasbonTargetTermin | null;
 }
 
+export function toSpkPembayaranCalcRows(
+  pembayaranList: SpkPembayaranStatusRow[],
+): SpkPembayaranCalcRow[] {
+  return pembayaranList.map((p) => ({
+    jenis: p.jenis,
+    status: p.status,
+    nominal: p.nominal ?? 0,
+    mengurangiTermin:
+      p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"
+        ? p.mengurangiTermin
+        : null,
+  }));
+}
+
+export type CanRequestKasbonResult =
+  | { allowed: true; targetTermin: SpkKasbonTargetTermin }
+  | { allowed: false; reason: string };
+
 export function canRequestKasbon(
   pembayaranList: SpkPembayaranStatusRow[],
-): { allowed: boolean; reason?: string; targetTermin?: SpkKasbonTargetTermin } {
-  const target = getKasbonTargetTermin(
-    pembayaranList.map((p) => ({
-      jenis: p.jenis,
-      status: p.status,
-      nominal: p.nominal ?? 0,
-      mengurangiTermin: p.mengurangiTermin,
-    })),
-  );
+): CanRequestKasbonResult {
+  const target = getKasbonTargetTermin(toSpkPembayaranCalcRows(pembayaranList));
 
   if (!target) {
     return {
@@ -226,15 +237,13 @@ export function canRequestSpkPembayaran(
 ): { allowed: boolean; reason?: string } {
   if (jenis === "KASBON") {
     const check = canRequestKasbon(pembayaranList);
-    return { allowed: check.allowed, reason: check.reason };
+    if (!check.allowed) {
+      return { allowed: false, reason: check.reason };
+    }
+    return { allowed: true };
   }
 
-  const calcRows = pembayaranList.map((p) => ({
-    jenis: p.jenis,
-    status: p.status,
-    nominal: p.nominal ?? 0,
-    mengurangiTermin: p.mengurangiTermin,
-  }));
+  const calcRows = toSpkPembayaranCalcRows(pembayaranList);
 
   if (pembayaranList.some((p) => p.jenis === jenis)) {
     return { allowed: false, reason: "Pengajuan termin ini sudah ada." };
