@@ -9,7 +9,7 @@ const PORT = env.PORT;
 const httpServer = createServer(app);
 container.socketService.initialize(httpServer);
 const server = httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Da Server running on http://localhost:${PORT}`);
   container.telegramBotService.launch().catch((err: unknown) => {
     console.error("❌ Terjadi kesalahan saat meluncurkan Telegram Bot:", err);
   });
