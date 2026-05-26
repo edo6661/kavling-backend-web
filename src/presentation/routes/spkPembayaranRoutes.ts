@@ -22,7 +22,7 @@ export const createSpkPembayaranRoutes = (
 
   router.get(
     "/",
-    requirePermission("TAGIHAN", "read"),
+    requirePermission(["TAGIHAN", "SPK"], "read"),
     validate(getSpkPembayaranPaginatedSchema),
     controller.getPaginated,
   );

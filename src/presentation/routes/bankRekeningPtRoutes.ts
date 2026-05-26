@@ -27,14 +27,14 @@ export const createBankRekeningPtRoutes = (
 
   router.get(
     "/",
-    requirePermission("BANK", "read"),
+    requirePermission(["BANK", "SPK"], "read"),
     validate(getBankRekeningPtPaginatedSchema),
     controller.getPaginated,
   );
 
   router.get(
     "/:id",
-    requirePermission("BANK", "read"),
+    requirePermission(["BANK", "SPK"], "read"),
     validate({ params: updateBankRekeningPtSchema.params }),
     controller.getById,
   );

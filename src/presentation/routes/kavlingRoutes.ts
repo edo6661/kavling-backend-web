@@ -27,14 +27,14 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
 
   router.get(
     "/",
-    requirePermission("KAVLING", "read"),
+    requirePermission(["KAVLING", "SPK"], "read"),
     validate(getKavlingPaginatedSchema),
     controller.getPaginated,
   );
 
   router.get(
     "/:id",
-    requirePermission("KAVLING", "read"),
+    requirePermission(["KAVLING", "SPK"], "read"),
     validate({ params: updateKavlingSchema.params }),
     controller.getById,
   );
