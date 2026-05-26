@@ -10,7 +10,19 @@ export const spkPembayaranInclude = {
       noSpk: true,
       judulPekerjaan: true,
       nilaiKontrak: true,
-      mandor: { select: { id: true, username: true } },
+      mandor: {
+        select: {
+          id: true,
+          username: true,
+          mandorProfile: {
+            select: {
+              namaBank: true,
+              noRekening: true,
+              atasNamaRekening: true,
+            },
+          },
+        },
+      },
     },
   },
 } satisfies Prisma.SpkPembayaranInclude;
@@ -47,7 +59,14 @@ export class SpkPembayaranMapper {
         noSpk: row.spk.noSpk,
         judulPekerjaan: row.spk.judulPekerjaan,
         nilaiKontrak: Number(row.spk.nilaiKontrak),
-        mandor: row.spk.mandor,
+        mandor: {
+          id: row.spk.mandor.id,
+          username: row.spk.mandor.username,
+          namaBank: row.spk.mandor.mandorProfile?.namaBank ?? "",
+          noRekening: row.spk.mandor.mandorProfile?.noRekening ?? "",
+          atasNamaRekening:
+            row.spk.mandor.mandorProfile?.atasNamaRekening ?? "",
+        },
       };
     }
 
