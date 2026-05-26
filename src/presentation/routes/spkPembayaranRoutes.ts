@@ -36,7 +36,7 @@ export const createSpkPembayaranRoutes = (
 
   router.post(
     "/spk/:spkId",
-    requirePermission("SPK", "update"),
+    requirePermission("SPK", "read"),
     validate(createSpkPembayaranSchema),
     controller.createRequest,
   );

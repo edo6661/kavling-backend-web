@@ -52,6 +52,7 @@ export async function seedRolePermission(prisma: PrismaClient) {
   const mandorPermissions = [
     { resource: "PROGRESS_PROYEK", canCreate: false, canRead: true, canUpdate: true, canDelete: false },
     { resource: "PENJUALAN", canCreate: false, canRead: true, canUpdate: false, canDelete: false },
+    { resource: "SPK", canCreate: false, canRead: true, canUpdate: false, canDelete: false },
   ];
 
   for (const perm of mandorPermissions) {
