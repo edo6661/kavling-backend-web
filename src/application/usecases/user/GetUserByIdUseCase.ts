@@ -16,6 +16,7 @@ export class GetUserByIdUseCase {
       username: user.username,
       email: user.email,
       role: user.role,
+      mandor: user.mandor ?? null,
       createdAt: user.createdAt,
     };
   }

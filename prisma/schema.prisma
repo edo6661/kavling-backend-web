@@ -27,8 +27,22 @@ model User {
   spkPembayaranDiajukan   SpkPembayaran[]       @relation("SpkPembayaranDiajukan")
   spkPembayaranDibayar    SpkPembayaran[]       @relation("SpkPembayaranDibayar")
   tahapanReports          TahapanProyek[]       @relation("TahapanReporter")
+  mandorProfile           Mandor?
 
   @@map("users")
+}
+
+model Mandor {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique @map("user_id")
+  namaBank         String   @map("nama_bank") @db.VarChar(100)
+  noRekening       String   @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening String   @map("atas_nama_rekening") @db.VarChar(150)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mandors")
 }
 
 model Customer {

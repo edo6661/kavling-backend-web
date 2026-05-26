@@ -1,4 +1,4 @@
-import { Prisma, type Role } from "@prisma/client";
+import { Prisma, Role, type Role as RoleType } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { IUserRepository } from "./IUserRepo";
 import type { UserEntity } from "../entities/User";
@@ -55,6 +55,7 @@ export class UserRepository implements IUserRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: orderByClause,
+      include: { mandorProfile: true },
     });
 
     let hasNextPage = false;
@@ -73,13 +74,25 @@ export class UserRepository implements IUserRepository {
 
   async create(data: RegisterUserDTO): Promise<UserEntity> {
     try {
+      const createData: Prisma.UserCreateInput = {
+        username: data.username,
+        email: data.email,
+        password: data.password ?? "",
+        role: data.role,
+      };
+      if (data.mandor) {
+        createData.mandorProfile = {
+          create: {
+            namaBank: data.mandor.namaBank,
+            noRekening: data.mandor.noRekening,
+            atasNamaRekening: data.mandor.atasNamaRekening,
+          },
+        };
+      }
+
       const result = await this.db.user.create({
-        data: {
-          username: data.username,
-          email: data.email,
-          password: data.password ?? "",
-          role: data.role,
-        },
+        data: createData,
+        include: { mandorProfile: true },
       });
       return UserMapper.toDomain(result);
     } catch (error) {
@@ -104,11 +117,39 @@ export class UserRepository implements IUserRepository {
       if (data.email !== undefined) updateData.email = data.email;
       if (data.password !== undefined) updateData.password = data.password;
       if (data.role !== undefined) updateData.role = data.role;
+      if (data.mandor !== undefined) {
+        updateData.mandorProfile = {
+          upsert: {
+            create: {
+              namaBank: data.mandor.namaBank,
+              noRekening: data.mandor.noRekening,
+              atasNamaRekening: data.mandor.atasNamaRekening,
+            },
+            update: {
+              namaBank: data.mandor.namaBank,
+              noRekening: data.mandor.noRekening,
+              atasNamaRekening: data.mandor.atasNamaRekening,
+            },
+          },
+        };
+      }
 
       const result = await this.db.user.update({
         where: { id },
         data: updateData,
+        include: { mandorProfile: true },
       });
+
+      if (data.role !== undefined && data.role !== Role.MANDOR) {
+        await this.db.mandor.deleteMany({ where: { userId: id } });
+        const refreshed = await this.db.user.findUnique({
+          where: { id },
+          include: { mandorProfile: true },
+        });
+        if (refreshed) {
+          return UserMapper.toDomain(refreshed);
+        }
+      }
 
       return UserMapper.toDomain(result);
     } catch (error) {
@@ -123,13 +164,19 @@ export class UserRepository implements IUserRepository {
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
-    const result = await this.db.user.findUnique({ where: { email } });
+    const result = await this.db.user.findUnique({
+      where: { email },
+      include: { mandorProfile: true },
+    });
     if (!result) return null;
     return UserMapper.toDomain(result);
   }
 
   async findById(id: number): Promise<UserEntity | null> {
-    const result = await this.db.user.findUnique({ where: { id } });
+    const result = await this.db.user.findUnique({
+      where: { id },
+      include: { mandorProfile: true },
+    });
     if (!result) return null;
     return UserMapper.toDomain(result);
   }
@@ -137,11 +184,12 @@ export class UserRepository implements IUserRepository {
   async findAll(): Promise<UserEntity[]> {
     const results = await this.db.user.findMany({
       orderBy: { createdAt: "desc" },
+      include: { mandorProfile: true },
     });
     return results.map((u) => UserMapper.toDomain(u));
   }
 
-  async findByRole(role: Role) {
+  async findByRole(role: RoleType) {
     return await this.db.user.findMany({
       where: { role },
       select: { id: true, username: true },

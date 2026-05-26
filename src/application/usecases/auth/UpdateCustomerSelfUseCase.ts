@@ -3,11 +3,16 @@ import type { ICustomerRepository } from "../../../domain/repositories/ICustomer
 import { hashPassword } from "../../../utils/hashing.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
-import type { UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
+import type { MandorProfileDTO, UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
+import { Role } from "@prisma/client";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+
 export interface UpdateSelfDTO {
   username?: string;
   email?: string;
   password?: string;
+  mandor?: MandorProfileDTO;
 }
 
 export class UpdateCustomerSelfUseCase {
@@ -38,6 +43,16 @@ export class UpdateCustomerSelfUseCase {
       updateData.password = await hashPassword(data.password);
     }
 
+    if (data.mandor) {
+      if (user.role !== Role.MANDOR) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Data rekening mandor hanya untuk akun role MANDOR.",
+        );
+      }
+      updateData.mandor = data.mandor;
+    }
+
     const updatedUser = await this.userRepo.update(userId, updateData);
 
     if (data.email) {
@@ -51,6 +66,8 @@ export class UpdateCustomerSelfUseCase {
       id: updatedUser.id,
       username: updatedUser.username,
       email: updatedUser.email,
+      role: updatedUser.role,
+      mandor: updatedUser.mandor ?? null,
     };
   }
 }

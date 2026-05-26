@@ -41,15 +41,31 @@ export const registerAgentSchema = {
   }),
 };
 
+const selfMandorProfileSchema = z.object({
+  namaBank: z.string().min(2, "Nama bank minimal 2 karakter"),
+  noRekening: z.string().min(5, "Nomor rekening minimal 5 karakter"),
+  atasNamaRekening: z.string().min(3, "Atas nama rekening minimal 3 karakter"),
+});
+
 export const updateSelfSchema = {
   body: z
     .object({
-      username: z.string().min(3, "Username minimal 3 karakter").optional(),
-      email: z.string().email("Format email tidak valid").optional(),
-      password: z.string().min(6, "Password minimal 6 karakter").optional(),
+      username: emptyAsUndefined(
+        z.string().min(3, "Username minimal 3 karakter").optional(),
+      ),
+      email: emptyAsUndefined(
+        z.string().email("Format email tidak valid").optional(),
+      ),
+      password: emptyAsUndefined(
+        z.string().min(6, "Password minimal 6 karakter").optional(),
+      ),
+      mandor: emptyAsUndefined(selfMandorProfileSchema.optional()),
     })
-    .refine((data) => data.username ?? data.email ?? data.password, {
-      message:
-        "Minimal salah satu data (username, email, atau password) harus diisi",
-    }),
+    .refine(
+      (data) => data.username ?? data.email ?? data.password ?? data.mandor,
+      {
+        message:
+          "Minimal salah satu data (username, email, password, atau rekening mandor) harus diisi",
+      },
+    ),
 };
