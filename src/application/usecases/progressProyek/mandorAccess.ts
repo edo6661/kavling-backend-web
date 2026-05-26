@@ -4,8 +4,8 @@ import { AppError } from "../../../domain/errors/AppError.js";
 import type { ProgressProyekEntity } from "../../../domain/entities/ProgressProyek.js";
 
 export interface ProgressRequestContext {
-  role?: string;
-  userId?: number;
+  role?: string | undefined;
+  userId?: number | undefined;
 }
 
 export function isMandorRole(role?: string): boolean {

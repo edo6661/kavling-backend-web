@@ -26,7 +26,7 @@ export interface CreateAgentDTO {
   perusahaanAgentId?: number | undefined;
 
   feeMarketingPct?: number | undefined;
-  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
+  feeClosingNominal?: number | null | undefined;
   potonganPph?: number | undefined;
   pics?: PicAgentDTO[] | undefined;
 }
@@ -37,8 +37,8 @@ export interface UpdateAgentDTO {
   nama?: string | undefined;
   alamat?: string | undefined;
   noHp?: string | undefined;
-  fileSuratPernyataan: string | null;
-  defaultSuratPernyataan: string | null;
+  fileSuratPernyataan?: string | null | undefined;
+  defaultSuratPernyataan?: string | null | undefined;
   email?: string | undefined;
   status?: AgentStatus | undefined;
   perusahaanAgentId?: number | undefined;
@@ -48,7 +48,7 @@ export interface UpdateAgentDTO {
   noRekening?: string | undefined;
   atasNamaRekening?: string | undefined;
   feeMarketingPct?: number | undefined;
-  feeClosingNominal: number | null; // <-- TAMBAHKAN INI
+  feeClosingNominal?: number | null | undefined;
   potonganPph?: number | undefined;
   fileKtp?: string | undefined;
   fileNpwp?: string | undefined;

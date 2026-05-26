@@ -15,24 +15,24 @@ export interface CreatePenjualanDTO {
   luasTanah: number;
   tanggal: string | Date;
   hargaDasar: number;
-  plafonAwal?: number;
-  biayaKpr?: number;
-  plafonKredit?: number;
-  plafonAcc?: number;
-  dpTidakDibayar?: number;
-  dpDibayar?: number;
-  hargaJual?: number;
+  plafonAwal?: number | undefined;
+  biayaKpr?: number | undefined;
+  plafonKredit?: number | undefined;
+  plafonAcc?: number | undefined;
+  dpTidakDibayar?: number | undefined;
+  dpDibayar?: number | undefined;
+  hargaJual?: number | undefined;
   hargaPromosi?: number | undefined;
   diskonPenjualan?: number | undefined;
   dp?: number | undefined;
   bookingFee?: number | undefined;
   termin?: number | undefined;
-  caraPembayaran: PaymentMethod;
+  caraPembayaran?: PaymentMethod | undefined;
   bank?: string | undefined;
   nilaiPengajuanKpr?: number | undefined;
   agent: string;
-  createdBy?: string;
-  userId?: number;
+  createdBy?: string | undefined;
+  userId?: number | undefined;
   biayaTambahan?: BiayaTambahanDTO[] | undefined;
   biayaTambahanKpr?: BiayaTambahanDTO[] | undefined;
   keteranganUpdateSpr?: string | undefined;
@@ -61,8 +61,8 @@ export interface PenjualanFilterDTO extends BaseFilterDTO {
   /** Filter proyek yang ditugaskan ke mandor tertentu */
   mandorUserId?: number;
   /** Kecualikan status tertentu (mis. BATAL di halaman progress) */
-  excludeStatus?: string;
-  caraPembayaran?: PaymentMethod;
+  excludeStatus?: string | undefined;
+  caraPembayaran?: PaymentMethod | undefined;
 }
 
 export interface BiayaTambahanDTO {

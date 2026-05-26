@@ -35,12 +35,14 @@ export class KavlingRepository implements IKavlingRepository {
         luasBangunan: data.luasBangunan,
         luasTanah: data.luasTanah,
         hargaDasar: data.hargaDasar,
-        jenisKavling: data.jenisKavling,
         rekeningTujuanId: data.rekeningTujuanId ?? null,
         filePbg: data.filePbg ?? null,
         fileSertifikatTanah: data.fileSertifikatTanah ?? null,
         fileNopPbb: data.fileNopPbb ?? null,
       };
+      if (data.jenisKavling !== undefined) {
+        createData.jenisKavling = data.jenisKavling;
+      }
       if (data.status !== undefined) {
         createData.status = data.status;
       }

@@ -8,6 +8,7 @@ import type {
 } from "../../application/usecases/suketPph/SuketPphUseCases.js";
 import type { uploadSuketPphSchema } from "../../validations/suketPphSchema.js";
 import { AppError } from "../../domain/errors/AppError.js";
+import { omitUndefined } from "../../utils/object.js";
 
 export class SuketPphController {
   constructor(
@@ -26,13 +27,15 @@ export class SuketPphController {
 
     const userId = (req as Request & { user?: { userId: number } }).user?.userId;
 
-    const result = await this.uploadUseCase.execute({
-      customerId: req.body.customerId,
-      penjualanId: req.body.penjualanId,
-      fileBuffer: file.buffer,
-      pdfPassword: req.body.pdfPassword,
-      uploadedBy: userId,
-    });
+    const result = await this.uploadUseCase.execute(
+      omitUndefined({
+        customerId: req.body.customerId,
+        penjualanId: req.body.penjualanId,
+        fileBuffer: file.buffer,
+        pdfPassword: req.body.pdfPassword,
+        uploadedBy: userId,
+      }),
+    );
 
     sendResponse(res, StatusCodes.CREATED, "Suket PPh berhasil disimpan", result);
   };

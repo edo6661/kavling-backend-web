@@ -3,30 +3,30 @@ export interface CreateSpkDTO {
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;
-  bankRekeningPtId?: number | null;
-  nilaiSudahDibayarkan?: number | null;
-  sisaNilaiKontrak?: number | null;
-  notesPekerjaan?: string | null;
-  jatuhTempo?: Date | null;
-  fileSpk?: string | null;
+  bankRekeningPtId?: number | null | undefined;
+  nilaiSudahDibayarkan?: number | null | undefined;
+  sisaNilaiKontrak?: number | null | undefined;
+  notesPekerjaan?: string | null | undefined;
+  jatuhTempo?: Date | null | undefined;
+  fileSpk?: string | null | undefined;
   mandorId: number;
   kavlingIds: number[];
 }
 
 export interface UpdateSpkDTO {
-  noSpk?: string;
-  tanggalSpk?: Date;
-  judulPekerjaan?: string;
-  nilaiKontrak?: number;
-  bankRekeningPtId?: number | null;
-  nilaiSudahDibayarkan?: number | null;
-  sisaNilaiKontrak?: number | null;
-  progressOverride?: number | null;
-  notesPekerjaan?: string | null;
-  jatuhTempo?: Date | null;
-  fileSpk?: string | null;
-  mandorId?: number;
-  kavlingIds?: number[];
+  noSpk?: string | undefined;
+  tanggalSpk?: Date | undefined;
+  judulPekerjaan?: string | undefined;
+  nilaiKontrak?: number | undefined;
+  bankRekeningPtId?: number | null | undefined;
+  nilaiSudahDibayarkan?: number | null | undefined;
+  sisaNilaiKontrak?: number | null | undefined;
+  progressOverride?: number | null | undefined;
+  notesPekerjaan?: string | null | undefined;
+  jatuhTempo?: Date | null | undefined;
+  fileSpk?: string | null | undefined;
+  mandorId?: number | undefined;
+  kavlingIds?: number[] | undefined;
 }
 
 export interface SpkFilterDTO {

@@ -29,7 +29,7 @@ export class KavlingMapper {
       jenisKavling: prismaKavling.jenisKavling,
       blok: prismaKavling.blok,
       nomorUnit: prismaKavling.nomorUnit,
-      namaTipe: prismaKavling.namaTipe,
+      namaTipe: prismaKavling.namaTipe ?? "",
       luasBangunan: Number(prismaKavling.luasBangunan),
       luasTanah: Number(prismaKavling.luasTanah),
       hargaDasar: Number(prismaKavling.hargaDasar),

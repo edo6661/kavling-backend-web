@@ -17,6 +17,7 @@ import type {
 } from "../../validations/spkSchema.js";
 import { getSpkPaginatedSchema } from "../../validations/spkSchema.js";
 import type { SpkFilterDTO } from "../../domain/dtos/SpkDTO.js";
+import { omitUndefined } from "../../utils/object.js";
 
 export class SpkController {
   constructor(
@@ -33,7 +34,7 @@ export class SpkController {
   ): Promise<void> => {
     const file = req.file as Express.Multer.File | undefined;
     const result = await this.createUseCase.execute(
-      req.body,
+      omitUndefined(req.body),
       file?.buffer,
     );
     sendResponse(res, StatusCodes.CREATED, "SPK berhasil dibuat", result);
@@ -51,7 +52,7 @@ export class SpkController {
     const file = req.file as Express.Multer.File | undefined;
     const result = await this.updateUseCase.execute(
       id,
-      req.body,
+      omitUndefined(req.body),
       file?.buffer,
     );
     sendResponse(res, StatusCodes.OK, "SPK berhasil diperbarui", result);

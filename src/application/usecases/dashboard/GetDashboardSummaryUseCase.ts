@@ -100,7 +100,7 @@ export class GetDashboardSummaryUseCase {
       id: p.noTransaksi,
       customer: p.customer.nama,
       kavling: `${p.kavling.blok} - ${p.kavling.nomorUnit}`,
-      type: p.caraPembayaran,
+      type: p.caraPembayaran ?? "",
       amount: Number(p.hargaJual),
       status: p.status,
       date: p.createdAt.toISOString().substring(0, 10),
@@ -199,7 +199,7 @@ export class GetDashboardSummaryUseCase {
         rataRataProgress: Number(progressProyek._avg.persentase ?? 0),
       },
       recentTransactions,
-      // progressData,
+      progressData: [],
       topAgents,
       documentAlerts,
     };

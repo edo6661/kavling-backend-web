@@ -20,6 +20,7 @@ import type { ProgressProyekListFilterDTO } from "../../domain/dtos/ProgressProy
 import { getProgressProyekListSchema } from "../../validations/progressProyekSchema.js";
 import { Role } from "@prisma/client";
 import type { ProgressRequestContext } from "../../application/usecases/progressProyek/mandorAccess.js";
+import type { UpdateProgressProyekDTO } from "../../domain/dtos/ProgressProyekDTO.js";
 
 import type {
   getProgressProyekByKavlingSchema,
@@ -45,7 +46,10 @@ export class ProgressProyekController {
   ) {}
 
   private requestContext(req: Request): ProgressRequestContext {
-    return { role: req.user?.role, userId: req.user?.userId };
+    const ctx: ProgressRequestContext = {};
+    if (req.user?.role !== undefined) ctx.role = req.user.role;
+    if (req.user?.userId !== undefined) ctx.userId = req.user.userId;
+    return ctx;
   }
 
   listMandors = async (_req: Request, res: Response): Promise<void> => {
@@ -161,9 +165,17 @@ export class ProgressProyekController {
     res: Response,
   ): Promise<void> => {
     const penjualanId = parseInt(req.params.id, 10);
+    const updateDto: UpdateProgressProyekDTO = req.body.tahapan
+      ? {
+          tahapan: req.body.tahapan.map((t) => ({
+            ...t,
+            deskripsi: t.deskripsi ?? null,
+          })),
+        }
+      : {};
     const result = await this.updateUseCase.execute(
       penjualanId,
-      req.body,
+      updateDto,
       this.requestContext(req),
     );
 

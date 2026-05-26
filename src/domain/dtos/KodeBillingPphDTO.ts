@@ -1,11 +1,11 @@
 export type StatusKodeBillingPph = "MENUNGGU_BAYAR" | "SUDAH_BAYAR";
 
 export interface KodeBillingPphFilterDTO {
-  search?: string;
-  status?: StatusKodeBillingPph;
-  customerId?: number;
-  penjualanId?: number;
-  orderBy?: { field: string; direction: "asc" | "desc" };
+  search?: string | undefined;
+  status?: StatusKodeBillingPph | undefined;
+  customerId?: number | undefined;
+  penjualanId?: number | undefined;
+  orderBy?: { field: string; direction: "asc" | "desc" } | undefined;
 }
 
 export interface KodeBillingPphResponseDTO {

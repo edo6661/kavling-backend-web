@@ -29,8 +29,8 @@ export class UploadKodeBillingPphUseCase {
     customerId: number;
     penjualanId: number;
     fileBuffer: Buffer;
-    pdfPassword?: string;
-    uploadedBy?: number;
+    pdfPassword?: string | undefined;
+    uploadedBy?: number | undefined;
   }): Promise<KodeBillingPphResponseDTO> {
     const { customerId, penjualanId, fileBuffer, pdfPassword, uploadedBy } =
       params;

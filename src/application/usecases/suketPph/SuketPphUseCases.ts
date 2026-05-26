@@ -17,8 +17,8 @@ export class UploadSuketPphUseCase {
     customerId: number;
     penjualanId: number;
     fileBuffer: Buffer;
-    pdfPassword?: string;
-    uploadedBy?: number;
+    pdfPassword?: string | undefined;
+    uploadedBy?: number | undefined;
   }): Promise<SuketPphResponseDTO> {
     const { customerId, penjualanId, fileBuffer, pdfPassword, uploadedBy } =
       params;
@@ -58,7 +58,7 @@ export class UploadSuketPphUseCase {
       customerId,
       penjualanId,
       fileSuket: fileUrl,
-      uploadedBy,
+      uploadedBy: uploadedBy ?? null,
     });
   }
 }

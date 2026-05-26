@@ -31,6 +31,7 @@ import type {
 } from "../../domain/dtos/PenjualanDTO.js";
 import { Role } from "@prisma/client";
 import { NotFoundError } from "../../domain/errors/NotFoundError.js";
+import { omitUndefined } from "../../utils/object.js";
 import type { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
 
 export class PenjualanController {
@@ -60,11 +61,13 @@ export class PenjualanController {
       throw new NotFoundError("User tidak ditemukan");
     }
 
-    const result = await this.createUseCase.execute({
-      ...req.body,
-      createdBy: pembuat,
-      userId: userId,
-    });
+    const result = await this.createUseCase.execute(
+      omitUndefined({
+        ...req.body,
+        createdBy: pembuat,
+        userId,
+      }),
+    );
 
     sendResponse(
       res,
@@ -79,13 +82,12 @@ export class PenjualanController {
       req.query,
     );
 
-    const filterDto: PenjualanFilterDTO & { status?: string } = {
+    const filterDto = omitUndefined({
       ...filters,
-    };
-
-    if (req.user?.role === Role.MANDOR && req.user.userId) {
-      filterDto.mandorUserId = req.user.userId;
-    }
+      ...(req.user?.role === Role.MANDOR && req.user.userId
+        ? { mandorUserId: req.user.userId }
+        : {}),
+    }) as PenjualanFilterDTO & { status?: string };
 
     const result = await this.getPaginatedUseCase.execute(
       page,

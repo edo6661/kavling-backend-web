@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import {
   authenticate,
   requirePermission,
@@ -38,7 +38,7 @@ export const createSpkPembayaranRoutes = (
     "/spk/:spkId",
     requirePermission("SPK", "read"),
     validate(createSpkPembayaranSchema),
-    controller.createRequest,
+    controller.createRequest as unknown as RequestHandler,
   );
 
   router.patch(

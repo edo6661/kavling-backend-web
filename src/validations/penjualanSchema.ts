@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import type { PaymentMethod } from "@prisma/client";
 import { PaymentMethod, PenjualanStatus } from "@prisma/client";
+import type { PaymentMethod as PaymentMethodType } from "@prisma/client";
 import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 
 export const createPenjualanSchema = {
@@ -35,7 +35,7 @@ export const createPenjualanSchema = {
         .transform((val) => {
           const formatted = val.toUpperCase().replace(/\s+/g, "_");
           if (["CASH_KERAS", "CASH_BERTAHAP", "KPR"].includes(formatted)) {
-            return formatted as PaymentMethod;
+            return formatted as PaymentMethodType;
           }
           throw new Error("Cara pembayaran tidak valid");
         })

@@ -14,6 +14,7 @@ import type {
   CreateSpkPembayaranDTO,
   SpkPembayaranFilterDTO,
 } from "../../domain/dtos/SpkPembayaranDTO.js";
+import { routeParam } from "../../utils/object.js";
 
 export class SpkPembayaranController {
   constructor(
@@ -58,7 +59,7 @@ export class SpkPembayaranController {
   };
 
   getBySpk = async (req: Request, res: Response): Promise<void> => {
-    const spkId = parseInt(req.params.spkId, 10);
+    const spkId = parseInt(routeParam(req.params.spkId), 10);
     const result = await this.getBySpkUseCase.execute(spkId);
     sendResponse(res, StatusCodes.OK, "Riwayat pembayaran SPK berhasil diambil", result);
   };
@@ -76,7 +77,7 @@ export class SpkPembayaranController {
   };
 
   bayar = async (req: Request, res: Response): Promise<void> => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(routeParam(req.params.id), 10);
     const file = req.file as Express.Multer.File | undefined;
     const tanggalRaw = req.body?.tanggalPembayaran;
     const tanggalPembayaran = tanggalRaw ? new Date(tanggalRaw) : undefined;

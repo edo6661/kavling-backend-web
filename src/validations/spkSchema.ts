@@ -19,7 +19,7 @@ const kavlingIdsField = z
       }
     }),
   ])
-  .pipe(z.array(z.coerce.number().int().positive()).min(1));
+  .refine((val) => val.length > 0, { message: "Minimal 1 kavling wajib dipilih" });
 
 const spkBodyBase = z.object({
   noSpk: z.string().min(1, "Nomor SPK wajib diisi"),

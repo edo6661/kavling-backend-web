@@ -16,20 +16,20 @@ export interface AjbDitanganiDTO {
 export interface CreateNotarisDTO {
   nama: string;
   biayaAjb: number;
-  nomorKtp?: string;
-  nomorIjin?: string;
-  noHp?: string;
-  alamat?: string;
+  nomorKtp?: string | undefined;
+  nomorIjin?: string | undefined;
+  noHp?: string | undefined;
+  alamat?: string | undefined;
   pics?: PicNotarisDTO[] | undefined;
 }
 
 export interface UpdateNotarisDTO {
   nama?: string | undefined;
   biayaAjb?: number | undefined;
-  nomorKtp?: string;
-  nomorIjin?: string;
-  noHp?: string;
-  alamat?: string;
+  nomorKtp?: string | undefined;
+  nomorIjin?: string | undefined;
+  noHp?: string | undefined;
+  alamat?: string | undefined;
   pics?: PicNotarisDTO[] | undefined;
 }
 

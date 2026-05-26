@@ -53,6 +53,7 @@ export interface AgentEntity {
   fileNpwpPerusahaan: string | null;
   hasAccount: boolean;
   pics: PicAgentEntity[];
+  perusahaanAgent?: { id: number; nama: string } | null | undefined;
   penjualan?: PenjualanAgentEntity[];
   createdAt: Date;
   updatedAt: Date;

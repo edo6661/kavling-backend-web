@@ -12,6 +12,7 @@ import type { uploadKodeBillingPphSchema } from "../../validations/kodeBillingPp
 import { getKodeBillingPphPaginatedSchema } from "../../validations/kodeBillingPphSchema.js";
 import type { KodeBillingPphFilterDTO } from "../../domain/dtos/KodeBillingPphDTO.js";
 import { AppError } from "../../domain/errors/AppError.js";
+import { omitUndefined } from "../../utils/object.js";
 
 function parseOrderBy(orderBy?: string): KodeBillingPphFilterDTO["orderBy"] {
   if (!orderBy) return undefined;
@@ -40,13 +41,15 @@ export class KodeBillingPphController {
 
     const userId = (req as Request & { user?: { userId: number } }).user?.userId;
 
-    const result = await this.uploadUseCase.execute({
-      customerId: req.body.customerId,
-      penjualanId: req.body.penjualanId,
-      fileBuffer: file.buffer,
-      pdfPassword: req.body.pdfPassword,
-      uploadedBy: userId,
-    });
+    const result = await this.uploadUseCase.execute(
+      omitUndefined({
+        customerId: req.body.customerId,
+        penjualanId: req.body.penjualanId,
+        fileBuffer: file.buffer,
+        pdfPassword: req.body.pdfPassword,
+        uploadedBy: userId,
+      }),
+    );
 
     sendResponse(
       res,
@@ -60,13 +63,13 @@ export class KodeBillingPphController {
     const { page, limit, search, status, customerId, penjualanId, orderBy } =
       getKodeBillingPphPaginatedSchema.query.parse(req.query);
 
-    const filters: KodeBillingPphFilterDTO = {
+    const filters = omitUndefined({
       search,
       customerId,
       penjualanId,
       orderBy: parseOrderBy(orderBy),
       status: status && status !== "ALL" ? status : undefined,
-    };
+    }) as KodeBillingPphFilterDTO;
 
     const result = await this.getPaginatedUseCase.execute(page, limit, filters);
     sendResponse(res, StatusCodes.OK, "Data kode billing PPh berhasil diambil", result);

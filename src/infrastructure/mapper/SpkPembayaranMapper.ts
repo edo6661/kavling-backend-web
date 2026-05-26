@@ -23,7 +23,7 @@ export class SpkPembayaranMapper {
   static readonly include = spkPembayaranInclude;
 
   static toDomain(row: SpkPembayaranWithRelations): SpkPembayaranEntity {
-    return {
+    const entity: SpkPembayaranEntity = {
       id: row.id,
       spkId: row.spkId,
       jenis: row.jenis,
@@ -39,15 +39,18 @@ export class SpkPembayaranMapper {
       dibayarOleh: row.dibayarOleh,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
-      spk: row.spk
-        ? {
-            id: row.spk.id,
-            noSpk: row.spk.noSpk,
-            judulPekerjaan: row.spk.judulPekerjaan,
-            nilaiKontrak: Number(row.spk.nilaiKontrak),
-            mandor: row.spk.mandor,
-          }
-        : undefined,
     };
+
+    if (row.spk) {
+      entity.spk = {
+        id: row.spk.id,
+        noSpk: row.spk.noSpk,
+        judulPekerjaan: row.spk.judulPekerjaan,
+        nilaiKontrak: Number(row.spk.nilaiKontrak),
+        mandor: row.spk.mandor,
+      };
+    }
+
+    return entity;
   }
 }
