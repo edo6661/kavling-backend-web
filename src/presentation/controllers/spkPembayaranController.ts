@@ -10,7 +10,10 @@ import type {
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import type { createSpkPembayaranSchema } from "../../validations/spkPembayaranSchema.js";
 import { getSpkPembayaranPaginatedSchema } from "../../validations/spkPembayaranSchema.js";
-import type { SpkPembayaranFilterDTO } from "../../domain/dtos/SpkPembayaranDTO.js";
+import type {
+  CreateSpkPembayaranDTO,
+  SpkPembayaranFilterDTO,
+} from "../../domain/dtos/SpkPembayaranDTO.js";
 
 export class SpkPembayaranController {
   constructor(
@@ -28,10 +31,26 @@ export class SpkPembayaranController {
     >,
     res: Response,
   ): Promise<void> => {
-    const spkId = parseInt(req.params.spkId, 10);
+    const spkId = Number(req.params.spkId);
     const userId = req.user!.userId;
+
+    const payload: CreateSpkPembayaranDTO =
+      req.body.jenis === "KASBON"
+        ? {
+            spkId,
+            jenis: "KASBON",
+            keterangan: req.body.keterangan ?? "",
+            nominal: req.body.nominal ?? 0,
+            diajukanOlehId: userId,
+          }
+        : {
+            spkId,
+            jenis: req.body.jenis,
+            diajukanOlehId: userId,
+          };
+
     const result = await this.createRequestUseCase.execute(
-      { spkId, jenis: req.body.jenis, diajukanOlehId: userId },
+      payload,
       userId,
       req.user!.role,
     );

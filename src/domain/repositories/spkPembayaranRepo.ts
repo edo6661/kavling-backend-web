@@ -1,4 +1,8 @@
-import { Prisma, SpkPembayaranStatus } from "@prisma/client";
+import {
+  Prisma,
+  SpkPembayaranJenis,
+  SpkPembayaranStatus,
+} from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { ISpkPembayaranRepository } from "./ISpkPembayaranRepo.js";
 import type {
@@ -9,53 +13,125 @@ import type {
 import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 import { SpkPembayaranMapper } from "../../infrastructure/mapper/SpkPembayaranMapper.js";
+import type { SpkKasbonTargetTermin } from "@prisma/client";
 import {
   calcSpkPembayaranNominal,
-  calcNilaiBisaDitagihkan,
+  calcSisaNilaiKontrak,
+  getKasbonTargetTermin,
+  type SpkPembayaranCalcRow,
 } from "../spk/spkPembayaranCalc.js";
+
+const TERMIN_JENIS: SpkPembayaranJenis[] = ["TERMIN_55", "TERMIN_100", "RETENSI"];
+
+function toCalcRows(
+  rows: {
+    jenis: SpkPembayaranJenis;
+    status: SpkPembayaranStatus;
+    nominal: Prisma.Decimal;
+    mengurangiTermin?: SpkKasbonTargetTermin | null;
+    keterangan?: string | null;
+  }[],
+): SpkPembayaranCalcRow[] {
+  return rows.map((p) => ({
+    jenis: p.jenis,
+    status: p.status,
+    nominal: Number(p.nominal),
+    mengurangiTermin:
+      p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"
+        ? p.mengurangiTermin
+        : null,
+    keterangan: p.keterangan ?? null,
+  }));
+}
+
 export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  private async recalcPendingTerminNominals(
+    tx: Prisma.TransactionClient,
+    spkId: number,
+    nilaiKontrak: number,
+    pembayaranRows: {
+      id: number;
+      jenis: SpkPembayaranJenis;
+      status: SpkPembayaranStatus;
+      nominal: Prisma.Decimal;
+      mengurangiTermin: SpkKasbonTargetTermin | null;
+      keterangan: string | null;
+    }[],
+  ) {
+    const calcRows = toCalcRows(pembayaranRows);
+    const spkInput = { nilaiKontrak };
+
+    for (const jenis of TERMIN_JENIS) {
+      const row = pembayaranRows.find(
+        (p) => p.jenis === jenis && p.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
+      );
+      if (!row) continue;
+
+      const newNominal = calcSpkPembayaranNominal(jenis, spkInput, calcRows);
+      if (Number(row.nominal) !== newNominal) {
+        await tx.spkPembayaran.update({
+          where: { id: row.id },
+          data: { nominal: new Prisma.Decimal(newNominal) },
+        });
+        row.nominal = new Prisma.Decimal(newNominal);
+      }
+    }
+  }
 
   private async syncSpkNominals(
     tx: Prisma.TransactionClient,
     spkId: number,
-    progress: number,
   ) {
     const spk = await tx.spk.findUnique({ where: { id: spkId } });
     if (!spk) return;
 
     const pembayaranRows = await tx.spkPembayaran.findMany({
       where: { spkId },
-      select: { jenis: true, status: true, nominal: true },
+      select: {
+        id: true,
+        jenis: true,
+        status: true,
+        nominal: true,
+        mengurangiTermin: true,
+        keterangan: true,
+      },
     });
 
-    const paidTotal = pembayaranRows
-      .filter((p) => p.status === SpkPembayaranStatus.SUDAH_DIBAYAR)
-      .reduce((sum, p) => sum + Number(p.nominal), 0);
-
     const nilaiKontrak = Number(spk.nilaiKontrak);
-    const bisaDitagihkan = calcNilaiBisaDitagihkan(
-      {
-        nilaiKontrak,
-        kasbonSebelumTermin2: spk.kasbonSebelumTermin2
-          ? Number(spk.kasbonSebelumTermin2)
-          : null,
-        kasbonSebelumTermin3: spk.kasbonSebelumTermin3
-          ? Number(spk.kasbonSebelumTermin3)
-          : null,
-        progress,
-      },
-      pembayaranRows.map((p) => ({
-        jenis: p.jenis,
-        status: p.status,
-      })),
+    const calcRows = toCalcRows(pembayaranRows);
+
+    await this.recalcPendingTerminNominals(
+      tx,
+      spkId,
+      nilaiKontrak,
+      pembayaranRows,
     );
+
+    const refreshedRows = await tx.spkPembayaran.findMany({
+      where: { spkId },
+      select: {
+        jenis: true,
+        status: true,
+        nominal: true,
+        mengurangiTermin: true,
+        keterangan: true,
+      },
+    });
+
+    const refreshedCalc = toCalcRows(refreshedRows);
+    const paidTotal = refreshedCalc
+      .filter((p) => p.status === "SUDAH_DIBAYAR")
+      .reduce((sum, p) => sum + p.nominal, 0);
+
+    const sisaNilai = calcSisaNilaiKontrak(nilaiKontrak, refreshedCalc);
 
     await tx.spk.update({
       where: { id: spkId },
       data: {
         nilaiSudahDibayarkan: new Prisma.Decimal(paidTotal),
-        nilaiBisaDitagihkan: new Prisma.Decimal(bisaDitagihkan),
+        sisaNilaiKontrak: new Prisma.Decimal(sisaNilai),
       },
     });
   }
@@ -82,36 +158,83 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     return await this.db.$transaction(async (tx) => {
       const spk = await tx.spk.findUnique({
         where: { id: data.spkId },
-        select: {
-          id: true,
-          nilaiKontrak: true,
-          kasbonSebelumTermin2: true,
-          kasbonSebelumTermin3: true,
-          progressOverride: true,
-          penjualanItems: { select: { kavlingId: true } },
-        },
+        select: { id: true, nilaiKontrak: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
-      const nominal = calcSpkPembayaranNominal(data.jenis, {
-        nilaiKontrak: Number(spk.nilaiKontrak),
-        kasbonSebelumTermin2: spk.kasbonSebelumTermin2
-          ? Number(spk.kasbonSebelumTermin2)
-          : null,
-        kasbonSebelumTermin3: spk.kasbonSebelumTermin3
-          ? Number(spk.kasbonSebelumTermin3)
-          : null,
+      const existingRows = await tx.spkPembayaran.findMany({
+        where: { spkId: data.spkId },
+        select: {
+          id: true,
+          jenis: true,
+          status: true,
+          nominal: true,
+          mengurangiTermin: true,
+          keterangan: true,
+        },
       });
 
-      const result = await tx.spkPembayaran.create({
-        data: {
-          spkId: data.spkId,
+      const calcRows = toCalcRows(existingRows);
+      const nilaiKontrak = Number(spk.nilaiKontrak);
+
+      let createData: Prisma.SpkPembayaranCreateInput;
+
+      if (data.jenis === "KASBON") {
+        const target = getKasbonTargetTermin(calcRows);
+        if (!target) throw new Error("KASBON_NOT_ALLOWED");
+
+        createData = {
+          spk: { connect: { id: data.spkId } },
+          jenis: "KASBON",
+          nominal: new Prisma.Decimal(data.nominal),
+          keterangan: data.keterangan,
+          mengurangiTermin: target,
+          diajukanOleh: { connect: { id: data.diajukanOlehId } },
+        };
+      } else {
+        if (existingRows.some((p) => p.jenis === data.jenis)) {
+          throw new Error("PEMBAYARAN_JENIS_EXISTS");
+        }
+
+        const nominal = calcSpkPembayaranNominal(
+          data.jenis,
+          { nilaiKontrak },
+          calcRows,
+        );
+
+        createData = {
+          spk: { connect: { id: data.spkId } },
           jenis: data.jenis,
           nominal: new Prisma.Decimal(nominal),
-          diajukanOlehId: data.diajukanOlehId,
-        },
+          diajukanOleh: { connect: { id: data.diajukanOlehId } },
+        };
+      }
+
+      const result = await tx.spkPembayaran.create({
+        data: createData,
         include: SpkPembayaranMapper.include,
       });
+
+      const allRows = await tx.spkPembayaran.findMany({
+        where: { spkId: data.spkId },
+        select: {
+          id: true,
+          jenis: true,
+          status: true,
+          nominal: true,
+          mengurangiTermin: true,
+          keterangan: true,
+        },
+      });
+
+      await this.recalcPendingTerminNominals(
+        tx,
+        data.spkId,
+        nilaiKontrak,
+        allRows,
+      );
+
+      await this.syncSpkNominals(tx, data.spkId);
 
       return SpkPembayaranMapper.toDomain(result);
     });
@@ -119,11 +242,8 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
   async createRequestWithSync(
     data: CreateSpkPembayaranDTO,
-    progress: number,
   ): Promise<SpkPembayaranEntity> {
-    const created = await this.createRequest(data);
-    await this.syncSpkNominalsForSpk(data.spkId, progress);
-    return created;
+    return await this.createRequest(data);
   }
 
   async markAsPaid(data: BayarSpkPembayaranDTO): Promise<SpkPembayaranEntity> {
@@ -144,22 +264,21 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         include: SpkPembayaranMapper.include,
       });
 
+      await this.syncSpkNominals(tx, existing.spkId);
+
       return SpkPembayaranMapper.toDomain(result);
     });
   }
 
   async markAsPaidWithSync(
     data: BayarSpkPembayaranDTO,
-    progress: number,
   ): Promise<SpkPembayaranEntity> {
-    const paid = await this.markAsPaid(data);
-    await this.syncSpkNominalsForSpk(paid.spkId, progress);
-    return paid;
+    return await this.markAsPaid(data);
   }
 
-  async syncSpkNominalsForSpk(spkId: number, progress: number): Promise<void> {
+  async syncSpkNominalsForSpk(spkId: number): Promise<void> {
     await this.db.$transaction(async (tx) => {
-      await this.syncSpkNominals(tx, spkId, progress);
+      await this.syncSpkNominals(tx, spkId);
     });
   }
 
@@ -177,6 +296,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         { spk: { noSpk: { contains: filters.search } } },
         { spk: { judulPekerjaan: { contains: filters.search } } },
         { spk: { mandor: { username: { contains: filters.search } } } },
+        { keterangan: { contains: filters.search } },
       ];
     }
 
@@ -187,7 +307,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         where,
         skip,
         take: limit,
-        orderBy: [{ updatedAt: "desc" }],
+        orderBy: [{ spkId: "asc" }, { createdAt: "asc" }],
         include: SpkPembayaranMapper.include,
       }),
     ]);

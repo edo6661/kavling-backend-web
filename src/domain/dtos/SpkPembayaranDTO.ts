@@ -1,10 +1,20 @@
-import type { SpkPembayaranJenis, SpkPembayaranStatus } from "@prisma/client";
+import type { SpkPembayaranStatus } from "@prisma/client";
 
-export interface CreateSpkPembayaranDTO {
-  spkId: number;
-  jenis: SpkPembayaranJenis;
-  diajukanOlehId: number;
-}
+export type SpkTerminPembayaranJenis = "TERMIN_55" | "TERMIN_100" | "RETENSI";
+
+export type CreateSpkPembayaranDTO =
+  | {
+      spkId: number;
+      jenis: SpkTerminPembayaranJenis;
+      diajukanOlehId: number;
+    }
+  | {
+      spkId: number;
+      jenis: "KASBON";
+      keterangan: string;
+      nominal: number;
+      diajukanOlehId: number;
+    };
 
 export interface BayarSpkPembayaranDTO {
   id: number;

@@ -10,7 +10,10 @@ import type { OffsetPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
-import { canRequestSpkPembayaran } from "../../../domain/spk/spkPembayaranCalc.js";
+import {
+  canRequestKasbon,
+  canRequestSpkPembayaran,
+} from "../../../domain/spk/spkPembayaranCalc.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { Role } from "@prisma/client";
 
@@ -36,25 +39,74 @@ export class CreateSpkPembayaranRequestUseCase {
     }
 
     const existing = await this.pembayaranRepo.findBySpkId(data.spkId);
-    const check = canRequestSpkPembayaran(
-      data.jenis,
-      {
-        nilaiKontrak: spk.nilaiKontrak,
-        kasbonSebelumTermin2: spk.kasbonSebelumTermin2,
-        kasbonSebelumTermin3: spk.kasbonSebelumTermin3,
-        progress: spk.progress,
-      },
-      existing.map((p) => ({ jenis: p.jenis, status: p.status })),
-    );
+    const statusRows = existing.map((p) => ({
+      jenis: p.jenis,
+      status: p.status,
+      nominal: p.nominal,
+      mengurangiTermin: p.mengurangiTermin,
+    }));
 
-    if (!check.allowed) {
-      throw new AppError(StatusCodes.BAD_REQUEST, check.reason ?? "Tidak dapat mengajukan pembayaran.");
+    if (data.jenis === "KASBON") {
+      const kasbonCheck = canRequestKasbon(statusRows);
+      if (!kasbonCheck.allowed) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          kasbonCheck.reason ?? "Tidak dapat mengajukan kasbon.",
+        );
+      }
+      if (!data.keterangan.trim() || data.nominal <= 0) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Keterangan dan nominal kasbon wajib diisi.",
+        );
+      }
+    } else {
+      const check = canRequestSpkPembayaran(
+        data.jenis,
+        { nilaiKontrak: spk.nilaiKontrak, progress: spk.progress },
+        statusRows,
+      );
+
+      if (!check.allowed) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          check.reason ?? "Tidak dapat mengajukan pembayaran.",
+        );
+      }
     }
 
-    return await this.pembayaranRepo.createRequestWithSync(
-      { ...data, diajukanOlehId: userId },
-      spk.progress,
-    );
+    try {
+      return await this.pembayaranRepo.createRequestWithSync(
+        data.jenis === "KASBON"
+          ? {
+              spkId: data.spkId,
+              jenis: "KASBON",
+              keterangan: data.keterangan,
+              nominal: data.nominal,
+              diajukanOlehId: userId,
+            }
+          : {
+              spkId: data.spkId,
+              jenis: data.jenis,
+              diajukanOlehId: userId,
+            },
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "PEMBAYARAN_JENIS_EXISTS") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Pengajuan termin ini sudah ada.",
+        );
+      }
+      if (msg === "KASBON_NOT_ALLOWED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Kasbon tidak dapat diajukan pada tahap pembayaran ini.",
+        );
+      }
+      throw err;
+    }
   }
 }
 
@@ -117,6 +169,6 @@ export class BayarSpkPembayaranUseCase {
     };
     if (tanggalPembayaran) payDto.tanggalPembayaran = tanggalPembayaran;
 
-    return await this.pembayaranRepo.markAsPaidWithSync(payDto, spk.progress);
+    return await this.pembayaranRepo.markAsPaidWithSync(payDto);
   }
 }

@@ -437,11 +437,7 @@ model Spk {
   tanggalSpk     DateTime  @default(dbgenerated("(CURDATE())")) @map("tanggal_spk") @db.Date
   judulPekerjaan String    @map("judul_pekerjaan") @db.VarChar(255)
   nilaiKontrak   Decimal   @map("nilai_kontrak") @db.Decimal(15, 2)
-  kasbonSebelumTermin2 Decimal? @map("kasbon_sebelum_termin_2") @db.Decimal(15, 2)
-  kasbonSebelumTermin3 Decimal? @map("kasbon_sebelum_termin_3") @db.Decimal(15, 2)
-  kasbonSebelumTermin4 Decimal? @map("kasbon_sebelum_termin_4") @db.Decimal(15, 2)
   bankRekeningPtId Int?     @map("bank_rekening_pt_id")
-  nilaiBisaDitagihkan Decimal? @map("nilai_bisa_ditagihkan") @db.Decimal(15, 2)
   nilaiSudahDibayarkan Decimal? @map("nilai_sudah_dibayarkan") @db.Decimal(15, 2)
   sisaNilaiKontrak Decimal? @map("sisa_nilai_kontrak") @db.Decimal(15, 2)
   progressOverride Decimal? @map("progress_override") @db.Decimal(5, 2)
@@ -479,6 +475,8 @@ model SpkPembayaran {
   spkId           Int                 @map("spk_id")
   jenis           SpkPembayaranJenis
   nominal         Decimal             @db.Decimal(15, 2)
+  keterangan      String?             @db.VarChar(500)
+  mengurangiTermin SpkKasbonTargetTermin? @map("mengurangi_termin")
   status          SpkPembayaranStatus @default(MENUNGGU_PEMBAYARAN)
   buktiPembayaran String?             @map("bukti_pembayaran") @db.VarChar(500)
   tanggalPembayaran DateTime?         @map("tanggal_pembayaran") @db.Date
@@ -491,7 +489,6 @@ model SpkPembayaran {
   diajukanOleh  User @relation("SpkPembayaranDiajukan", fields: [diajukanOlehId], references: [id])
   dibayarOleh   User? @relation("SpkPembayaranDibayar", fields: [dibayarOlehId], references: [id])
 
-  @@unique([spkId, jenis])
   @@index([spkId], map: "spk_pembayaran_spk_id_fkey")
   @@index([diajukanOlehId], map: "spk_pembayaran_diajukan_oleh_id_fkey")
   @@index([dibayarOlehId], map: "spk_pembayaran_dibayar_oleh_id_fkey")
@@ -502,6 +499,12 @@ enum SpkPembayaranJenis {
   TERMIN_55  @map("termin_55")
   TERMIN_100 @map("termin_100")
   RETENSI    @map("retensi")
+  KASBON     @map("kasbon")
+}
+
+enum SpkKasbonTargetTermin {
+  TERMIN_55  @map("termin_55")
+  TERMIN_100 @map("termin_100")
 }
 
 enum SpkPembayaranStatus {

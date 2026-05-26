@@ -19,11 +19,7 @@ export interface SpkEntity {
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;
-  kasbonSebelumTermin2: number | null;
-  kasbonSebelumTermin3: number | null;
-  kasbonSebelumTermin4: number | null;
   bankRekeningPtId: number | null;
-  nilaiBisaDitagihkan: number | null;
   nilaiSudahDibayarkan: number | null;
   sisaNilaiKontrak: number | null;
   progressOverride: number | null;
