@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
+import { Role } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
+import { AppError } from "../../domain/errors/AppError.js";
 import { sendResponse } from "../../utils/response.js";
 import type { TypedRequest } from "../../types/request.js";
 import type {
@@ -61,6 +63,9 @@ export class SpkController {
   ): Promise<void> => {
     const id = parseInt(req.params.id, 10);
     const result = await this.getByIdUseCase.execute(id);
+    if (req.user?.role === Role.MANDOR && result.mandorId !== req.user.userId) {
+      throw new AppError(StatusCodes.FORBIDDEN, "Anda tidak memiliki akses ke SPK ini");
+    }
     sendResponse(res, StatusCodes.OK, "Data SPK berhasil diambil", result);
   };
 
@@ -71,6 +76,9 @@ export class SpkController {
 
     const filters: SpkFilterDTO = {};
     if (search) filters.search = search;
+    if (req.user?.role === Role.MANDOR && req.user.userId) {
+      filters.mandorId = req.user.userId;
+    }
 
     const result = await this.getPaginatedUseCase.execute(
       limit,

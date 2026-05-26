@@ -60,3 +60,18 @@ export const addTahapanLogByKavlingSchema = {
     tanggal: z.string().datetime().or(z.string().min(1)),
   }),
 };
+
+export const setTotalProgressByKavlingSchema = {
+  params: z.object({
+    kavlingId: z.string().regex(/^\d+$/, "ID Kavling harus berupa angka"),
+  }),
+  body: z.object({
+    persentase: z.coerce.number().min(0).max(100),
+  }),
+};
+
+export const resetTotalProgressByKavlingSchema = {
+  params: z.object({
+    kavlingId: z.string().regex(/^\d+$/, "ID Kavling harus berupa angka"),
+  }),
+};

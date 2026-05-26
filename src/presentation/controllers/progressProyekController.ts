@@ -13,6 +13,8 @@ import type {
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoByKavlingUseCase,
   UploadTahapanPhotoUseCase,
+  SetTotalProgressByKavlingUseCase,
+  ResetTotalProgressByKavlingUseCase,
 } from "../../application/usecases/progressProyek/ProgressProyekUseCases.js";
 import type { ProgressProyekListFilterDTO } from "../../domain/dtos/ProgressProyekDTO.js";
 import { getProgressProyekListSchema } from "../../validations/progressProyekSchema.js";
@@ -23,6 +25,8 @@ import type {
   getProgressProyekByKavlingSchema,
   updateProgressProyekSchema,
   getProgressProyekSchema,
+  setTotalProgressByKavlingSchema,
+  resetTotalProgressByKavlingSchema,
 } from "../../validations/progressProyekSchema.js";
 
 export class ProgressProyekController {
@@ -36,6 +40,8 @@ export class ProgressProyekController {
     private readonly createTahapanLogUseCase: CreateTahapanLogUseCase,
     private readonly createTahapanLogByKavlingUseCase: CreateTahapanLogByKavlingUseCase,
     private readonly listMandorsUseCase: ListMandorsUseCase,
+    private readonly setTotalByKavlingUseCase: SetTotalProgressByKavlingUseCase,
+    private readonly resetTotalByKavlingUseCase: ResetTotalProgressByKavlingUseCase,
   ) {}
 
   private requestContext(req: Request): ProgressRequestContext {
@@ -97,6 +103,51 @@ export class ProgressProyekController {
       res,
       StatusCodes.OK,
       "Data progress proyek berhasil diambil",
+      result,
+    );
+  };
+
+  setTotalByKavlingId = async (
+    req: TypedRequest<
+      typeof setTotalProgressByKavlingSchema.body,
+      never,
+      typeof setTotalProgressByKavlingSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const kavlingId = parseInt(req.params.kavlingId, 10);
+    const result = await this.setTotalByKavlingUseCase.execute(
+      kavlingId,
+      Number(req.body.persentase),
+      this.requestContext(req),
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Total progress berhasil diperbarui",
+      result,
+    );
+  };
+
+  resetTotalByKavlingId = async (
+    req: TypedRequest<
+      never,
+      never,
+      typeof resetTotalProgressByKavlingSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const kavlingId = parseInt(req.params.kavlingId, 10);
+    const result = await this.resetTotalByKavlingUseCase.execute(
+      kavlingId,
+      this.requestContext(req),
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Total progress berhasil direset ke default",
       result,
     );
   };

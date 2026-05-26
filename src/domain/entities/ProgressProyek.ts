@@ -21,6 +21,8 @@ export interface ProgressProyekEntity {
   mandorId: number | null;
   mandor: MandorSummary | null;
   persentase: number;
+  persentaseOverride: number | null;
+  persentaseIsOverride: boolean;
   createdAt: Date;
   updatedAt: Date;
   tahapan: TahapanProyekEntity[];

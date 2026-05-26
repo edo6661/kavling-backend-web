@@ -27,7 +27,14 @@ export class ProgressProyekMapper {
       kavlingId: prismaProgress.kavlingId,
       mandorId: prismaProgress.mandorId,
       mandor: prismaProgress.mandor,
-      persentase: Number(prismaProgress.persentase),
+      persentaseOverride: prismaProgress.persentaseOverride
+        ? Number(prismaProgress.persentaseOverride)
+        : null,
+      persentaseIsOverride: prismaProgress.persentaseOverride != null,
+      persentase:
+        prismaProgress.persentaseOverride != null
+          ? Number(prismaProgress.persentaseOverride)
+          : Number(prismaProgress.persentase),
       createdAt: prismaProgress.createdAt,
       updatedAt: prismaProgress.updatedAt,
       tahapan: prismaProgress.tahapan.map((t) => ({

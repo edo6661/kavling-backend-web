@@ -3,6 +3,13 @@ export interface CreateSpkDTO {
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;
+  kasbonSebelumTermin2?: number | null;
+  kasbonSebelumTermin3?: number | null;
+  kasbonSebelumTermin4?: number | null;
+  bankRekeningPtId?: number | null;
+  nilaiBisaDitagihkan?: number | null;
+  nilaiSudahDibayarkan?: number | null;
+  sisaNilaiKontrak?: number | null;
   notesPekerjaan?: string | null;
   jatuhTempo?: Date | null;
   fileSpk?: string | null;
@@ -15,6 +22,14 @@ export interface UpdateSpkDTO {
   tanggalSpk?: Date;
   judulPekerjaan?: string;
   nilaiKontrak?: number;
+  kasbonSebelumTermin2?: number | null;
+  kasbonSebelumTermin3?: number | null;
+  kasbonSebelumTermin4?: number | null;
+  bankRekeningPtId?: number | null;
+  nilaiBisaDitagihkan?: number | null;
+  nilaiSudahDibayarkan?: number | null;
+  sisaNilaiKontrak?: number | null;
+  progressOverride?: number | null;
   notesPekerjaan?: string | null;
   jatuhTempo?: Date | null;
   fileSpk?: string | null;
@@ -24,4 +39,5 @@ export interface UpdateSpkDTO {
 
 export interface SpkFilterDTO {
   search?: string;
+  mandorId?: number;
 }

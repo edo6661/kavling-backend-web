@@ -1,5 +1,13 @@
 import { ProgressProyekRepository } from "../../domain/repositories/progressProyekRepo.js";
 import { SpkRepository } from "../../domain/repositories/spkRepo.js";
+import { SpkPembayaranRepository } from "../../domain/repositories/spkPembayaranRepo.js";
+import {
+  BayarSpkPembayaranUseCase,
+  CreateSpkPembayaranRequestUseCase,
+  GetSpkPembayaranBySpkUseCase,
+  GetSpkPembayaranPaginatedUseCase,
+} from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
+import { SpkPembayaranController } from "../../presentation/controllers/spkPembayaranController.js";
 import {
   CreateSpkUseCase,
   UpdateSpkUseCase,
@@ -15,6 +23,8 @@ import {
   GetProgressProyekUseCase,
   GetProgressProyekListPaginatedUseCase,
   ListMandorsUseCase,
+  ResetTotalProgressByKavlingUseCase,
+  SetTotalProgressByKavlingUseCase,
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoByKavlingUseCase,
   UploadTahapanPhotoUseCase,
@@ -665,6 +675,11 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
   );
   const listMandorsUseCase = new ListMandorsUseCase(userRepo);
+  const setTotalProgressByKavlingUseCase = new SetTotalProgressByKavlingUseCase(
+    progressProyekRepo,
+  );
+  const resetTotalProgressByKavlingUseCase =
+    new ResetTotalProgressByKavlingUseCase(progressProyekRepo);
   const progressProyekController = new ProgressProyekController(
     getProgressProyekListPaginatedUseCase,
     getProgressProyekUseCase,
@@ -675,6 +690,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     createTahapanLogUseCase,
     createTahapanLogByKavlingUseCase,
     listMandorsUseCase,
+    setTotalProgressByKavlingUseCase,
+    resetTotalProgressByKavlingUseCase,
   );
 
   const spkRepo = new SpkRepository(dbClient);
@@ -689,6 +706,27 @@ export const createContainer = (dbClient: PrismaClient) => {
     getSpkByIdUseCase,
     getSpkPaginatedUseCase,
     deleteSpkUseCase,
+  );
+
+  const spkPembayaranRepo = new SpkPembayaranRepository(dbClient);
+  const createSpkPembayaranRequestUseCase = new CreateSpkPembayaranRequestUseCase(
+    spkRepo,
+    spkPembayaranRepo,
+  );
+  const getSpkPembayaranBySpkUseCase = new GetSpkPembayaranBySpkUseCase(spkPembayaranRepo);
+  const getSpkPembayaranPaginatedUseCase = new GetSpkPembayaranPaginatedUseCase(
+    spkPembayaranRepo,
+  );
+  const bayarSpkPembayaranUseCase = new BayarSpkPembayaranUseCase(
+    spkRepo,
+    spkPembayaranRepo,
+    cloudinaryService,
+  );
+  const spkPembayaranController = new SpkPembayaranController(
+    createSpkPembayaranRequestUseCase,
+    getSpkPembayaranBySpkUseCase,
+    getSpkPembayaranPaginatedUseCase,
+    bayarSpkPembayaranUseCase,
   );
 
   return {
@@ -721,6 +759,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     perusahaanAgentController,
     progressProyekController,
     spkController,
+    spkPembayaranController,
   };
 };
 

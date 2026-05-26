@@ -54,4 +54,13 @@ export interface IProgressProyekRepository {
     kavlingId: number,
     data: UpdateProgressProyekDTO,
   ): Promise<ProgressProyekEntity>;
+
+  setTotalPersentaseByKavlingId(
+    kavlingId: number,
+    persentase: number,
+  ): Promise<ProgressProyekEntity>;
+
+  resetTotalPersentaseByKavlingId(
+    kavlingId: number,
+  ): Promise<ProgressProyekEntity>;
 }

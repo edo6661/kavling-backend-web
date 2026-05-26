@@ -13,6 +13,8 @@ import {
   addTahapanLogByKavlingSchema,
   uploadTahapanPhotoByKavlingSchema,
   uploadTahapanPhotoSchema,
+  setTotalProgressByKavlingSchema,
+  resetTotalProgressByKavlingSchema,
 } from "../../validations/progressProyekSchema.js";
 import type { ProgressProyekController } from "../controllers/progressProyekController.js";
 import { addTahapanLogSchema } from "../../validations/progressPenjualanSchema.js";
@@ -57,6 +59,20 @@ export const createProgressProyekRoutes = (
     upload.array("foto", 10),
     validate(addTahapanLogByKavlingSchema),
     controller.addLogByKavling,
+  );
+
+  router.patch(
+    "/kavling/:kavlingId/total",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    validate(setTotalProgressByKavlingSchema),
+    controller.setTotalByKavlingId,
+  );
+
+  router.post(
+    "/kavling/:kavlingId/total/reset",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    validate(resetTotalProgressByKavlingSchema),
+    controller.resetTotalByKavlingId,
   );
 
   router.get(

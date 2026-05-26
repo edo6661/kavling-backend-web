@@ -53,6 +53,7 @@ export interface ProgressProyekListItemDTO {
   status: string;
   progressProyek: {
     persentase: number;
+    persentaseIsOverride?: boolean;
     mandorId: number | null;
     mandor: MandorSummaryDTO | null;
   } | null;

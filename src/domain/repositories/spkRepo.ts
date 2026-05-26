@@ -13,6 +13,57 @@ import { StatusCodes } from "http-status-codes";
 export class SpkRepository implements ISpkRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  private async computeDefaultProgressByKavlingIds(
+    kavlingIds: number[],
+  ): Promise<number> {
+    if (kavlingIds.length === 0) return 0;
+
+    const rows = await this.db.progressProyek.findMany({
+      where: {
+        OR: [
+          { kavlingId: { in: kavlingIds } },
+          { penjualan: { kavlingId: { in: kavlingIds } } },
+        ],
+      },
+      select: {
+        persentase: true,
+        persentaseOverride: true,
+        kavlingId: true,
+        penjualan: { select: { kavlingId: true } },
+      },
+    });
+
+    const perKavling = new Map<number, number>();
+    rows.forEach((r) => {
+      const kid = r.kavlingId ?? r.penjualan?.kavlingId ?? null;
+      if (!kid) return;
+      if (perKavling.has(kid)) return;
+      perKavling.set(
+        kid,
+        r.persentaseOverride != null
+          ? Number(r.persentaseOverride)
+          : Number(r.persentase),
+      );
+    });
+
+    const values = kavlingIds.map((kid) => perKavling.get(kid) ?? 0);
+    const avg = values.reduce((acc, v) => acc + v, 0) / values.length;
+    return Math.min(100, Math.max(0, Number(avg.toFixed(2))));
+  }
+
+  private async withComputedProgress(entity: SpkEntity): Promise<SpkEntity> {
+    const kavlingIds = entity.kavlingItems.map((k) => k.kavlingId);
+    const defaultProgress = await this.computeDefaultProgressByKavlingIds(kavlingIds);
+    const override = entity.progressOverride;
+    const progress = override != null ? Math.min(100, Math.max(0, override)) : defaultProgress;
+
+    return {
+      ...entity,
+      progress,
+      progressIsOverride: override != null,
+    };
+  }
+
   async findKavlingIdsAssignedToOtherSpk(
     kavlingIds: number[],
     excludeSpkId?: number,
@@ -122,6 +173,25 @@ export class SpkRepository implements ISpkRepository {
           tanggalSpk: data.tanggalSpk,
           judulPekerjaan: data.judulPekerjaan,
           nilaiKontrak: new Prisma.Decimal(data.nilaiKontrak),
+          kasbonSebelumTermin2:
+            data.kasbonSebelumTermin2 != null
+              ? new Prisma.Decimal(data.kasbonSebelumTermin2)
+              : null,
+          kasbonSebelumTermin3:
+            data.kasbonSebelumTermin3 != null
+              ? new Prisma.Decimal(data.kasbonSebelumTermin3)
+              : null,
+          kasbonSebelumTermin4:
+            data.kasbonSebelumTermin4 != null
+              ? new Prisma.Decimal(data.kasbonSebelumTermin4)
+              : null,
+          bankRekeningPtId: data.bankRekeningPtId ?? null,
+          nilaiBisaDitagihkan: new Prisma.Decimal(
+            data.nilaiBisaDitagihkan != null ? data.nilaiBisaDitagihkan : 0,
+          ),
+          nilaiSudahDibayarkan: new Prisma.Decimal(
+            data.nilaiSudahDibayarkan != null ? data.nilaiSudahDibayarkan : 0,
+          ),
           notesPekerjaan: data.notesPekerjaan ?? null,
           jatuhTempo: data.jatuhTempo ?? null,
           fileSpk: data.fileSpk ?? null,
@@ -139,7 +209,7 @@ export class SpkRepository implements ISpkRepository {
         data.mandorId,
       );
 
-      return SpkMapper.toDomain(result);
+      return await this.withComputedProgress(SpkMapper.toDomain(result));
     });
   }
 
@@ -149,7 +219,7 @@ export class SpkRepository implements ISpkRepository {
       include: SpkMapper.include,
     });
     if (!result) return null;
-    return SpkMapper.toDomain(result);
+    return await this.withComputedProgress(SpkMapper.toDomain(result));
   }
 
   async update(id: number, data: UpdateSpkDTO): Promise<SpkEntity> {
@@ -190,6 +260,54 @@ export class SpkRepository implements ISpkRepository {
       if (data.nilaiKontrak !== undefined) {
         updateData.nilaiKontrak = new Prisma.Decimal(data.nilaiKontrak);
       }
+      if (data.kasbonSebelumTermin2 !== undefined) {
+        updateData.kasbonSebelumTermin2 =
+          data.kasbonSebelumTermin2 == null
+            ? null
+            : new Prisma.Decimal(data.kasbonSebelumTermin2);
+      }
+      if (data.kasbonSebelumTermin3 !== undefined) {
+        updateData.kasbonSebelumTermin3 =
+          data.kasbonSebelumTermin3 == null
+            ? null
+            : new Prisma.Decimal(data.kasbonSebelumTermin3);
+      }
+      if (data.kasbonSebelumTermin4 !== undefined) {
+        updateData.kasbonSebelumTermin4 =
+          data.kasbonSebelumTermin4 == null
+            ? null
+            : new Prisma.Decimal(data.kasbonSebelumTermin4);
+      }
+      if (data.bankRekeningPtId !== undefined) {
+        updateData.bankRekeningPt =
+          data.bankRekeningPtId == null
+            ? { disconnect: true }
+            : { connect: { id: data.bankRekeningPtId } };
+      }
+      if (data.nilaiBisaDitagihkan !== undefined) {
+        updateData.nilaiBisaDitagihkan =
+          data.nilaiBisaDitagihkan == null
+            ? null
+            : new Prisma.Decimal(data.nilaiBisaDitagihkan);
+      }
+      if (data.nilaiSudahDibayarkan !== undefined) {
+        updateData.nilaiSudahDibayarkan =
+          data.nilaiSudahDibayarkan == null
+            ? null
+            : new Prisma.Decimal(data.nilaiSudahDibayarkan);
+      }
+      if (data.sisaNilaiKontrak !== undefined) {
+        updateData.sisaNilaiKontrak =
+          data.sisaNilaiKontrak == null
+            ? null
+            : new Prisma.Decimal(data.sisaNilaiKontrak);
+      }
+      if (data.progressOverride !== undefined) {
+        updateData.progressOverride =
+          data.progressOverride == null
+            ? null
+            : new Prisma.Decimal(data.progressOverride);
+      }
       if (data.notesPekerjaan !== undefined) {
         updateData.notesPekerjaan = data.notesPekerjaan;
       }
@@ -207,7 +325,7 @@ export class SpkRepository implements ISpkRepository {
 
       await this.syncMandorOnProgressForKavlings(tx, kavlingIds, mandorId);
 
-      return SpkMapper.toDomain(result);
+      return await this.withComputedProgress(SpkMapper.toDomain(result));
     });
   }
 
@@ -217,6 +335,10 @@ export class SpkRepository implements ISpkRepository {
     filters?: SpkFilterDTO,
   ): Promise<CursorPaginatedData<SpkEntity>> {
     const where: Prisma.SpkWhereInput = {};
+
+    if (filters?.mandorId) {
+      where.mandorId = filters.mandorId;
+    }
 
     if (filters?.search) {
       where.OR = [
@@ -241,7 +363,9 @@ export class SpkRepository implements ISpkRepository {
     }
 
     return {
-      items: items.map((item) => SpkMapper.toDomain(item)),
+      items: await Promise.all(
+        items.map((item) => this.withComputedProgress(SpkMapper.toDomain(item))),
+      ),
       meta: {
         nextCursor: hasNextPage ? (items.at(-1)?.id ?? null) : null,
         hasNextPage,

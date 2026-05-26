@@ -80,6 +80,43 @@ export class UpdateProgressProyekUseCase {
   }
 }
 
+export class SetTotalProgressByKavlingUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    kavlingId: number,
+    persentase: number,
+    ctx?: ProgressRequestContext,
+  ): Promise<ProgressProyekEntity> {
+    if (isMandorRole(ctx?.role)) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor tidak boleh mengubah total progress secara manual",
+      );
+    }
+
+    return await this.repo.setTotalPersentaseByKavlingId(kavlingId, persentase);
+  }
+}
+
+export class ResetTotalProgressByKavlingUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    kavlingId: number,
+    ctx?: ProgressRequestContext,
+  ): Promise<ProgressProyekEntity> {
+    if (isMandorRole(ctx?.role)) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor tidak boleh mereset total progress",
+      );
+    }
+
+    return await this.repo.resetTotalPersentaseByKavlingId(kavlingId);
+  }
+}
+
 export class UploadTahapanPhotoUseCase {
   constructor(
     private readonly repo: IProgressProyekRepository,

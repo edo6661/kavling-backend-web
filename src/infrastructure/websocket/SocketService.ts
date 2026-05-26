@@ -9,6 +9,20 @@ export interface AdminNotificationPayload {
   data?: Record<string, unknown>;
 }
 
+export interface MandorNotificationPayload {
+  type: "SPK_PEMBAYARAN_DIBAYAR";
+  title: string;
+  message: string;
+  data?: {
+    spkId?: number;
+    noSpk?: string;
+    jenis?: string;
+    nominal?: number;
+    buktiPembayaran?: string | null;
+    tanggalPembayaran?: string | null;
+  };
+}
+
 export class SocketService {
   private io: SocketIOServer | null = null;
 
@@ -29,6 +43,16 @@ export class SocketService {
           console.error(`Socket ${socket.id} gagal masuk admin-room:`, error);
         }
       });
+
+      socket.on("join-mandor", async (mandorUserId: number) => {
+        const id = Number(mandorUserId);
+        if (!Number.isFinite(id) || id <= 0) return;
+        try {
+          await socket.join(`mandor-room-${id}`);
+        } catch (error) {
+          console.error(`Socket ${socket.id} gagal masuk mandor-room:`, error);
+        }
+      });
     });
   }
 
@@ -38,6 +62,20 @@ export class SocketService {
     } else {
       console.warn(
         "SocketService: Ingin mengirim notif tapi socket server belum diinisialisasi.",
+      );
+    }
+  }
+
+  public notifyMandor(
+    mandorUserId: number,
+    event: string,
+    data: MandorNotificationPayload,
+  ) {
+    if (this.io) {
+      this.io.to(`mandor-room-${mandorUserId}`).emit(event, data);
+    } else {
+      console.warn(
+        "SocketService: Ingin mengirim notif mandor tapi socket server belum diinisialisasi.",
       );
     }
   }
