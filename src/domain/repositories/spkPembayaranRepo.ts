@@ -8,6 +8,7 @@ import type { ISpkPembayaranRepository } from "./ISpkPembayaranRepo.js";
 import type {
   BayarSpkPembayaranDTO,
   CreateSpkPembayaranDTO,
+  SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
 } from "../dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
@@ -325,5 +326,28 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         hasPrevPage: page > 1,
       },
     };
+  }
+
+  async setBsiCmsDilaporkan(
+    data: SetBsiCmsDilaporkanDTO,
+  ): Promise<SpkPembayaranEntity[]> {
+    const uniqueIds = [...new Set(data.ids)];
+    if (uniqueIds.length === 0) return [];
+
+    await this.db.spkPembayaran.updateMany({
+      where: { id: { in: uniqueIds } },
+      data: {
+        bsiCmsDilaporkan: data.dilaporkan,
+        bsiCmsDilaporkanAt: data.dilaporkan ? new Date() : null,
+      },
+    });
+
+    const rows = await this.db.spkPembayaran.findMany({
+      where: { id: { in: uniqueIds } },
+      include: SpkPembayaranMapper.include,
+      orderBy: [{ id: "asc" }],
+    });
+
+    return rows.map((r) => SpkPembayaranMapper.toDomain(r));
   }
 }

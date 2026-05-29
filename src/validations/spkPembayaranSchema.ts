@@ -61,3 +61,10 @@ export const bayarSpkPembayaranSchema = {
     tanggalPembayaran: z.coerce.date().optional(),
   }),
 };
+
+export const setBsiCmsDilaporkanSchema = {
+  body: z.object({
+    ids: z.array(z.coerce.number().int().positive()).min(1),
+    dilaporkan: z.boolean(),
+  }),
+};

@@ -45,6 +45,8 @@ export class SpkPembayaranMapper {
       status: row.status,
       buktiPembayaran: row.buktiPembayaran,
       tanggalPembayaran: row.tanggalPembayaran,
+      bsiCmsDilaporkan: row.bsiCmsDilaporkan,
+      bsiCmsDilaporkanAt: row.bsiCmsDilaporkanAt,
       diajukanOlehId: row.diajukanOlehId,
       dibayarOlehId: row.dibayarOlehId,
       diajukanOleh: row.diajukanOleh,

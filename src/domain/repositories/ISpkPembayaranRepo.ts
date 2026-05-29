@@ -1,6 +1,7 @@
 import type {
   BayarSpkPembayaranDTO,
   CreateSpkPembayaranDTO,
+  SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
 } from "../dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
@@ -16,4 +17,5 @@ export interface ISpkPembayaranRepository {
     limit: number,
     filters?: SpkPembayaranFilterDTO,
   ): Promise<OffsetPaginatedData<SpkPembayaranEntity>>;
+  setBsiCmsDilaporkan(data: SetBsiCmsDilaporkanDTO): Promise<SpkPembayaranEntity[]>;
 }

@@ -3,6 +3,7 @@ import type { SpkPembayaranRepository } from "../../../domain/repositories/spkPe
 import type {
   BayarSpkPembayaranDTO,
   CreateSpkPembayaranDTO,
+  SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
 } from "../../../domain/dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../../../domain/entities/SpkPembayaran.js";
@@ -170,5 +171,27 @@ export class BayarSpkPembayaranUseCase {
     if (tanggalPembayaran) payDto.tanggalPembayaran = tanggalPembayaran;
 
     return await this.pembayaranRepo.markAsPaidWithSync(payDto);
+  }
+}
+
+export class SetBsiCmsDilaporkanUseCase {
+  constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
+
+  async execute(data: SetBsiCmsDilaporkanDTO): Promise<SpkPembayaranEntity[]> {
+    if (data.ids.length === 0) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Pilih minimal satu pembayaran.");
+    }
+
+    const uniqueIds = [...new Set(data.ids)];
+    const results = await this.pembayaranRepo.setBsiCmsDilaporkan({
+      ids: uniqueIds,
+      dilaporkan: data.dilaporkan,
+    });
+
+    if (results.length !== uniqueIds.length) {
+      throw new NotFoundError("Sebagian pembayaran SPK tidak ditemukan.");
+    }
+
+    return results;
   }
 }

@@ -494,6 +494,8 @@ model SpkPembayaran {
   status          SpkPembayaranStatus @default(MENUNGGU_PEMBAYARAN)
   buktiPembayaran String?             @map("bukti_pembayaran") @db.VarChar(500)
   tanggalPembayaran DateTime?         @map("tanggal_pembayaran") @db.Date
+  bsiCmsDilaporkan  Boolean           @default(false) @map("bsi_cms_dilaporkan")
+  bsiCmsDilaporkanAt DateTime?        @map("bsi_cms_dilaporkan_at")
   diajukanOlehId  Int                 @map("diajukan_oleh_id")
   dibayarOlehId   Int?                @map("dibayar_oleh_id")
   createdAt       DateTime            @default(now()) @map("created_at")

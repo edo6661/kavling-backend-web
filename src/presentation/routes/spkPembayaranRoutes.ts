@@ -10,6 +10,7 @@ import {
   createSpkPembayaranSchema,
   getSpkPembayaranBySpkSchema,
   getSpkPembayaranPaginatedSchema,
+  setBsiCmsDilaporkanSchema,
 } from "../../validations/spkPembayaranSchema.js";
 import type { SpkPembayaranController } from "../controllers/spkPembayaranController.js";
 
@@ -47,6 +48,13 @@ export const createSpkPembayaranRoutes = (
     upload.single("buktiPembayaran"),
     validate(bayarSpkPembayaranSchema),
     controller.bayar,
+  );
+
+  router.patch(
+    "/bsi-cms-dilaporkan",
+    requirePermission("TAGIHAN", "update"),
+    validate(setBsiCmsDilaporkanSchema),
+    controller.setBsiCmsDilaporkan,
   );
 
   return router;

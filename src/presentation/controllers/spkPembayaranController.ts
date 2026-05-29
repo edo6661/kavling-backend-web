@@ -7,6 +7,7 @@ import type {
   GetSpkPembayaranBySpkUseCase,
   GetSpkPembayaranPaginatedUseCase,
   BayarSpkPembayaranUseCase,
+  SetBsiCmsDilaporkanUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import type { createSpkPembayaranSchema } from "../../validations/spkPembayaranSchema.js";
 import { getSpkPembayaranPaginatedSchema } from "../../validations/spkPembayaranSchema.js";
@@ -22,6 +23,7 @@ export class SpkPembayaranController {
     private readonly getBySpkUseCase: GetSpkPembayaranBySpkUseCase,
     private readonly getPaginatedUseCase: GetSpkPembayaranPaginatedUseCase,
     private readonly bayarUseCase: BayarSpkPembayaranUseCase,
+    private readonly setBsiCmsDilaporkanUseCase: SetBsiCmsDilaporkanUseCase,
   ) {}
 
   createRequest = async (
@@ -89,5 +91,14 @@ export class SpkPembayaranController {
       tanggalPembayaran,
     );
     sendResponse(res, StatusCodes.OK, "Pembayaran SPK berhasil diproses", result);
+  };
+
+  setBsiCmsDilaporkan = async (req: Request, res: Response): Promise<void> => {
+    const { ids, dilaporkan } = req.body as { ids: number[]; dilaporkan: boolean };
+    const result = await this.setBsiCmsDilaporkanUseCase.execute({ ids, dilaporkan });
+    const message = dilaporkan
+      ? "Pembayaran ditandai sudah dilaporkan di BSI CMS"
+      : "Tanda lapor BSI CMS dibatalkan";
+    sendResponse(res, StatusCodes.OK, message, result);
   };
 }

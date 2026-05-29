@@ -6,6 +6,7 @@ import {
   CreateSpkPembayaranRequestUseCase,
   GetSpkPembayaranBySpkUseCase,
   GetSpkPembayaranPaginatedUseCase,
+  SetBsiCmsDilaporkanUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import { SpkPembayaranController } from "../../presentation/controllers/spkPembayaranController.js";
 import {
@@ -722,11 +723,13 @@ export const createContainer = (dbClient: PrismaClient) => {
     spkPembayaranRepo,
     cloudinaryService,
   );
+  const setBsiCmsDilaporkanUseCase = new SetBsiCmsDilaporkanUseCase(spkPembayaranRepo);
   const spkPembayaranController = new SpkPembayaranController(
     createSpkPembayaranRequestUseCase,
     getSpkPembayaranBySpkUseCase,
     getSpkPembayaranPaginatedUseCase,
     bayarSpkPembayaranUseCase,
+    setBsiCmsDilaporkanUseCase,
   );
 
   return {

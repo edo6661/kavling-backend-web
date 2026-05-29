@@ -28,3 +28,8 @@ export interface SpkPembayaranFilterDTO {
   spkId?: number;
   search?: string;
 }
+
+export interface SetBsiCmsDilaporkanDTO {
+  ids: number[];
+  dilaporkan: boolean;
+}

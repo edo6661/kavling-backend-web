@@ -14,6 +14,8 @@ export interface SpkPembayaranEntity {
   status: SpkPembayaranStatus;
   buktiPembayaran: string | null;
   tanggalPembayaran: Date | null;
+  bsiCmsDilaporkan: boolean;
+  bsiCmsDilaporkanAt: Date | null;
   diajukanOlehId: number;
   dibayarOlehId: number | null;
   diajukanOleh: { id: number; username: string };
