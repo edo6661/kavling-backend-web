@@ -42,6 +42,12 @@ jobs:
             DB_NAME=${{ secrets.DB_NAME }}
             SMTP_EMAIL="${{ secrets.SMTP_EMAIL }}"
             SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}"
+
+            R2_ACCOUNT_ID="${{ secrets.R2_ACCOUNT_ID }}"
+            R2_ACCESS_KEY_ID="${{ secrets.R2_ACCESS_KEY_ID }}"
+            R2_SECRET_ACCESS_KEY="${{ secrets.R2_SECRET_ACCESS_KEY }}"
+            R2_BUCKET_NAME="${{ secrets.R2_BUCKET_NAME }}"
+            R2_PUBLIC_BASE_URL="${{ secrets.R2_PUBLIC_BASE_URL }}"
             EOT
 
             docker compose up -d --build

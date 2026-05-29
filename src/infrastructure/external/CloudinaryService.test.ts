@@ -87,6 +87,20 @@ describe("CloudinaryService", () => {
     expect(result).toBe("https://cloudinary.com/kavling.jpg");
   });
 
+  it("uploadFile PDF di atas 10 MB tanpa R2 ditolak dengan pesan limit Cloudinary", async () => {
+    const pdfHeader = Buffer.alloc(11 * 1024 * 1024, 0);
+    pdfHeader.set(Buffer.from("%PDF"), 0);
+
+    const mockUploadStream = vi.fn();
+    (cloudinary.uploader.upload_stream as any) = mockUploadStream;
+
+    await expect(service.uploadFile(pdfHeader)).rejects.toMatchObject({
+      statusCode: 413,
+      message: expect.stringMatching(/10 MB|Cloudinary|R2/i),
+    });
+    expect(mockUploadStream).not.toHaveBeenCalled();
+  });
+
   it("harus melempar AppError jika upload PDF (raw) tidak mengembalikan secure_url", async () => {
     const pdfHeader = Buffer.from("%PDF-1.4 dummy");
     const mockUploadStream = vi.fn((options, callback) => {
