@@ -2,7 +2,7 @@ import multer from "multer";
 import { AppError } from "../domain/errors/AppError";
 import { StatusCodes } from "http-status-codes";
 
-export const MAX_UPLOAD_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+export const MAX_UPLOAD_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 export const MAX_UPLOAD_FILE_SIZE_MB = MAX_UPLOAD_FILE_SIZE_BYTES / (1024 * 1024);
 
 const storage = multer.memoryStorage();
