@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Request, Response, NextFunction } from "express";
+import multer from "multer";
 import { globalErrorHandler } from "./errorHandler";
 import { NotFoundError } from "../domain/errors/NotFoundError";
 import { ConflictError } from "../domain/errors/ConflictError";
 import { z } from "zod";
 import { env } from "../config/env";
+import { MAX_UPLOAD_FILE_SIZE_MB } from "./upload";
 
 describe("Global Error Handler Middleware", () => {
   let mockRequest: Partial<Request>;
@@ -125,6 +127,25 @@ describe("Global Error Handler Middleware", () => {
     expect(mockRequest.log?.error).toHaveBeenCalledTimes(1);
     expect(mockRequest.log?.error).toHaveBeenCalledWith(error);
   });
+  it("harus menangani MulterError LIMIT_FILE_SIZE dengan status 413 dan pesan yang jelas", () => {
+    const error = new multer.MulterError("LIMIT_FILE_SIZE", "file");
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(413);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: `Ukuran file terlalu besar. Maksimal ukuran file adalah ${MAX_UPLOAD_FILE_SIZE_MB} MB.`,
+      }),
+    );
+  });
+
   it("harus menangani SyntaxError (Malformed JSON) dari express body parser", () => {
     const error = new SyntaxError("Unexpected string in JSON");
     // Mocking properti tambahan yang disisipkan oleh body-parser express
