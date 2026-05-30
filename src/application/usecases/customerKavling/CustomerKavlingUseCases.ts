@@ -215,13 +215,16 @@ export class UpdateCustomerKavlingUseCase {
       ...detailPajakData
     } = data;
 
+    const normalizedRekeningTujuanId =
+      rekeningTujuanId && rekeningTujuanId > 0 ? rekeningTujuanId : undefined;
+
     if (
       statusKavling !== undefined ||
       namaTipe !== undefined ||
       luasBangunan !== undefined ||
       luasTanah !== undefined ||
       hargaDasarKavling !== undefined ||
-      rekeningTujuanId !== undefined
+      normalizedRekeningTujuanId !== undefined
     ) {
       await this.kavlingRepo.update(penjualan.kavlingId, {
         status: statusKavling,
@@ -229,7 +232,7 @@ export class UpdateCustomerKavlingUseCase {
         luasBangunan: luasBangunan,
         luasTanah: luasTanah,
         hargaDasar: hargaDasarKavling,
-        rekeningTujuanId: rekeningTujuanId ?? undefined,
+        rekeningTujuanId: normalizedRekeningTujuanId,
       });
     }
 

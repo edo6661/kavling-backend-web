@@ -10,6 +10,7 @@ import { DetailKavlingPajakMapper } from "../../infrastructure/mapper/DetailKavl
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { syncNotarisPembayaranForPenjualan } from "../notaris/notarisPembayaranSync.js";
+import { syncBankKprPembayaranForPenjualan } from "../kpr/bankKprPembayaranSync.js";
 
 export class DetailKavlingPajakRepository implements IDetailKavlingPajakRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -96,6 +97,13 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
 
     if (data.biayaNotaris && data.biayaNotaris > 0) {
       await syncNotarisPembayaranForPenjualan(this.db, data.penjualanId);
+    }
+
+    if (
+      (data.nrBiayaAppraisal && data.nrBiayaAppraisal > 0) ||
+      (data.pjBiayaAppraisal && data.pjBiayaAppraisal > 0)
+    ) {
+      await syncBankKprPembayaranForPenjualan(this.db, data.penjualanId);
     }
 
     return DetailKavlingPajakMapper.toDomain(result);
@@ -219,6 +227,13 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
 
     if (data.biayaNotaris !== undefined) {
       await syncNotarisPembayaranForPenjualan(this.db, penjualanId);
+    }
+
+    if (
+      data.nrBiayaAppraisal !== undefined ||
+      data.pjBiayaAppraisal !== undefined
+    ) {
+      await syncBankKprPembayaranForPenjualan(this.db, penjualanId);
     }
 
     return DetailKavlingPajakMapper.toDomain(result);

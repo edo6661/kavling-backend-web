@@ -24,6 +24,7 @@ import { createProgressProyekRoutes } from "./progressProyekRoutes.js";
 import { createSpkRoutes } from "./spkRoutes.js";
 import { createSpkPembayaranRoutes } from "./spkPembayaranRoutes.js";
 import { createNotarisPembayaranRoutes } from "./notarisPembayaranRoutes.js";
+import { createBankKprPembayaranRoutes } from "./bankKprPembayaranRoutes.js";
 import { createKodeBillingPphRoutes } from "./kodeBillingPphRoutes.js";
 import { createSuketPphRoutes } from "./suketPphRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
@@ -81,6 +82,10 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use(
     "/notaris-pembayaran",
     createNotarisPembayaranRoutes(deps.notarisPembayaranController),
+  );
+  router.use(
+    "/bank-kpr-pembayaran",
+    createBankKprPembayaranRoutes(deps.bankKprPembayaranController),
   );
   return router;
 };

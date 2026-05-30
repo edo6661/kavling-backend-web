@@ -5,6 +5,7 @@ import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+import { syncBankKprPembayaranForPenjualan } from "../../../domain/kpr/bankKprPembayaranSync.js";
 
 interface IBiayaTambahan {
   nama: string;
@@ -407,6 +408,21 @@ export class UpdatePenjualanUseCase {
           userId: userId ?? null,
         },
       });
+
+      const wasKpr = old.caraPembayaran === "KPR";
+      const isKpr = currentCaraPembayaran === "KPR";
+      const affectsKprNominal =
+        data.caraPembayaran !== undefined ||
+        data.biayaKpr !== undefined ||
+        data.plafonAwal !== undefined ||
+        data.hargaDasar !== undefined ||
+        data.diskonPenjualan !== undefined ||
+        data.bookingFee !== undefined ||
+        overrideHargaDasarDariKavlingBaru !== undefined;
+
+      if ((isKpr || wasKpr) && affectsKprNominal) {
+        await syncBankKprPembayaranForPenjualan(tx, old.id);
+      }
 
       return updated;
     });

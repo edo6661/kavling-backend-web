@@ -2,6 +2,7 @@ import { ProgressProyekRepository } from "../../domain/repositories/progressProy
 import { SpkRepository } from "../../domain/repositories/spkRepo.js";
 import { SpkPembayaranRepository } from "../../domain/repositories/spkPembayaranRepo.js";
 import { NotarisPembayaranRepository } from "../../domain/repositories/notarisPembayaranRepo.js";
+import { BankKprPembayaranRepository } from "../../domain/repositories/bankKprPembayaranRepo.js";
 import {
   BayarSpkPembayaranUseCase,
   CreateSpkPembayaranRequestUseCase,
@@ -13,9 +14,17 @@ import {
   BayarNotarisPembayaranUseCase,
   GetNotarisPembayaranPaginatedUseCase,
   SetNotarisBsiCmsDilaporkanUseCase,
+  SyncAllNotarisPembayaranUseCase,
 } from "../../application/usecases/notarisPembayaran/NotarisPembayaranUseCases.js";
+import {
+  BayarBankKprPembayaranUseCase,
+  GetBankKprPembayaranPaginatedUseCase,
+  SetBankKprBsiCmsDilaporkanUseCase,
+  SyncAllBankKprPembayaranUseCase,
+} from "../../application/usecases/bankKprPembayaran/BankKprPembayaranUseCases.js";
 import { SpkPembayaranController } from "../../presentation/controllers/spkPembayaranController.js";
 import { NotarisPembayaranController } from "../../presentation/controllers/notarisPembayaranController.js";
+import { BankKprPembayaranController } from "../../presentation/controllers/bankKprPembayaranController.js";
 import {
   CreateSpkUseCase,
   UpdateSpkUseCase,
@@ -750,10 +759,35 @@ export const createContainer = (dbClient: PrismaClient) => {
   const setNotarisBsiCmsDilaporkanUseCase = new SetNotarisBsiCmsDilaporkanUseCase(
     notarisPembayaranRepo,
   );
+  const syncAllNotarisPembayaranUseCase = new SyncAllNotarisPembayaranUseCase(
+    notarisPembayaranRepo,
+  );
   const notarisPembayaranController = new NotarisPembayaranController(
     getNotarisPembayaranPaginatedUseCase,
     bayarNotarisPembayaranUseCase,
     setNotarisBsiCmsDilaporkanUseCase,
+    syncAllNotarisPembayaranUseCase,
+  );
+
+  const bankKprPembayaranRepo = new BankKprPembayaranRepository(dbClient);
+  const getBankKprPembayaranPaginatedUseCase = new GetBankKprPembayaranPaginatedUseCase(
+    bankKprPembayaranRepo,
+  );
+  const bayarBankKprPembayaranUseCase = new BayarBankKprPembayaranUseCase(
+    bankKprPembayaranRepo,
+    cloudinaryService,
+  );
+  const setBankKprBsiCmsDilaporkanUseCase = new SetBankKprBsiCmsDilaporkanUseCase(
+    bankKprPembayaranRepo,
+  );
+  const syncAllBankKprPembayaranUseCase = new SyncAllBankKprPembayaranUseCase(
+    bankKprPembayaranRepo,
+  );
+  const bankKprPembayaranController = new BankKprPembayaranController(
+    getBankKprPembayaranPaginatedUseCase,
+    bayarBankKprPembayaranUseCase,
+    setBankKprBsiCmsDilaporkanUseCase,
+    syncAllBankKprPembayaranUseCase,
   );
 
   return {
@@ -788,6 +822,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     spkController,
     spkPembayaranController,
     notarisPembayaranController,
+    bankKprPembayaranController,
   };
 };
 

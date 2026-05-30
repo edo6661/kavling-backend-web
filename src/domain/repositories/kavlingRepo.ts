@@ -35,7 +35,10 @@ export class KavlingRepository implements IKavlingRepository {
         luasBangunan: data.luasBangunan,
         luasTanah: data.luasTanah,
         hargaDasar: data.hargaDasar,
-        rekeningTujuanId: data.rekeningTujuanId ?? null,
+        rekeningTujuanId:
+          data.rekeningTujuanId && data.rekeningTujuanId > 0
+            ? data.rekeningTujuanId
+            : null,
         filePbg: data.filePbg ?? null,
         fileSertifikatTanah: data.fileSertifikatTanah ?? null,
         fileNopPbb: data.fileNopPbb ?? null,
@@ -88,8 +91,12 @@ export class KavlingRepository implements IKavlingRepository {
     if (data.hargaDasar !== undefined) updateData.hargaDasar = data.hargaDasar;
     if (data.jenisKavling !== undefined) updateData.jenisKavling = data.jenisKavling;
     if (data.status !== undefined) updateData.status = data.status;
-    if (data.rekeningTujuanId !== undefined)
-      updateData.rekeningTujuanId = data.rekeningTujuanId ?? null;
+    if (data.rekeningTujuanId !== undefined) {
+      updateData.rekeningTujuanId =
+        data.rekeningTujuanId && data.rekeningTujuanId > 0
+          ? data.rekeningTujuanId
+          : null;
+    }
     if (data.filePbg !== undefined) updateData.filePbg = data.filePbg ?? null;
     if (data.fileSertifikatTanah !== undefined)
       updateData.fileSertifikatTanah = data.fileSertifikatTanah ?? null;

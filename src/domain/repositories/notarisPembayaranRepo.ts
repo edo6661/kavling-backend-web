@@ -40,13 +40,15 @@ export class NotarisPembayaranRepository implements INotarisPembayaranRepository
     return NotarisPembayaranMapper.toDomain(result);
   }
 
+  async syncAllEligible(): Promise<void> {
+    await syncAllEligibleNotarisPembayaran(this.db);
+  }
+
   async findPaginated(
     page: number,
     limit: number,
     filters?: NotarisPembayaranFilterDTO,
   ): Promise<OffsetPaginatedData<NotarisPembayaranEntity>> {
-    await syncAllEligibleNotarisPembayaran(this.db);
-
     const where: Prisma.NotarisPembayaranWhereInput = {};
 
     if (filters?.status) where.status = filters.status;

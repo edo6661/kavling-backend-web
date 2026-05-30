@@ -13,6 +13,7 @@ import type {
   PenjualanFilterDTO,
 } from "../dtos/PenjualanDTO.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
+import { syncBankKprPembayaranForPenjualan } from "../kpr/bankKprPembayaranSync.js";
 import {
   effectiveTagihanTujuan,
   isCicilanHargaJualTagihan,
@@ -374,6 +375,10 @@ export class PenjualanRepository implements IPenjualanRepository {
           userId: data.userId ?? null,
         },
       });
+
+      if (data.caraPembayaran === "KPR") {
+        await syncBankKprPembayaranForPenjualan(tx, penjualan.id);
+      }
 
       return penjualan as PenjualanWithRelations;
     });

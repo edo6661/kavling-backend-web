@@ -6,14 +6,14 @@ import {
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
-  bayarNotarisPembayaranSchema,
-  getNotarisPembayaranPaginatedSchema,
-  setNotarisBsiCmsDilaporkanSchema,
-} from "../../validations/notarisPembayaranSchema.js";
-import type { NotarisPembayaranController } from "../controllers/notarisPembayaranController.js";
+  bayarBankKprPembayaranSchema,
+  getBankKprPembayaranPaginatedSchema,
+  setBankKprBsiCmsDilaporkanSchema,
+} from "../../validations/bankKprPembayaranSchema.js";
+import type { BankKprPembayaranController } from "../controllers/bankKprPembayaranController.js";
 
-export const createNotarisPembayaranRoutes = (
-  controller: NotarisPembayaranController,
+export const createBankKprPembayaranRoutes = (
+  controller: BankKprPembayaranController,
 ): Router => {
   const router = Router();
 
@@ -21,8 +21,8 @@ export const createNotarisPembayaranRoutes = (
 
   router.get(
     "/",
-    requirePermission(["TAGIHAN", "NOTARIS"], "read"),
-    validate(getNotarisPembayaranPaginatedSchema),
+    requirePermission(["TAGIHAN", "PENJUALAN"], "read"),
+    validate(getBankKprPembayaranPaginatedSchema),
     controller.getPaginated,
   );
 
@@ -36,14 +36,14 @@ export const createNotarisPembayaranRoutes = (
     "/:id/bayar",
     requirePermission("TAGIHAN", "update"),
     upload.single("buktiPembayaran"),
-    validate(bayarNotarisPembayaranSchema),
+    validate(bayarBankKprPembayaranSchema),
     controller.bayar,
   );
 
   router.patch(
     "/bsi-cms-dilaporkan",
     requirePermission("TAGIHAN", "update"),
-    validate(setNotarisBsiCmsDilaporkanSchema),
+    validate(setBankKprBsiCmsDilaporkanSchema),
     controller.setBsiCmsDilaporkan,
   );
 

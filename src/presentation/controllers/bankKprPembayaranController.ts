@@ -2,28 +2,28 @@ import type { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../../utils/response.js";
 import type {
-  BayarNotarisPembayaranUseCase,
-  GetNotarisPembayaranPaginatedUseCase,
-  SetNotarisBsiCmsDilaporkanUseCase,
-  SyncAllNotarisPembayaranUseCase,
-} from "../../application/usecases/notarisPembayaran/NotarisPembayaranUseCases.js";
-import { getNotarisPembayaranPaginatedSchema } from "../../validations/notarisPembayaranSchema";
-import type { NotarisPembayaranFilterDTO } from "../../domain/dtos/NotarisPembayaranDTO.js";
+  BayarBankKprPembayaranUseCase,
+  GetBankKprPembayaranPaginatedUseCase,
+  SetBankKprBsiCmsDilaporkanUseCase,
+  SyncAllBankKprPembayaranUseCase,
+} from "../../application/usecases/bankKprPembayaran/BankKprPembayaranUseCases.js";
+import { getBankKprPembayaranPaginatedSchema } from "../../validations/bankKprPembayaranSchema.js";
+import type { BankKprPembayaranFilterDTO } from "../../domain/dtos/BankKprPembayaranDTO.js";
 import { routeParam } from "../../utils/object.js";
 
-export class NotarisPembayaranController {
+export class BankKprPembayaranController {
   constructor(
-    private readonly getPaginatedUseCase: GetNotarisPembayaranPaginatedUseCase,
-    private readonly bayarUseCase: BayarNotarisPembayaranUseCase,
-    private readonly setBsiCmsDilaporkanUseCase: SetNotarisBsiCmsDilaporkanUseCase,
-    private readonly syncAllUseCase: SyncAllNotarisPembayaranUseCase,
+    private readonly getPaginatedUseCase: GetBankKprPembayaranPaginatedUseCase,
+    private readonly bayarUseCase: BayarBankKprPembayaranUseCase,
+    private readonly setBsiCmsDilaporkanUseCase: SetBankKprBsiCmsDilaporkanUseCase,
+    private readonly syncAllUseCase: SyncAllBankKprPembayaranUseCase,
   ) {}
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
     const { page, limit, status, search } =
-      getNotarisPembayaranPaginatedSchema.query.parse(req.query);
+      getBankKprPembayaranPaginatedSchema.query.parse(req.query);
 
-    const filters: NotarisPembayaranFilterDTO = {};
+    const filters: BankKprPembayaranFilterDTO = {};
     if (status && status !== "ALL") filters.status = status;
     if (search) filters.search = search;
 
@@ -31,7 +31,7 @@ export class NotarisPembayaranController {
     sendResponse(
       res,
       StatusCodes.OK,
-      "Daftar pembayaran notaris berhasil diambil",
+      "Daftar pembayaran bank KPR berhasil diambil",
       result,
     );
   };
@@ -48,7 +48,7 @@ export class NotarisPembayaranController {
       file?.buffer ?? Buffer.alloc(0),
       tanggalPembayaran,
     );
-    sendResponse(res, StatusCodes.OK, "Pembayaran notaris berhasil diproses", result);
+    sendResponse(res, StatusCodes.OK, "Pembayaran bank KPR berhasil diproses", result);
   };
 
   setBsiCmsDilaporkan = async (req: Request, res: Response): Promise<void> => {
@@ -65,7 +65,7 @@ export class NotarisPembayaranController {
     sendResponse(
       res,
       StatusCodes.OK,
-      "Sync pembayaran notaris selesai",
+      "Sync pembayaran bank KPR selesai",
       null,
     );
   };

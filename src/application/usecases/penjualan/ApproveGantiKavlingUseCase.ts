@@ -3,6 +3,7 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+import { syncBankKprPembayaranForPenjualan } from "../../../domain/kpr/bankKprPembayaranSync.js";
 
 export class ApproveGantiKavlingUseCase {
   constructor(
@@ -92,6 +93,10 @@ export class ApproveGantiKavlingUseCase {
           hargaJual: hargaJual,
         },
       });
+
+      if (oldPenjualan.caraPembayaran === "KPR") {
+        await syncBankKprPembayaranForPenjualan(tx, riwayat.penjualanId);
+      }
 
       if (riwayat.penjualan.detailKavlingPajak) {
         await tx.detailKavlingPajak.update({

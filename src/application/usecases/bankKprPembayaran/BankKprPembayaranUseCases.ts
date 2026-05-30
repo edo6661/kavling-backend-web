@@ -1,31 +1,31 @@
-import type { NotarisPembayaranRepository } from "../../../domain/repositories/notarisPembayaranRepo.js";
+import type { BankKprPembayaranRepository } from "../../../domain/repositories/bankKprPembayaranRepo.js";
 import type {
-  BayarNotarisPembayaranDTO,
-  NotarisPembayaranFilterDTO,
-  SetNotarisBsiCmsDilaporkanDTO,
-} from "../../../domain/dtos/NotarisPembayaranDTO.js";
-import type { NotarisPembayaranEntity } from "../../../domain/entities/NotarisPembayaran.js";
+  BayarBankKprPembayaranDTO,
+  BankKprPembayaranFilterDTO,
+  SetBankKprBsiCmsDilaporkanDTO,
+} from "../../../domain/dtos/BankKprPembayaranDTO.js";
+import type { BankKprPembayaranEntity } from "../../../domain/entities/BankKprPembayaran.js";
 import type { OffsetPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 
-export class GetNotarisPembayaranPaginatedUseCase {
-  constructor(private readonly pembayaranRepo: NotarisPembayaranRepository) {}
+export class GetBankKprPembayaranPaginatedUseCase {
+  constructor(private readonly pembayaranRepo: BankKprPembayaranRepository) {}
 
   async execute(
     page: number,
     limit: number,
-    filters?: NotarisPembayaranFilterDTO,
-  ): Promise<OffsetPaginatedData<NotarisPembayaranEntity>> {
+    filters?: BankKprPembayaranFilterDTO,
+  ): Promise<OffsetPaginatedData<BankKprPembayaranEntity>> {
     return await this.pembayaranRepo.findPaginated(page, limit, filters);
   }
 }
 
-export class BayarNotarisPembayaranUseCase {
+export class BayarBankKprPembayaranUseCase {
   constructor(
-    private readonly pembayaranRepo: NotarisPembayaranRepository,
+    private readonly pembayaranRepo: BankKprPembayaranRepository,
     private readonly cloudinary: CloudinaryService,
   ) {}
 
@@ -34,14 +34,14 @@ export class BayarNotarisPembayaranUseCase {
     dibayarOlehId: number,
     fileBuffer: Buffer,
     tanggalPembayaran?: Date,
-  ): Promise<NotarisPembayaranEntity> {
+  ): Promise<BankKprPembayaranEntity> {
     if (!fileBuffer?.length) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Bukti pembayaran wajib diunggah");
     }
 
     const existing = await this.pembayaranRepo.findById(id);
     if (!existing) {
-      throw new NotFoundError("Pembayaran notaris tidak ditemukan");
+      throw new NotFoundError("Pembayaran bank KPR tidak ditemukan");
     }
 
     if (existing.status === "SUDAH_DIBAYAR") {
@@ -50,10 +50,10 @@ export class BayarNotarisPembayaranUseCase {
 
     const buktiPembayaran = await this.cloudinary.uploadFile(
       fileBuffer,
-      "bumantara/notaris-pembayaran",
+      "bumantara/bank-kpr-pembayaran",
     );
 
-    const payDto: BayarNotarisPembayaranDTO = {
+    const payDto: BayarBankKprPembayaranDTO = {
       id,
       dibayarOlehId,
       buktiPembayaran,
@@ -64,12 +64,12 @@ export class BayarNotarisPembayaranUseCase {
   }
 }
 
-export class SetNotarisBsiCmsDilaporkanUseCase {
-  constructor(private readonly pembayaranRepo: NotarisPembayaranRepository) {}
+export class SetBankKprBsiCmsDilaporkanUseCase {
+  constructor(private readonly pembayaranRepo: BankKprPembayaranRepository) {}
 
   async execute(
-    data: SetNotarisBsiCmsDilaporkanDTO,
-  ): Promise<NotarisPembayaranEntity[]> {
+    data: SetBankKprBsiCmsDilaporkanDTO,
+  ): Promise<BankKprPembayaranEntity[]> {
     if (data.ids.length === 0) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Pilih minimal satu pembayaran.");
     }
@@ -81,16 +81,16 @@ export class SetNotarisBsiCmsDilaporkanUseCase {
     });
 
     if (results.length !== uniqueIds.length) {
-      throw new NotFoundError("Sebagian pembayaran notaris tidak ditemukan.");
+      throw new NotFoundError("Sebagian pembayaran bank KPR tidak ditemukan.");
     }
 
     return results;
   }
 }
 
-/** Sementara: backfill pembayaran dari penjualan yang sudah punya biaya notaris/BPHTB. */
-export class SyncAllNotarisPembayaranUseCase {
-  constructor(private readonly pembayaranRepo: NotarisPembayaranRepository) {}
+/** Sementara: backfill pembayaran dari penjualan KPR yang sudah punya biaya. */
+export class SyncAllBankKprPembayaranUseCase {
+  constructor(private readonly pembayaranRepo: BankKprPembayaranRepository) {}
 
   async execute(): Promise<void> {
     await this.pembayaranRepo.syncAllEligible();
