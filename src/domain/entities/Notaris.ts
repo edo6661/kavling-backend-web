@@ -22,6 +22,9 @@ export interface NotarisEntity {
   nomorIjin: string | null;
   noHp: string | null;
   alamat: string | null;
+  namaBank: string | null;
+  noRekening: string | null;
+  atasNamaRekening: string | null;
 
   pics: PicNotarisEntity[];
   ajbDitangani?: AjbDitanganiEntity[];

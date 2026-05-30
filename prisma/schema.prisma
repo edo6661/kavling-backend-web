@@ -114,6 +114,9 @@ model Notaris {
   nomorKtp           String?              @map("nomor_ktp") @db.VarChar(20)
   alamat             String?              @db.Text
   noHp               String?              @map("no_hp") @db.VarChar(20)
+  namaBank           String?              @map("nama_bank") @db.VarChar(100)
+  noRekening         String?              @map("no_rekening") @db.VarChar(50)
+  atasNamaRekening   String?              @map("atas_nama_rekening") @db.VarChar(150)
   detailKavlingPajak DetailKavlingPajak[]
   pics               PicNotaris[]
 

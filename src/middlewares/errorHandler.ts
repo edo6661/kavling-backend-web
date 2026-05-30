@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import multer from "multer";
+import { Prisma } from "@prisma/client";
 import { sendResponse } from "../utils/response";
 import { env } from "../config/env";
 import { StatusCodes } from "http-status-codes";
@@ -28,6 +29,21 @@ const multerErrorMessage = (code: multer.MulterError["code"]): string => {
       return "Jumlah field form melebihi batas yang diizinkan.";
     default:
       return "Gagal mengunggah file.";
+  }
+};
+
+const prismaErrorMessage = (err: Prisma.PrismaClientKnownRequestError): string => {
+  switch (err.code) {
+    case "P2002":
+      return "Data duplikat. Nilai yang unik sudah terdaftar sebelumnya.";
+    case "P2003":
+      return "Data tidak dapat disimpan karena masih terhubung ke data lain.";
+    case "P2021":
+      return "Database belum diperbarui. Tabel yang dibutuhkan belum tersedia.";
+    case "P2022":
+      return "Database belum diperbarui. Kolom yang dibutuhkan belum tersedia.";
+    default:
+      return "Terjadi kesalahan saat mengakses database.";
   }
 };
 
@@ -77,6 +93,32 @@ export const globalErrorHandler = (
         ? StatusCodes.REQUEST_TOO_LONG
         : StatusCodes.BAD_REQUEST;
     message = multerErrorMessage(err.code);
+  } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    statusCode =
+      err.code === "P2002"
+        ? StatusCodes.CONFLICT
+        : err.code === "P2021" || err.code === "P2022"
+          ? StatusCodes.SERVICE_UNAVAILABLE
+          : StatusCodes.INTERNAL_SERVER_ERROR;
+    message = prismaErrorMessage(err);
+    if (!isProd) {
+      errorsDetail = { code: err.code, detail: err.message };
+    }
+  } else if (err instanceof Prisma.PrismaClientValidationError) {
+    statusCode = StatusCodes.BAD_REQUEST;
+    message = "Data yang dikirim tidak valid untuk operasi database.";
+    if (!isProd) {
+      errorsDetail = { detail: err.message };
+    }
+  } else if (
+    err.message.includes("Unknown column") ||
+    err.message.includes("does not exist in the current database")
+  ) {
+    statusCode = StatusCodes.SERVICE_UNAVAILABLE;
+    message = "Database belum diperbarui. Kolom yang dibutuhkan belum tersedia.";
+    if (!isProd) {
+      errorsDetail = { detail: err.message };
+    }
   }
 
   if (statusCode === StatusCodes.INTERNAL_SERVER_ERROR) {

@@ -38,6 +38,9 @@ export class NotarisRepository implements INotarisRepository {
       nomorIjin: data.nomorIjin ?? null,
       noHp: data.noHp ?? null,
       alamat: data.alamat ?? null,
+      namaBank: data.namaBank ?? null,
+      noRekening: data.noRekening ?? null,
+      atasNamaRekening: data.atasNamaRekening ?? null,
       biayaAjb: data.biayaAjb,
     };
 
@@ -79,6 +82,10 @@ export class NotarisRepository implements INotarisRepository {
     if (data.nomorIjin !== undefined) updateData.nomorIjin = data.nomorIjin;
     if (data.noHp !== undefined) updateData.noHp = data.noHp;
     if (data.alamat !== undefined) updateData.alamat = data.alamat;
+    if (data.namaBank !== undefined) updateData.namaBank = data.namaBank;
+    if (data.noRekening !== undefined) updateData.noRekening = data.noRekening;
+    if (data.atasNamaRekening !== undefined)
+      updateData.atasNamaRekening = data.atasNamaRekening;
     if (data.biayaAjb !== undefined) updateData.biayaAjb = data.biayaAjb;
 
     if (data.pics) {

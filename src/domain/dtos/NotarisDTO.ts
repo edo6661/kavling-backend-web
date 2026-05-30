@@ -20,6 +20,9 @@ export interface CreateNotarisDTO {
   nomorIjin?: string | undefined;
   noHp?: string | undefined;
   alamat?: string | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
   pics?: PicNotarisDTO[] | undefined;
 }
 
@@ -30,6 +33,9 @@ export interface UpdateNotarisDTO {
   nomorIjin?: string | undefined;
   noHp?: string | undefined;
   alamat?: string | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
   pics?: PicNotarisDTO[] | undefined;
 }
 
@@ -41,6 +47,9 @@ export interface NotarisResponseDTO {
   nomorIjin: string;
   noHp?: string;
   alamat?: string;
+  namaBank?: string;
+  noRekening?: string;
+  atasNamaRekening?: string;
   pics: PicNotarisDTO[];
   ajbDitangani: AjbDitanganiDTO[];
   createdAt: Date;

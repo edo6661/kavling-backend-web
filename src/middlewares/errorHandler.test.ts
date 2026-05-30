@@ -5,6 +5,7 @@ import { globalErrorHandler } from "./errorHandler";
 import { NotFoundError } from "../domain/errors/NotFoundError";
 import { ConflictError } from "../domain/errors/ConflictError";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { env } from "../config/env";
 import { MAX_UPLOAD_FILE_SIZE_MB } from "./upload";
 
@@ -142,6 +143,29 @@ describe("Global Error Handler Middleware", () => {
       expect.objectContaining({
         success: false,
         message: `Ukuran file terlalu besar. Maksimal ukuran file adalah ${MAX_UPLOAD_FILE_SIZE_MB} MB.`,
+      }),
+    );
+  });
+
+  it("harus menangani Prisma P2022 (kolom belum ada) dengan pesan yang jelas", () => {
+    const error = new Prisma.PrismaClientKnownRequestError(
+      "The column `nama_bank` does not exist in the current database.",
+      { code: "P2022", clientVersion: "6.19.2" },
+    );
+
+    globalErrorHandler(
+      error,
+      mockRequest as Request,
+      mockResponse as Response,
+      nextFunction,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(503);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message:
+          "Database belum diperbarui. Kolom yang dibutuhkan belum tersedia.",
       }),
     );
   });
