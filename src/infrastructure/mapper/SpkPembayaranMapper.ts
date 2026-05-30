@@ -10,6 +10,14 @@ export const spkPembayaranInclude = {
       noSpk: true,
       judulPekerjaan: true,
       nilaiKontrak: true,
+      bankRekeningPt: {
+        select: {
+          id: true,
+          namaBank: true,
+          noRekening: true,
+          atasNama: true,
+        },
+      },
       mandor: {
         select: {
           id: true,
@@ -61,6 +69,14 @@ export class SpkPembayaranMapper {
         noSpk: row.spk.noSpk,
         judulPekerjaan: row.spk.judulPekerjaan,
         nilaiKontrak: Number(row.spk.nilaiKontrak),
+        bankRekeningPt: row.spk.bankRekeningPt
+          ? {
+              id: row.spk.bankRekeningPt.id,
+              namaBank: row.spk.bankRekeningPt.namaBank,
+              noRekening: row.spk.bankRekeningPt.noRekening,
+              atasNama: row.spk.bankRekeningPt.atasNama,
+            }
+          : null,
         mandor: {
           id: row.spk.mandor.id,
           username: row.spk.mandor.username,
