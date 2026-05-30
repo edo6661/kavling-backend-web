@@ -9,6 +9,7 @@ import type { DetailKavlingPajakEntity } from "../entities/DetailKavlingPajak.js
 import { DetailKavlingPajakMapper } from "../../infrastructure/mapper/DetailKavlingPajakMapper.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { syncNotarisPembayaranForPenjualan } from "../notaris/notarisPembayaranSync.js";
 
 export class DetailKavlingPajakRepository implements IDetailKavlingPajakRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -92,6 +93,10 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
     const result = await this.db.detailKavlingPajak.create({
       data: createData,
     });
+
+    if (data.biayaNotaris && data.biayaNotaris > 0) {
+      await syncNotarisPembayaranForPenjualan(this.db, data.penjualanId);
+    }
 
     return DetailKavlingPajakMapper.toDomain(result);
   }
@@ -211,6 +216,10 @@ export class DetailKavlingPajakRepository implements IDetailKavlingPajakReposito
       where: { penjualanId },
       data: updateData,
     });
+
+    if (data.biayaNotaris !== undefined) {
+      await syncNotarisPembayaranForPenjualan(this.db, penjualanId);
+    }
 
     return DetailKavlingPajakMapper.toDomain(result);
   }

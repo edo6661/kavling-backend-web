@@ -9,6 +9,7 @@ import type {
 import { ProgressPenjualanMapper } from "../../infrastructure/mapper/ProgressPenjualanMapper.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { syncNotarisPembayaranForPenjualan } from "../notaris/notarisPembayaranSync.js";
 
 export class ProgressPenjualanRepository implements IProgressPenjualanRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -114,9 +115,11 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
         where: { penjualanId },
         include: { penjualan: { include: { detailKavlingPajak: true } } },
       });
+      await syncNotarisPembayaranForPenjualan(this.db, penjualanId);
       return ProgressPenjualanMapper.toDomain(updatedResult as any);
     }
 
+    await syncNotarisPembayaranForPenjualan(this.db, penjualanId);
     return ProgressPenjualanMapper.toDomain(result as any);
   }
 }

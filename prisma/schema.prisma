@@ -26,6 +26,7 @@ model User {
   spkAsMandor             Spk[]                 @relation("SpkMandor")
   spkPembayaranDiajukan   SpkPembayaran[]       @relation("SpkPembayaranDiajukan")
   spkPembayaranDibayar    SpkPembayaran[]       @relation("SpkPembayaranDibayar")
+  notarisPembayaranDibayar NotarisPembayaran[]  @relation("NotarisPembayaranDibayar")
   tahapanReports          TahapanProyek[]       @relation("TahapanReporter")
   mandorProfile           Mandor?
 
@@ -289,6 +290,7 @@ model Penjualan {
   tagihan             Tagihan[]
   kodeBillingPph      KodeBillingPph[]
   suketPph            SuketPph[]
+  notarisPembayaranList NotarisPembayaran[]
 
   @@index([agentId], map: "penjualan_agent_id_fkey")
   @@index([customerId], map: "penjualan_customer_id_fkey")
@@ -527,6 +529,39 @@ enum SpkKasbonTargetTermin {
 }
 
 enum SpkPembayaranStatus {
+  MENUNGGU_PEMBAYARAN @map("menunggu_pembayaran")
+  SUDAH_DIBAYAR       @map("sudah_dibayar")
+}
+
+model NotarisPembayaran {
+  id                Int                     @id @default(autoincrement())
+  penjualanId       Int                     @map("penjualan_id")
+  jenis             NotarisPembayaranJenis
+  nominal           Decimal                 @db.Decimal(15, 2)
+  status            NotarisPembayaranStatus @default(MENUNGGU_PEMBAYARAN)
+  buktiPembayaran   String?                 @map("bukti_pembayaran") @db.VarChar(500)
+  tanggalPembayaran DateTime?               @map("tanggal_pembayaran") @db.Date
+  bsiCmsDilaporkan  Boolean                 @default(false) @map("bsi_cms_dilaporkan")
+  bsiCmsDilaporkanAt DateTime?              @map("bsi_cms_dilaporkan_at")
+  dibayarOlehId     Int?                    @map("dibayar_oleh_id")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  penjualan   Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  dibayarOleh User?     @relation("NotarisPembayaranDibayar", fields: [dibayarOlehId], references: [id])
+
+  @@unique([penjualanId, jenis])
+  @@index([penjualanId], map: "notaris_pembayaran_penjualan_id_fkey")
+  @@index([dibayarOlehId], map: "notaris_pembayaran_dibayar_oleh_id_fkey")
+  @@map("notaris_pembayaran")
+}
+
+enum NotarisPembayaranJenis {
+  BIAYA_NOTARIS @map("biaya_notaris")
+  BPHTB         @map("bphtb")
+}
+
+enum NotarisPembayaranStatus {
   MENUNGGU_PEMBAYARAN @map("menunggu_pembayaran")
   SUDAH_DIBAYAR       @map("sudah_dibayar")
 }

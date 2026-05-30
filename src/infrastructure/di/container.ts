@@ -1,6 +1,7 @@
 import { ProgressProyekRepository } from "../../domain/repositories/progressProyekRepo.js";
 import { SpkRepository } from "../../domain/repositories/spkRepo.js";
 import { SpkPembayaranRepository } from "../../domain/repositories/spkPembayaranRepo.js";
+import { NotarisPembayaranRepository } from "../../domain/repositories/notarisPembayaranRepo.js";
 import {
   BayarSpkPembayaranUseCase,
   CreateSpkPembayaranRequestUseCase,
@@ -8,7 +9,13 @@ import {
   GetSpkPembayaranPaginatedUseCase,
   SetBsiCmsDilaporkanUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
+import {
+  BayarNotarisPembayaranUseCase,
+  GetNotarisPembayaranPaginatedUseCase,
+  SetNotarisBsiCmsDilaporkanUseCase,
+} from "../../application/usecases/notarisPembayaran/NotarisPembayaranUseCases.js";
 import { SpkPembayaranController } from "../../presentation/controllers/spkPembayaranController.js";
+import { NotarisPembayaranController } from "../../presentation/controllers/notarisPembayaranController.js";
 import {
   CreateSpkUseCase,
   UpdateSpkUseCase,
@@ -732,6 +739,23 @@ export const createContainer = (dbClient: PrismaClient) => {
     setBsiCmsDilaporkanUseCase,
   );
 
+  const notarisPembayaranRepo = new NotarisPembayaranRepository(dbClient);
+  const getNotarisPembayaranPaginatedUseCase = new GetNotarisPembayaranPaginatedUseCase(
+    notarisPembayaranRepo,
+  );
+  const bayarNotarisPembayaranUseCase = new BayarNotarisPembayaranUseCase(
+    notarisPembayaranRepo,
+    cloudinaryService,
+  );
+  const setNotarisBsiCmsDilaporkanUseCase = new SetNotarisBsiCmsDilaporkanUseCase(
+    notarisPembayaranRepo,
+  );
+  const notarisPembayaranController = new NotarisPembayaranController(
+    getNotarisPembayaranPaginatedUseCase,
+    bayarNotarisPembayaranUseCase,
+    setNotarisBsiCmsDilaporkanUseCase,
+  );
+
   return {
     authController,
     userRepo,
@@ -763,6 +787,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressProyekController,
     spkController,
     spkPembayaranController,
+    notarisPembayaranController,
   };
 };
 
