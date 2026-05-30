@@ -132,6 +132,12 @@ export class UpdatePenjualanUseCase {
       if (data.hargaPromosi !== undefined)
         updateData.hargaPromosi = data.hargaPromosi ?? null;
       if (data.bank !== undefined) updateData.bank = data.bank ?? null;
+      if (data.bankKprNamaRekening !== undefined)
+        updateData.bankKprNamaRekening = data.bankKprNamaRekening ?? null;
+      if (data.bankKprAtasNamaRekening !== undefined)
+        updateData.bankKprAtasNamaRekening = data.bankKprAtasNamaRekening ?? null;
+      if (data.bankKprNoRekening !== undefined)
+        updateData.bankKprNoRekening = data.bankKprNoRekening ?? null;
 
       const currentCaraPembayaran = formattedPayment ?? old.caraPembayaran;
       const currentHargaDasar =

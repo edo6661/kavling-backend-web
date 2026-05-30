@@ -29,6 +29,9 @@ export interface CreatePenjualanDTO {
   termin?: number | undefined;
   caraPembayaran?: PaymentMethod | undefined;
   bank?: string | undefined;
+  bankKprNamaRekening?: string | undefined;
+  bankKprAtasNamaRekening?: string | undefined;
+  bankKprNoRekening?: string | undefined;
   nilaiPengajuanKpr?: number | undefined;
   agent: string;
   createdBy?: string | undefined;

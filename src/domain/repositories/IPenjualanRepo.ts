@@ -83,6 +83,9 @@ export interface PenjualanPaginatedItem {
   diskonPenjualan: number;
   hargaPromosi: number;
   bank: string;
+  bankKprNamaRekening?: string;
+  bankKprAtasNamaRekening?: string;
+  bankKprNoRekening?: string;
   nilaiPengajuanKpr: number;
   bookingFee: number;
   status: string;

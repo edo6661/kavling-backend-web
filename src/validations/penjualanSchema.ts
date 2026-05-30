@@ -4,6 +4,12 @@ import { PaymentMethod, PenjualanStatus } from "@prisma/client";
 import type { PaymentMethod as PaymentMethodType } from "@prisma/client";
 import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 
+/** Empty string → null so optional fields can be cleared on update */
+const optionalClearableString = z.preprocess(
+  (val) => (val === "" ? null : val),
+  z.string().nullable().optional(),
+);
+
 export const createPenjualanSchema = {
   body: z.object({
     noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
@@ -29,6 +35,9 @@ export const createPenjualanSchema = {
     dpDibayar: emptyAsUndefined(z.coerce.number().min(0).optional()),
     bookingFee: emptyAsUndefined(z.coerce.number().min(0).optional()),
     bank: emptyAsUndefined(z.string().optional()),
+    bankKprNamaRekening: emptyAsUndefined(z.string().optional()),
+    bankKprAtasNamaRekening: emptyAsUndefined(z.string().optional()),
+    bankKprNoRekening: emptyAsUndefined(z.string().optional()),
     caraPembayaran: emptyAsUndefined(
       z
         .string()
@@ -101,6 +110,9 @@ export const updatePenjualanSchema = {
       caraPembayaran: emptyAsUndefined(z.string().optional()),
       termin: emptyAsUndefined(z.coerce.number().int().min(1).optional()),
       bank: emptyAsUndefined(z.string().optional()),
+      bankKprNamaRekening: optionalClearableString,
+      bankKprAtasNamaRekening: optionalClearableString,
+      bankKprNoRekening: optionalClearableString,
 
       // TAMBAHAN: Diizinkan menerima input manual untuk kalkulasi
       plafonAwal: emptyAsUndefined(z.coerce.number().optional()),
