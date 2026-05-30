@@ -138,8 +138,6 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
         { spkItem: { is: { spk: { mandorId: filters.mandorUserId } } } },
         { progressProyek: { mandorId: filters.mandorUserId } },
       ];
-    } else {
-      kavlingWhere.spkItem = { isNot: null };
     }
 
     const kavlingOnlyRows = await this.db.kavling.findMany({
