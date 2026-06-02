@@ -70,6 +70,21 @@ export const bayarSpkPembayaranSchema = {
   }),
 };
 
+export const addBuktiSpkPembayaranSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+};
+
+export const removeBuktiSpkPembayaranSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+  body: z.object({
+    buktiUrl: z.string().trim().url(),
+  }),
+};
+
 export const setBsiCmsDilaporkanSchema = {
   body: z.object({
     ids: z.array(z.coerce.number().int().positive()).min(1),

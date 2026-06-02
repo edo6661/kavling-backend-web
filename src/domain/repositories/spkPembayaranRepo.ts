@@ -6,8 +6,10 @@ import type { PrismaClient } from "@prisma/client";
 import type { SpkPembayaranJenis } from "@prisma/client";
 import type { ISpkPembayaranRepository } from "./ISpkPembayaranRepo.js";
 import type {
+  AddBuktiSpkPembayaranDTO,
   BayarSpkPembayaranDTO,
   CreateSpkPembayaranDTO,
+  RemoveBuktiSpkPembayaranDTO,
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
   UpdateSpkKasbonDTO,
@@ -277,6 +279,75 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     data: BayarSpkPembayaranDTO,
   ): Promise<SpkPembayaranEntity> {
     return await this.markAsPaid(data);
+  }
+
+  async addBuktiPembayaran(
+    data: AddBuktiSpkPembayaranDTO,
+  ): Promise<SpkPembayaranEntity> {
+    return await this.db.$transaction(async (tx) => {
+      const existing = await tx.spkPembayaran.findUnique({
+        where: { id: data.id },
+      });
+      if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+
+      const currentList = Array.isArray(existing.buktiPembayaranList)
+        ? existing.buktiPembayaranList.filter((item): item is string => typeof item === "string")
+        : existing.buktiPembayaran
+          ? [existing.buktiPembayaran]
+          : [];
+
+      const mergedList = [...currentList, ...data.buktiPembayaranList];
+      const nextFirst = mergedList[0] ?? null;
+
+      const result = await tx.spkPembayaran.update({
+        where: { id: data.id },
+        data: {
+          buktiPembayaran: nextFirst,
+          buktiPembayaranList: mergedList,
+        },
+        include: SpkPembayaranMapper.include,
+      });
+
+      return SpkPembayaranMapper.toDomain(result);
+    });
+  }
+
+  async removeBuktiPembayaran(
+    data: RemoveBuktiSpkPembayaranDTO,
+  ): Promise<SpkPembayaranEntity> {
+    return await this.db.$transaction(async (tx) => {
+      const existing = await tx.spkPembayaran.findUnique({
+        where: { id: data.id },
+      });
+      if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+
+      const currentList = Array.isArray(existing.buktiPembayaranList)
+        ? existing.buktiPembayaranList.filter((item): item is string => typeof item === "string")
+        : existing.buktiPembayaran
+          ? [existing.buktiPembayaran]
+          : [];
+
+      if (!currentList.includes(data.buktiUrl)) {
+        throw new Error("BUKTI_NOT_FOUND");
+      }
+      if (currentList.length <= 1) {
+        throw new Error("MIN_ONE_BUKTI_REQUIRED");
+      }
+
+      const nextList = currentList.filter((url) => url !== data.buktiUrl);
+      const nextFirst = nextList[0] ?? null;
+
+      const result = await tx.spkPembayaran.update({
+        where: { id: data.id },
+        data: {
+          buktiPembayaran: nextFirst,
+          buktiPembayaranList: nextList,
+        },
+        include: SpkPembayaranMapper.include,
+      });
+
+      return SpkPembayaranMapper.toDomain(result);
+    });
   }
 
   async syncSpkNominalsForSpk(spkId: number): Promise<void> {

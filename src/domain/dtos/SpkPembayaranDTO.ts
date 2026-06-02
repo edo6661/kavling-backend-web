@@ -25,6 +25,16 @@ export interface BayarSpkPembayaranDTO {
   buktiPembayaranList: string[];
 }
 
+export interface AddBuktiSpkPembayaranDTO {
+  id: number;
+  buktiPembayaranList: string[];
+}
+
+export interface RemoveBuktiSpkPembayaranDTO {
+  id: number;
+  buktiUrl: string;
+}
+
 export interface SpkPembayaranFilterDTO {
   status?: SpkPembayaranStatus;
   spkId?: number;

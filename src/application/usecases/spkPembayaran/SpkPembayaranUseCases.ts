@@ -1,8 +1,10 @@
 import type { ISpkRepository } from "../../../domain/repositories/ISpkRepo.js";
 import type { SpkPembayaranRepository } from "../../../domain/repositories/spkPembayaranRepo.js";
 import type {
+  AddBuktiSpkPembayaranDTO,
   BayarSpkPembayaranDTO,
   CreateSpkPembayaranDTO,
+  RemoveBuktiSpkPembayaranDTO,
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
   UpdateSpkKasbonDTO,
@@ -216,6 +218,86 @@ export class UpdateSpkKasbonUseCase {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           "Kasbon yang sudah memiliki bukti pembayaran tidak dapat diubah.",
+        );
+      }
+      throw err;
+    }
+  }
+}
+
+export class AddBuktiSpkPembayaranUseCase {
+  constructor(
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
+
+  async execute(id: number, fileBuffers: Buffer[]): Promise<SpkPembayaranEntity> {
+    if (!fileBuffers.length || fileBuffers.some((buffer) => !buffer?.length)) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "File bukti pembayaran wajib diunggah");
+    }
+
+    const existing = await this.pembayaranRepo.findById(id);
+    if (!existing) throw new NotFoundError("Pengajuan pembayaran SPK tidak ditemukan");
+    if (existing.status !== "SUDAH_DIBAYAR") {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Bukti tambahan hanya bisa ditambahkan setelah pembayaran diproses.",
+      );
+    }
+
+    const uploadedUrls = await Promise.all(
+      fileBuffers.map((fileBuffer) =>
+        this.cloudinary.uploadFile(fileBuffer, "bumantara/spk-pembayaran"),
+      ),
+    );
+
+    const addDto: AddBuktiSpkPembayaranDTO = {
+      id,
+      buktiPembayaranList: uploadedUrls,
+    };
+
+    return await this.pembayaranRepo.addBuktiPembayaran(addDto);
+  }
+}
+
+export class RemoveBuktiSpkPembayaranUseCase {
+  constructor(
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
+
+  async execute(id: number, buktiUrl: string): Promise<SpkPembayaranEntity> {
+    const sanitizedUrl = buktiUrl.trim();
+    if (!sanitizedUrl) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "URL bukti pembayaran wajib diisi.");
+    }
+
+    const existing = await this.pembayaranRepo.findById(id);
+    if (!existing) throw new NotFoundError("Pengajuan pembayaran SPK tidak ditemukan");
+    if (existing.status !== "SUDAH_DIBAYAR") {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Bukti hanya bisa dihapus setelah pembayaran diproses.",
+      );
+    }
+
+    try {
+      const removeDto: RemoveBuktiSpkPembayaranDTO = {
+        id,
+        buktiUrl: sanitizedUrl,
+      };
+      const result = await this.pembayaranRepo.removeBuktiPembayaran(removeDto);
+      await this.cloudinary.deleteImageByUrl(sanitizedUrl);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "BUKTI_NOT_FOUND") {
+        throw new NotFoundError("Bukti pembayaran tidak ditemukan.");
+      }
+      if (msg === "MIN_ONE_BUKTI_REQUIRED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Minimal harus tersisa 1 bukti pembayaran.",
         );
       }
       throw err;

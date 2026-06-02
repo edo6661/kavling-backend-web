@@ -6,10 +6,12 @@ import {
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
+  addBuktiSpkPembayaranSchema,
   bayarSpkPembayaranSchema,
   createSpkPembayaranSchema,
   getSpkPembayaranBySpkSchema,
   getSpkPembayaranPaginatedSchema,
+  removeBuktiSpkPembayaranSchema,
   setBsiCmsDilaporkanSchema,
   updateSpkKasbonSchema,
 } from "../../validations/spkPembayaranSchema.js";
@@ -47,7 +49,7 @@ export const createSpkPembayaranRoutes = (
     "/:id/kasbon",
     requirePermission("SPK", "update"),
     validate(updateSpkKasbonSchema),
-    controller.updateKasbon,
+    controller.updateKasbon as unknown as RequestHandler,
   );
 
   router.patch(
@@ -56,6 +58,21 @@ export const createSpkPembayaranRoutes = (
     upload.array("buktiPembayaran", 10),
     validate(bayarSpkPembayaranSchema),
     controller.bayar,
+  );
+
+  router.patch(
+    "/:id/bukti",
+    requirePermission("TAGIHAN", "update"),
+    upload.array("buktiPembayaran", 10),
+    validate(addBuktiSpkPembayaranSchema),
+    controller.addBukti as unknown as RequestHandler,
+  );
+
+  router.delete(
+    "/:id/bukti",
+    requirePermission("TAGIHAN", "update"),
+    validate(removeBuktiSpkPembayaranSchema),
+    controller.removeBukti as unknown as RequestHandler,
   );
 
   router.patch(

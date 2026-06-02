@@ -7,6 +7,8 @@ import type {
   GetSpkPembayaranBySpkUseCase,
   GetSpkPembayaranPaginatedUseCase,
   BayarSpkPembayaranUseCase,
+  AddBuktiSpkPembayaranUseCase,
+  RemoveBuktiSpkPembayaranUseCase,
   SetBsiCmsDilaporkanUseCase,
   UpdateSpkKasbonUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
@@ -25,6 +27,8 @@ export class SpkPembayaranController {
     private readonly getBySpkUseCase: GetSpkPembayaranBySpkUseCase,
     private readonly getPaginatedUseCase: GetSpkPembayaranPaginatedUseCase,
     private readonly bayarUseCase: BayarSpkPembayaranUseCase,
+    private readonly addBuktiUseCase: AddBuktiSpkPembayaranUseCase,
+    private readonly removeBuktiUseCase: RemoveBuktiSpkPembayaranUseCase,
     private readonly setBsiCmsDilaporkanUseCase: SetBsiCmsDilaporkanUseCase,
     private readonly updateKasbonUseCase: UpdateSpkKasbonUseCase,
   ) {}
@@ -96,6 +100,24 @@ export class SpkPembayaranController {
       tanggalPembayaran,
     );
     sendResponse(res, StatusCodes.OK, "Pembayaran SPK berhasil diproses", result);
+  };
+
+  addBukti = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(routeParam(req.params.id), 10);
+    const files = req.files as Express.Multer.File[] | undefined;
+
+    const result = await this.addBuktiUseCase.execute(
+      id,
+      files?.map((file) => file.buffer) ?? [],
+    );
+    sendResponse(res, StatusCodes.OK, "Bukti pembayaran berhasil ditambahkan", result);
+  };
+
+  removeBukti = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(routeParam(req.params.id), 10);
+    const { buktiUrl } = req.body as { buktiUrl: string };
+    const result = await this.removeBuktiUseCase.execute(id, buktiUrl);
+    sendResponse(res, StatusCodes.OK, "Bukti pembayaran berhasil dihapus", result);
   };
 
   setBsiCmsDilaporkan = async (req: Request, res: Response): Promise<void> => {
