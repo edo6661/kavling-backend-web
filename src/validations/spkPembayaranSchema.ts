@@ -11,6 +11,7 @@ export const createSpkPembayaranSchema = {
       jenis: z.enum(["TERMIN_55", "TERMIN_100", "RETENSI", "KASBON"]),
       keterangan: z.string().trim().min(1).max(500).optional(),
       nominal: z.coerce.number().positive().optional(),
+      tanggalPo: z.coerce.date().optional(),
     })
     .superRefine((data, ctx) => {
       if (data.jenis === "KASBON") {
@@ -26,6 +27,13 @@ export const createSpkPembayaranSchema = {
             code: z.ZodIssueCode.custom,
             message: "Nominal kasbon wajib dan harus lebih dari 0",
             path: ["nominal"],
+          });
+        }
+        if (!data.tanggalPo) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Tanggal PO wajib diisi",
+            path: ["tanggalPo"],
           });
         }
       } else if (!terminJenis.safeParse(data.jenis).success) {

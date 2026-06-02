@@ -10,6 +10,7 @@ export interface SpkPembayaranEntity {
   jenis: SpkPembayaranJenis;
   nominal: number;
   keterangan: string | null;
+  tanggalPo: Date | null;
   mengurangiTermin: SpkKasbonTargetTermin | null;
   status: SpkPembayaranStatus;
   buktiPembayaran: string | null;

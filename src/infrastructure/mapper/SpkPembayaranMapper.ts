@@ -49,6 +49,7 @@ export class SpkPembayaranMapper {
       jenis: row.jenis,
       nominal: Number(row.nominal),
       keterangan: row.keterangan,
+      tanggalPo: row.tanggalPo,
       mengurangiTermin: row.mengurangiTermin,
       status: row.status,
       buktiPembayaran: row.buktiPembayaran,

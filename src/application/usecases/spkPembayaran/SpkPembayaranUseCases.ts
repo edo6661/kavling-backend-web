@@ -84,6 +84,7 @@ export class CreateSpkPembayaranRequestUseCase {
               jenis: "KASBON",
               keterangan: data.keterangan,
               nominal: data.nominal,
+              tanggalPo: data.tanggalPo,
               diajukanOlehId: userId,
             }
           : {

@@ -44,6 +44,7 @@ export class SpkPembayaranController {
             jenis: "KASBON",
             keterangan: req.body.keterangan ?? "",
             nominal: req.body.nominal ?? 0,
+            tanggalPo: req.body.tanggalPo ?? new Date(),
             diajukanOlehId: userId,
           }
         : {

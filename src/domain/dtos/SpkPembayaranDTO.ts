@@ -13,6 +13,7 @@ export type CreateSpkPembayaranDTO =
       jenis: "KASBON";
       keterangan: string;
       nominal: number;
+      tanggalPo: Date;
       diajukanOlehId: number;
     };
 

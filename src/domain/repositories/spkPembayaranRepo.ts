@@ -189,6 +189,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           jenis: "KASBON",
           nominal: new Prisma.Decimal(data.nominal),
           keterangan: data.keterangan,
+          tanggalPo: data.tanggalPo,
           mengurangiTermin: target,
           diajukanOleh: { connect: { id: data.diajukanOlehId } },
         };

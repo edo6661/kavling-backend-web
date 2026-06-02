@@ -500,6 +500,7 @@ model SpkPembayaran {
   jenis           SpkPembayaranJenis
   nominal         Decimal             @db.Decimal(15, 2)
   keterangan      String?             @db.VarChar(500)
+  tanggalPo       DateTime?           @map("tanggal_po") @db.Date
   mengurangiTermin SpkKasbonTargetTermin? @map("mengurangi_termin")
   status          SpkPembayaranStatus @default(MENUNGGU_PEMBAYARAN)
   buktiPembayaran String?             @map("bukti_pembayaran") @db.VarChar(500)
