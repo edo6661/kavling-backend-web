@@ -34,3 +34,10 @@ export interface SetBsiCmsDilaporkanDTO {
   ids: number[];
   dilaporkan: boolean;
 }
+
+export interface UpdateSpkKasbonDTO {
+  id: number;
+  keterangan: string;
+  nominal: number;
+  tanggalPo: Date;
+}

@@ -76,3 +76,14 @@ export const setBsiCmsDilaporkanSchema = {
     dilaporkan: z.boolean(),
   }),
 };
+
+export const updateSpkKasbonSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+  body: z.object({
+    keterangan: z.string().trim().min(1).max(500),
+    nominal: z.coerce.number().positive(),
+    tanggalPo: z.coerce.date(),
+  }),
+};

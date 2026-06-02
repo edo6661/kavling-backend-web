@@ -5,6 +5,7 @@ import type {
   CreateSpkPembayaranDTO,
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
+  UpdateSpkKasbonDTO,
 } from "../../../domain/dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../../../domain/entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../../types/response.js";
@@ -172,6 +173,51 @@ export class BayarSpkPembayaranUseCase {
     if (tanggalPembayaran) payDto.tanggalPembayaran = tanggalPembayaran;
 
     return await this.pembayaranRepo.markAsPaidWithSync(payDto);
+  }
+}
+
+export class UpdateSpkKasbonUseCase {
+  constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
+
+  async execute(data: UpdateSpkKasbonDTO, userRole: string): Promise<SpkPembayaranEntity> {
+    if (userRole === Role.MANDOR) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor tidak dapat mengubah data kasbon.",
+      );
+    }
+
+    if (!data.keterangan.trim() || data.nominal <= 0) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Keterangan dan nominal kasbon wajib diisi.",
+      );
+    }
+
+    try {
+      return await this.pembayaranRepo.updateKasbon(data);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {
+        throw new NotFoundError("Kasbon tidak ditemukan.");
+      }
+      if (msg === "NOT_KASBON") {
+        throw new AppError(StatusCodes.BAD_REQUEST, "Hanya data kasbon yang dapat diubah.");
+      }
+      if (msg === "ALREADY_PAID") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Kasbon yang sudah dibayar tidak dapat diubah.",
+        );
+      }
+      if (msg === "HAS_BUKTI") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Kasbon yang sudah memiliki bukti pembayaran tidak dapat diubah.",
+        );
+      }
+      throw err;
+    }
   }
 }
 

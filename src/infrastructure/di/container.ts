@@ -9,6 +9,7 @@ import {
   GetSpkPembayaranBySpkUseCase,
   GetSpkPembayaranPaginatedUseCase,
   SetBsiCmsDilaporkanUseCase,
+  UpdateSpkKasbonUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import {
   BayarNotarisPembayaranUseCase,
@@ -740,12 +741,14 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
   );
   const setBsiCmsDilaporkanUseCase = new SetBsiCmsDilaporkanUseCase(spkPembayaranRepo);
+  const updateSpkKasbonUseCase = new UpdateSpkKasbonUseCase(spkPembayaranRepo);
   const spkPembayaranController = new SpkPembayaranController(
     createSpkPembayaranRequestUseCase,
     getSpkPembayaranBySpkUseCase,
     getSpkPembayaranPaginatedUseCase,
     bayarSpkPembayaranUseCase,
     setBsiCmsDilaporkanUseCase,
+    updateSpkKasbonUseCase,
   );
 
   const notarisPembayaranRepo = new NotarisPembayaranRepository(dbClient);

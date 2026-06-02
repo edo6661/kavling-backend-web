@@ -10,6 +10,7 @@ import type {
   CreateSpkPembayaranDTO,
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
+  UpdateSpkKasbonDTO,
 } from "../dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
@@ -327,6 +328,34 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         hasPrevPage: page > 1,
       },
     };
+  }
+
+  async updateKasbon(data: UpdateSpkKasbonDTO): Promise<SpkPembayaranEntity> {
+    return await this.db.$transaction(async (tx) => {
+      const existing = await tx.spkPembayaran.findUnique({
+        where: { id: data.id },
+      });
+      if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+      if (existing.jenis !== "KASBON") throw new Error("NOT_KASBON");
+      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+        throw new Error("ALREADY_PAID");
+      }
+      if (existing.buktiPembayaran) throw new Error("HAS_BUKTI");
+
+      const result = await tx.spkPembayaran.update({
+        where: { id: data.id },
+        data: {
+          keterangan: data.keterangan,
+          tanggalPo: data.tanggalPo,
+          nominal: new Prisma.Decimal(data.nominal),
+        },
+        include: SpkPembayaranMapper.include,
+      });
+
+      await this.syncSpkNominals(tx, existing.spkId);
+
+      return SpkPembayaranMapper.toDomain(result);
+    });
   }
 
   async setBsiCmsDilaporkan(

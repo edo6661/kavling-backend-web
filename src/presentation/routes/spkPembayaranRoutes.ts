@@ -11,6 +11,7 @@ import {
   getSpkPembayaranBySpkSchema,
   getSpkPembayaranPaginatedSchema,
   setBsiCmsDilaporkanSchema,
+  updateSpkKasbonSchema,
 } from "../../validations/spkPembayaranSchema.js";
 import type { SpkPembayaranController } from "../controllers/spkPembayaranController.js";
 
@@ -40,6 +41,13 @@ export const createSpkPembayaranRoutes = (
     requirePermission("SPK", "read"),
     validate(createSpkPembayaranSchema),
     controller.createRequest as unknown as RequestHandler,
+  );
+
+  router.patch(
+    "/:id/kasbon",
+    requirePermission("SPK", "update"),
+    validate(updateSpkKasbonSchema),
+    controller.updateKasbon,
   );
 
   router.patch(

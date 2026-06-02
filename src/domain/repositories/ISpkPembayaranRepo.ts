@@ -3,6 +3,7 @@ import type {
   CreateSpkPembayaranDTO,
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
+  UpdateSpkKasbonDTO,
 } from "../dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
@@ -18,4 +19,5 @@ export interface ISpkPembayaranRepository {
     filters?: SpkPembayaranFilterDTO,
   ): Promise<OffsetPaginatedData<SpkPembayaranEntity>>;
   setBsiCmsDilaporkan(data: SetBsiCmsDilaporkanDTO): Promise<SpkPembayaranEntity[]>;
+  updateKasbon(data: UpdateSpkKasbonDTO): Promise<SpkPembayaranEntity>;
 }

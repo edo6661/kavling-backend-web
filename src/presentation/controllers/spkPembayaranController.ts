@@ -8,7 +8,9 @@ import type {
   GetSpkPembayaranPaginatedUseCase,
   BayarSpkPembayaranUseCase,
   SetBsiCmsDilaporkanUseCase,
+  UpdateSpkKasbonUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
+import type { updateSpkKasbonSchema } from "../../validations/spkPembayaranSchema.js";
 import type { createSpkPembayaranSchema } from "../../validations/spkPembayaranSchema.js";
 import { getSpkPembayaranPaginatedSchema } from "../../validations/spkPembayaranSchema.js";
 import type {
@@ -24,6 +26,7 @@ export class SpkPembayaranController {
     private readonly getPaginatedUseCase: GetSpkPembayaranPaginatedUseCase,
     private readonly bayarUseCase: BayarSpkPembayaranUseCase,
     private readonly setBsiCmsDilaporkanUseCase: SetBsiCmsDilaporkanUseCase,
+    private readonly updateKasbonUseCase: UpdateSpkKasbonUseCase,
   ) {}
 
   createRequest = async (
@@ -101,5 +104,26 @@ export class SpkPembayaranController {
       ? "Pembayaran ditandai sudah dilaporkan di BSI CMS"
       : "Tanda lapor BSI CMS dibatalkan";
     sendResponse(res, StatusCodes.OK, message, result);
+  };
+
+  updateKasbon = async (
+    req: TypedRequest<
+      typeof updateSpkKasbonSchema.body,
+      never,
+      typeof updateSpkKasbonSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = Number(req.params.id);
+    const result = await this.updateKasbonUseCase.execute(
+      {
+        id,
+        keterangan: req.body.keterangan,
+        nominal: req.body.nominal,
+        tanggalPo: req.body.tanggalPo,
+      },
+      req.user!.role,
+    );
+    sendResponse(res, StatusCodes.OK, "Data kasbon berhasil diperbarui", result);
   };
 }
