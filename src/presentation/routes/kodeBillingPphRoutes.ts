@@ -29,6 +29,13 @@ export const createKodeBillingPphRoutes = (
   );
 
   router.get(
+    "/penjualan/:penjualanId/all",
+    requirePermission("PROGRESS_PENJUALAN", "read"),
+    validate(kodeBillingPphPenjualanParamsSchema),
+    controller.getAllByPenjualan,
+  );
+
+  router.get(
     "/penjualan/:penjualanId",
     requirePermission("PROGRESS_PENJUALAN", "read"),
     validate(kodeBillingPphPenjualanParamsSchema),

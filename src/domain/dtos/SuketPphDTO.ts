@@ -3,6 +3,7 @@ export interface SuketPphResponseDTO {
   customerId: number;
   namaCustomer: string;
   penjualanId: number;
+  sertifikatUrutan: number;
   perumahan: string | null;
   blok: string | null;
   nomorUnit: string | null;

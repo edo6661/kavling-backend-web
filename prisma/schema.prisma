@@ -227,19 +227,37 @@ model Kavling {
   namaTipe            String?                @map("nama_tipe") @db.VarChar(50)
   rekeningTujuanId    Int?                  @map("rekening_tujuan_id")
   hargaDasar          Decimal               @map("harga_dasar") @db.Decimal(15, 2)
-  jenisKavling JenisKavling @default(PERUMAHAN) @map("jenis_kavling")
+  jenisKavling          JenisKavling                        @default(PERUMAHAN) @map("jenis_kavling")
+  jumlahSertifikatTanah Int                                 @default(1) @map("jumlah_sertifikat_tanah")
 
-  perumahan           Perumahan             @relation(fields: [perumahanId], references: [id])
-  rekeningTujuan      BankRekeningPt?       @relation(fields: [rekeningTujuanId], references: [id])
-  penjualan           Penjualan[]
-  progressProyek      ProgressProyek?
-  spkItem             SpkPenjualan?
-  riwayatBaru         RiwayatGantiKavling[] @relation("RiwayatKavlingBaru")
-  riwayatLama         RiwayatGantiKavling[] @relation("RiwayatKavlingLama")
+  perumahan              Perumahan                          @relation(fields: [perumahanId], references: [id])
+  rekeningTujuan         BankRekeningPt?                     @relation(fields: [rekeningTujuanId], references: [id])
+  penjualan              Penjualan[]
+  progressProyek         ProgressProyek?
+  spkItem                SpkPenjualan?
+  riwayatBaru            RiwayatGantiKavling[]              @relation("RiwayatKavlingBaru")
+  riwayatLama            RiwayatGantiKavling[]              @relation("RiwayatKavlingLama")
+  sertifikatTanahTambahan KavlingSertifikatTanahTambahan[]
 
   @@unique([perumahanId, blok, nomorUnit])
   @@index([rekeningTujuanId], map: "kavling_rekening_tujuan_id_fkey")
   @@map("kavling")
+}
+
+model KavlingSertifikatTanahTambahan {
+  id                  Int      @id @default(autoincrement())
+  kavlingId           Int      @map("kavling_id")
+  urutan              Int
+  filePbg             String?  @map("file_pbg") @db.VarChar(255)
+  fileSertifikatTanah String?  @map("file_sertifikat_tanah") @db.VarChar(255)
+  fileNopPbb          String?  @map("file_nop_pbb") @db.VarChar(255)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  kavling             Kavling  @relation(fields: [kavlingId], references: [id], onDelete: Cascade)
+
+  @@unique([kavlingId, urutan])
+  @@index([kavlingId], map: "kavling_sertifikat_tanah_tambahan_kavling_id_fkey")
+  @@map("kavling_sertifikat_tanah_tambahan")
 }
 
 model Penjualan {
@@ -310,36 +328,40 @@ enum StatusKodeBillingPph {
 }
 
 model KodeBillingPph {
-  id             Int                  @id @default(autoincrement())
-  customerId     Int                  @map("customer_id")
-  penjualanId    Int                  @unique @map("penjualan_id")
-  kodeBilling    String               @map("kode_billing") @db.VarChar(30)
-  fileBilling    String               @map("file_billing") @db.VarChar(1000)
-  fileBuktiBayar String?              @map("file_bukti_bayar") @db.VarChar(1000)
-  status         StatusKodeBillingPph @default(MENUNGGU_BAYAR)
-  uploadedBy     Int?                 @map("uploaded_by")
-  paidAt         DateTime?            @map("paid_at")
-  createdAt      DateTime             @default(now()) @map("created_at")
-  updatedAt      DateTime             @updatedAt @map("updated_at")
-  customer       Customer             @relation(fields: [customerId], references: [id])
-  penjualan      Penjualan            @relation(fields: [penjualanId], references: [id])
+  id               Int                  @id @default(autoincrement())
+  customerId       Int                  @map("customer_id")
+  penjualanId      Int                  @map("penjualan_id")
+  sertifikatUrutan Int                  @default(1) @map("sertifikat_urutan")
+  kodeBilling      String               @map("kode_billing") @db.VarChar(30)
+  fileBilling      String               @map("file_billing") @db.VarChar(1000)
+  fileBuktiBayar   String?              @map("file_bukti_bayar") @db.VarChar(1000)
+  status           StatusKodeBillingPph @default(MENUNGGU_BAYAR)
+  uploadedBy       Int?                 @map("uploaded_by")
+  paidAt           DateTime?            @map("paid_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  customer         Customer             @relation(fields: [customerId], references: [id])
+  penjualan        Penjualan            @relation(fields: [penjualanId], references: [id])
 
+  @@unique([penjualanId, sertifikatUrutan])
   @@index([customerId], map: "kode_billing_pph_customer_id_fkey")
   @@index([kodeBilling], map: "kode_billing_pph_kode_billing_idx")
   @@map("kode_billing_pph")
 }
 
 model SuketPph {
-  id          Int       @id @default(autoincrement())
-  customerId  Int       @map("customer_id")
-  penjualanId Int       @unique @map("penjualan_id")
-  fileSuket   String    @map("file_suket") @db.VarChar(500)
-  uploadedBy  Int?      @map("uploaded_by")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  penjualan   Penjualan @relation(fields: [penjualanId], references: [id])
+  id               Int       @id @default(autoincrement())
+  customerId       Int       @map("customer_id")
+  penjualanId      Int       @map("penjualan_id")
+  sertifikatUrutan Int       @default(1) @map("sertifikat_urutan")
+  fileSuket        String    @map("file_suket") @db.VarChar(500)
+  uploadedBy       Int?      @map("uploaded_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  customer         Customer  @relation(fields: [customerId], references: [id])
+  penjualan        Penjualan @relation(fields: [penjualanId], references: [id])
 
+  @@unique([penjualanId, sertifikatUrutan])
   @@index([customerId], map: "suket_pph_customer_id_fkey")
   @@map("suket_pph")
 }

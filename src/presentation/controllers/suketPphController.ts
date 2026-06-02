@@ -5,6 +5,7 @@ import type { TypedRequest } from "../../types/request.js";
 import type {
   UploadSuketPphUseCase,
   GetSuketPphByPenjualanUseCase,
+  GetAllSuketPphByPenjualanUseCase,
 } from "../../application/usecases/suketPph/SuketPphUseCases.js";
 import type { uploadSuketPphSchema } from "../../validations/suketPphSchema.js";
 import { AppError } from "../../domain/errors/AppError.js";
@@ -14,6 +15,7 @@ export class SuketPphController {
   constructor(
     private readonly uploadUseCase: UploadSuketPphUseCase,
     private readonly getByPenjualanUseCase: GetSuketPphByPenjualanUseCase,
+    private readonly getAllByPenjualanUseCase: GetAllSuketPphByPenjualanUseCase,
   ) {}
 
   upload = async (
@@ -31,6 +33,7 @@ export class SuketPphController {
       omitUndefined({
         customerId: req.body.customerId,
         penjualanId: req.body.penjualanId,
+        sertifikatUrutan: req.body.sertifikatUrutan,
         fileBuffer: file.buffer,
         pdfPassword: req.body.pdfPassword,
         uploadedBy: userId,
@@ -47,6 +50,17 @@ export class SuketPphController {
       res,
       StatusCodes.OK,
       result ? "Data suket PPh berhasil diambil" : "Belum ada suket PPh",
+      result,
+    );
+  };
+
+  getAllByPenjualan = async (req: Request, res: Response): Promise<void> => {
+    const penjualanId = parseInt(req.params.penjualanId as string, 10);
+    const result = await this.getAllByPenjualanUseCase.execute(penjualanId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar suket PPh berhasil diambil",
       result,
     );
   };

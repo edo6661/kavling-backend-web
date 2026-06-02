@@ -17,6 +17,7 @@ export interface CreateKavlingDTO {
   filePbg?: string | undefined;
   fileSertifikatTanah?: string | undefined;
   fileNopPbb?: string | undefined;
+  jumlahSertifikatTanah?: number | undefined;
 }
 
 export interface UpdateKavlingDTO {
@@ -33,6 +34,7 @@ export interface UpdateKavlingDTO {
   filePbg?: string | undefined;
   fileSertifikatTanah?: string | undefined;
   fileNopPbb?: string | undefined;
+  jumlahSertifikatTanah?: number | undefined;
 }
 
 export type KavlingResponseDTO = KavlingEntity;

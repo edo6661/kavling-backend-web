@@ -8,6 +8,7 @@ import type { OffsetPaginatedData } from "../../types/response.js";
 export const penjualanKavlingWithSpkInclude = {
   perumahan: true,
   rekeningTujuan: true,
+  sertifikatTanahTambahan: { orderBy: { urutan: "asc" as const } },
   spkItem: {
     include: {
       spk: {
@@ -63,6 +64,13 @@ export interface PenjualanPaginatedItem {
   nomorUnit: string;
   tipe: string;
   kavlingId: number;
+  jumlahSertifikatTanah: number;
+  sertifikatTanahTambahan?: {
+    urutan: number;
+    filePbg: string | null;
+    fileSertifikatTanah: string | null;
+    fileNopPbb: string | null;
+  }[];
   filePbg: string | null;
   fileSertifikatTanah: string | null;
   fileNopPbb: string | null;

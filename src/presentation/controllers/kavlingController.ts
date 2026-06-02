@@ -15,10 +15,12 @@ import type {
   createKavlingSchema,
   updateKavlingSchema,
   uploadKavlingDocumentSchema,
+  uploadKavlingSertifikatTambahanSchema,
 } from "../../validations/kavlingSchema.js";
 import { getKavlingPaginatedSchema } from "../../validations/kavlingSchema.js";
 import type { KavlingFilterDTO } from "../../domain/dtos/KavlingDTO.js";
 import type { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
+import type { UploadKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingSertifikatTambahanDocumentUseCase.js";
 
 export class KavlingController {
   constructor(
@@ -28,6 +30,7 @@ export class KavlingController {
     private readonly getPaginatedUseCase: GetKavlingsPaginatedUseCase,
     private readonly deleteUseCase: DeleteKavlingUseCase,
     private readonly uploadDocumentUseCase: UploadKavlingDocumentUseCase,
+    private readonly uploadSertifikatTambahanUseCase: UploadKavlingSertifikatTambahanDocumentUseCase,
   ) {}
 
   create = async (
@@ -113,6 +116,33 @@ export class KavlingController {
       res,
       StatusCodes.OK,
       `Dokumen ${docType} berhasil diunggah`,
+      result,
+    );
+  };
+
+  uploadSertifikatTambahanDocument = async (
+    req: TypedRequest<any, any, typeof uploadKavlingSertifikatTambahanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const urutan = parseInt(req.params.urutan, 10);
+    const docType = req.params.docType;
+
+    if (!req.file?.buffer) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
+      return;
+    }
+
+    const result = await this.uploadSertifikatTambahanUseCase.execute(
+      id,
+      urutan,
+      req.file.buffer,
+      docType,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Dokumen sertifikat tanah ke-${urutan} (${docType}) berhasil diunggah`,
       result,
     );
   };

@@ -16,12 +16,19 @@ export class UploadSuketPphUseCase {
   async execute(params: {
     customerId: number;
     penjualanId: number;
+    sertifikatUrutan?: number | undefined;
     fileBuffer: Buffer;
     pdfPassword?: string | undefined;
     uploadedBy?: number | undefined;
   }): Promise<SuketPphResponseDTO> {
-    const { customerId, penjualanId, fileBuffer, pdfPassword, uploadedBy } =
-      params;
+    const {
+      customerId,
+      penjualanId,
+      sertifikatUrutan = 1,
+      fileBuffer,
+      pdfPassword,
+      uploadedBy,
+    } = params;
 
     if (!fileBuffer?.length) {
       throw new AppError(StatusCodes.BAD_REQUEST, "File tidak boleh kosong");
@@ -34,11 +41,21 @@ export class UploadSuketPphUseCase {
 
     const penjualan = await this.db.penjualan.findFirst({
       where: { id: penjualanId, customerId },
+      include: { kavling: { select: { jumlahSertifikatTanah: true } } },
     });
     if (!penjualan) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
         "Penjualan tidak ditemukan untuk customer ini.",
+      );
+    }
+    if (
+      sertifikatUrutan < 1 ||
+      sertifikatUrutan > (penjualan.kavling.jumlahSertifikatTanah ?? 1)
+    ) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `Urutan sertifikat ${sertifikatUrutan} tidak valid untuk kavling ini.`,
       );
     }
 
@@ -48,7 +65,10 @@ export class UploadSuketPphUseCase {
       pdfPassword,
     );
 
-    const existing = await this.repo.findByPenjualanId(penjualanId);
+    const existing = await this.repo.findByPenjualanId(
+      penjualanId,
+      sertifikatUrutan,
+    );
     if (existing) {
       await this.cloudinaryService.deleteImageByUrl(existing.fileSuket);
       return await this.repo.replaceFile(existing.id, fileUrl, uploadedBy);
@@ -57,6 +77,7 @@ export class UploadSuketPphUseCase {
     return await this.repo.create({
       customerId,
       penjualanId,
+      sertifikatUrutan,
       fileSuket: fileUrl,
       uploadedBy: uploadedBy ?? null,
     });
@@ -67,6 +88,14 @@ export class GetSuketPphByPenjualanUseCase {
   constructor(private readonly repo: SuketPphRepository) {}
 
   async execute(penjualanId: number): Promise<SuketPphResponseDTO | null> {
-    return await this.repo.findByPenjualanId(penjualanId);
+    return await this.repo.findByPenjualanId(penjualanId, 1);
+  }
+}
+
+export class GetAllSuketPphByPenjualanUseCase {
+  constructor(private readonly repo: SuketPphRepository) {}
+
+  async execute(penjualanId: number): Promise<SuketPphResponseDTO[]> {
+    return await this.repo.findAllByPenjualanId(penjualanId);
   }
 }

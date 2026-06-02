@@ -25,6 +25,13 @@ export const createSuketPphRoutes = (controller: SuketPphController): Router => 
   );
 
   router.get(
+    "/penjualan/:penjualanId/all",
+    requirePermission("PROGRESS_PENJUALAN", "read"),
+    validate(suketPphPenjualanParamsSchema),
+    controller.getAllByPenjualan,
+  );
+
+  router.get(
     "/penjualan/:penjualanId",
     requirePermission("PROGRESS_PENJUALAN", "read"),
     validate(suketPphPenjualanParamsSchema),

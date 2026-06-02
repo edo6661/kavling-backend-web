@@ -48,10 +48,7 @@ type PenjualanListRow = Prisma.PenjualanGetPayload<{
     customer: true;
     progressPenjualan: true;
     kavling: {
-      include: {
-        perumahan: true;
-        rekeningTujuan: true;
-      };
+      include: typeof penjualanKavlingWithSpkInclude;
     };
     agent: true;
     tagihan: true;
@@ -589,6 +586,20 @@ export class PenjualanRepository implements IPenjualanRepository {
         luasTanah: Number(item.kavling.luasTanah),
         nomorUnit: item.kavling.nomorUnit,
         kavlingId: item.kavling.id,
+        jumlahSertifikatTanah: item.kavling.jumlahSertifikatTanah ?? 1,
+        sertifikatTanahTambahan: item.kavling.sertifikatTanahTambahan?.map(
+          (row: {
+            urutan: number;
+            filePbg: string | null;
+            fileSertifikatTanah: string | null;
+            fileNopPbb: string | null;
+          }) => ({
+            urutan: row.urutan,
+            filePbg: row.filePbg,
+            fileSertifikatTanah: row.fileSertifikatTanah,
+            fileNopPbb: row.fileNopPbb,
+          }),
+        ),
         filePbg: item.kavling.filePbg,
         fileSertifikatTanah: item.kavling.fileSertifikatTanah,
         fileNopPbb: item.kavling.fileNopPbb,

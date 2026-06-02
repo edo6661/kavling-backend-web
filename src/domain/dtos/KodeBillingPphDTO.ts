@@ -13,6 +13,7 @@ export interface KodeBillingPphResponseDTO {
   customerId: number;
   namaCustomer: string;
   penjualanId: number;
+  sertifikatUrutan: number;
   perumahan: string | null;
   blok: string | null;
   nomorUnit: string | null;

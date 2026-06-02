@@ -1,10 +1,14 @@
 import type { Prisma } from "@prisma/client";
-import type { KavlingEntity } from "../../domain/entities/Kavling.js";
+import type {
+  KavlingEntity,
+  KavlingSertifikatTanahTambahanEntity,
+} from "../../domain/entities/Kavling.js";
 
 type KavlingWithRelations = Prisma.KavlingGetPayload<{
   include: {
     perumahan: true;
     rekeningTujuan: true;
+    sertifikatTanahTambahan: true;
   };
 }> & {
   penjualan?: {
@@ -17,6 +21,20 @@ type KavlingWithRelations = Prisma.KavlingGetPayload<{
 
 export class KavlingMapper {
   static toDomain(prismaKavling: KavlingWithRelations): KavlingEntity {
+    const sertifikatTanahTambahan: KavlingSertifikatTanahTambahanEntity[] =
+      prismaKavling.sertifikatTanahTambahan
+        ? [...prismaKavling.sertifikatTanahTambahan]
+            .sort((a, b) => a.urutan - b.urutan)
+            .map((row) => ({
+              id: row.id,
+              kavlingId: row.kavlingId,
+              urutan: row.urutan,
+              filePbg: row.filePbg,
+              fileSertifikatTanah: row.fileSertifikatTanah,
+              fileNopPbb: row.fileNopPbb,
+            }))
+        : [];
+
     return {
       id: prismaKavling.id,
       perumahanId: prismaKavling.perumahanId,
@@ -45,6 +63,8 @@ export class KavlingMapper {
       filePbg: prismaKavling.filePbg,
       fileSertifikatTanah: prismaKavling.fileSertifikatTanah,
       fileNopPbb: prismaKavling.fileNopPbb,
+      jumlahSertifikatTanah: prismaKavling.jumlahSertifikatTanah ?? 1,
+      sertifikatTanahTambahan,
 
       penjualan: prismaKavling.penjualan
         ? prismaKavling.penjualan.map((p) => ({

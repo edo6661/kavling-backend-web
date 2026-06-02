@@ -28,12 +28,19 @@ export class UploadKodeBillingPphUseCase {
   async execute(params: {
     customerId: number;
     penjualanId: number;
+    sertifikatUrutan?: number | undefined;
     fileBuffer: Buffer;
     pdfPassword?: string | undefined;
     uploadedBy?: number | undefined;
   }): Promise<KodeBillingPphResponseDTO> {
-    const { customerId, penjualanId, fileBuffer, pdfPassword, uploadedBy } =
-      params;
+    const {
+      customerId,
+      penjualanId,
+      sertifikatUrutan = 1,
+      fileBuffer,
+      pdfPassword,
+      uploadedBy,
+    } = params;
 
     if (!penjualanId) {
       throw new AppError(
@@ -59,11 +66,21 @@ export class UploadKodeBillingPphUseCase {
 
     const penjualan = await this.db.penjualan.findFirst({
       where: { id: penjualanId, customerId },
+      include: { kavling: { select: { jumlahSertifikatTanah: true } } },
     });
     if (!penjualan) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
         "Penjualan tidak ditemukan untuk customer ini.",
+      );
+    }
+    if (
+      sertifikatUrutan < 1 ||
+      sertifikatUrutan > (penjualan.kavling.jumlahSertifikatTanah ?? 1)
+    ) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `Urutan sertifikat ${sertifikatUrutan} tidak valid untuk kavling ini.`,
       );
     }
 
@@ -119,7 +136,10 @@ export class UploadKodeBillingPphUseCase {
       );
     }
 
-    const existingRecord = await this.repo.findByPenjualanId(penjualanId);
+    const existingRecord = await this.repo.findByPenjualanId(
+      penjualanId,
+      sertifikatUrutan,
+    );
 
     let record: KodeBillingPphResponseDTO;
     if (existingRecord) {
@@ -136,6 +156,7 @@ export class UploadKodeBillingPphUseCase {
       record = await this.repo.create({
         customerId,
         penjualanId,
+        sertifikatUrutan,
         kodeBilling,
         fileBilling: fileUrl,
         uploadedBy: uploadedBy ?? null,
@@ -189,6 +210,14 @@ export class GetKodeBillingPphByPenjualanUseCase {
   constructor(private readonly repo: KodeBillingPphRepository) {}
 
   async execute(penjualanId: number): Promise<KodeBillingPphResponseDTO | null> {
-    return await this.repo.findByPenjualanId(penjualanId);
+    return await this.repo.findByPenjualanId(penjualanId, 1);
+  }
+}
+
+export class GetAllKodeBillingPphByPenjualanUseCase {
+  constructor(private readonly repo: KodeBillingPphRepository) {}
+
+  async execute(penjualanId: number): Promise<KodeBillingPphResponseDTO[]> {
+    return await this.repo.findAllByPenjualanId(penjualanId);
   }
 }

@@ -7,6 +7,7 @@ import type {
   UploadBuktiBayarKodeBillingPphUseCase,
   GetKodeBillingPphPaginatedUseCase,
   GetKodeBillingPphByPenjualanUseCase,
+  GetAllKodeBillingPphByPenjualanUseCase,
 } from "../../application/usecases/kodeBillingPph/KodeBillingPphUseCases.js";
 import type { uploadKodeBillingPphSchema } from "../../validations/kodeBillingPphSchema.js";
 import { getKodeBillingPphPaginatedSchema } from "../../validations/kodeBillingPphSchema.js";
@@ -28,6 +29,7 @@ export class KodeBillingPphController {
     private readonly uploadBuktiUseCase: UploadBuktiBayarKodeBillingPphUseCase,
     private readonly getPaginatedUseCase: GetKodeBillingPphPaginatedUseCase,
     private readonly getByPenjualanUseCase: GetKodeBillingPphByPenjualanUseCase,
+    private readonly getAllByPenjualanUseCase: GetAllKodeBillingPphByPenjualanUseCase,
   ) {}
 
   upload = async (
@@ -45,6 +47,7 @@ export class KodeBillingPphController {
       omitUndefined({
         customerId: req.body.customerId,
         penjualanId: req.body.penjualanId,
+        sertifikatUrutan: req.body.sertifikatUrutan,
         fileBuffer: file.buffer,
         pdfPassword: req.body.pdfPassword,
         uploadedBy: userId,
@@ -82,6 +85,17 @@ export class KodeBillingPphController {
       res,
       StatusCodes.OK,
       result ? "Data kode billing PPh berhasil diambil" : "Belum ada kode billing PPh",
+      result,
+    );
+  };
+
+  getAllByPenjualan = async (req: Request, res: Response): Promise<void> => {
+    const penjualanId = parseInt(req.params.penjualanId as string, 10);
+    const result = await this.getAllByPenjualanUseCase.execute(penjualanId);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Daftar kode billing PPh berhasil diambil",
       result,
     );
   };

@@ -33,6 +33,7 @@ function toDomain(
     customerId: row.customerId,
     namaCustomer: row.customer.nama,
     penjualanId: row.penjualanId,
+    sertifikatUrutan: row.sertifikatUrutan ?? 1,
     perumahan: row.penjualan?.kavling?.perumahan?.nama ?? null,
     blok: row.penjualan?.kavling?.blok ?? null,
     nomorUnit: row.penjualan?.kavling?.nomorUnit ?? null,
@@ -50,21 +51,28 @@ function toDomain(
 async function fetchSuketMapByPenjualanIds(
   db: PrismaClient,
   penjualanIds: number[],
-): Promise<Map<number, string>> {
+): Promise<Map<string, string>> {
   if (penjualanIds.length === 0) return new Map();
   const rows = await db.suketPph.findMany({
     where: { penjualanId: { in: penjualanIds } },
-    select: { penjualanId: true, fileSuket: true },
+    select: { penjualanId: true, sertifikatUrutan: true, fileSuket: true },
   });
-  return new Map(rows.map((r) => [r.penjualanId, r.fileSuket]));
+  return new Map(
+    rows.map((r) => [`${r.penjualanId}:${r.sertifikatUrutan ?? 1}`, r.fileSuket]),
+  );
 }
 
 export class KodeBillingPphRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  private suketKey(penjualanId: number, sertifikatUrutan: number) {
+    return `${penjualanId}:${sertifikatUrutan}`;
+  }
+
   private async enrichOne(row: KodeBillingPphRow): Promise<KodeBillingPphResponseDTO> {
     const suketMap = await fetchSuketMapByPenjualanIds(this.db, [row.penjualanId]);
-    return toDomain(row, suketMap.get(row.penjualanId) ?? null);
+    const urutan = row.sertifikatUrutan ?? 1;
+    return toDomain(row, suketMap.get(this.suketKey(row.penjualanId, urutan)) ?? null);
   }
 
   private async enrichMany(rows: KodeBillingPphRow[]): Promise<KodeBillingPphResponseDTO[]> {
@@ -72,12 +80,19 @@ export class KodeBillingPphRepository {
       this.db,
       rows.map((r) => r.penjualanId),
     );
-    return rows.map((row) => toDomain(row, suketMap.get(row.penjualanId) ?? null));
+    return rows.map((row) => {
+      const urutan = row.sertifikatUrutan ?? 1;
+      return toDomain(
+        row,
+        suketMap.get(this.suketKey(row.penjualanId, urutan)) ?? null,
+      );
+    });
   }
 
   async create(data: {
     customerId: number;
     penjualanId: number;
+    sertifikatUrutan?: number;
     kodeBilling: string;
     fileBilling: string;
     uploadedBy?: number | null;
@@ -86,6 +101,7 @@ export class KodeBillingPphRepository {
       data: {
         customerId: data.customerId,
         penjualanId: data.penjualanId,
+        sertifikatUrutan: data.sertifikatUrutan ?? 1,
         kodeBilling: data.kodeBilling,
         fileBilling: data.fileBilling,
         uploadedBy: data.uploadedBy ?? null,
@@ -98,13 +114,26 @@ export class KodeBillingPphRepository {
 
   async findByPenjualanId(
     penjualanId: number,
+    sertifikatUrutan = 1,
   ): Promise<KodeBillingPphResponseDTO | null> {
-    const result = await this.db.kodeBillingPph.findFirst({
-      where: { penjualanId },
-      orderBy: { updatedAt: "desc" },
+    const result = await this.db.kodeBillingPph.findUnique({
+      where: {
+        penjualanId_sertifikatUrutan: { penjualanId, sertifikatUrutan },
+      },
       include: includeRelations,
     });
     return result ? this.enrichOne(result) : null;
+  }
+
+  async findAllByPenjualanId(
+    penjualanId: number,
+  ): Promise<KodeBillingPphResponseDTO[]> {
+    const results = await this.db.kodeBillingPph.findMany({
+      where: { penjualanId },
+      orderBy: { sertifikatUrutan: "asc" },
+      include: includeRelations,
+    });
+    return this.enrichMany(results);
   }
 
   async replaceBilling(

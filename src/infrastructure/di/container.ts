@@ -190,6 +190,7 @@ import {
 } from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
 import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
 import { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
+import { UploadKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingSertifikatTambahanDocumentUseCase.js";
 import { TelegramBotService } from "../telegram/TelegramBotService.js";
 import { RolePermissionRepository } from "../../domain/repositories/rolePermissionRepo.js";
 import {
@@ -207,12 +208,14 @@ import {
   UploadBuktiBayarKodeBillingPphUseCase,
   GetKodeBillingPphPaginatedUseCase,
   GetKodeBillingPphByPenjualanUseCase,
+  GetAllKodeBillingPphByPenjualanUseCase,
 } from "../../application/usecases/kodeBillingPph/KodeBillingPphUseCases.js";
 import { KodeBillingPphController } from "../../presentation/controllers/kodeBillingPphController.js";
 import { SuketPphRepository } from "../../domain/repositories/suketPphRepo.js";
 import {
   UploadSuketPphUseCase,
   GetSuketPphByPenjualanUseCase,
+  GetAllSuketPphByPenjualanUseCase,
 } from "../../application/usecases/suketPph/SuketPphUseCases.js";
 import { SuketPphController } from "../../presentation/controllers/suketPphController.js";
 import { SocketService } from "../websocket/SocketService.js";
@@ -351,6 +354,11 @@ export const createContainer = (dbClient: PrismaClient) => {
     kavlingRepo,
     cloudinaryService,
   );
+  const uploadKavlingSertifikatTambahanDocumentUseCase =
+    new UploadKavlingSertifikatTambahanDocumentUseCase(
+      kavlingRepo,
+      cloudinaryService,
+    );
 
   const kavlingController = new KavlingController(
     createKavlingUseCase,
@@ -359,6 +367,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     getKavlingsPaginatedUseCase,
     deleteKavlingUseCase,
     uploadKavlingDocumentUseCase,
+    uploadKavlingSertifikatTambahanDocumentUseCase,
   );
 
   const detailKavlingPajakRepo = new DetailKavlingPajakRepository(dbClient);
@@ -555,11 +564,14 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getKodeBillingPphByPenjualanUseCase = new GetKodeBillingPphByPenjualanUseCase(
     kodeBillingPphRepo,
   );
+  const getAllKodeBillingPphByPenjualanUseCase =
+    new GetAllKodeBillingPphByPenjualanUseCase(kodeBillingPphRepo);
   const kodeBillingPphController = new KodeBillingPphController(
     uploadKodeBillingPphUseCase,
     uploadBuktiBayarKodeBillingPphUseCase,
     getKodeBillingPphPaginatedUseCase,
     getKodeBillingPphByPenjualanUseCase,
+    getAllKodeBillingPphByPenjualanUseCase,
   );
 
   const suketPphRepo = new SuketPphRepository(dbClient);
@@ -571,9 +583,13 @@ export const createContainer = (dbClient: PrismaClient) => {
   const getSuketPphByPenjualanUseCase = new GetSuketPphByPenjualanUseCase(
     suketPphRepo,
   );
+  const getAllSuketPphByPenjualanUseCase = new GetAllSuketPphByPenjualanUseCase(
+    suketPphRepo,
+  );
   const suketPphController = new SuketPphController(
     uploadSuketPphUseCase,
     getSuketPphByPenjualanUseCase,
+    getAllSuketPphByPenjualanUseCase,
   );
 
   const feeAgentRepo = new FeeAgentRepository(dbClient);

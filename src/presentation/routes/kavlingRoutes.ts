@@ -9,6 +9,7 @@ import {
   updateKavlingSchema,
   getKavlingPaginatedSchema,
   uploadKavlingDocumentSchema,
+  uploadKavlingSertifikatTambahanSchema,
 } from "../../validations/kavlingSchema.js";
 import type { KavlingController } from "../controllers/kavlingController.js";
 import { upload } from "../../middlewares/upload.js";
@@ -59,6 +60,14 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
     upload.single("file"),
     validate(uploadKavlingDocumentSchema),
     controller.uploadDocument,
+  );
+
+  router.patch(
+    "/:id/upload-tambahan/:urutan/:docType",
+    requirePermission("KAVLING", "update"),
+    upload.single("file"),
+    validate(uploadKavlingSertifikatTambahanSchema),
+    controller.uploadSertifikatTambahanDocument,
   );
 
   return router;

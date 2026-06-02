@@ -11,6 +11,13 @@ import type { OffsetPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { KavlingMapper } from "../../infrastructure/mapper/KavlingMapper.js";
+
+const kavlingInclude = {
+  perumahan: true,
+  rekeningTujuan: true,
+  sertifikatTanahTambahan: { orderBy: { urutan: "asc" as const } },
+} satisfies Prisma.KavlingInclude;
+
 export class KavlingRepository implements IKavlingRepository {
   constructor(private readonly db: PrismaClient) {}
   async create(data: CreateKavlingDTO): Promise<KavlingEntity> {
@@ -49,9 +56,12 @@ export class KavlingRepository implements IKavlingRepository {
       if (data.status !== undefined) {
         createData.status = data.status;
       }
+      if (data.jumlahSertifikatTanah !== undefined) {
+        createData.jumlahSertifikatTanah = data.jumlahSertifikatTanah;
+      }
       const result = await this.db.kavling.create({
         data: createData,
-        include: { perumahan: true, rekeningTujuan: true },
+        include: kavlingInclude,
       });
       return KavlingMapper.toDomain(result);
     } catch (error) {
@@ -70,7 +80,7 @@ export class KavlingRepository implements IKavlingRepository {
   async findById(id: number): Promise<KavlingEntity | null> {
     const result = await this.db.kavling.findUnique({
       where: { id },
-      include: { perumahan: true, rekeningTujuan: true },
+      include: kavlingInclude,
     });
     if (!result) return null;
     return KavlingMapper.toDomain(result);
@@ -102,12 +112,15 @@ export class KavlingRepository implements IKavlingRepository {
       updateData.fileSertifikatTanah = data.fileSertifikatTanah ?? null;
     if (data.fileNopPbb !== undefined)
       updateData.fileNopPbb = data.fileNopPbb ?? null;
+    if (data.jumlahSertifikatTanah !== undefined) {
+      updateData.jumlahSertifikatTanah = data.jumlahSertifikatTanah;
+    }
 
     try {
       const result = await this.db.kavling.update({
         where: { id },
         data: updateData,
-        include: { perumahan: true, rekeningTujuan: true },
+        include: kavlingInclude,
       });
       return KavlingMapper.toDomain(result);
     } catch (error) {
@@ -160,8 +173,7 @@ export class KavlingRepository implements IKavlingRepository {
         where,
         orderBy: orderByClause,
         include: {
-          perumahan: true,
-          rekeningTujuan: true,
+          ...kavlingInclude,
           penjualan: {
             where: { status: { not: "BATAL" } },
             include: { customer: { select: { nama: true, noHp: true } } },
@@ -213,5 +225,38 @@ export class KavlingRepository implements IKavlingRepository {
       }
       throw error;
     }
+  }
+
+  async upsertSertifikatTambahanDocument(
+    kavlingId: number,
+    urutan: number,
+    docType: "filePbg" | "fileSertifikatTanah" | "fileNopPbb",
+    fileUrl: string,
+  ): Promise<KavlingEntity> {
+    const existing = await this.findById(kavlingId);
+    if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
+    if (urutan < 2 || urutan > existing.jumlahSertifikatTanah) {
+      throw new ConflictError(
+        `Urutan sertifikat ${urutan} tidak valid untuk kavling ini (jumlah sertifikat: ${existing.jumlahSertifikatTanah}).`,
+      );
+    }
+
+    await this.db.kavlingSertifikatTanahTambahan.upsert({
+      where: {
+        kavlingId_urutan: { kavlingId, urutan },
+      },
+      create: {
+        kavlingId,
+        urutan,
+        [docType]: fileUrl,
+      },
+      update: {
+        [docType]: fileUrl,
+      },
+    });
+
+    const updated = await this.findById(kavlingId);
+    if (!updated) throw new NotFoundError("Kavling tidak ditemukan");
+    return updated;
   }
 }

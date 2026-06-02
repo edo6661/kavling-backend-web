@@ -35,6 +35,9 @@ export const createKavlingSchema = {
     fileNopPbb: emptyAsUndefined(
       z.string().max(255, "Nama file maksimal 255 karakter").optional(),
     ),
+    jumlahSertifikatTanah: emptyAsUndefined(
+      z.coerce.number().int().min(1).max(5).optional(),
+    ),
   }),
 };
 
@@ -72,6 +75,9 @@ export const updateKavlingSchema = {
     fileNopPbb: emptyAsUndefined(
       z.string().max(255, "Nama file maksimal 255 karakter").optional(),
     ),
+    jumlahSertifikatTanah: emptyAsUndefined(
+      z.coerce.number().int().min(1).max(5).optional(),
+    ),
   }),
 };
 
@@ -88,6 +94,14 @@ export const getKavlingPaginatedSchema = {
 export const uploadKavlingDocumentSchema = {
   params: z.object({
     id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+    docType: z.enum(["filePbg", "fileSertifikatTanah", "fileNopPbb"]),
+  }),
+};
+
+export const uploadKavlingSertifikatTambahanSchema = {
+  params: z.object({
+    id: z.string().regex(/^\d+$/, "ID harus berupa angka"),
+    urutan: z.string().regex(/^[2-9]$/, "Urutan sertifikat tambahan minimal 2"),
     docType: z.enum(["filePbg", "fileSertifikatTanah", "fileNopPbb"]),
   }),
 };
