@@ -526,6 +526,7 @@ model SpkPembayaran {
   mengurangiTermin SpkKasbonTargetTermin? @map("mengurangi_termin")
   status          SpkPembayaranStatus @default(MENUNGGU_PEMBAYARAN)
   buktiPembayaran String?             @map("bukti_pembayaran") @db.VarChar(500)
+  buktiPembayaranList Json?           @map("bukti_pembayaran_list")
   tanggalPembayaran DateTime?         @map("tanggal_pembayaran") @db.Date
   bsiCmsDilaporkan  Boolean           @default(false) @map("bsi_cms_dilaporkan")
   bsiCmsDilaporkanAt DateTime?        @map("bsi_cms_dilaporkan_at")

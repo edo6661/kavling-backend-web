@@ -84,14 +84,15 @@ export class SpkPembayaranController {
 
   bayar = async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(routeParam(req.params.id), 10);
-    const file = req.file as Express.Multer.File | undefined;
-    const tanggalRaw = req.body?.tanggalPembayaran;
+    const files = req.files as Express.Multer.File[] | undefined;
+    const body = req.body as { tanggalPembayaran?: string } | undefined;
+    const tanggalRaw = body?.tanggalPembayaran;
     const tanggalPembayaran = tanggalRaw ? new Date(tanggalRaw) : undefined;
 
     const result = await this.bayarUseCase.execute(
       id,
       req.user!.userId,
-      file?.buffer ?? Buffer.alloc(0),
+      files?.map((file) => file.buffer) ?? [],
       tanggalPembayaran,
     );
     sendResponse(res, StatusCodes.OK, "Pembayaran SPK berhasil diproses", result);

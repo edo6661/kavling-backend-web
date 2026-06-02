@@ -53,7 +53,7 @@ export const createSpkPembayaranRoutes = (
   router.patch(
     "/:id/bayar",
     requirePermission("TAGIHAN", "update"),
-    upload.single("buktiPembayaran"),
+    upload.array("buktiPembayaran", 10),
     validate(bayarSpkPembayaranSchema),
     controller.bayar,
   );

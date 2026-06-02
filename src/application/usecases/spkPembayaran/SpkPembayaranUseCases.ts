@@ -143,10 +143,10 @@ export class BayarSpkPembayaranUseCase {
   async execute(
     id: number,
     dibayarOlehId: number,
-    fileBuffer: Buffer,
+    fileBuffers: Buffer[],
     tanggalPembayaran?: Date,
   ): Promise<SpkPembayaranEntity> {
-    if (!fileBuffer?.length) {
+    if (!fileBuffers.length || fileBuffers.some((buffer) => !buffer?.length)) {
       throw new AppError(StatusCodes.BAD_REQUEST, "Bukti pembayaran wajib diunggah");
     }
 
@@ -160,15 +160,17 @@ export class BayarSpkPembayaranUseCase {
     const spk = await this.spkRepo.findById(existing.spkId);
     if (!spk) throw new NotFoundError("SPK tidak ditemukan");
 
-    const buktiPembayaran = await this.cloudinary.uploadFile(
-      fileBuffer,
-      "bumantara/spk-pembayaran",
+    const buktiPembayaranList = await Promise.all(
+      fileBuffers.map((fileBuffer) =>
+        this.cloudinary.uploadFile(fileBuffer, "bumantara/spk-pembayaran"),
+      ),
     );
 
     const payDto: BayarSpkPembayaranDTO = {
       id,
       dibayarOlehId,
-      buktiPembayaran,
+      buktiPembayaran: buktiPembayaranList[0]!,
+      buktiPembayaranList,
     };
     if (tanggalPembayaran) payDto.tanggalPembayaran = tanggalPembayaran;
 

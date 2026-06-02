@@ -1,9 +1,9 @@
 import {
   Prisma,
-  SpkPembayaranJenis,
   SpkPembayaranStatus,
 } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
+import type { SpkPembayaranJenis } from "@prisma/client";
 import type { ISpkPembayaranRepository } from "./ISpkPembayaranRepo.js";
 import type {
   BayarSpkPembayaranDTO,
@@ -102,7 +102,6 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     });
 
     const nilaiKontrak = Number(spk.nilaiKontrak);
-    const calcRows = toCalcRows(pembayaranRows);
 
     await this.recalcPendingTerminNominals(
       tx,
@@ -261,6 +260,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         data: {
           status: SpkPembayaranStatus.SUDAH_DIBAYAR,
           buktiPembayaran: data.buktiPembayaran,
+          buktiPembayaranList: data.buktiPembayaranList,
           tanggalPembayaran: data.tanggalPembayaran ?? new Date(),
           dibayarOlehId: data.dibayarOlehId,
         },

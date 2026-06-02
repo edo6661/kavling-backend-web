@@ -22,6 +22,7 @@ export interface BayarSpkPembayaranDTO {
   dibayarOlehId: number;
   tanggalPembayaran?: Date;
   buktiPembayaran: string;
+  buktiPembayaranList: string[];
 }
 
 export interface SpkPembayaranFilterDTO {

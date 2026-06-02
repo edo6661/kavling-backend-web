@@ -42,7 +42,21 @@ export type SpkPembayaranWithRelations = Prisma.SpkPembayaranGetPayload<{
 export class SpkPembayaranMapper {
   static readonly include = spkPembayaranInclude;
 
+  private static normalizeBuktiPembayaranList(
+    buktiPembayaranList: Prisma.JsonValue | null,
+    buktiPembayaran: string | null,
+  ): string[] {
+    if (Array.isArray(buktiPembayaranList)) {
+      return buktiPembayaranList.filter((item): item is string => typeof item === "string");
+    }
+    return buktiPembayaran ? [buktiPembayaran] : [];
+  }
+
   static toDomain(row: SpkPembayaranWithRelations): SpkPembayaranEntity {
+    const buktiPembayaranList = this.normalizeBuktiPembayaranList(
+      row.buktiPembayaranList,
+      row.buktiPembayaran,
+    );
     const entity: SpkPembayaranEntity = {
       id: row.id,
       spkId: row.spkId,
@@ -53,6 +67,7 @@ export class SpkPembayaranMapper {
       mengurangiTermin: row.mengurangiTermin,
       status: row.status,
       buktiPembayaran: row.buktiPembayaran,
+      buktiPembayaranList,
       tanggalPembayaran: row.tanggalPembayaran,
       bsiCmsDilaporkan: row.bsiCmsDilaporkan,
       bsiCmsDilaporkanAt: row.bsiCmsDilaporkanAt,

@@ -14,6 +14,7 @@ export interface SpkPembayaranEntity {
   mengurangiTermin: SpkKasbonTargetTermin | null;
   status: SpkPembayaranStatus;
   buktiPembayaran: string | null;
+  buktiPembayaranList: string[];
   tanggalPembayaran: Date | null;
   bsiCmsDilaporkan: boolean;
   bsiCmsDilaporkanAt: Date | null;
