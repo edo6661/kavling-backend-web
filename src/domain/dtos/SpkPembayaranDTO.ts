@@ -2,6 +2,19 @@ import type { SpkPembayaranStatus } from "@prisma/client";
 
 export type SpkTerminPembayaranJenis = "TERMIN_55" | "TERMIN_100" | "RETENSI";
 
+export interface SpkPembayaranUpahBarisInput {
+  tukangId?: number | null;
+  nik: string;
+  nama: string;
+  nominal: number;
+}
+
+export interface SpkPembayaranKasbonBarisInput {
+  keterangan: string;
+  tanggalPo: Date;
+  nominal: number;
+}
+
 export type CreateSpkPembayaranDTO =
   | {
       spkId: number;
@@ -11,9 +24,20 @@ export type CreateSpkPembayaranDTO =
   | {
       spkId: number;
       jenis: "KASBON";
-      keterangan: string;
-      nominal: number;
-      tanggalPo: Date;
+      diajukanOlehId: number;
+      /** Pengajuan multi-kasbon (satu pembayaran, beberapa bukti) */
+      kasbonBaris?: SpkPembayaranKasbonBarisInput[];
+      /** Kasbon tunggal — data production lama */
+      keterangan?: string;
+      nominal?: number;
+      tanggalPo?: Date;
+    }
+  | {
+      spkId: number;
+      jenis: "UPAH";
+      tanggalDari: Date;
+      tanggalSampai: Date;
+      baris: SpkPembayaranUpahBarisInput[];
       diajukanOlehId: number;
     };
 
@@ -46,9 +70,21 @@ export interface SetBsiCmsDilaporkanDTO {
   dilaporkan: boolean;
 }
 
-export interface UpdateSpkKasbonDTO {
+export type UpdateSpkKasbonDTO =
+  | {
+      id: number;
+      kasbonBaris: SpkPembayaranKasbonBarisInput[];
+    }
+  | {
+      id: number;
+      keterangan: string;
+      nominal: number;
+      tanggalPo: Date;
+    };
+
+export interface UpdateSpkUpahDTO {
   id: number;
-  keterangan: string;
-  nominal: number;
-  tanggalPo: Date;
+  tanggalDari: Date;
+  tanggalSampai: Date;
+  baris: SpkPembayaranUpahBarisInput[];
 }

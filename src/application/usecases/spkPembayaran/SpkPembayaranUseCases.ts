@@ -8,6 +8,7 @@ import type {
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
   UpdateSpkKasbonDTO,
+  UpdateSpkUpahDTO,
 } from "../../../domain/dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../../../domain/entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../../types/response.js";
@@ -17,9 +18,19 @@ import { StatusCodes } from "http-status-codes";
 import {
   canRequestKasbon,
   canRequestSpkPembayaran,
+  validatePengurangTerminNominal,
+  type SpkPengurangTerminRow,
 } from "../../../domain/spk/spkPembayaranCalc.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { Role } from "@prisma/client";
+
+const toPengurangRows = (list: SpkPembayaranEntity[]): SpkPengurangTerminRow[] =>
+  list.map((p) => ({
+    id: p.id,
+    jenis: p.jenis,
+    nominal: p.nominal,
+    mengurangiTermin: p.mengurangiTermin,
+  }));
 
 export class CreateSpkPembayaranRequestUseCase {
   constructor(
@@ -43,26 +54,85 @@ export class CreateSpkPembayaranRequestUseCase {
     }
 
     const existing = await this.pembayaranRepo.findBySpkId(data.spkId);
+    const nilaiKontrak = Number(spk.nilaiKontrak);
     const statusRows = existing.map((p) => ({
+      id: p.id,
       jenis: p.jenis,
       status: p.status,
       nominal: p.nominal,
       mengurangiTermin: p.mengurangiTermin,
     }));
+    const pengurangRows = toPengurangRows(existing);
 
     if (data.jenis === "KASBON") {
-      const kasbonCheck = canRequestKasbon(statusRows);
+      const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak);
       if (!kasbonCheck.allowed) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           kasbonCheck.reason ?? "Tidak dapat mengajukan kasbon.",
         );
       }
-      if (!data.keterangan.trim() || data.nominal <= 0) {
+      if (data.kasbonBaris?.length) {
+        if (!data.kasbonBaris.length) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            "Minimal satu baris kasbon wajib diisi.",
+          );
+        }
+      } else if (
+        !data.keterangan?.trim() ||
+        !data.nominal ||
+        data.nominal <= 0 ||
+        !data.tanggalPo
+      ) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Keterangan dan nominal kasbon wajib diisi.",
+          "Keterangan, nominal, dan tanggal PO kasbon wajib diisi.",
         );
+      }
+
+      const additionalNominal = data.kasbonBaris?.length
+        ? data.kasbonBaris.reduce((sum, b) => sum + b.nominal, 0)
+        : (data.nominal ?? 0);
+      const capCheck = validatePengurangTerminNominal(
+        nilaiKontrak,
+        pengurangRows,
+        kasbonCheck.targetTermin,
+        additionalNominal,
+      );
+      if (!capCheck.allowed) {
+        throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
+      }
+    } else if (data.jenis === "UPAH") {
+      const upahCheck = canRequestKasbon(statusRows, nilaiKontrak);
+      if (!upahCheck.allowed) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          upahCheck.reason ?? "Tidak dapat mengajukan upah.",
+        );
+      }
+      if (!data.baris.length) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Minimal satu baris tukang wajib diisi.",
+        );
+      }
+      if (data.tanggalDari > data.tanggalSampai) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Tanggal dari tidak boleh setelah tanggal sampai.",
+        );
+      }
+
+      const additionalNominal = data.baris.reduce((sum, b) => sum + b.nominal, 0);
+      const capCheck = validatePengurangTerminNominal(
+        nilaiKontrak,
+        pengurangRows,
+        upahCheck.targetTermin,
+        additionalNominal,
+      );
+      if (!capCheck.allowed) {
+        throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
       }
     } else {
       const check = canRequestSpkPembayaran(
@@ -85,16 +155,29 @@ export class CreateSpkPembayaranRequestUseCase {
           ? {
               spkId: data.spkId,
               jenis: "KASBON",
-              keterangan: data.keterangan,
-              nominal: data.nominal,
-              tanggalPo: data.tanggalPo,
               diajukanOlehId: userId,
+              ...(data.kasbonBaris?.length
+                ? { kasbonBaris: data.kasbonBaris }
+                : {
+                    keterangan: data.keterangan ?? "",
+                    nominal: data.nominal ?? 0,
+                    tanggalPo: data.tanggalPo ?? new Date(),
+                  }),
             }
-          : {
-              spkId: data.spkId,
-              jenis: data.jenis,
-              diajukanOlehId: userId,
-            },
+          : data.jenis === "UPAH"
+            ? {
+                spkId: data.spkId,
+                jenis: "UPAH",
+                tanggalDari: data.tanggalDari,
+                tanggalSampai: data.tanggalSampai,
+                baris: data.baris,
+                diajukanOlehId: userId,
+              }
+            : {
+                spkId: data.spkId,
+                jenis: data.jenis,
+                diajukanOlehId: userId,
+              },
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
@@ -104,10 +187,30 @@ export class CreateSpkPembayaranRequestUseCase {
           "Pengajuan termin ini sudah ada.",
         );
       }
-      if (msg === "KASBON_NOT_ALLOWED") {
+      if (msg === "KASBON_NOT_ALLOWED" || msg === "UPAH_NOT_ALLOWED") {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Kasbon tidak dapat diajukan pada tahap pembayaran ini.",
+          "Kasbon/upah tidak dapat diajukan pada tahap pembayaran ini.",
+        );
+      }
+      if (
+        msg === "UPAH_BARIS_EMPTY" ||
+        msg === "UPAH_BARIS_INVALID" ||
+        msg === "UPAH_NOMINAL_INVALID"
+      ) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Data tukang upah tidak valid.",
+        );
+      }
+      if (
+        msg === "KASBON_BARIS_EMPTY" ||
+        msg === "KASBON_BARIS_INVALID" ||
+        msg === "KASBON_NOMINAL_INVALID"
+      ) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Data kasbon tidak valid.",
         );
       }
       throw err;
@@ -181,7 +284,10 @@ export class BayarSpkPembayaranUseCase {
 }
 
 export class UpdateSpkKasbonUseCase {
-  constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
+  constructor(
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+    private readonly spkRepo: ISpkRepository,
+  ) {}
 
   async execute(data: UpdateSpkKasbonDTO, userRole: string): Promise<SpkPembayaranEntity> {
     if (userRole === Role.MANDOR) {
@@ -191,11 +297,43 @@ export class UpdateSpkKasbonUseCase {
       );
     }
 
-    if (!data.keterangan.trim() || data.nominal <= 0) {
+    const record = await this.pembayaranRepo.findById(data.id);
+    if (!record) throw new NotFoundError("Kasbon tidak ditemukan.");
+    if (!record.mengurangiTermin) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Data kasbon tidak valid.");
+    }
+
+    const spk = await this.spkRepo.findById(record.spkId);
+    if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+
+    let additionalNominal = 0;
+    if ("kasbonBaris" in data) {
+      if (!data.kasbonBaris.length) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Minimal satu baris kasbon wajib diisi.",
+        );
+      }
+      additionalNominal = data.kasbonBaris.reduce((sum, b) => sum + b.nominal, 0);
+    } else if (!data.keterangan.trim() || data.nominal <= 0) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
         "Keterangan dan nominal kasbon wajib diisi.",
       );
+    } else {
+      additionalNominal = data.nominal;
+    }
+
+    const all = await this.pembayaranRepo.findBySpkId(record.spkId);
+    const capCheck = validatePengurangTerminNominal(
+      Number(spk.nilaiKontrak),
+      toPengurangRows(all),
+      record.mengurangiTermin,
+      additionalNominal,
+      data.id,
+    );
+    if (!capCheck.allowed) {
+      throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
     }
 
     try {
@@ -218,6 +356,152 @@ export class UpdateSpkKasbonUseCase {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           "Kasbon yang sudah memiliki bukti pembayaran tidak dapat diubah.",
+        );
+      }
+      if (msg === "LEGACY_KASBON_EDIT") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Kasbon lama tidak dapat diubah ke format batch.",
+        );
+      }
+      if (msg === "BATCH_KASBON_EDIT") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Gunakan form edit batch untuk kasbon multi-item.",
+        );
+      }
+      if (
+        msg === "KASBON_BARIS_EMPTY" ||
+        msg === "KASBON_BARIS_INVALID" ||
+        msg === "KASBON_NOMINAL_INVALID"
+      ) {
+        throw new AppError(StatusCodes.BAD_REQUEST, "Data kasbon tidak valid.");
+      }
+      throw err;
+    }
+  }
+}
+
+export class UpdateSpkUpahUseCase {
+  constructor(
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+    private readonly spkRepo: ISpkRepository,
+  ) {}
+
+  async execute(data: UpdateSpkUpahDTO, userRole: string): Promise<SpkPembayaranEntity> {
+    if (userRole === Role.MANDOR) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor tidak dapat mengubah data upah.",
+      );
+    }
+
+    if (!data.baris.length) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Minimal satu baris tukang wajib diisi.",
+      );
+    }
+    if (data.tanggalDari > data.tanggalSampai) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Tanggal dari tidak boleh setelah tanggal sampai.",
+      );
+    }
+
+    const record = await this.pembayaranRepo.findById(data.id);
+    if (!record) throw new NotFoundError("Pengajuan upah tidak ditemukan.");
+    if (!record.mengurangiTermin) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Data upah tidak valid.");
+    }
+
+    const spk = await this.spkRepo.findById(record.spkId);
+    if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+
+    const additionalNominal = data.baris.reduce((sum, b) => sum + b.nominal, 0);
+    const all = await this.pembayaranRepo.findBySpkId(record.spkId);
+    const capCheck = validatePengurangTerminNominal(
+      Number(spk.nilaiKontrak),
+      toPengurangRows(all),
+      record.mengurangiTermin,
+      additionalNominal,
+      data.id,
+    );
+    if (!capCheck.allowed) {
+      throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
+    }
+
+    try {
+      return await this.pembayaranRepo.updateUpah(data);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {
+        throw new NotFoundError("Pengajuan upah tidak ditemukan.");
+      }
+      if (msg === "NOT_UPAH") {
+        throw new AppError(StatusCodes.BAD_REQUEST, "Hanya data upah yang dapat diubah.");
+      }
+      if (msg === "ALREADY_PAID") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Upah yang sudah dibayar tidak dapat diubah.",
+        );
+      }
+      if (msg === "HAS_BUKTI") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Upah yang sudah memiliki bukti pembayaran tidak dapat diubah.",
+        );
+      }
+      if (
+        msg === "UPAH_BARIS_EMPTY" ||
+        msg === "UPAH_BARIS_INVALID" ||
+        msg === "UPAH_NOMINAL_INVALID"
+      ) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Data tukang upah tidak valid.",
+        );
+      }
+      throw err;
+    }
+  }
+}
+
+export class DeleteSpkPenguranganUseCase {
+  constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
+
+  async execute(id: number, userRole: string): Promise<void> {
+    if (userRole === Role.MANDOR) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor tidak dapat menghapus pengajuan kasbon/upah.",
+      );
+    }
+
+    try {
+      await this.pembayaranRepo.deletePengurangan(id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {
+        throw new NotFoundError("Pengajuan tidak ditemukan.");
+      }
+      if (msg === "NOT_DELETABLE") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Hanya kasbon atau upah yang belum dibayar dapat dihapus.",
+        );
+      }
+      if (msg === "ALREADY_PAID") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Pengajuan yang sudah dibayar tidak dapat dihapus.",
+        );
+      }
+      if (msg === "HAS_BUKTI") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Pengajuan yang sudah memiliki bukti tidak dapat dihapus.",
         );
       }
       throw err;

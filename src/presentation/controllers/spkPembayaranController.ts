@@ -11,8 +11,13 @@ import type {
   RemoveBuktiSpkPembayaranUseCase,
   SetBsiCmsDilaporkanUseCase,
   UpdateSpkKasbonUseCase,
+  UpdateSpkUpahUseCase,
+  DeleteSpkPenguranganUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
-import type { updateSpkKasbonSchema } from "../../validations/spkPembayaranSchema.js";
+import type {
+  updateSpkKasbonSchema,
+  updateSpkUpahSchema,
+} from "../../validations/spkPembayaranSchema.js";
 import type { createSpkPembayaranSchema } from "../../validations/spkPembayaranSchema.js";
 import { getSpkPembayaranPaginatedSchema } from "../../validations/spkPembayaranSchema.js";
 import type {
@@ -31,6 +36,8 @@ export class SpkPembayaranController {
     private readonly removeBuktiUseCase: RemoveBuktiSpkPembayaranUseCase,
     private readonly setBsiCmsDilaporkanUseCase: SetBsiCmsDilaporkanUseCase,
     private readonly updateKasbonUseCase: UpdateSpkKasbonUseCase,
+    private readonly updateUpahUseCase: UpdateSpkUpahUseCase,
+    private readonly deletePenguranganUseCase: DeleteSpkPenguranganUseCase,
   ) {}
 
   createRequest = async (
@@ -49,16 +56,35 @@ export class SpkPembayaranController {
         ? {
             spkId,
             jenis: "KASBON",
-            keterangan: req.body.keterangan ?? "",
-            nominal: req.body.nominal ?? 0,
-            tanggalPo: req.body.tanggalPo ?? new Date(),
             diajukanOlehId: userId,
+            ...(req.body.kasbonBaris?.length
+              ? {
+                  kasbonBaris: req.body.kasbonBaris.map((b) => ({
+                    keterangan: b.keterangan,
+                    nominal: b.nominal,
+                    tanggalPo: b.tanggalPo,
+                  })),
+                }
+              : {
+                  keterangan: req.body.keterangan ?? "",
+                  nominal: req.body.nominal ?? 0,
+                  tanggalPo: req.body.tanggalPo ?? new Date(),
+                }),
           }
-        : {
-            spkId,
-            jenis: req.body.jenis,
-            diajukanOlehId: userId,
-          };
+        : req.body.jenis === "UPAH"
+          ? {
+              spkId,
+              jenis: "UPAH",
+              tanggalDari: req.body.tanggalDari ?? new Date(),
+              tanggalSampai: req.body.tanggalSampai ?? new Date(),
+              baris: req.body.baris ?? [],
+              diajukanOlehId: userId,
+            }
+          : {
+              spkId,
+              jenis: req.body.jenis,
+              diajukanOlehId: userId,
+            };
 
     const result = await this.createRequestUseCase.execute(
       payload,
@@ -139,14 +165,50 @@ export class SpkPembayaranController {
   ): Promise<void> => {
     const id = Number(req.params.id);
     const result = await this.updateKasbonUseCase.execute(
-      {
-        id,
-        keterangan: req.body.keterangan,
-        nominal: req.body.nominal,
-        tanggalPo: req.body.tanggalPo,
-      },
+      req.body.kasbonBaris?.length
+        ? {
+            id,
+            kasbonBaris: req.body.kasbonBaris.map((b) => ({
+              keterangan: b.keterangan,
+              nominal: b.nominal,
+              tanggalPo: b.tanggalPo,
+            })),
+          }
+        : {
+            id,
+            keterangan: req.body.keterangan ?? "",
+            nominal: req.body.nominal ?? 0,
+            tanggalPo: req.body.tanggalPo ?? new Date(),
+          },
       req.user!.role,
     );
     sendResponse(res, StatusCodes.OK, "Data kasbon berhasil diperbarui", result);
+  };
+
+  updateUpah = async (
+    req: TypedRequest<
+      typeof updateSpkUpahSchema.body,
+      never,
+      typeof updateSpkUpahSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = Number(req.params.id);
+    const result = await this.updateUpahUseCase.execute(
+      {
+        id,
+        tanggalDari: req.body.tanggalDari,
+        tanggalSampai: req.body.tanggalSampai,
+        baris: req.body.baris,
+      },
+      req.user!.role,
+    );
+    sendResponse(res, StatusCodes.OK, "Data upah berhasil diperbarui", result);
+  };
+
+  deletePengurangan = async (req: Request, res: Response): Promise<void> => {
+    const id = Number(req.params.id);
+    await this.deletePenguranganUseCase.execute(id, req.user!.role);
+    sendResponse(res, StatusCodes.OK, "Pengajuan kasbon/upah berhasil dihapus", null);
   };
 }

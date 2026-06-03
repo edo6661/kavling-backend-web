@@ -13,6 +13,9 @@ import type {
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
   UpdateSpkKasbonDTO,
+  UpdateSpkUpahDTO,
+  SpkPembayaranKasbonBarisInput,
+  SpkPembayaranUpahBarisInput,
 } from "../dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
@@ -50,6 +53,102 @@ function toCalcRows(
 
 export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  private async resolveUpahBaris(
+    tx: Prisma.TransactionClient,
+    baris: SpkPembayaranUpahBarisInput[],
+  ) {
+    const resolved: {
+      tukangId: number | null;
+      nik: string;
+      nama: string;
+      nominal: number;
+    }[] = [];
+
+    for (const barisItem of baris) {
+      const nik = barisItem.nik.trim();
+      const nama = barisItem.nama.trim();
+      if (!nik || !nama || barisItem.nominal <= 0) {
+        throw new Error("UPAH_BARIS_INVALID");
+      }
+
+      if (barisItem.tukangId) {
+        const existingTukang = await tx.tukang.findUnique({
+          where: { id: barisItem.tukangId },
+        });
+        if (existingTukang) {
+          if (existingTukang.nama !== nama) {
+            await tx.tukang.update({
+              where: { id: existingTukang.id },
+              data: { nama },
+            });
+          }
+          resolved.push({
+            tukangId: existingTukang.id,
+            nik: existingTukang.nik,
+            nama,
+            nominal: barisItem.nominal,
+          });
+          continue;
+        }
+      }
+
+      const tukang = await tx.tukang.upsert({
+        where: { nik },
+        create: { nik, nama },
+        update: { nama },
+      });
+
+      resolved.push({
+        tukangId: tukang.id,
+        nik: tukang.nik,
+        nama: tukang.nama,
+        nominal: barisItem.nominal,
+      });
+    }
+
+    return resolved;
+  }
+
+  private normalizeKasbonBaris(baris: SpkPembayaranKasbonBarisInput[]) {
+    const normalized: SpkPembayaranKasbonBarisInput[] = [];
+    for (const item of baris) {
+      const keterangan = item.keterangan.trim();
+      if (!keterangan || item.nominal <= 0) {
+        throw new Error("KASBON_BARIS_INVALID");
+      }
+      normalized.push({
+        keterangan,
+        tanggalPo: item.tanggalPo,
+        nominal: item.nominal,
+      });
+    }
+    return normalized;
+  }
+
+  private summarizeKasbonBaris(baris: SpkPembayaranKasbonBarisInput[]) {
+    const totalNominal = baris.reduce((sum, b) => sum + b.nominal, 0);
+    const keterangan =
+      baris.length === 1
+        ? baris[0]!.keterangan
+        : `Kasbon (${baris.length} item)`;
+    const tanggalPo = baris.reduce(
+      (earliest, b) => (b.tanggalPo < earliest ? b.tanggalPo : earliest),
+      baris[0]!.tanggalPo,
+    );
+    return { totalNominal, keterangan, tanggalPo };
+  }
+
+  private hasBuktiPembayaran(row: {
+    buktiPembayaran: string | null;
+    buktiPembayaranList: Prisma.JsonValue | null;
+  }): boolean {
+    if (row.buktiPembayaran) return true;
+    if (Array.isArray(row.buktiPembayaranList)) {
+      return row.buktiPembayaranList.some((item) => typeof item === "string");
+    }
+    return false;
+  }
 
   private async recalcPendingTerminNominals(
     tx: Prisma.TransactionClient,
@@ -186,14 +285,70 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         const target = getKasbonTargetTermin(calcRows);
         if (!target) throw new Error("KASBON_NOT_ALLOWED");
 
+        if (data.kasbonBaris?.length) {
+          const normalizedBaris = this.normalizeKasbonBaris(data.kasbonBaris);
+          const { totalNominal, keterangan, tanggalPo } =
+            this.summarizeKasbonBaris(normalizedBaris);
+          if (totalNominal <= 0) throw new Error("KASBON_NOMINAL_INVALID");
+
+          createData = {
+            spk: { connect: { id: data.spkId } },
+            jenis: "KASBON",
+            nominal: new Prisma.Decimal(totalNominal),
+            keterangan,
+            tanggalPo,
+            mengurangiTermin: target,
+            diajukanOleh: { connect: { id: data.diajukanOlehId } },
+            kasbonBaris: {
+              create: normalizedBaris.map((b) => ({
+                keterangan: b.keterangan,
+                tanggalPo: b.tanggalPo,
+                nominal: new Prisma.Decimal(b.nominal),
+              })),
+            },
+          };
+        } else {
+          const keterangan = data.keterangan?.trim() ?? "";
+          const nominal = data.nominal ?? 0;
+          if (!keterangan || nominal <= 0 || !data.tanggalPo) {
+            throw new Error("KASBON_BARIS_INVALID");
+          }
+
+          createData = {
+            spk: { connect: { id: data.spkId } },
+            jenis: "KASBON",
+            nominal: new Prisma.Decimal(nominal),
+            keterangan,
+            tanggalPo: data.tanggalPo,
+            mengurangiTermin: target,
+            diajukanOleh: { connect: { id: data.diajukanOlehId } },
+          };
+        }
+      } else if (data.jenis === "UPAH") {
+        const target = getKasbonTargetTermin(calcRows);
+        if (!target) throw new Error("UPAH_NOT_ALLOWED");
+        if (!data.baris.length) throw new Error("UPAH_BARIS_EMPTY");
+
+        const resolvedBaris = await this.resolveUpahBaris(tx, data.baris);
+        const totalNominal = resolvedBaris.reduce((sum, b) => sum + b.nominal, 0);
+        if (totalNominal <= 0) throw new Error("UPAH_NOMINAL_INVALID");
+
         createData = {
           spk: { connect: { id: data.spkId } },
-          jenis: "KASBON",
-          nominal: new Prisma.Decimal(data.nominal),
-          keterangan: data.keterangan,
-          tanggalPo: data.tanggalPo,
+          jenis: "UPAH",
+          nominal: new Prisma.Decimal(totalNominal),
+          tanggalDari: data.tanggalDari,
+          tanggalSampai: data.tanggalSampai,
           mengurangiTermin: target,
           diajukanOleh: { connect: { id: data.diajukanOlehId } },
+          upahBaris: {
+            create: resolvedBaris.map((b) => ({
+              tukangId: b.tukangId,
+              nik: b.nik,
+              nama: b.nama,
+              nominal: new Prisma.Decimal(b.nominal),
+            })),
+          },
         };
       } else {
         if (existingRows.some((p) => p.jenis === data.jenis)) {
@@ -405,13 +560,52 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     return await this.db.$transaction(async (tx) => {
       const existing = await tx.spkPembayaran.findUnique({
         where: { id: data.id },
+        include: { kasbonBaris: { select: { id: true } } },
       });
       if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
       if (existing.jenis !== "KASBON") throw new Error("NOT_KASBON");
       if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
         throw new Error("ALREADY_PAID");
       }
-      if (existing.buktiPembayaran) throw new Error("HAS_BUKTI");
+      if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
+
+      const isBatchRecord = existing.kasbonBaris.length > 0;
+
+      if ("kasbonBaris" in data) {
+        if (!isBatchRecord) throw new Error("LEGACY_KASBON_EDIT");
+        if (!data.kasbonBaris.length) throw new Error("KASBON_BARIS_EMPTY");
+
+        const normalizedBaris = this.normalizeKasbonBaris(data.kasbonBaris);
+        const { totalNominal, keterangan, tanggalPo } =
+          this.summarizeKasbonBaris(normalizedBaris);
+        if (totalNominal <= 0) throw new Error("KASBON_NOMINAL_INVALID");
+
+        await tx.spkPembayaranKasbonBaris.deleteMany({
+          where: { spkPembayaranId: data.id },
+        });
+
+        const result = await tx.spkPembayaran.update({
+          where: { id: data.id },
+          data: {
+            keterangan,
+            tanggalPo,
+            nominal: new Prisma.Decimal(totalNominal),
+            kasbonBaris: {
+              create: normalizedBaris.map((b) => ({
+                keterangan: b.keterangan,
+                tanggalPo: b.tanggalPo,
+                nominal: new Prisma.Decimal(b.nominal),
+              })),
+            },
+          },
+          include: SpkPembayaranMapper.include,
+        });
+
+        await this.syncSpkNominals(tx, existing.spkId);
+        return SpkPembayaranMapper.toDomain(result);
+      }
+
+      if (isBatchRecord) throw new Error("BATCH_KASBON_EDIT");
 
       const result = await tx.spkPembayaran.update({
         where: { id: data.id },
@@ -426,6 +620,71 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       await this.syncSpkNominals(tx, existing.spkId);
 
       return SpkPembayaranMapper.toDomain(result);
+    });
+  }
+
+  async updateUpah(data: UpdateSpkUpahDTO): Promise<SpkPembayaranEntity> {
+    return await this.db.$transaction(async (tx) => {
+      const existing = await tx.spkPembayaran.findUnique({
+        where: { id: data.id },
+      });
+      if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+      if (existing.jenis !== "UPAH") throw new Error("NOT_UPAH");
+      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+        throw new Error("ALREADY_PAID");
+      }
+      if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
+      if (!data.baris.length) throw new Error("UPAH_BARIS_EMPTY");
+
+      const resolvedBaris = await this.resolveUpahBaris(tx, data.baris);
+      const totalNominal = resolvedBaris.reduce((sum, b) => sum + b.nominal, 0);
+      if (totalNominal <= 0) throw new Error("UPAH_NOMINAL_INVALID");
+
+      await tx.spkPembayaranUpahBaris.deleteMany({
+        where: { spkPembayaranId: data.id },
+      });
+
+      const result = await tx.spkPembayaran.update({
+        where: { id: data.id },
+        data: {
+          tanggalDari: data.tanggalDari,
+          tanggalSampai: data.tanggalSampai,
+          nominal: new Prisma.Decimal(totalNominal),
+          upahBaris: {
+            create: resolvedBaris.map((b) => ({
+              tukangId: b.tukangId,
+              nik: b.nik,
+              nama: b.nama,
+              nominal: new Prisma.Decimal(b.nominal),
+            })),
+          },
+        },
+        include: SpkPembayaranMapper.include,
+      });
+
+      await this.syncSpkNominals(tx, existing.spkId);
+
+      return SpkPembayaranMapper.toDomain(result);
+    });
+  }
+
+  async deletePengurangan(id: number): Promise<void> {
+    await this.db.$transaction(async (tx) => {
+      const existing = await tx.spkPembayaran.findUnique({
+        where: { id },
+      });
+      if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+      if (existing.jenis !== "KASBON" && existing.jenis !== "UPAH") {
+        throw new Error("NOT_DELETABLE");
+      }
+      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+        throw new Error("ALREADY_PAID");
+      }
+      if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
+
+      await tx.spkPembayaran.delete({ where: { id } });
+
+      await this.syncSpkNominals(tx, existing.spkId);
     });
   }
 

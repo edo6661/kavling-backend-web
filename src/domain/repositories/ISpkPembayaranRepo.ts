@@ -4,6 +4,7 @@ import type {
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
   UpdateSpkKasbonDTO,
+  UpdateSpkUpahDTO,
 } from "../dtos/SpkPembayaranDTO.js";
 import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
@@ -20,4 +21,6 @@ export interface ISpkPembayaranRepository {
   ): Promise<OffsetPaginatedData<SpkPembayaranEntity>>;
   setBsiCmsDilaporkan(data: SetBsiCmsDilaporkanDTO): Promise<SpkPembayaranEntity[]>;
   updateKasbon(data: UpdateSpkKasbonDTO): Promise<SpkPembayaranEntity>;
+  updateUpah(data: UpdateSpkUpahDTO): Promise<SpkPembayaranEntity>;
+  deletePengurangan(id: number): Promise<void>;
 }

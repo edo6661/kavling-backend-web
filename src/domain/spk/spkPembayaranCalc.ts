@@ -11,6 +11,7 @@ export const SPK_PEMBAYARAN_JENIS_LABEL: Record<SpkPembayaranJenis, string> = {
   TERMIN_100: "Termin 100% (45% kontrak)",
   RETENSI: "Retensi (5% kontrak)",
   KASBON: "Kasbon",
+  UPAH: "Upah tukang",
 };
 
 export const SPK_KASBON_TARGET_LABEL: Record<SpkKasbonTargetTermin, string> = {
@@ -63,9 +64,84 @@ export function sumKasbonForTermin(
 ): number {
   return pembayaranList
     .filter(
-      (p) => p.jenis === "KASBON" && p.mengurangiTermin === termin,
+      (p) =>
+        (p.jenis === "KASBON" || p.jenis === "UPAH") &&
+        p.mengurangiTermin === termin,
     )
     .reduce((sum, p) => sum + p.nominal, 0);
+}
+
+export function calcTerminBruto(
+  nilaiKontrak: number,
+  termin: SpkKasbonTargetTermin,
+): number {
+  return termin === "TERMIN_55" ? nilaiKontrak * 0.5 : nilaiKontrak * 0.45;
+}
+
+export interface SpkPengurangTerminRow {
+  id?: number;
+  jenis: SpkPembayaranJenis;
+  nominal: number;
+  mengurangiTermin?: SpkKasbonTargetTermin | null;
+}
+
+export function sumPengurangForTermin(
+  rows: SpkPengurangTerminRow[],
+  termin: SpkKasbonTargetTermin,
+  excludeId?: number,
+): number {
+  return rows
+    .filter(
+      (p) =>
+        p.id !== excludeId &&
+        (p.jenis === "KASBON" || p.jenis === "UPAH") &&
+        p.mengurangiTermin === termin,
+    )
+    .reduce((sum, p) => sum + p.nominal, 0);
+}
+
+export function getPengurangTerminCapacity(
+  nilaiKontrak: number,
+  rows: SpkPengurangTerminRow[],
+  termin: SpkKasbonTargetTermin,
+  options?: { excludeId?: number; additionalNominal?: number },
+) {
+  const bruto = calcTerminBruto(nilaiKontrak, termin);
+  const terpakai = sumPengurangForTermin(rows, termin, options?.excludeId);
+  const sisa = Math.max(0, bruto - terpakai);
+  const additional = options?.additionalNominal ?? 0;
+  const sisaSetelah = sisa - additional;
+
+  return {
+    bruto,
+    terpakai,
+    sisa,
+    additional,
+    sisaSetelah,
+    allowed: additional <= 0 || sisaSetelah >= 0,
+  };
+}
+
+export function validatePengurangTerminNominal(
+  nilaiKontrak: number,
+  rows: SpkPengurangTerminRow[],
+  termin: SpkKasbonTargetTermin,
+  additionalNominal: number,
+  excludeId?: number,
+): { allowed: true } | { allowed: false; reason: string } {
+  const cap = getPengurangTerminCapacity(nilaiKontrak, rows, termin, {
+    excludeId,
+    additionalNominal,
+  });
+
+  if (!cap.allowed) {
+    return {
+      allowed: false,
+      reason: `Total kasbon & upah melebihi plafon ${SPK_KASBON_TARGET_LABEL[termin]}. Plafon termin: ${cap.bruto}, sudah terpakai: ${cap.terpakai}, sisa: ${cap.sisa}, nominal diajukan: ${additionalNominal}.`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 export function calcSpkPembayaranNominal(
@@ -115,7 +191,7 @@ export function buildSpkPembayaranKalkulasi(
       });
       if (kasbon > 0) {
         baris.push({
-          label: "Total kasbon (mengurangi termin 55%)",
+          label: "Total kasbon & upah (mengurangi termin 55%)",
           nilai: kasbon,
           tipe: "negatif",
         });
@@ -137,7 +213,7 @@ export function buildSpkPembayaranKalkulasi(
       });
       if (kasbon > 0) {
         baris.push({
-          label: "Total kasbon (mengurangi termin 100%)",
+          label: "Total kasbon & upah (mengurangi termin 100%)",
           nilai: kasbon,
           tipe: "negatif",
         });
@@ -190,6 +266,7 @@ export function getPrerequisiteJenis(
 }
 
 export interface SpkPembayaranStatusRow {
+  id?: number;
   jenis: SpkPembayaranJenis;
   status: "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR";
   nominal?: number;
@@ -211,11 +288,18 @@ export function toSpkPembayaranCalcRows(
 }
 
 export type CanRequestKasbonResult =
-  | { allowed: true; targetTermin: SpkKasbonTargetTermin }
+  | {
+      allowed: true;
+      targetTermin: SpkKasbonTargetTermin;
+      sisaPengurang: number;
+      brutoTermin: number;
+      terpakai: number;
+    }
   | { allowed: false; reason: string };
 
 export function canRequestKasbon(
   pembayaranList: SpkPembayaranStatusRow[],
+  nilaiKontrak?: number,
 ): CanRequestKasbonResult {
   const target = getKasbonTargetTermin(toSpkPembayaranCalcRows(pembayaranList));
 
@@ -223,11 +307,34 @@ export function canRequestKasbon(
     return {
       allowed: false,
       reason:
-        "Kasbon tidak dapat diajukan: kedua termin sudah dibayar.",
+        "Kasbon/upah tidak dapat diajukan: kedua termin sudah dibayar.",
     };
   }
 
-  return { allowed: true, targetTermin: target };
+  if (nilaiKontrak != null && nilaiKontrak > 0) {
+    const rows: SpkPengurangTerminRow[] = pembayaranList.map((p) => ({
+      id: p.id,
+      jenis: p.jenis,
+      nominal: p.nominal ?? 0,
+      mengurangiTermin: p.mengurangiTermin,
+    }));
+    const cap = getPengurangTerminCapacity(nilaiKontrak, rows, target);
+    if (cap.sisa <= 0) {
+      return {
+        allowed: false,
+        reason: `Plafon ${SPK_KASBON_TARGET_LABEL[target]} untuk kasbon & upah sudah terpakai penuh.`,
+      };
+    }
+    return {
+      allowed: true,
+      targetTermin: target,
+      sisaPengurang: cap.sisa,
+      brutoTermin: cap.bruto,
+      terpakai: cap.terpakai,
+    };
+  }
+
+  return { allowed: true, targetTermin: target, sisaPengurang: 0, brutoTermin: 0, terpakai: 0 };
 }
 
 export function canRequestSpkPembayaran(
@@ -235,7 +342,7 @@ export function canRequestSpkPembayaran(
   spk: SpkNominalInput & { progress: number },
   pembayaranList: SpkPembayaranStatusRow[],
 ): { allowed: boolean; reason?: string } {
-  if (jenis === "KASBON") {
+  if (jenis === "KASBON" || jenis === "UPAH") {
     const check = canRequestKasbon(pembayaranList);
     if (!check.allowed) {
       return { allowed: false, reason: check.reason };

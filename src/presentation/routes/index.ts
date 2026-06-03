@@ -23,6 +23,7 @@ import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
 import { createProgressProyekRoutes } from "./progressProyekRoutes.js";
 import { createSpkRoutes } from "./spkRoutes.js";
 import { createSpkPembayaranRoutes } from "./spkPembayaranRoutes.js";
+import { createTukangRoutes } from "./tukangRoutes.js";
 import { createNotarisPembayaranRoutes } from "./notarisPembayaranRoutes.js";
 import { createBankKprPembayaranRoutes } from "./bankKprPembayaranRoutes.js";
 import { createKodeBillingPphRoutes } from "./kodeBillingPphRoutes.js";
@@ -79,6 +80,7 @@ export const createMainRouter = (deps: typeof container): Router => {
   );
   router.use("/spk", createSpkRoutes(deps.spkController));
   router.use("/spk-pembayaran", createSpkPembayaranRoutes(deps.spkPembayaranController));
+  router.use("/tukang", createTukangRoutes(deps.tukangController));
   router.use(
     "/notaris-pembayaran",
     createNotarisPembayaranRoutes(deps.notarisPembayaranController),

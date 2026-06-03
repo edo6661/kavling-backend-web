@@ -518,6 +518,18 @@ model SpkPenjualan {
   @@map("spk_penjualan")
 }
 
+model Tukang {
+  id        Int      @id @default(autoincrement())
+  nik       String   @unique @db.VarChar(20)
+  nama      String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  upahBaris SpkPembayaranUpahBaris[]
+
+  @@map("tukang")
+}
+
 model SpkPembayaran {
   id              Int                 @id @default(autoincrement())
   spkId           Int                 @map("spk_id")
@@ -525,6 +537,8 @@ model SpkPembayaran {
   nominal         Decimal             @db.Decimal(15, 2)
   keterangan      String?             @db.VarChar(500)
   tanggalPo       DateTime?           @map("tanggal_po") @db.Date
+  tanggalDari     DateTime?           @map("tanggal_dari") @db.Date
+  tanggalSampai   DateTime?           @map("tanggal_sampai") @db.Date
   mengurangiTermin SpkKasbonTargetTermin? @map("mengurangi_termin")
   status          SpkPembayaranStatus @default(MENUNGGU_PEMBAYARAN)
   buktiPembayaran String?             @map("bukti_pembayaran") @db.VarChar(500)
@@ -540,6 +554,8 @@ model SpkPembayaran {
   spk           Spk  @relation(fields: [spkId], references: [id], onDelete: Cascade)
   diajukanOleh  User @relation("SpkPembayaranDiajukan", fields: [diajukanOlehId], references: [id])
   dibayarOleh   User? @relation("SpkPembayaranDibayar", fields: [dibayarOlehId], references: [id])
+  upahBaris     SpkPembayaranUpahBaris[]
+  kasbonBaris   SpkPembayaranKasbonBaris[]
 
   @@index([spkId], map: "spk_pembayaran_spk_id_fkey")
   @@index([diajukanOlehId], map: "spk_pembayaran_diajukan_oleh_id_fkey")
@@ -547,11 +563,41 @@ model SpkPembayaran {
   @@map("spk_pembayaran")
 }
 
+model SpkPembayaranUpahBaris {
+  id              Int     @id @default(autoincrement())
+  spkPembayaranId Int     @map("spk_pembayaran_id")
+  tukangId        Int?    @map("tukang_id")
+  nik             String  @db.VarChar(20)
+  nama            String  @db.VarChar(150)
+  nominal         Decimal @db.Decimal(15, 2)
+
+  spkPembayaran SpkPembayaran @relation(fields: [spkPembayaranId], references: [id], onDelete: Cascade)
+  tukang        Tukang?        @relation(fields: [tukangId], references: [id], onDelete: SetNull)
+
+  @@index([spkPembayaranId], map: "spk_pembayaran_upah_baris_spk_pembayaran_id_fkey")
+  @@index([tukangId], map: "spk_pembayaran_upah_baris_tukang_id_fkey")
+  @@map("spk_pembayaran_upah_baris")
+}
+
+model SpkPembayaranKasbonBaris {
+  id              Int      @id @default(autoincrement())
+  spkPembayaranId Int      @map("spk_pembayaran_id")
+  keterangan      String   @db.VarChar(500)
+  tanggalPo       DateTime @map("tanggal_po") @db.Date
+  nominal         Decimal  @db.Decimal(15, 2)
+
+  spkPembayaran SpkPembayaran @relation(fields: [spkPembayaranId], references: [id], onDelete: Cascade)
+
+  @@index([spkPembayaranId], map: "spk_pembayaran_kasbon_baris_spk_pembayaran_id_fkey")
+  @@map("spk_pembayaran_kasbon_baris")
+}
+
 enum SpkPembayaranJenis {
   TERMIN_55  @map("termin_55")
   TERMIN_100 @map("termin_100")
   RETENSI    @map("retensi")
   KASBON     @map("kasbon")
+  UPAH       @map("upah")
 }
 
 enum SpkKasbonTargetTermin {

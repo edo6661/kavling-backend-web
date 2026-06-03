@@ -14,6 +14,7 @@ import {
   removeBuktiSpkPembayaranSchema,
   setBsiCmsDilaporkanSchema,
   updateSpkKasbonSchema,
+  updateSpkUpahSchema,
 } from "../../validations/spkPembayaranSchema.js";
 import type { SpkPembayaranController } from "../controllers/spkPembayaranController.js";
 
@@ -50,6 +51,19 @@ export const createSpkPembayaranRoutes = (
     requirePermission("SPK", "update"),
     validate(updateSpkKasbonSchema),
     controller.updateKasbon as unknown as RequestHandler,
+  );
+
+  router.patch(
+    "/:id/upah",
+    requirePermission("SPK", "update"),
+    validate(updateSpkUpahSchema),
+    controller.updateUpah as unknown as RequestHandler,
+  );
+
+  router.delete(
+    "/:id",
+    requirePermission("SPK", "update"),
+    controller.deletePengurangan,
   );
 
   router.patch(

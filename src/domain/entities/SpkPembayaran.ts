@@ -4,6 +4,23 @@ import type {
   SpkPembayaranStatus,
 } from "@prisma/client";
 
+export interface SpkPembayaranUpahBarisEntity {
+  id: number;
+  spkPembayaranId: number;
+  tukangId: number | null;
+  nik: string;
+  nama: string;
+  nominal: number;
+}
+
+export interface SpkPembayaranKasbonBarisEntity {
+  id: number;
+  spkPembayaranId: number;
+  keterangan: string;
+  tanggalPo: Date;
+  nominal: number;
+}
+
 export interface SpkPembayaranEntity {
   id: number;
   spkId: number;
@@ -11,7 +28,11 @@ export interface SpkPembayaranEntity {
   nominal: number;
   keterangan: string | null;
   tanggalPo: Date | null;
+  tanggalDari: Date | null;
+  tanggalSampai: Date | null;
   mengurangiTermin: SpkKasbonTargetTermin | null;
+  upahBaris?: SpkPembayaranUpahBarisEntity[];
+  kasbonBaris?: SpkPembayaranKasbonBarisEntity[];
   status: SpkPembayaranStatus;
   buktiPembayaran: string | null;
   buktiPembayaranList: string[];

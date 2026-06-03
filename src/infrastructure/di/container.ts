@@ -12,7 +12,11 @@ import {
   RemoveBuktiSpkPembayaranUseCase,
   SetBsiCmsDilaporkanUseCase,
   UpdateSpkKasbonUseCase,
+  UpdateSpkUpahUseCase,
+  DeleteSpkPenguranganUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
+import { TukangRepository } from "../../domain/repositories/tukangRepo.js";
+import { TukangController } from "../../presentation/controllers/tukangController.js";
 import {
   BayarNotarisPembayaranUseCase,
   GetNotarisPembayaranPaginatedUseCase,
@@ -773,7 +777,14 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
   );
   const setBsiCmsDilaporkanUseCase = new SetBsiCmsDilaporkanUseCase(spkPembayaranRepo);
-  const updateSpkKasbonUseCase = new UpdateSpkKasbonUseCase(spkPembayaranRepo);
+  const updateSpkKasbonUseCase = new UpdateSpkKasbonUseCase(
+    spkPembayaranRepo,
+    spkRepo,
+  );
+  const updateSpkUpahUseCase = new UpdateSpkUpahUseCase(spkPembayaranRepo, spkRepo);
+  const deleteSpkPenguranganUseCase = new DeleteSpkPenguranganUseCase(
+    spkPembayaranRepo,
+  );
   const spkPembayaranController = new SpkPembayaranController(
     createSpkPembayaranRequestUseCase,
     getSpkPembayaranBySpkUseCase,
@@ -783,7 +794,12 @@ export const createContainer = (dbClient: PrismaClient) => {
     removeBuktiSpkPembayaranUseCase,
     setBsiCmsDilaporkanUseCase,
     updateSpkKasbonUseCase,
+    updateSpkUpahUseCase,
+    deleteSpkPenguranganUseCase,
   );
+
+  const tukangRepo = new TukangRepository(dbClient);
+  const tukangController = new TukangController(tukangRepo);
 
   const notarisPembayaranRepo = new NotarisPembayaranRepository(dbClient);
   const getNotarisPembayaranPaginatedUseCase = new GetNotarisPembayaranPaginatedUseCase(
@@ -858,6 +874,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressProyekController,
     spkController,
     spkPembayaranController,
+    tukangController,
     notarisPembayaranController,
     bankKprPembayaranController,
   };

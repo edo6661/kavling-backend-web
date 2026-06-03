@@ -2,38 +2,98 @@ import { z } from "zod";
 
 const terminJenis = z.enum(["TERMIN_55", "TERMIN_100", "RETENSI"]);
 
+const upahBarisSchema = z.object({
+  tukangId: z.coerce.number().int().positive().optional().nullable(),
+  nik: z.string().trim().min(1).max(20),
+  nama: z.string().trim().min(1).max(150),
+  nominal: z.coerce.number().positive(),
+});
+
+const kasbonBarisSchema = z.object({
+  keterangan: z.string().trim().min(1).max(500),
+  tanggalPo: z.coerce.date(),
+  nominal: z.coerce.number().positive(),
+});
+
 export const createSpkPembayaranSchema = {
   params: z.object({
     spkId: z.coerce.number().int().positive(),
   }),
   body: z
     .object({
-      jenis: z.enum(["TERMIN_55", "TERMIN_100", "RETENSI", "KASBON"]),
+      jenis: z.enum(["TERMIN_55", "TERMIN_100", "RETENSI", "KASBON", "UPAH"]),
       keterangan: z.string().trim().min(1).max(500).optional(),
       nominal: z.coerce.number().positive().optional(),
       tanggalPo: z.coerce.date().optional(),
+      tanggalDari: z.coerce.date().optional(),
+      tanggalSampai: z.coerce.date().optional(),
+      baris: z.array(upahBarisSchema).optional(),
+      kasbonBaris: z.array(kasbonBarisSchema).optional(),
     })
     .superRefine((data, ctx) => {
       if (data.jenis === "KASBON") {
-        if (!data.keterangan) {
+        if (data.kasbonBaris?.length) {
+          if (!data.kasbonBaris.length) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Minimal satu baris kasbon wajib diisi",
+              path: ["kasbonBaris"],
+            });
+          }
+        } else {
+          if (!data.keterangan) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Keterangan kasbon wajib diisi",
+              path: ["keterangan"],
+            });
+          }
+          if (data.nominal == null || data.nominal <= 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Nominal kasbon wajib dan harus lebih dari 0",
+              path: ["nominal"],
+            });
+          }
+          if (!data.tanggalPo) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Tanggal PO wajib diisi",
+              path: ["tanggalPo"],
+            });
+          }
+        }
+      } else if (data.jenis === "UPAH") {
+        if (!data.tanggalDari) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Keterangan kasbon wajib diisi",
-            path: ["keterangan"],
+            message: "Tanggal dari wajib diisi",
+            path: ["tanggalDari"],
           });
         }
-        if (data.nominal == null || data.nominal <= 0) {
+        if (!data.tanggalSampai) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Nominal kasbon wajib dan harus lebih dari 0",
-            path: ["nominal"],
+            message: "Tanggal sampai wajib diisi",
+            path: ["tanggalSampai"],
           });
         }
-        if (!data.tanggalPo) {
+        if (
+          data.tanggalDari &&
+          data.tanggalSampai &&
+          data.tanggalDari > data.tanggalSampai
+        ) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Tanggal PO wajib diisi",
-            path: ["tanggalPo"],
+            message: "Tanggal dari tidak boleh setelah tanggal sampai",
+            path: ["tanggalSampai"],
+          });
+        }
+        if (!data.baris?.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Minimal satu baris tukang wajib diisi",
+            path: ["baris"],
           });
         }
       } else if (!terminJenis.safeParse(data.jenis).success) {
@@ -96,9 +156,65 @@ export const updateSpkKasbonSchema = {
   params: z.object({
     id: z.coerce.number().int().positive(),
   }),
-  body: z.object({
-    keterangan: z.string().trim().min(1).max(500),
-    nominal: z.coerce.number().positive(),
-    tanggalPo: z.coerce.date(),
+  body: z
+    .object({
+      keterangan: z.string().trim().min(1).max(500).optional(),
+      nominal: z.coerce.number().positive().optional(),
+      tanggalPo: z.coerce.date().optional(),
+      kasbonBaris: z.array(kasbonBarisSchema).optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.kasbonBaris?.length) {
+        if (!data.kasbonBaris.length) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Minimal satu baris kasbon wajib diisi",
+            path: ["kasbonBaris"],
+          });
+        }
+        return;
+      }
+      if (!data.keterangan) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Keterangan kasbon wajib diisi",
+          path: ["keterangan"],
+        });
+      }
+      if (data.nominal == null || data.nominal <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Nominal kasbon wajib dan harus lebih dari 0",
+          path: ["nominal"],
+        });
+      }
+      if (!data.tanggalPo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Tanggal PO wajib diisi",
+          path: ["tanggalPo"],
+        });
+      }
+    }),
+};
+
+export const updateSpkUpahSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
   }),
+  body: z
+    .object({
+      tanggalDari: z.coerce.date(),
+      tanggalSampai: z.coerce.date(),
+      baris: z.array(upahBarisSchema).min(1),
+    })
+    .superRefine((data, ctx) => {
+      if (data.tanggalDari > data.tanggalSampai) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Tanggal dari tidak boleh setelah tanggal sampai",
+          path: ["tanggalSampai"],
+        });
+      }
+    }),
 };

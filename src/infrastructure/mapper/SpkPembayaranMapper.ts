@@ -4,6 +4,27 @@ import type { SpkPembayaranEntity } from "../../domain/entities/SpkPembayaran.js
 export const spkPembayaranInclude = {
   diajukanOleh: { select: { id: true, username: true } },
   dibayarOleh: { select: { id: true, username: true } },
+  upahBaris: {
+    orderBy: { id: "asc" as const },
+    select: {
+      id: true,
+      spkPembayaranId: true,
+      tukangId: true,
+      nik: true,
+      nama: true,
+      nominal: true,
+    },
+  },
+  kasbonBaris: {
+    orderBy: { id: "asc" as const },
+    select: {
+      id: true,
+      spkPembayaranId: true,
+      keterangan: true,
+      tanggalPo: true,
+      nominal: true,
+    },
+  },
   spk: {
     select: {
       id: true,
@@ -64,7 +85,24 @@ export class SpkPembayaranMapper {
       nominal: Number(row.nominal),
       keterangan: row.keterangan,
       tanggalPo: row.tanggalPo,
+      tanggalDari: row.tanggalDari,
+      tanggalSampai: row.tanggalSampai,
       mengurangiTermin: row.mengurangiTermin,
+      upahBaris: row.upahBaris?.map((b) => ({
+        id: b.id,
+        spkPembayaranId: b.spkPembayaranId,
+        tukangId: b.tukangId,
+        nik: b.nik,
+        nama: b.nama,
+        nominal: Number(b.nominal),
+      })),
+      kasbonBaris: row.kasbonBaris?.map((b) => ({
+        id: b.id,
+        spkPembayaranId: b.spkPembayaranId,
+        keterangan: b.keterangan,
+        tanggalPo: b.tanggalPo,
+        nominal: Number(b.nominal),
+      })),
       status: row.status,
       buktiPembayaran: row.buktiPembayaran,
       buktiPembayaranList,
