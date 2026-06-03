@@ -58,12 +58,15 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
   ): ProgressProyekSummary | null {
     if (progressProyek) {
       const override = progressProyek.persentaseOverride;
+      const spk = spkItem?.spk;
+      const mandorId = progressProyek.mandorId ?? spk?.mandorId ?? null;
+      const mandor = progressProyek.mandor ?? spk?.mandor ?? null;
       return {
         persentase:
           override != null ? Number(override) : Number(progressProyek.persentase),
         persentaseIsOverride: override != null,
-        mandorId: progressProyek.mandorId,
-        mandor: progressProyek.mandor,
+        mandorId,
+        mandor,
       };
     }
 
@@ -312,6 +315,16 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     return ProgressProyekMapper.toDomain(result);
   }
 
+  async findSpkMandorIdByPenjualanId(penjualanId: number): Promise<number | null> {
+    const spkMandor = await this.getSpkMandorForPenjualan(penjualanId);
+    return spkMandor?.mandorId ?? null;
+  }
+
+  async findSpkMandorIdByKavlingId(kavlingId: number): Promise<number | null> {
+    const spkMandor = await this.getSpkMandorForKavling(kavlingId);
+    return spkMandor?.mandorId ?? null;
+  }
+
   async findByPenjualanId(
     penjualanId: number,
   ): Promise<ProgressProyekEntity | null> {
@@ -320,11 +333,19 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       include: ProgressProyekMapper.include,
     });
 
-    if (!result) return null;
+    if (result) {
+      const entity = ProgressProyekMapper.toDomain(result);
+      const spkMandor = await this.getSpkMandorForPenjualan(penjualanId);
+      return this.applySpkMandorFallback(entity, spkMandor);
+    }
 
-    const entity = ProgressProyekMapper.toDomain(result);
-    const spkMandor = await this.getSpkMandorForPenjualan(penjualanId);
-    return this.applySpkMandorFallback(entity, spkMandor);
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { id: penjualanId },
+      select: { kavlingId: true },
+    });
+    if (!penjualan) return null;
+
+    return this.findByKavlingId(penjualan.kavlingId);
   }
 
   async findByKavlingId(kavlingId: number): Promise<ProgressProyekEntity | null> {

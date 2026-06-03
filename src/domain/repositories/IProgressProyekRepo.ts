@@ -20,6 +20,8 @@ export interface IProgressProyekRepository {
   ): Promise<ProgressProyekEntity>;
   findByPenjualanId(penjualanId: number): Promise<ProgressProyekEntity | null>;
   findByKavlingId(kavlingId: number): Promise<ProgressProyekEntity | null>;
+  findSpkMandorIdByPenjualanId(penjualanId: number): Promise<number | null>;
+  findSpkMandorIdByKavlingId(kavlingId: number): Promise<number | null>;
   attachKavlingProgressToPenjualan(
     kavlingId: number,
     penjualanId: number,

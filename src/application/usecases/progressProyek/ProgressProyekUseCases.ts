@@ -10,6 +10,7 @@ import { Role } from "@prisma/client";
 import {
   assertAssignedMandor,
   assertMandorCanMutate,
+  assertUserIsProjectMandor,
   isMandorRole,
   type ProgressRequestContext,
 } from "./mandorAccess.js";
@@ -27,7 +28,11 @@ export class GetProgressProyekUseCase {
       if (!ctx?.userId) {
         throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
       }
-      assertAssignedMandor(progress, ctx.userId);
+      const spkMandorId = await this.repo.findSpkMandorIdByPenjualanId(
+        penjualanId,
+      );
+      assertUserIsProjectMandor(ctx.userId, progress, spkMandorId);
+      progress ??= await this.repo.create({ penjualanId, mandorId: null });
       return progress;
     }
 
@@ -49,8 +54,9 @@ export class GetProgressProyekByKavlingUseCase {
       if (!ctx?.userId) {
         throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
       }
+      const spkMandorId = await this.repo.findSpkMandorIdByKavlingId(kavlingId);
+      assertUserIsProjectMandor(ctx.userId, progress, spkMandorId);
       progress ??= await this.repo.createByKavlingId({ kavlingId, mandorId: null });
-      assertAssignedMandor(progress, ctx.userId);
       return progress;
     }
 
@@ -73,7 +79,10 @@ export class UpdateProgressProyekUseCase {
       if (!ctx?.userId) {
         throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
       }
-      assertAssignedMandor(progress, ctx.userId);
+      const spkMandorId = await this.repo.findSpkMandorIdByPenjualanId(
+        penjualanId,
+      );
+      assertAssignedMandor(progress, ctx.userId, spkMandorId);
     }
 
     return await this.repo.update(penjualanId, data);
@@ -137,7 +146,8 @@ export class UploadTahapanPhotoUseCase {
     }
 
     const progress = await this.repo.findByPenjualanId(penjualanId);
-    assertMandorCanMutate(progress, ctx);
+    const spkMandorId = await this.repo.findSpkMandorIdByPenjualanId(penjualanId);
+    assertMandorCanMutate(progress, ctx, spkMandorId);
 
     if (!progress) {
       throw new AppError(
@@ -191,7 +201,8 @@ export class CreateTahapanLogUseCase {
     ctx?: ProgressRequestContext,
   ) {
     const progress = await this.repo.findByPenjualanId(penjualanId);
-    assertMandorCanMutate(progress, ctx);
+    const spkMandorId = await this.repo.findSpkMandorIdByPenjualanId(penjualanId);
+    assertMandorCanMutate(progress, ctx, spkMandorId);
 
     const photoUrls = await Promise.all(
       files.map((file) =>
@@ -230,10 +241,11 @@ export class CreateTahapanLogByKavlingUseCase {
     ctx?: ProgressRequestContext,
   ) {
     let progress = await this.repo.findByKavlingId(kavlingId);
+    const spkMandorId = await this.repo.findSpkMandorIdByKavlingId(kavlingId);
+    assertMandorCanMutate(progress, ctx, spkMandorId);
     if (isMandorRole(ctx?.role) && !progress) {
       progress = await this.repo.createByKavlingId({ kavlingId, mandorId: null });
     }
-    assertMandorCanMutate(progress, ctx);
 
     const photoUrls = await Promise.all(
       files.map((file) =>
@@ -275,7 +287,8 @@ export class UploadTahapanPhotoByKavlingUseCase {
     }
 
     const progress = await this.repo.findByKavlingId(kavlingId);
-    assertMandorCanMutate(progress, ctx);
+    const spkMandorId = await this.repo.findSpkMandorIdByKavlingId(kavlingId);
+    assertMandorCanMutate(progress, ctx, spkMandorId);
 
     if (!progress) {
       throw new AppError(
