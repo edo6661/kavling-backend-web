@@ -7,6 +7,7 @@ type TagihanWithRelations = Prisma.TagihanGetPayload<{
     customer: { select: { nama: true } };
     penjualan: {
       include: {
+        agent: { select: { nama: true } };
         kavling: {
           include: {
             perumahan: { select: { nama: true } };
@@ -30,6 +31,7 @@ export class TagihanMapper {
       noTagihan: prismaTagihan.noTagihan,
       customerId: prismaTagihan.customerId,
       namaCustomer: prismaTagihan.customer.nama,
+      namaAgent: prismaTagihan.penjualan.agent?.nama ?? "",
       penjualanId: prismaTagihan.penjualanId,
       perumahan: prismaTagihan.penjualan.kavling.perumahan.nama,
       blok: prismaTagihan.penjualan.kavling.blok,

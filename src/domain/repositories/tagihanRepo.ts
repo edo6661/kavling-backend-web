@@ -14,6 +14,7 @@ const tagihanIncludeRelations = {
   customer: { select: { nama: true } },
   penjualan: {
     include: {
+      agent: { select: { nama: true } },
       kavling: {
         include: {
           perumahan: { select: { nama: true } },

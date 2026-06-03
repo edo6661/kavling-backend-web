@@ -28,6 +28,7 @@ export interface TagihanResponseDTO {
   noTagihan: string;
   customerId: number;
   namaCustomer: string;
+  namaAgent: string;
   penjualanId: number;
   perumahan: string;
   blok: string;
