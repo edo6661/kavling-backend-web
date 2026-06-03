@@ -1,5 +1,4 @@
-import type { Prisma } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import type { ITagihanRepository } from "./ITagihanRepo.js";
 import type {
   CreateTagihanDTO,
@@ -81,6 +80,10 @@ export class TagihanRepository implements ITagihanRepository {
     if (data.nominal !== undefined) updateData.nominal = data.nominal;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.fileBukti !== undefined) updateData.fileBukti = data.fileBukti;
+    if (data.fileBuktiList !== undefined) {
+      updateData.fileBuktiList =
+        data.fileBuktiList === null ? Prisma.JsonNull : data.fileBuktiList;
+    }
     if (data.jatuhTempo !== undefined)
       updateData.jatuhTempo = new Date(data.jatuhTempo);
     if (data.reminderBerikutnya !== undefined) {

@@ -260,9 +260,12 @@ export class DeleteTagihanUseCase {
     const tagihan = await this.repo.findById(id);
     if (!tagihan) throw new NotFoundError("Tagihan tidak ditemukan");
 
-    const filesToDelete = [tagihan.fileBukti, tagihan.fileBuktiRefund].filter(
-      Boolean,
-    ) as string[];
+    const filesToDelete = [
+      ...tagihan.fileBuktiList,
+      tagihan.fileBukti,
+      tagihan.fileBuktiRefund,
+    ].filter(Boolean) as string[];
+    const uniqueFilesToDelete = [...new Set(filesToDelete)];
 
     if (tagihan.ttdData) {
       const ttdObj = tagihan.ttdData as unknown as ITtdData;
@@ -271,7 +274,7 @@ export class DeleteTagihanUseCase {
       });
     }
 
-    for (const url of filesToDelete) {
+    for (const url of uniqueFilesToDelete) {
       await this.cloudinaryService
         .deleteImageByUrl(url)
         .catch((err) =>

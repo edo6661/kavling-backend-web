@@ -230,7 +230,12 @@ export class CustomerController {
       sendResponse(res, StatusCodes.BAD_REQUEST, "ID tidak valid");
       return;
     }
-    if (!req.file?.buffer) {
+    const files = req.files as Express.Multer.File[] | undefined;
+    const buffers =
+      files?.map((file) => file.buffer) ??
+      (req.file?.buffer ? [req.file.buffer] : []);
+
+    if (!buffers.length) {
       sendResponse(
         res,
         StatusCodes.BAD_REQUEST,
@@ -240,7 +245,7 @@ export class CustomerController {
     }
     const result = await this.uploadBuktiTagihanUseCase.execute(
       id,
-      req.file.buffer,
+      buffers,
       true,
     );
     sendResponse(

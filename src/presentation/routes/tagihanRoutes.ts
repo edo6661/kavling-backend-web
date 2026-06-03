@@ -53,7 +53,7 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
   router.patch(
     "/:id/upload-bukti",
     requirePermission("TAGIHAN", "update"),
-    upload.single("fileBukti"),
+    upload.array("fileBukti", 10),
     controller.uploadBukti,
   );
   router.patch(

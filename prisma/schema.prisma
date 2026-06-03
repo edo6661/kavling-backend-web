@@ -440,6 +440,8 @@ model Tagihan {
   /// Tujuan alokasi pembayaran (bucket). Data lama di-backfill lewat migrasi SQL.
   tujuan             TagihanTujuan @default(LAINNYA) @map("tujuan")
   fileBukti          String?       @map("file_bukti") @db.VarChar(255)
+  /// Daftar URL bukti pembayaran (JSON array). `file_bukti` tetap = bukti pertama untuk kompatibilitas API lama.
+  fileBuktiList      Json?         @map("file_bukti_list")
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
   pembayaran         String        @db.VarChar(255)

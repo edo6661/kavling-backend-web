@@ -105,12 +105,17 @@ export class TagihanController {
       return;
     }
 
-    if (!req.file?.buffer) {
+    const files = req.files as Express.Multer.File[] | undefined;
+    const buffers =
+      files?.map((file) => file.buffer) ??
+      (req.file?.buffer ? [req.file.buffer] : []);
+
+    if (!buffers.length) {
       sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
       return;
     }
 
-    const result = await this.uploadBuktiUseCase.execute(id, req.file.buffer);
+    const result = await this.uploadBuktiUseCase.execute(id, buffers);
     sendResponse(
       res,
       StatusCodes.OK,

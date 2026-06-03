@@ -40,7 +40,7 @@ export const createCustomerRoutes = (
   router.patch(
     "/me/tagihan/:id/upload-bukti",
     requireRole(["CUSTOMER"]),
-    upload.single("fileBukti"),
+    upload.array("fileBukti", 10),
     customerController.uploadMyTagihan,
   );
 

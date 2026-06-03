@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 
 export class GetCustomerDashboardUseCase {
   constructor(private readonly db: PrismaClient) {}
@@ -50,16 +51,23 @@ export class GetCustomerDashboardUseCase {
         perumahan: p.kavling.perumahan.nama,
         statusPenjualan: p.status,
         hargaJual: p.hargaJual,
-        tagihan: p.tagihan.map((t) => ({
-          id: t.id, // 👇 TAMBAHKAN BARIS INI 👇
-          noTagihan: t.noTagihan,
-          tujuan: t.tujuan,
-          pembayaran: t.pembayaran,
-          nominal: t.nominal,
-          jatuhTempo: t.jatuhTempo,
-          status: t.status,
-          fileBukti: t.fileBukti,
-        })),
+        tagihan: p.tagihan.map((t) => {
+          const fileBuktiList = normalizeTagihanFileBuktiList(
+            t.fileBuktiList,
+            t.fileBukti,
+          );
+          return {
+            id: t.id,
+            noTagihan: t.noTagihan,
+            tujuan: t.tujuan,
+            pembayaran: t.pembayaran,
+            nominal: t.nominal,
+            jatuhTempo: t.jatuhTempo,
+            status: t.status,
+            fileBukti: fileBuktiList[0] ?? t.fileBukti,
+            fileBuktiList,
+          };
+        }),
       })),
     };
   }

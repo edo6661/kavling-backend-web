@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { TagihanResponseDTO } from "../../domain/dtos/TagihanDTO.js";
+import { normalizeTagihanFileBuktiList } from "../../utils/tagihanBukti.js";
 
 type TagihanWithRelations = Prisma.TagihanGetPayload<{
   include: {
@@ -20,6 +21,10 @@ type TagihanWithRelations = Prisma.TagihanGetPayload<{
 
 export class TagihanMapper {
   static toDomain(prismaTagihan: TagihanWithRelations): TagihanResponseDTO {
+    const fileBuktiList = normalizeTagihanFileBuktiList(
+      prismaTagihan.fileBuktiList,
+      prismaTagihan.fileBukti,
+    );
     return {
       id: prismaTagihan.id,
       noTagihan: prismaTagihan.noTagihan,
@@ -34,7 +39,8 @@ export class TagihanMapper {
       nominal: Number(prismaTagihan.nominal),
       jatuhTempo: prismaTagihan.jatuhTempo,
       status: prismaTagihan.status,
-      fileBukti: prismaTagihan.fileBukti,
+      fileBukti: fileBuktiList[0] ?? prismaTagihan.fileBukti,
+      fileBuktiList,
       reminderBerikutnya: prismaTagihan.reminderBerikutnya,
       isRefunded: prismaTagihan.isRefunded ?? false,
       fileBuktiRefund: prismaTagihan.fileBuktiRefund ?? null,

@@ -3,6 +3,7 @@ import type { IPenjualanRepository } from "../../../domain/repositories/IPenjual
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { collectTagihanFileBuktiUrls } from "../../../utils/tagihanBukti.js";
 
 export class ApproveBuktiTagihanUseCase {
   constructor(
@@ -17,12 +18,17 @@ export class ApproveBuktiTagihanUseCase {
     if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
 
     if (!isApproved) {
-      if (existing.fileBukti) {
-        await this.cloudinaryService.deleteImageByUrl(existing.fileBukti);
+      const urlsToDelete = collectTagihanFileBuktiUrls(
+        existing.fileBukti,
+        existing.fileBuktiList,
+      );
+      for (const url of urlsToDelete) {
+        await this.cloudinaryService.deleteImageByUrl(url).catch(console.error);
       }
       return await this.repo.update(id, {
         status: "BELUM_BAYAR",
         fileBukti: null,
+        fileBuktiList: null,
       });
     }
 

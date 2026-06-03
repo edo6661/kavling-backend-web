@@ -3,6 +3,7 @@ import type { CloudinaryService } from "../../../infrastructure/external/Cloudin
 import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 export class UploadBuktiPenjualanUseCase {
   constructor(
     private readonly db: PrismaClient,
@@ -70,9 +71,18 @@ export class UploadBuktiPenjualanUseCase {
             t.pembayaran.toLowerCase().includes("down payment"),
           );
     if (tagihanTerkait) {
+      const currentList = normalizeTagihanFileBuktiList(
+        tagihanTerkait.fileBuktiList,
+        tagihanTerkait.fileBukti,
+      );
+      const mergedList = [...currentList, imageUrl];
       await this.db.tagihan.update({
         where: { id: tagihanTerkait.id },
-        data: { status: "LUNAS", fileBukti: imageUrl },
+        data: {
+          status: "LUNAS",
+          fileBukti: mergedList[0] ?? imageUrl,
+          fileBuktiList: mergedList,
+        },
       });
     }
     return updatedPenjualan;

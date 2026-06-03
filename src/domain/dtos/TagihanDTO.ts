@@ -20,6 +20,7 @@ export interface UpdateTagihanDTO {
   status?: PaymentStatus | undefined;
   reminderBerikutnya?: string | Date | null | undefined;
   fileBukti?: string | null | undefined;
+  fileBuktiList?: string[] | null | undefined;
 }
 
 export interface TagihanResponseDTO {
@@ -37,6 +38,7 @@ export interface TagihanResponseDTO {
   jatuhTempo: Date;
   status: PaymentStatus;
   fileBukti: string | null;
+  fileBuktiList: string[];
   reminderBerikutnya: Date | null;
   isRefunded?: boolean;
   fileBuktiRefund?: string | null;
