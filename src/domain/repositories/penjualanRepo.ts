@@ -544,12 +544,13 @@ export class PenjualanRepository implements IPenjualanRepository {
       const bfTagihan = item.tagihan?.find(
         (t) => effectiveTagihanTujuan(t) === "BOOKING_FEE",
       );
-      const dpTagihan = item.tagihan?.find(
-        (t) =>
-          t.noTagihan === `INV-DP-${item.noTransaksi}` ||
-          (effectiveTagihanTujuan(t) === "DP" &&
-            t.pembayaran.toLowerCase().includes("down payment")),
-      );
+      const dpTagihan =
+        item.tagihan?.find(
+          (t) =>
+            effectiveTagihanTujuan(t) === "DP" &&
+            t.status === "BELUM_BAYAR",
+        ) ??
+        item.tagihan?.find((t) => effectiveTagihanTujuan(t) === "DP");
       const daftarCicilan =
         item.tagihan?.filter((t) => isCicilanHargaJualTagihan(t)) || [];
       const cicilanTerbayar = daftarCicilan.filter(

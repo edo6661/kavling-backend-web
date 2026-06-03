@@ -12,9 +12,12 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { inferTagihanTujuanFromPembayaran } from "../../../domain/tagihan/tagihanTujuan.js";
+import { effectiveTagihanTujuan } from "../../../domain/tagihan/tagihanTujuan.js";
 import {
   buildNoTagihanForCreate,
   duplicateNoTagihanMessage,
+  isLegacyCanonicalDpNoTagihan,
+  resolveDpNoTagihanForCreate,
 } from "../../../domain/tagihan/noTagihan.js";
 
 type ITtdData = Record<
@@ -48,11 +51,28 @@ export class CreateTagihanUseCase {
 
     const tujuan =
       data.tujuan ?? inferTagihanTujuanFromPembayaran(data.pembayaran);
-    const noTagihan = buildNoTagihanForCreate({
-      noTransaksi: penjualan.noTransaksi,
-      tujuan,
-      pembayaran: data.pembayaran,
-    });
+
+    let noTagihan: string;
+    if (tujuan === "DP") {
+      const dpRows = await this.db.tagihan.findMany({
+        where: { penjualanId: data.penjualanId },
+        select: { noTagihan: true, pembayaran: true, tujuan: true },
+      });
+      const existingDpNoTagihans = dpRows
+        .filter((t) => effectiveTagihanTujuan(t) === "DP")
+        .map((t) => t.noTagihan);
+      noTagihan = resolveDpNoTagihanForCreate({
+        noTransaksi: penjualan.noTransaksi,
+        pembayaran: data.pembayaran,
+        existingDpNoTagihans,
+      });
+    } else {
+      noTagihan = buildNoTagihanForCreate({
+        noTransaksi: penjualan.noTransaksi,
+        tujuan,
+        pembayaran: data.pembayaran,
+      });
+    }
 
     const existing = await this.repo.findByNoTagihan(noTagihan);
     if (existing) {
@@ -89,7 +109,10 @@ export class UpdateTagihanUseCase {
     });
     const isCanonicalDpInvoice =
       !!penjualanRow &&
-      before.noTagihan === `INV-DP-${penjualanRow.noTransaksi}`;
+      isLegacyCanonicalDpNoTagihan(
+        before.noTagihan,
+        penjualanRow.noTransaksi,
+      );
 
     if (
       nominalChanged &&

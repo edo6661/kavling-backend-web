@@ -4,6 +4,7 @@ import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
+import { effectiveTagihanTujuan } from "../../../domain/tagihan/tagihanTujuan.js";
 export class UploadBuktiPenjualanUseCase {
   constructor(
     private readonly db: PrismaClient,
@@ -65,11 +66,11 @@ export class UploadBuktiPenjualanUseCase {
             t.pembayaran.toLowerCase().includes(keyword),
           )
         : penjualan.tagihan.find(
-            (t) => t.noTagihan === `INV-DP-${penjualan.noTransaksi}`,
+            (t) =>
+              effectiveTagihanTujuan(t) === "DP" &&
+              t.status === "BELUM_BAYAR",
           ) ??
-          penjualan.tagihan.find((t) =>
-            t.pembayaran.toLowerCase().includes("down payment"),
-          );
+          penjualan.tagihan.find((t) => effectiveTagihanTujuan(t) === "DP");
     if (tagihanTerkait) {
       const currentList = normalizeTagihanFileBuktiList(
         tagihanTerkait.fileBuktiList,
