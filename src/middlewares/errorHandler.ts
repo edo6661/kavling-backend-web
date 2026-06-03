@@ -42,6 +42,8 @@ const prismaErrorMessage = (err: Prisma.PrismaClientKnownRequestError): string =
       return "Database belum diperbarui. Tabel yang dibutuhkan belum tersedia.";
     case "P2022":
       return "Database belum diperbarui. Kolom yang dibutuhkan belum tersedia.";
+    case "P2028":
+      return "Operasi database melebihi batas waktu. Silakan coba lagi.";
     default:
       return "Terjadi kesalahan saat mengakses database.";
   }
@@ -99,7 +101,9 @@ export const globalErrorHandler = (
         ? StatusCodes.CONFLICT
         : err.code === "P2021" || err.code === "P2022"
           ? StatusCodes.SERVICE_UNAVAILABLE
-          : StatusCodes.INTERNAL_SERVER_ERROR;
+          : err.code === "P2028"
+            ? StatusCodes.GATEWAY_TIMEOUT
+            : StatusCodes.INTERNAL_SERVER_ERROR;
     message = prismaErrorMessage(err);
     if (!isProd) {
       errorsDetail = { code: err.code, detail: err.message };

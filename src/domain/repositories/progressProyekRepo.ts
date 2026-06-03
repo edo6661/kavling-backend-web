@@ -49,6 +49,9 @@ type PenjualanListRow = PrismaTypes.PenjualanGetPayload<{
   };
 }>;
 
+/** Client Prisma biasa atau dalam transaksi — untuk query read/write progress */
+type ProgressDbClient = PrismaClient | Prisma.TransactionClient;
+
 export class ProgressProyekRepository implements IProgressProyekRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -349,14 +352,12 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
   }
 
   async findByKavlingId(kavlingId: number): Promise<ProgressProyekEntity | null> {
-    return await this.db.$transaction(async (tx) => {
-      const result = await this.findProgressRowForKavling(tx, kavlingId);
-      if (!result) return null;
+    const result = await this.findProgressRowForKavling(this.db, kavlingId);
+    if (!result) return null;
 
-      const entity = ProgressProyekMapper.toDomain(result);
-      const spkMandor = await this.getSpkMandorForKavling(kavlingId);
-      return this.applySpkMandorFallback(entity, spkMandor);
-    });
+    const entity = ProgressProyekMapper.toDomain(result);
+    const spkMandor = await this.getSpkMandorForKavling(kavlingId);
+    return this.applySpkMandorFallback(entity, spkMandor);
   }
 
   async attachKavlingProgressToPenjualan(
@@ -548,23 +549,23 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
   }
 
   private async findProgressRowForKavling(
-    tx: Prisma.TransactionClient,
+    db: ProgressDbClient,
     kavlingId: number,
   ) {
-    const byKavling = await tx.progressProyek.findUnique({
+    const byKavling = await db.progressProyek.findUnique({
       where: { kavlingId },
       include: ProgressProyekMapper.include,
     });
     if (byKavling) return byKavling;
 
-    const penjualan = await tx.penjualan.findFirst({
+    const penjualan = await db.penjualan.findFirst({
       where: { kavlingId, status: { not: "BATAL" } },
       orderBy: { id: "desc" },
       select: { id: true },
     });
     if (!penjualan) return null;
 
-    return tx.progressProyek.findUnique({
+    return db.progressProyek.findUnique({
       where: { penjualanId: penjualan.id },
       include: ProgressProyekMapper.include,
     });
@@ -614,11 +615,12 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     const normalized = Math.min(100, Math.max(0, persentase));
     const decimal = new Prisma.Decimal(normalized.toFixed(2));
 
+    const spkMandor = await this.getSpkMandorForKavling(kavlingId);
+
     return await this.db.$transaction(async (tx) => {
       let progress = await this.findProgressRowForKavling(tx, kavlingId);
 
       if (!progress) {
-        const spkMandor = await this.getSpkMandorForKavling(kavlingId);
         progress = await tx.progressProyek.create({
           data: {
             kavlingId,
@@ -646,11 +648,12 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
   async resetTotalPersentaseByKavlingId(
     kavlingId: number,
   ): Promise<ProgressProyekEntity> {
+    const spkMandor = await this.getSpkMandorForKavling(kavlingId);
+
     return await this.db.$transaction(async (tx) => {
       let progress = await this.findProgressRowForKavling(tx, kavlingId);
 
       if (!progress) {
-        const spkMandor = await this.getSpkMandorForKavling(kavlingId);
         progress = await tx.progressProyek.create({
           data: {
             kavlingId,
