@@ -12,6 +12,10 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { inferTagihanTujuanFromPembayaran } from "../../../domain/tagihan/tagihanTujuan.js";
+import {
+  buildNoTagihanForCreate,
+  duplicateNoTagihanMessage,
+} from "../../../domain/tagihan/noTagihan.js";
 
 type ITtdData = Record<
   string,
@@ -23,12 +27,38 @@ type ITtdData = Record<
 >;
 
 export class CreateTagihanUseCase {
-  constructor(private readonly repo: ITagihanRepository) {}
+  constructor(
+    private readonly repo: ITagihanRepository,
+    private readonly db: PrismaClient,
+  ) {}
+
   async execute(data: CreateTagihanDTO): Promise<TagihanResponseDTO> {
-    const count = await this.repo.count();
-    const noTagihan = `INV-${String(count + 1).padStart(3, "0")}`;
+    const penjualan = await this.db.penjualan.findUnique({
+      where: { id: data.penjualanId },
+      select: { noTransaksi: true, customerId: true },
+    });
+    if (!penjualan) {
+      throw new NotFoundError("Data penjualan tidak ditemukan");
+    }
+    if (penjualan.customerId !== data.customerId) {
+      throw new ConflictError(
+        "Penjualan yang dipilih tidak sesuai dengan customer.",
+      );
+    }
+
     const tujuan =
       data.tujuan ?? inferTagihanTujuanFromPembayaran(data.pembayaran);
+    const noTagihan = buildNoTagihanForCreate({
+      noTransaksi: penjualan.noTransaksi,
+      tujuan,
+      pembayaran: data.pembayaran,
+    });
+
+    const existing = await this.repo.findByNoTagihan(noTagihan);
+    if (existing) {
+      throw new ConflictError(duplicateNoTagihanMessage(noTagihan, tujuan));
+    }
+
     return await this.repo.create({ ...data, tujuan }, noTagihan);
   }
 }
