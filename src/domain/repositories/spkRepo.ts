@@ -3,7 +3,8 @@ import type { PrismaClient } from "@prisma/client";
 import type { ISpkRepository } from "./ISpkRepo.js";
 import type { CreateSpkDTO, SpkFilterDTO, UpdateSpkDTO } from "../dtos/SpkDTO.js";
 import type { SpkEntity } from "../entities/Spk.js";
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { CursorPaginatedData, OffsetPaginatedData } from "../../types/response.js";
+import type { SpkListSummary } from "../dtos/SpkDTO.js";
 import { SpkMapper } from "../../infrastructure/mapper/SpkMapper.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
@@ -250,24 +251,125 @@ export class SpkRepository implements ISpkRepository {
     });
   }
 
-  async findWithCursorPagination(
-    limit: number,
-    cursor?: number,
-    filters?: SpkFilterDTO,
-  ): Promise<CursorPaginatedData<SpkEntity>> {
+  private buildWhere(filters?: SpkFilterDTO): Prisma.SpkWhereInput {
     const where: Prisma.SpkWhereInput = {};
 
     if (filters?.mandorId) {
       where.mandorId = filters.mandorId;
     }
 
-    if (filters?.search) {
+    const search = filters?.search?.trim();
+    if (search) {
       where.OR = [
-        { noSpk: { contains: filters.search } },
-        { judulPekerjaan: { contains: filters.search } },
-        { mandor: { username: { contains: filters.search } } },
+        { noSpk: { contains: search } },
+        { judulPekerjaan: { contains: search } },
+        { mandor: { username: { contains: search } } },
+        {
+          penjualanItems: {
+            some: {
+              kavling: {
+                OR: [
+                  { blok: { contains: search } },
+                  { nomorUnit: { contains: search } },
+                ],
+              },
+            },
+          },
+        },
       ];
     }
+
+    return where;
+  }
+
+  private resolveOrderBy(
+    orderBy?: SpkFilterDTO["orderBy"],
+  ): Prisma.SpkOrderByWithRelationInput[] {
+    if (orderBy === "mandor:asc") {
+      return [{ mandor: { username: "asc" } }, { id: "desc" }];
+    }
+    if (orderBy === "mandor:desc") {
+      return [{ mandor: { username: "desc" } }, { id: "desc" }];
+    }
+    return [{ id: "desc" }];
+  }
+
+  private async buildListSummary(
+    where: Prisma.SpkWhereInput,
+  ): Promise<SpkListSummary> {
+    const [totalSpk, aggregates, totalKavling, progressSelesai] =
+      await Promise.all([
+        this.db.spk.count({ where }),
+        this.db.spk.aggregate({
+          where,
+          _sum: {
+            nilaiKontrak: true,
+            nilaiSudahDibayarkan: true,
+            sisaNilaiKontrak: true,
+          },
+        }),
+        this.db.spkPenjualan.count({ where: { spk: where } }),
+        this.db.spk.count({
+          where: {
+            AND: [where, { progressOverride: { gte: 100 } }],
+          },
+        }),
+      ]);
+
+    return {
+      totalSpk,
+      totalKavling,
+      totalNilaiKontrak: Number(aggregates._sum.nilaiKontrak ?? 0),
+      totalSudahDibayar: Number(aggregates._sum.nilaiSudahDibayarkan ?? 0),
+      totalSisaNilai: Number(aggregates._sum.sisaNilaiKontrak ?? 0),
+      progressSelesai,
+    };
+  }
+
+  async findWithOffsetPagination(
+    page: number,
+    limit: number,
+    filters?: SpkFilterDTO,
+  ): Promise<OffsetPaginatedData<SpkEntity>> {
+    const where = this.buildWhere(filters);
+    const skip = (page - 1) * limit;
+
+    const [totalItems, rows, summary] = await Promise.all([
+      this.db.spk.count({ where }),
+      this.db.spk.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: this.resolveOrderBy(filters?.orderBy),
+        include: SpkMapper.include,
+      }),
+      this.buildListSummary(where),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit) || 1;
+
+    return {
+      items: await Promise.all(
+        rows.map((item) => this.withComputedProgress(SpkMapper.toDomain(item))),
+      ),
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        summary,
+      },
+    };
+  }
+
+  async findWithCursorPagination(
+    limit: number,
+    cursor?: number,
+    filters?: SpkFilterDTO,
+  ): Promise<CursorPaginatedData<SpkEntity>> {
+    const where = this.buildWhere(filters);
 
     const items = await this.db.spk.findMany({
       take: limit + 1,

@@ -5,7 +5,7 @@ import type {
   UpdateSpkDTO,
 } from "../../../domain/dtos/SpkDTO.js";
 import type { SpkEntity } from "../../../domain/entities/Spk.js";
-import type { CursorPaginatedData } from "../../../types/response.js";
+import type { OffsetPaginatedData } from "../../../types/response.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { AppError } from "../../../domain/errors/AppError.js";
@@ -76,11 +76,11 @@ export class GetSpkPaginatedUseCase {
   constructor(private readonly repo: ISpkRepository) {}
 
   async execute(
+    page: number,
     limit: number,
-    cursor?: number,
     filters?: SpkFilterDTO,
-  ): Promise<CursorPaginatedData<SpkEntity>> {
-    return await this.repo.findWithCursorPagination(limit, cursor, filters);
+  ): Promise<OffsetPaginatedData<SpkEntity>> {
+    return await this.repo.findWithOffsetPagination(page, limit, filters);
   }
 }
 

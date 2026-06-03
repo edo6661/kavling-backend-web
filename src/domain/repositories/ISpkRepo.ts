@@ -1,4 +1,4 @@
-import type { CursorPaginatedData } from "../../types/response.js";
+import type { CursorPaginatedData, OffsetPaginatedData } from "../../types/response.js";
 import type { CreateSpkDTO, SpkFilterDTO, UpdateSpkDTO } from "../dtos/SpkDTO.js";
 import type { SpkEntity } from "../entities/Spk.js";
 
@@ -11,6 +11,11 @@ export interface ISpkRepository {
     cursor?: number,
     filters?: SpkFilterDTO,
   ): Promise<CursorPaginatedData<SpkEntity>>;
+  findWithOffsetPagination(
+    page: number,
+    limit: number,
+    filters?: SpkFilterDTO,
+  ): Promise<OffsetPaginatedData<SpkEntity>>;
   delete(id: number): Promise<void>;
   findKavlingIdsAssignedToOtherSpk(
     kavlingIds: number[],

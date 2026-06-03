@@ -71,21 +71,18 @@ export class SpkController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { limit, cursor, search } = getSpkPaginatedSchema.query.parse(
+    const { page, limit, search, orderBy } = getSpkPaginatedSchema.query.parse(
       req.query,
     );
 
     const filters: SpkFilterDTO = {};
     if (search) filters.search = search;
+    if (orderBy) filters.orderBy = orderBy;
     if (req.user?.role === Role.MANDOR && req.user.userId) {
       filters.mandorId = req.user.userId;
     }
 
-    const result = await this.getPaginatedUseCase.execute(
-      limit,
-      cursor,
-      filters,
-    );
+    const result = await this.getPaginatedUseCase.execute(page, limit, filters);
     sendResponse(res, StatusCodes.OK, "Daftar SPK berhasil diambil", result);
   };
 

@@ -57,6 +57,8 @@ export class SpkMapper {
           kavlingId: item.kavlingId,
           blok: item.kavling.blok,
           nomorUnit: item.kavling.nomorUnit,
+          luasTanah: Number(item.kavling.luasTanah),
+          luasBangunan: Number(item.kavling.luasBangunan),
           customerNama: activePenjualan?.customer?.nama ?? "-",
         };
       }),

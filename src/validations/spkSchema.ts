@@ -53,9 +53,11 @@ export const updateSpkSchema = {
 
 export const getSpkPaginatedSchema = {
   query: z.object({
-    limit: z.coerce.number().int().positive().max(500).default(100),
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(500).default(10),
     cursor: z.coerce.number().int().positive().optional(),
     search: z.string().optional(),
+    orderBy: z.enum(["mandor:asc", "mandor:desc", "id:desc"]).optional(),
   }),
 };
 

@@ -10,6 +10,8 @@ export interface SpkKavlingItem {
   kavlingId: number;
   blok: string;
   nomorUnit: string;
+  luasTanah: number;
+  luasBangunan: number;
   customerNama: string;
 }
 

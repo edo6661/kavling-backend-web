@@ -32,4 +32,14 @@ export interface UpdateSpkDTO {
 export interface SpkFilterDTO {
   search?: string;
   mandorId?: number;
+  orderBy?: "mandor:asc" | "mandor:desc" | "id:desc";
+}
+
+export interface SpkListSummary {
+  totalSpk: number;
+  totalKavling: number;
+  totalNilaiKontrak: number;
+  totalSudahDibayar: number;
+  totalSisaNilai: number;
+  progressSelesai: number;
 }
