@@ -16,6 +16,7 @@ export interface IKavlingRepository {
     limit: number,
     filters?: KavlingFilterDTO,
   ): Promise<OffsetPaginatedData<KavlingEntity>>;
+  findAll(filters?: KavlingFilterDTO): Promise<KavlingEntity[]>;
   upsertSertifikatTambahanDocument(
     kavlingId: number,
     urutan: number,

@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 
-const baseFilterSchema = z.object({
+export const baseFilterSchema = z.object({
   search: emptyAsUndefined(z.string().optional()),
   startDate: emptyAsUndefined(z.string().datetime().optional()),
   endDate: emptyAsUndefined(z.string().datetime().optional()),

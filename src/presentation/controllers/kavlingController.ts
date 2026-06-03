@@ -21,6 +21,8 @@ import { getKavlingPaginatedSchema } from "../../validations/kavlingSchema.js";
 import type { KavlingFilterDTO } from "../../domain/dtos/KavlingDTO.js";
 import type { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
 import type { UploadKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingSertifikatTambahanDocumentUseCase.js";
+import type { ExportKavlingsUseCase } from "../../application/usecases/kavling/ExportKavlingsUseCase.js";
+import { getKavlingExportSchema } from "../../validations/kavlingSchema.js";
 
 export class KavlingController {
   constructor(
@@ -31,6 +33,7 @@ export class KavlingController {
     private readonly deleteUseCase: DeleteKavlingUseCase,
     private readonly uploadDocumentUseCase: UploadKavlingDocumentUseCase,
     private readonly uploadSertifikatTambahanUseCase: UploadKavlingSertifikatTambahanDocumentUseCase,
+    private readonly exportKavlingsUseCase: ExportKavlingsUseCase,
   ) {}
 
   create = async (
@@ -118,6 +121,23 @@ export class KavlingController {
       `Dokumen ${docType} berhasil diunggah`,
       result,
     );
+  };
+
+  exportExcel = async (req: Request, res: Response): Promise<void> => {
+    const filters = getKavlingExportSchema.query.parse(
+      req.query,
+    ) as KavlingFilterDTO;
+
+    const excelBuffer = await this.exportKavlingsUseCase.execute(filters);
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Kavling_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(excelBuffer);
   };
 
   uploadSertifikatTambahanDocument = async (

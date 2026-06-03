@@ -20,6 +20,39 @@ const kavlingInclude = {
 
 export class KavlingRepository implements IKavlingRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  private buildWhere(filters?: KavlingFilterDTO): Prisma.KavlingWhereInput {
+    const where: Prisma.KavlingWhereInput = {};
+    if (filters?.perumahanId) where.perumahanId = filters.perumahanId;
+    if (filters?.status) where.status = filters.status;
+    if (filters?.jenisKavling) where.jenisKavling = filters.jenisKavling;
+    if (filters?.search) {
+      where.OR = [
+        { blok: { contains: filters.search } },
+        { nomorUnit: { contains: filters.search } },
+        { namaTipe: { contains: filters.search } },
+      ];
+    }
+    return where;
+  }
+
+  private buildOrderBy(
+    filters?: KavlingFilterDTO,
+  ): Prisma.KavlingOrderByWithRelationInput[] {
+    let orderByClause: Prisma.KavlingOrderByWithRelationInput[] = [
+      { blok: "asc" },
+      { nomorUnit: "asc" },
+      { id: "desc" },
+    ];
+    if (filters?.orderBy) {
+      const { field, direction } = filters.orderBy;
+      const validFields = ["blok", "hargaDasar", "luasBangunan", "luasTanah"];
+      if (validFields.includes(field)) {
+        orderByClause = [{ [field]: direction }, { id: "asc" }];
+      }
+    }
+    return orderByClause;
+  }
   async create(data: CreateKavlingDTO): Promise<KavlingEntity> {
     try {
       const existing = await this.db.kavling.findFirst({
@@ -135,34 +168,24 @@ export class KavlingRepository implements IKavlingRepository {
       throw error;
     }
   }
+  async findAll(filters?: KavlingFilterDTO): Promise<KavlingEntity[]> {
+    const where = this.buildWhere(filters);
+    const orderBy = this.buildOrderBy(filters);
+    const items = await this.db.kavling.findMany({
+      where,
+      orderBy,
+      include: kavlingInclude,
+    });
+    return items.map((item) => KavlingMapper.toDomain(item));
+  }
+
   async findWithCursorPagination(
     page: number,
     limit: number,
     filters?: KavlingFilterDTO,
   ): Promise<OffsetPaginatedData<KavlingEntity>> {
-    const where: Prisma.KavlingWhereInput = {};
-    if (filters?.perumahanId) where.perumahanId = filters.perumahanId;
-    if (filters?.status) where.status = filters.status;
-    if (filters?.jenisKavling) where.jenisKavling = filters.jenisKavling;
-    if (filters?.search) {
-      where.OR = [
-        { blok: { contains: filters.search } },
-        { nomorUnit: { contains: filters.search } },
-        { namaTipe: { contains: filters.search } },
-      ];
-    }
-    let orderByClause: Prisma.KavlingOrderByWithRelationInput[] = [
-      { blok: "asc" },
-      { nomorUnit: "asc" },
-      { id: "desc" },
-    ];
-    if (filters?.orderBy) {
-      const { field, direction } = filters.orderBy;
-      const validFields = ["blok", "hargaDasar", "luasBangunan", "luasTanah"];
-      if (validFields.includes(field)) {
-        orderByClause = [{ [field]: direction }, { id: "asc" }];
-      }
-    }
+    const where = this.buildWhere(filters);
+    const orderByClause = this.buildOrderBy(filters);
     const skip = (page - 1) * limit;
     const summaryWhere: Prisma.KavlingWhereInput | undefined =
       filters?.perumahanId ? { perumahanId: filters.perumahanId } : undefined;

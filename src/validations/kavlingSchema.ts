@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
-import { offsetPaginationQuerySchema } from "./paginationSchema.js";
+import {
+  offsetPaginationQuerySchema,
+  baseFilterSchema,
+} from "./paginationSchema.js";
 import { UnitStatus, JenisKavling } from "@prisma/client";
 
 export const createKavlingSchema = {
@@ -83,6 +86,16 @@ export const updateKavlingSchema = {
 
 export const getKavlingPaginatedSchema = {
   query: offsetPaginationQuerySchema.extend({
+    perumahanId: emptyAsUndefined(
+      z.coerce.number().int().positive().optional(),
+    ),
+    status: emptyAsUndefined(z.nativeEnum(UnitStatus).optional()),
+    jenisKavling: emptyAsUndefined(z.nativeEnum(JenisKavling).optional()),
+  }),
+};
+
+export const getKavlingExportSchema = {
+  query: baseFilterSchema.extend({
     perumahanId: emptyAsUndefined(
       z.coerce.number().int().positive().optional(),
     ),

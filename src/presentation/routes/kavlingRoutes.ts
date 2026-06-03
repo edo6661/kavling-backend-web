@@ -8,6 +8,7 @@ import {
   createKavlingSchema,
   updateKavlingSchema,
   getKavlingPaginatedSchema,
+  getKavlingExportSchema,
   uploadKavlingDocumentSchema,
   uploadKavlingSertifikatTambahanSchema,
 } from "../../validations/kavlingSchema.js";
@@ -31,6 +32,13 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
     requirePermission(["KAVLING", "SPK"], "read"),
     validate(getKavlingPaginatedSchema),
     controller.getPaginated,
+  );
+
+  router.get(
+    "/export/excel",
+    requirePermission("KAVLING", "read"),
+    validate(getKavlingExportSchema),
+    controller.exportExcel,
   );
 
   router.get(
