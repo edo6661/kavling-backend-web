@@ -43,13 +43,6 @@ export class UploadBuktiTagihanUseCase {
       );
     }
 
-    if (existing.status === "LUNAS") {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Tagihan sudah lunas, tidak dapat menambah bukti pembayaran.",
-      );
-    }
-
     if (
       isCustomer &&
       existing.status !== "BELUM_BAYAR" &&
@@ -74,13 +67,20 @@ export class UploadBuktiTagihanUseCase {
     const mergedList = [...currentList, ...uploadedUrls];
     const primaryBukti = mergedList[0] ?? null;
 
-    const newStatus = "MENUNGGU_KONFIRMASI";
-
-    const updatedTagihan = await this.repo.update(existing.id, {
+    const updatePayload: {
+      fileBukti: string | null;
+      fileBuktiList: string[];
+      status?: "MENUNGGU_KONFIRMASI";
+    } = {
       fileBukti: primaryBukti,
       fileBuktiList: mergedList,
-      status: newStatus as any,
-    });
+    };
+
+    if (existing.status === "BELUM_BAYAR") {
+      updatePayload.status = "MENUNGGU_KONFIRMASI";
+    }
+
+    const updatedTagihan = await this.repo.update(existing.id, updatePayload);
 
     if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
       try {

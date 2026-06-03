@@ -51,3 +51,10 @@ export const uploadBuktiByNoTagihanSchema = {
     noTagihan: z.string().min(1, "Nomor Tagihan wajib diisi"),
   }),
 };
+
+export const removeBuktiTagihanSchema = {
+  params: updateTagihanSchema.params,
+  body: z.object({
+    buktiUrl: z.string().min(1, "URL bukti pembayaran wajib diisi"),
+  }),
+};

@@ -153,6 +153,7 @@ import {
   DeleteTagihanUseCase,
 } from "../../application/usecases/tagihan/TagihanUseCases.js";
 import { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+import { RemoveBuktiTagihanUseCase } from "../../application/usecases/tagihan/RemoveBuktiTagihanUseCase.js";
 import { TagihanController } from "../../presentation/controllers/tagihanController.js";
 
 import { PenjualanRepository } from "../../domain/repositories/penjualanRepo.js";
@@ -535,6 +536,10 @@ export const createContainer = (dbClient: PrismaClient) => {
     penjualanRepo,
     generateSprPdfUseCase,
   );
+  const removeBuktiTagihanUseCase = new RemoveBuktiTagihanUseCase(
+    tagihanRepo,
+    cloudinaryService,
+  );
 
   const tagihanController = new TagihanController(
     createTagihanUseCase,
@@ -546,6 +551,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     uploadBuktiRefundUseCase,
     saveTagihanSignatureUseCase,
     approveBuktiTagihanUseCase,
+    removeBuktiTagihanUseCase,
   );
 
   const kodeBillingPphRepo = new KodeBillingPphRepository(dbClient);

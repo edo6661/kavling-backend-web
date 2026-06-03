@@ -10,6 +10,7 @@ import {
   createTagihanSchema,
   updateTagihanSchema,
   getTagihansPaginatedSchema,
+  removeBuktiTagihanSchema,
 } from "../../validations/tagihanSchema.js";
 import type { TagihanController } from "../controllers/tagihanController.js";
 import { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
@@ -55,6 +56,12 @@ export const createTagihanRoutes = (controller: TagihanController): Router => {
     requirePermission("TAGIHAN", "update"),
     upload.array("fileBukti", 10),
     controller.uploadBukti,
+  );
+  router.delete(
+    "/:id/bukti",
+    requirePermission("TAGIHAN", "update"),
+    validate(removeBuktiTagihanSchema),
+    controller.removeBukti,
   );
   router.patch(
     "/:id/refund",

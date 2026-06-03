@@ -15,6 +15,7 @@ import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagih
 import type {
   createTagihanSchema,
   updateTagihanSchema,
+  removeBuktiTagihanSchema,
 } from "../../validations/tagihanSchema.js";
 import { getTagihansPaginatedSchema } from "../../validations/tagihanSchema.js";
 import type { TagihanFilterDTO } from "../../domain/dtos/TagihanDTO.js";
@@ -22,6 +23,7 @@ import type { UploadBuktiRefundUseCase } from "../../application/usecases/tagiha
 import type { SaveTagihanSignatureUseCase } from "../../application/usecases/tagihan/SaveTagihanSignatureUseCase.js";
 import type { uploadSignatureSchema } from "../../validations/penjualanSchema.js";
 import type { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
+import type { RemoveBuktiTagihanUseCase } from "../../application/usecases/tagihan/RemoveBuktiTagihanUseCase.js";
 
 export class TagihanController {
   constructor(
@@ -34,6 +36,7 @@ export class TagihanController {
     private readonly uploadBuktiRefundUseCase: UploadBuktiRefundUseCase,
     private readonly saveSignatureUseCase: SaveTagihanSignatureUseCase,
     private readonly approveBuktiTagihanUseCase: ApproveBuktiTagihanUseCase,
+    private readonly removeBuktiTagihanUseCase: RemoveBuktiTagihanUseCase,
   ) {}
 
   create = async (
@@ -187,6 +190,25 @@ export class TagihanController {
       res,
       StatusCodes.OK,
       isApproved ? "Bukti disetujui" : "Bukti ditolak",
+      result,
+    );
+  };
+
+  removeBukti = async (
+    req: TypedRequest<
+      typeof removeBuktiTagihanSchema.body,
+      any,
+      typeof removeBuktiTagihanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const { buktiUrl } = req.body;
+    const result = await this.removeBuktiTagihanUseCase.execute(id, buktiUrl);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Bukti pembayaran berhasil dihapus",
       result,
     );
   };
