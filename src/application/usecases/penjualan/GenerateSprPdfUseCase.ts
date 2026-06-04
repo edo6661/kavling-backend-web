@@ -426,7 +426,7 @@ export class GenerateSprPdfUseCase {
         checkY(70);
         doc.fontSize(8).font("Helvetica");
         const termLines = [
-          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, Biaya Proses KPR dan Notaris.",
+          "1. Harga jual pembelian unit rumah sudah termasuk biaya AJB, Sertipikat, IMB, Listrik, BPHTB, dan Notaris.",
           "2. Apabila terjadi pembatalan, uang tanda jadi (Booking Fee) tidak dapat dikembalikan / hangus.",
           "3. Surat konfirmasi ini sah apabila dilampirkan bukti transfer ke nomor rekening berikut:",
         ];
