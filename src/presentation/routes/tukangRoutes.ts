@@ -17,14 +17,14 @@ export const createTukangRoutes = (controller: TukangController): Router => {
 
   router.get(
     "/",
-    requirePermission("SPK", "read"),
+    requirePermission(["SPK", "PROGRESS_PROYEK"], "read"),
     validate(getTukangListSchema),
     controller.getList,
   );
 
   router.post(
     "/",
-    requirePermission("SPK", "read"),
+    requirePermission(["SPK", "PROGRESS_PROYEK"], "read"),
     validate(upsertTukangSchema),
     controller.upsert,
   );

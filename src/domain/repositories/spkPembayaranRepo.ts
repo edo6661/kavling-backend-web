@@ -57,6 +57,8 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   private async resolveUpahBaris(
     tx: Prisma.TransactionClient,
     baris: SpkPembayaranUpahBarisInput[],
+    useTotalAtPaymentLevel = false,
+    defaultMandorId?: number | null,
   ) {
     const resolved: {
       tukangId: number | null;
@@ -68,7 +70,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     for (const barisItem of baris) {
       const nik = barisItem.nik.trim();
       const nama = barisItem.nama.trim();
-      if (!nik || !nama || barisItem.nominal <= 0) {
+      const rowNominal = barisItem.nominal ?? 0;
+      if (!nik || !nama) {
+        throw new Error("UPAH_BARIS_INVALID");
+      }
+      if (!useTotalAtPaymentLevel && rowNominal <= 0) {
         throw new Error("UPAH_BARIS_INVALID");
       }
 
@@ -87,7 +93,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
             tukangId: existingTukang.id,
             nik: existingTukang.nik,
             nama,
-            nominal: barisItem.nominal,
+            nominal: useTotalAtPaymentLevel ? 0 : rowNominal,
           });
           continue;
         }
@@ -95,15 +101,22 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const tukang = await tx.tukang.upsert({
         where: { nik },
-        create: { nik, nama },
-        update: { nama },
+        create: {
+          nik,
+          nama,
+          ...(defaultMandorId ? { mandorId: defaultMandorId } : {}),
+        },
+        update: {
+          nama,
+          ...(defaultMandorId ? { mandorId: defaultMandorId } : {}),
+        },
       });
 
       resolved.push({
         tukangId: tukang.id,
         nik: tukang.nik,
         nama: tukang.nama,
-        nominal: barisItem.nominal,
+        nominal: useTotalAtPaymentLevel ? 0 : rowNominal,
       });
     }
 
@@ -113,11 +126,13 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   private normalizeKasbonBaris(baris: SpkPembayaranKasbonBarisInput[]) {
     const normalized: SpkPembayaranKasbonBarisInput[] = [];
     for (const item of baris) {
+      const namaSupplier = item.namaSupplier.trim();
       const keterangan = item.keterangan.trim();
-      if (!keterangan || item.nominal <= 0) {
+      if (!namaSupplier || !keterangan || item.nominal <= 0) {
         throw new Error("KASBON_BARIS_INVALID");
       }
       normalized.push({
+        namaSupplier,
         keterangan,
         tanggalPo: item.tanggalPo,
         nominal: item.nominal,
@@ -301,6 +316,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
             diajukanOleh: { connect: { id: data.diajukanOlehId } },
             kasbonBaris: {
               create: normalizedBaris.map((b) => ({
+                namaSupplier: b.namaSupplier,
                 keterangan: b.keterangan,
                 tanggalPo: b.tanggalPo,
                 nominal: new Prisma.Decimal(b.nominal),
@@ -329,8 +345,17 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         if (!target) throw new Error("UPAH_NOT_ALLOWED");
         if (!data.baris.length) throw new Error("UPAH_BARIS_EMPTY");
 
-        const resolvedBaris = await this.resolveUpahBaris(tx, data.baris);
-        const totalNominal = resolvedBaris.reduce((sum, b) => sum + b.nominal, 0);
+        const spkMandor = await tx.spk.findUnique({
+          where: { id: data.spkId },
+          select: { mandorId: true },
+        });
+        const resolvedBaris = await this.resolveUpahBaris(
+          tx,
+          data.baris,
+          true,
+          spkMandor?.mandorId ?? null,
+        );
+        const totalNominal = data.nominal;
         if (totalNominal <= 0) throw new Error("UPAH_NOMINAL_INVALID");
 
         createData = {
@@ -592,6 +617,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
             nominal: new Prisma.Decimal(totalNominal),
             kasbonBaris: {
               create: normalizedBaris.map((b) => ({
+                namaSupplier: b.namaSupplier,
                 keterangan: b.keterangan,
                 tanggalPo: b.tanggalPo,
                 nominal: new Prisma.Decimal(b.nominal),
@@ -636,8 +662,17 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
       if (!data.baris.length) throw new Error("UPAH_BARIS_EMPTY");
 
-      const resolvedBaris = await this.resolveUpahBaris(tx, data.baris);
-      const totalNominal = resolvedBaris.reduce((sum, b) => sum + b.nominal, 0);
+      const pembayaranSpk = await tx.spkPembayaran.findUnique({
+        where: { id: data.id },
+        select: { spk: { select: { mandorId: true } } },
+      });
+      const resolvedBaris = await this.resolveUpahBaris(
+        tx,
+        data.baris,
+        true,
+        pembayaranSpk?.spk.mandorId ?? null,
+      );
+      const totalNominal = data.nominal;
       if (totalNominal <= 0) throw new Error("UPAH_NOMINAL_INVALID");
 
       await tx.spkPembayaranUpahBaris.deleteMany({

@@ -60,6 +60,7 @@ export class SpkPembayaranController {
             ...(req.body.kasbonBaris?.length
               ? {
                   kasbonBaris: req.body.kasbonBaris.map((b) => ({
+                    namaSupplier: b.namaSupplier,
                     keterangan: b.keterangan,
                     nominal: b.nominal,
                     tanggalPo: b.tanggalPo,
@@ -78,6 +79,7 @@ export class SpkPembayaranController {
               tanggalDari: req.body.tanggalDari ?? new Date(),
               tanggalSampai: req.body.tanggalSampai ?? new Date(),
               baris: req.body.baris ?? [],
+              nominal: req.body.upahNominal ?? 0,
               diajukanOlehId: userId,
             }
           : {
@@ -169,6 +171,7 @@ export class SpkPembayaranController {
         ? {
             id,
             kasbonBaris: req.body.kasbonBaris.map((b) => ({
+              namaSupplier: b.namaSupplier,
               keterangan: b.keterangan,
               nominal: b.nominal,
               tanggalPo: b.tanggalPo,
@@ -200,6 +203,7 @@ export class SpkPembayaranController {
         tanggalDari: req.body.tanggalDari,
         tanggalSampai: req.body.tanggalSampai,
         baris: req.body.baris,
+        nominal: req.body.upahNominal,
       },
       req.user!.role,
     );

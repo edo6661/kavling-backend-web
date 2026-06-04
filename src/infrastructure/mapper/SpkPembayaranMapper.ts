@@ -20,6 +20,7 @@ export const spkPembayaranInclude = {
     select: {
       id: true,
       spkPembayaranId: true,
+      namaSupplier: true,
       keterangan: true,
       tanggalPo: true,
       nominal: true,
@@ -99,6 +100,7 @@ export class SpkPembayaranMapper {
       kasbonBaris: row.kasbonBaris?.map((b) => ({
         id: b.id,
         spkPembayaranId: b.spkPembayaranId,
+        namaSupplier: b.namaSupplier,
         keterangan: b.keterangan,
         tanggalPo: b.tanggalPo,
         nominal: Number(b.nominal),

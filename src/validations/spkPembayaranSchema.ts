@@ -6,10 +6,11 @@ const upahBarisSchema = z.object({
   tukangId: z.coerce.number().int().positive().optional().nullable(),
   nik: z.string().trim().min(1).max(20),
   nama: z.string().trim().min(1).max(150),
-  nominal: z.coerce.number().positive(),
+  nominal: z.coerce.number().nonnegative().optional(),
 });
 
 const kasbonBarisSchema = z.object({
+  namaSupplier: z.string().trim().min(1).max(200),
   keterangan: z.string().trim().min(1).max(500),
   tanggalPo: z.coerce.date(),
   nominal: z.coerce.number().positive(),
@@ -29,6 +30,8 @@ export const createSpkPembayaranSchema = {
       tanggalSampai: z.coerce.date().optional(),
       baris: z.array(upahBarisSchema).optional(),
       kasbonBaris: z.array(kasbonBarisSchema).optional(),
+      /** Total upah tukang (jenis UPAH) */
+      upahNominal: z.coerce.number().positive().optional(),
     })
     .superRefine((data, ctx) => {
       if (data.jenis === "KASBON") {
@@ -94,6 +97,13 @@ export const createSpkPembayaranSchema = {
             code: z.ZodIssueCode.custom,
             message: "Minimal satu baris tukang wajib diisi",
             path: ["baris"],
+          });
+        }
+        if (data.upahNominal == null || data.upahNominal <= 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Total upah tukang wajib dan harus lebih dari 0",
+            path: ["upahNominal"],
           });
         }
       } else if (!terminJenis.safeParse(data.jenis).success) {
@@ -207,6 +217,7 @@ export const updateSpkUpahSchema = {
       tanggalDari: z.coerce.date(),
       tanggalSampai: z.coerce.date(),
       baris: z.array(upahBarisSchema).min(1),
+      upahNominal: z.coerce.number().positive(),
     })
     .superRefine((data, ctx) => {
       if (data.tanggalDari > data.tanggalSampai) {

@@ -6,10 +6,12 @@ export interface SpkPembayaranUpahBarisInput {
   tukangId?: number | null;
   nik: string;
   nama: string;
-  nominal: number;
+  /** Opsional; jika total upah di level pembayaran, baris disimpan dengan nominal 0 */
+  nominal?: number;
 }
 
 export interface SpkPembayaranKasbonBarisInput {
+  namaSupplier: string;
   keterangan: string;
   tanggalPo: Date;
   nominal: number;
@@ -38,6 +40,8 @@ export type CreateSpkPembayaranDTO =
       tanggalDari: Date;
       tanggalSampai: Date;
       baris: SpkPembayaranUpahBarisInput[];
+      /** Total upah tukang (bukan per baris) */
+      nominal: number;
       diajukanOlehId: number;
     };
 
@@ -87,4 +91,5 @@ export interface UpdateSpkUpahDTO {
   tanggalDari: Date;
   tanggalSampai: Date;
   baris: SpkPembayaranUpahBarisInput[];
+  nominal: number;
 }

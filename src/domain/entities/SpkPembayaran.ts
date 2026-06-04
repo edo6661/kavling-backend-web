@@ -16,6 +16,7 @@ export interface SpkPembayaranUpahBarisEntity {
 export interface SpkPembayaranKasbonBarisEntity {
   id: number;
   spkPembayaranId: number;
+  namaSupplier: string;
   keterangan: string;
   tanggalPo: Date;
   nominal: number;

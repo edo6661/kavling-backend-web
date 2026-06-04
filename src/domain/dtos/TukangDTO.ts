@@ -6,3 +6,8 @@ export interface UpsertTukangDTO {
 export interface TukangFilterDTO {
   search?: string;
 }
+
+export interface TukangListContext {
+  userId: number;
+  role: string;
+}

@@ -1,62 +1,115 @@
 import type { PrismaClient } from "@prisma/client";
-import type { TukangFilterDTO, UpsertTukangDTO } from "../dtos/TukangDTO.js";
+import { Role } from "@prisma/client";
+import type {
+  TukangFilterDTO,
+  TukangListContext,
+  UpsertTukangDTO,
+} from "../dtos/TukangDTO.js";
 import type { TukangEntity } from "../entities/Tukang.js";
+
+const toEntity = (row: {
+  id: number;
+  nik: string;
+  nama: string;
+  mandorId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  mandor?: { username: string } | null;
+}): TukangEntity => ({
+  id: row.id,
+  nik: row.nik,
+  nama: row.nama,
+  mandorId: row.mandorId,
+  mandorUsername: row.mandor?.username ?? null,
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+});
 
 export class TukangRepository {
   constructor(private readonly db: PrismaClient) {}
 
-  async findAll(filters?: TukangFilterDTO): Promise<TukangEntity[]> {
+  async findAll(
+    filters: TukangFilterDTO | undefined,
+    ctx: TukangListContext,
+  ): Promise<TukangEntity[]> {
+    const search = filters?.search?.trim();
     const where =
-      filters?.search?.trim()
+      ctx.role === Role.MANDOR
         ? {
-            OR: [
-              { nik: { contains: filters.search.trim() } },
-              { nama: { contains: filters.search.trim() } },
-            ],
+            mandorId: ctx.userId,
+            ...(search
+              ? {
+                  OR: [
+                    { nik: { contains: search } },
+                    { nama: { contains: search } },
+                  ],
+                }
+              : {}),
           }
-        : undefined;
+        : search
+          ? {
+              OR: [
+                { nik: { contains: search } },
+                { nama: { contains: search } },
+              ],
+            }
+          : undefined;
 
     const rows = await this.db.tukang.findMany({
       where,
       orderBy: [{ nama: "asc" }],
       take: 500,
+      include: {
+        mandor: { select: { username: true } },
+      },
     });
 
-    return rows.map((r) => ({
-      id: r.id,
-      nik: r.nik,
-      nama: r.nama,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-    }));
+    return rows.map(toEntity);
   }
 
-  async upsertByNik(data: UpsertTukangDTO): Promise<TukangEntity> {
+  async upsertForUser(
+    data: UpsertTukangDTO,
+    ctx: TukangListContext,
+  ): Promise<TukangEntity> {
     const nik = data.nik.trim();
     const nama = data.nama.trim();
-    const row = await this.db.tukang.upsert({
-      where: { nik },
-      create: { nik, nama },
-      update: { nama },
+    const isMandor = ctx.role === Role.MANDOR;
+
+    const existing = await this.db.tukang.findUnique({ where: { nik } });
+
+    if (existing) {
+      if (isMandor && existing.mandorId && existing.mandorId !== ctx.userId) {
+        throw new Error("TUKANG_NIK_OTHER_MANDOR");
+      }
+
+      const row = await this.db.tukang.update({
+        where: { id: existing.id },
+        data: {
+          nama,
+          ...(isMandor ? { mandorId: ctx.userId } : {}),
+        },
+        include: { mandor: { select: { username: true } } },
+      });
+      return toEntity(row);
+    }
+
+    const row = await this.db.tukang.create({
+      data: {
+        nik,
+        nama,
+        mandorId: isMandor ? ctx.userId : null,
+      },
+      include: { mandor: { select: { username: true } } },
     });
-    return {
-      id: row.id,
-      nik: row.nik,
-      nama: row.nama,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    };
+    return toEntity(row);
   }
 
   async findByNik(nik: string): Promise<TukangEntity | null> {
-    const row = await this.db.tukang.findUnique({ where: { nik: nik.trim() } });
+    const row = await this.db.tukang.findUnique({
+      where: { nik: nik.trim() },
+      include: { mandor: { select: { username: true } } },
+    });
     if (!row) return null;
-    return {
-      id: row.id,
-      nik: row.nik,
-      nama: row.nama,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    };
+    return toEntity(row);
   }
 }

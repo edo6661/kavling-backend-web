@@ -117,6 +117,12 @@ export class CreateSpkPembayaranRequestUseCase {
           "Minimal satu baris tukang wajib diisi.",
         );
       }
+      if (!data.nominal || data.nominal <= 0) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Total upah tukang wajib dan harus lebih dari 0.",
+        );
+      }
       if (data.tanggalDari > data.tanggalSampai) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
@@ -124,7 +130,7 @@ export class CreateSpkPembayaranRequestUseCase {
         );
       }
 
-      const additionalNominal = data.baris.reduce((sum, b) => sum + b.nominal, 0);
+      const additionalNominal = data.nominal;
       const capCheck = validatePengurangTerminNominal(
         nilaiKontrak,
         pengurangRows,
@@ -171,6 +177,7 @@ export class CreateSpkPembayaranRequestUseCase {
                 tanggalDari: data.tanggalDari,
                 tanggalSampai: data.tanggalSampai,
                 baris: data.baris,
+                nominal: data.nominal,
                 diajukanOlehId: userId,
               }
             : {
@@ -418,13 +425,19 @@ export class UpdateSpkUpahUseCase {
     const spk = await this.spkRepo.findById(record.spkId);
     if (!spk) throw new NotFoundError("SPK tidak ditemukan");
 
-    const additionalNominal = data.baris.reduce((sum, b) => sum + b.nominal, 0);
+    if (!data.nominal || data.nominal <= 0) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Total upah tukang wajib dan harus lebih dari 0.",
+      );
+    }
+
     const all = await this.pembayaranRepo.findBySpkId(record.spkId);
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
       toPengurangRows(all),
       record.mengurangiTermin,
-      additionalNominal,
+      data.nominal,
       data.id,
     );
     if (!capCheck.allowed) {

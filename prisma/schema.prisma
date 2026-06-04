@@ -30,6 +30,7 @@ model User {
   bankKprPembayaranDibayar BankKprPembayaran[]  @relation("BankKprPembayaranDibayar")
   tahapanReports          TahapanProyek[]       @relation("TahapanReporter")
   mandorProfile           Mandor?
+  tukangList              Tukang[]              @relation("TukangMandor")
 
   @@map("users")
 }
@@ -522,11 +523,14 @@ model Tukang {
   id        Int      @id @default(autoincrement())
   nik       String   @unique @db.VarChar(20)
   nama      String   @db.VarChar(150)
+  mandorId  Int?     @map("mandor_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  mandor    User?                    @relation("TukangMandor", fields: [mandorId], references: [id], onDelete: SetNull)
   upahBaris SpkPembayaranUpahBaris[]
 
+  @@index([mandorId], map: "tukang_mandor_id_fkey")
   @@map("tukang")
 }
 
@@ -582,6 +586,7 @@ model SpkPembayaranUpahBaris {
 model SpkPembayaranKasbonBaris {
   id              Int      @id @default(autoincrement())
   spkPembayaranId Int      @map("spk_pembayaran_id")
+  namaSupplier    String   @default("") @map("nama_supplier") @db.VarChar(200)
   keterangan      String   @db.VarChar(500)
   tanggalPo       DateTime @map("tanggal_po") @db.Date
   nominal         Decimal  @db.Decimal(15, 2)
