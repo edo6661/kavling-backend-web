@@ -40,6 +40,13 @@ export const createSpkPembayaranRoutes = (
   );
 
   router.post(
+    "/upload-foto-bon",
+    requirePermission("SPK", "read"),
+    upload.single("foto_bon"),
+    controller.uploadFotoBon,
+  );
+
+  router.post(
     "/spk/:spkId",
     requirePermission("SPK", "read"),
     validate(createSpkPembayaranSchema),

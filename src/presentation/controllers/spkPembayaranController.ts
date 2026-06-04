@@ -13,6 +13,7 @@ import type {
   UpdateSpkKasbonUseCase,
   UpdateSpkUpahUseCase,
   DeleteSpkPenguranganUseCase,
+  UploadKasbonFotoBonUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import type {
   updateSpkKasbonSchema,
@@ -38,7 +39,22 @@ export class SpkPembayaranController {
     private readonly updateKasbonUseCase: UpdateSpkKasbonUseCase,
     private readonly updateUpahUseCase: UpdateSpkUpahUseCase,
     private readonly deletePenguranganUseCase: DeleteSpkPenguranganUseCase,
+    private readonly uploadKasbonFotoBonUseCase: UploadKasbonFotoBonUseCase,
   ) {}
+
+  uploadFotoBon = async (req: Request, res: Response): Promise<void> => {
+    const file = req.file;
+    if (!file?.buffer?.length) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File foto bon (foto_bon) wajib diunggah.",
+      );
+      return;
+    }
+    const result = await this.uploadKasbonFotoBonUseCase.execute(file.buffer);
+    sendResponse(res, StatusCodes.OK, "Foto bon berhasil diunggah", result);
+  };
 
   createRequest = async (
     req: TypedRequest<
@@ -64,6 +80,7 @@ export class SpkPembayaranController {
                     keterangan: b.keterangan,
                     nominal: b.nominal,
                     tanggalPo: b.tanggalPo,
+                    fotoBon: b.fotoBon ?? null,
                   })),
                 }
               : {
@@ -175,6 +192,7 @@ export class SpkPembayaranController {
               keterangan: b.keterangan,
               nominal: b.nominal,
               tanggalPo: b.tanggalPo,
+              fotoBon: b.fotoBon ?? null,
             })),
           }
         : {

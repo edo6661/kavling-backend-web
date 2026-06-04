@@ -602,6 +602,21 @@ export class RemoveBuktiSpkPembayaranUseCase {
   }
 }
 
+export class UploadKasbonFotoBonUseCase {
+  constructor(private readonly cloudinary: CloudinaryService) {}
+
+  async execute(fileBuffer: Buffer): Promise<{ fotoBon: string }> {
+    if (!fileBuffer?.length) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Foto bon wajib diunggah.");
+    }
+    const fotoBon = await this.cloudinary.uploadFile(
+      fileBuffer,
+      "bumantara/spk-kasbon-bon",
+    );
+    return { fotoBon };
+  }
+}
+
 export class SetBsiCmsDilaporkanUseCase {
   constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
 

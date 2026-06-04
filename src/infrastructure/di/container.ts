@@ -14,6 +14,7 @@ import {
   UpdateSpkKasbonUseCase,
   UpdateSpkUpahUseCase,
   DeleteSpkPenguranganUseCase,
+  UploadKasbonFotoBonUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import { TukangRepository } from "../../domain/repositories/tukangRepo.js";
 import { TukangController } from "../../presentation/controllers/tukangController.js";
@@ -84,6 +85,7 @@ import {
 
 import { GoogleVisionService } from "../external/GoogleVisionService.js";
 import { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase.js";
+import { ExtractKasbonBonDataUseCase } from "../../application/usecases/ocr/ExtractKasbonBonDataUseCase.js";
 import { OcrController } from "../../presentation/controllers/ocrController.js";
 
 import {
@@ -252,6 +254,9 @@ export const createContainer = (dbClient: PrismaClient) => {
     customerRepo,
   );
   const extractKtpDataUseCase = new ExtractKtpDataUseCase(googleVisionService);
+  const extractKasbonBonDataUseCase = new ExtractKasbonBonDataUseCase(
+    googleVisionService,
+  );
 
   const registerUseCase = new RegisterUserUseCase(userRepo);
   const loginUseCase = new LoginUserUseCase(userRepo, dbClient);
@@ -418,7 +423,10 @@ export const createContainer = (dbClient: PrismaClient) => {
     getDashboardSummaryUseCase,
   );
 
-  const ocrController = new OcrController(extractKtpDataUseCase);
+  const ocrController = new OcrController(
+    extractKtpDataUseCase,
+    extractKasbonBonDataUseCase,
+  );
   const agentLoginUseCase = new AgentLoginUseCase(userRepo, dbClient);
   const generateSuratPernyataanPdfUseCase =
     new GenerateSuratPernyataanPdfUseCase();
@@ -788,6 +796,9 @@ export const createContainer = (dbClient: PrismaClient) => {
   const deleteSpkPenguranganUseCase = new DeleteSpkPenguranganUseCase(
     spkPembayaranRepo,
   );
+  const uploadKasbonFotoBonUseCase = new UploadKasbonFotoBonUseCase(
+    cloudinaryService,
+  );
   const spkPembayaranController = new SpkPembayaranController(
     createSpkPembayaranRequestUseCase,
     getSpkPembayaranBySpkUseCase,
@@ -799,6 +810,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     updateSpkKasbonUseCase,
     updateSpkUpahUseCase,
     deleteSpkPenguranganUseCase,
+    uploadKasbonFotoBonUseCase,
   );
 
   const tukangRepo = new TukangRepository(dbClient);

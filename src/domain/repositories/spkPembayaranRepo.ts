@@ -21,6 +21,7 @@ import type { SpkPembayaranEntity } from "../entities/SpkPembayaran.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 import { SpkPembayaranMapper } from "../../infrastructure/mapper/SpkPembayaranMapper.js";
 import type { SpkKasbonTargetTermin } from "@prisma/client";
+import { normalizeKasbonNamaSupplier } from "../spk/kasbonNamaSupplier.js";
 import {
   calcSpkPembayaranNominal,
   calcSisaNilaiKontrak,
@@ -126,9 +127,9 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   private normalizeKasbonBaris(baris: SpkPembayaranKasbonBarisInput[]) {
     const normalized: SpkPembayaranKasbonBarisInput[] = [];
     for (const item of baris) {
-      const namaSupplier = item.namaSupplier.trim();
+      const namaSupplier = normalizeKasbonNamaSupplier(item.namaSupplier);
       const keterangan = item.keterangan.trim();
-      if (!namaSupplier || !keterangan || item.nominal <= 0) {
+      if (!keterangan || item.nominal <= 0) {
         throw new Error("KASBON_BARIS_INVALID");
       }
       normalized.push({
@@ -136,6 +137,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         keterangan,
         tanggalPo: item.tanggalPo,
         nominal: item.nominal,
+        fotoBon: item.fotoBon?.trim() || null,
       });
     }
     return normalized;
@@ -320,6 +322,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
                 keterangan: b.keterangan,
                 tanggalPo: b.tanggalPo,
                 nominal: new Prisma.Decimal(b.nominal),
+                fotoBon: b.fotoBon ?? null,
               })),
             },
           };
@@ -621,6 +624,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
                 keterangan: b.keterangan,
                 tanggalPo: b.tanggalPo,
                 nominal: new Prisma.Decimal(b.nominal),
+                fotoBon: b.fotoBon ?? null,
               })),
             },
           },

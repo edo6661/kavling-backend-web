@@ -15,6 +15,7 @@ export interface SpkPembayaranKasbonBarisInput {
   keterangan: string;
   tanggalPo: Date;
   nominal: number;
+  fotoBon?: string | null;
 }
 
 export type CreateSpkPembayaranDTO =

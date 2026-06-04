@@ -3,9 +3,158 @@ import {
   SchemaType,
   type Schema,
 } from "@google/generative-ai";
+import { normalizeKasbonNamaSupplier } from "../../domain/spk/kasbonNamaSupplier.js";
 import { AppError } from "../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
-import { writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+export interface KasbonBonBarisExtract {
+  keterangan: string;
+  nominal: number;
+}
+
+export interface KasbonBonExtractResult {
+  namaSupplier: string | null;
+  /** ISO YYYY-MM-DD */
+  tanggal: string | null;
+  items: KasbonBonBarisExtract[];
+}
+
+const normalizeBonMimeType = (mimeType: string): string => {
+  if (mimeType.startsWith("image/")) return mimeType;
+  return "image/jpeg";
+};
+
+/** Parse tanggal bon (dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd) ke ISO date. */
+const parseBonTanggalToIso = (raw: string | null | undefined): string | null => {
+  if (!raw?.trim()) return null;
+  const s = raw.trim();
+
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (isoMatch) return s;
+
+  const dmySpace = /^(\d{1,2})[\/\-.](\d{1,2})\s+(\d{2,4})$/.exec(s);
+  const dmy = dmySpace ?? /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(s);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = Number(dmy[2]);
+    let year = Number(dmy[3]);
+    if (year < 100) year += 2000;
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2000) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().split("T")[0] ?? null;
+  }
+  return null;
+};
+
+const KASBON_BON_EXAMPLES_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "assets",
+  "ocr-examples",
+  "kasbon",
+);
+
+const loadKasbonBonExampleParts = (): Array<
+  { text: string } | { inlineData: { data: string; mimeType: string } }
+> => {
+  const examples: Array<{ file: string; hint: string }> = [
+    {
+      file: "tulisan_tangan_1.jpeg",
+      hint: `Contoh nota tulisan tangan (MITRA BANGUNAN): kolom Banyaknya | Nama Barang | Harga Satuan | Jumlah.
+Ambil nama toko dari header cetak, tanggal tulisan kanan atas, tiap baris: keterangan = Nama Barang, nominal = angka di kolom Jumlah (bukan Banyaknya/Harga Satuan).
+Abaikan baris total "Jumlah Rp." di footer.`,
+    },
+    {
+      file: "tulisan_tangan_2.jpeg",
+      hint: `Contoh kedua (TB. PILAR PERKASA): format kolom sama. Harga Satuan sering kosong — nominal tetap dari kolom Jumlah per barang.`,
+    },
+    {
+      file: "tulisan_tangan_rekening_di_tabel.jpeg",
+      hint: `Contoh bon tanpa nama toko; di kolom Nama Barang ada info transfer BCA + nomor rekening + a/n + nama pemilik — BUKAN barang, jangan masukkan items.
+Barang valid: "Dn Plok" Jumlah 370000, "terpal 4x6" Jumlah 200000. Abaikan baris bank meski tertulis di tabel.`,
+    },
+    {
+      file: "tulisan_tangan_rekening_di_tabel.png",
+      hint: `Sama: baris rekening di tabel bukan barang; hanya baris dengan nominal di kolom Jumlah.`,
+    },
+  ];
+
+  const parts: Array<
+    { text: string } | { inlineData: { data: string; mimeType: string } }
+  > = [{ text: "REFERENSI FORMAT BON (bukan gambar yang diekstrak):" }];
+
+  for (const ex of examples) {
+    const path = join(KASBON_BON_EXAMPLES_DIR, ex.file);
+    if (!existsSync(path)) continue;
+    parts.push({ text: ex.hint });
+    parts.push({
+      inlineData: {
+        data: readFileSync(path).toString("base64"),
+        mimeType: ex.file.toLowerCase().endsWith(".png")
+          ? "image/png"
+          : "image/jpeg",
+      },
+    });
+  }
+
+  return parts;
+};
+
+const BANK_NAME_PATTERN =
+  /^(?:BCA|BRI|BNI|MANDIRI|CIMB|BSI|BTN|PERMATA|DANAMON|PANIN|MEGA|BUKOPIN|JAGO|SEABANK|OCBC|HSBC|MAYBANK)(?:\s+BANK|\s+SYARIAH)?\.?$/i;
+
+/** Baris info rekening/transfer yang sering ditulis di kolom Nama Barang — bukan item belanja. */
+const isKasbonRekeningNoiseLine = (keterangan: string): boolean => {
+  const k = keterangan.trim();
+  if (!k) return true;
+
+  if (/^a\/n\.?$/i.test(k)) return true;
+  if (/^a\.?\s*n\.?$/i.test(k)) return true;
+  if (/^atas\s+nama/i.test(k)) return true;
+  if (/^no\.?\s*rek/i.test(k)) return true;
+  if (/^rekening/i.test(k)) return true;
+  if (/^rek\.?\s/i.test(k)) return true;
+  if (BANK_NAME_PATTERN.test(k.replace(/\s+/g, " "))) return true;
+
+  const digitsOnly = k.replace(/[^\d]/g, "");
+  if (digitsOnly.length >= 8 && digitsOnly.length <= 20 && /^\d[\d.\s\-]{6,}\.?$/.test(k)) {
+    return true;
+  }
+
+  const lettersOnly = k.replace(/[^A-Za-z\s.]/g, "").trim();
+  const words = lettersOnly.split(/\s+/).filter(Boolean);
+  if (
+    words.length >= 2 &&
+    words.length <= 5 &&
+    !/\d/.test(k) &&
+    words.every((w) => /^[A-Za-z]{2,}$/.test(w) && w === w.toUpperCase())
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const parseNominalRupiah = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.round(value);
+  }
+  if (typeof value !== "string") return null;
+  const digits = value.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  const n = Number(digits);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
 
 export class GoogleVisionService {
   private genAI: GoogleGenerativeAI;
@@ -167,6 +316,148 @@ ATURAN KETAT:
       throw new AppError(
         StatusCodes.INTERNAL_SERVER_ERROR,
         "Gagal memproses PDF scan Kode Billing.",
+      );
+    }
+  }
+
+  /**
+   * OCR foto nota/bon belanja material (kasbon) — supplier, tanggal, baris item + nominal baris.
+   */
+  async extractKasbonBonData(
+    imageBuffer: Buffer,
+    mimeType = "image/jpeg",
+  ): Promise<KasbonBonExtractResult> {
+    try {
+      const bonSchema: Schema = {
+        type: SchemaType.OBJECT,
+        properties: {
+          namaSupplier: {
+            type: SchemaType.STRING,
+            description:
+              'Nama toko/supplier di header bon. Jika tidak ada nama toko di bon, isi "-". Tanpa alamat.',
+          },
+          tanggal: {
+            type: SchemaType.STRING,
+            description:
+              "Tanggal bon persis seperti di dokumen (dd/mm/yyyy atau format asli). Null jika tidak terbaca.",
+          },
+          items: {
+            type: SchemaType.ARRAY,
+            description: "Baris barang yang dibeli, tanpa subtotal pajak/diskon global.",
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                keterangan: {
+                  type: SchemaType.STRING,
+                  description:
+                    "Nama/deskripsi barang saja (boleh sertakan satuan di teks, mis. 'Semen 50 sak'). Tanpa qty terpisah.",
+                },
+                nominal: {
+                  type: SchemaType.NUMBER,
+                  description:
+                    "Nominal uang per baris (rupiah, bilangan bulat). Hanya kolom total baris, bukan harga satuan.",
+                },
+              },
+              required: ["keterangan", "nominal"],
+            },
+          },
+        },
+        required: ["namaSupplier", "tanggal", "items"],
+      };
+
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: bonSchema,
+          temperature: 0.0,
+        },
+      });
+
+      const imagePart = {
+        inlineData: {
+          data: imageBuffer.toString("base64"),
+          mimeType: normalizeBonMimeType(mimeType),
+        },
+      };
+
+      const prompt = `
+Ekstrak data dari FOTO BON BERIKUT (nota tulisan tangan toko bahan bangunan Indonesia).
+
+OUTPUT JSON: namaSupplier, tanggal, items[].
+
+FORMAT BON (sangat umum):
+- Header cetak: nama toko (mis. MITRA BANGUNAN, TB. PILAR PERKASA) → namaSupplier
+- Jika bon TIDAK mencantumkan nama toko/supplier (hanya Kepada Yth / item / total), namaSupplier = "-"
+- Tanggal tulisan di kanan atas (mis. 9/12/25, 26/11/2023) → tanggal
+- Tabel kolom: Banyaknya | Nama Barang | Harga Satuan | Jumlah
+
+PER BARIS BARANG (wajib):
+- keterangan: isi kolom "Nama Barang" saja (contoh: "Pipa 5/8", "Paku beton 5 m", "kaso 4x6")
+- nominal: angka di kolom "Jumlah" (rupiah, integer tanpa titik). Contoh tulisan 390.000 → 390000, 85.000 → 85000
+
+JANGAN masukkan ke items:
+- Kolom Banyaknya (65 btg, 2 dus, 1 bh, dll.)
+- Kolom Harga Satuan (sering kosong) — kecuali dipakai hanya jika kolom Jumlah kosong (jarang)
+- Baris footer "Jumlah Rp." / total keseluruhan bon (itu grand total, bukan satu barang)
+- Teks Kepada Yth / alamat customer
+- INFO REKENING di tabel (sering 3–5 baris di kolom Nama Barang tanpa nominal di kolom Jumlah):
+  * Nama bank: BCA, BRI, BNI, Mandiri, dll.
+  * Nomor rekening (8–16 digit angka)
+  * "a/n" atau "atas nama"
+  * Nama pemilik rekening (huruf kapital, bukan nama barang)
+  * Baris yang dicoret / tanpa angka di kolom Jumlah
+
+NOMINAL:
+- WAJIB dari kolom Jumlah per baris barang. Tanpa angka Jumlah yang valid → jangan buat item.
+- Jangan dari Banyaknya, jangan dari nomor rekening.
+- Format Indonesia: titik sebagai pemisah ribuan (390.000 = tiga ratus sembilan puluh ribu).
+
+ATURAN:
+1. Anti-halusinasi — hanya yang terbaca jelas.
+2. nominal > 0 per baris; skip baris kosong.
+3. Urutan barang mengikuti urutan di bon.
+`;
+
+      const exampleParts = loadKasbonBonExampleParts();
+      const result = await model.generateContent([
+        ...exampleParts,
+        { text: prompt },
+        imagePart,
+      ]);
+      const responseText = result.response.text();
+
+      interface RawBonJson {
+        namaSupplier?: string | null;
+        tanggal?: string | null;
+        items?: Array<{ keterangan?: string; nominal?: number | string }>;
+      }
+
+      const parsed = JSON.parse(responseText) as RawBonJson;
+      const items: KasbonBonBarisExtract[] = [];
+
+      for (const row of parsed.items ?? []) {
+        const keterangan = row.keterangan?.trim();
+        const nominal = parseNominalRupiah(row.nominal);
+        if (!keterangan || nominal == null) continue;
+        if (isKasbonRekeningNoiseLine(keterangan)) continue;
+        items.push({ keterangan, nominal });
+      }
+
+      const rawNama = parsed.namaSupplier?.trim();
+      const namaSupplier =
+        rawNama && rawNama !== "-" ? rawNama : null;
+
+      return {
+        namaSupplier,
+        tanggal: parseBonTanggalToIso(parsed.tanggal),
+        items,
+      };
+    } catch (error) {
+      console.error("Gemini Kasbon Bon OCR Error:", error);
+      throw new AppError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Gagal memproses foto bon.",
       );
     }
   }

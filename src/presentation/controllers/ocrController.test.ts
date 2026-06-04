@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mock, type MockProxy } from "vitest-mock-extended";
 import { OcrController } from "./ocrController";
 import type { ExtractKtpDataUseCase } from "../../application/usecases/ocr/ExtractKtpDataUseCase";
+import type { ExtractKasbonBonDataUseCase } from "../../application/usecases/ocr/ExtractKasbonBonDataUseCase";
 import { StatusCodes } from "http-status-codes";
 import type { Request, Response } from "express";
 
@@ -12,13 +13,18 @@ import { sendResponse } from "../../utils/response";
 
 describe("OcrController", () => {
   let extractKtpDataUseCaseMock: MockProxy<ExtractKtpDataUseCase>;
+  let extractKasbonBonDataUseCaseMock: MockProxy<ExtractKasbonBonDataUseCase>;
   let controller: OcrController;
   let req: Partial<Request>;
   let res: Partial<Response>;
 
   beforeEach(() => {
     extractKtpDataUseCaseMock = mock<ExtractKtpDataUseCase>();
-    controller = new OcrController(extractKtpDataUseCaseMock);
+    extractKasbonBonDataUseCaseMock = mock<ExtractKasbonBonDataUseCase>();
+    controller = new OcrController(
+      extractKtpDataUseCaseMock,
+      extractKasbonBonDataUseCaseMock,
+    );
 
     req = { body: {}, file: undefined };
     res = {

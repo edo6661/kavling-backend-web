@@ -10,10 +10,15 @@ const upahBarisSchema = z.object({
 });
 
 const kasbonBarisSchema = z.object({
-  namaSupplier: z.string().trim().min(1).max(200),
+  namaSupplier: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((s) => (s ? s : "-")),
   keterangan: z.string().trim().min(1).max(500),
   tanggalPo: z.coerce.date(),
   nominal: z.coerce.number().positive(),
+  fotoBon: z.string().trim().url().max(500).optional().nullable(),
 });
 
 export const createSpkPembayaranSchema = {

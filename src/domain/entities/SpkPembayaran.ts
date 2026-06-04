@@ -20,6 +20,7 @@ export interface SpkPembayaranKasbonBarisEntity {
   keterangan: string;
   tanggalPo: Date;
   nominal: number;
+  fotoBon: string | null;
 }
 
 export interface SpkPembayaranEntity {

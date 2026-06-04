@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { SpkPembayaranEntity } from "../../domain/entities/SpkPembayaran.js";
+import { normalizeKasbonNamaSupplier } from "../../domain/spk/kasbonNamaSupplier.js";
 
 export const spkPembayaranInclude = {
   diajukanOleh: { select: { id: true, username: true } },
@@ -24,6 +25,7 @@ export const spkPembayaranInclude = {
       keterangan: true,
       tanggalPo: true,
       nominal: true,
+      fotoBon: true,
     },
   },
   spk: {
@@ -100,10 +102,11 @@ export class SpkPembayaranMapper {
       kasbonBaris: row.kasbonBaris?.map((b) => ({
         id: b.id,
         spkPembayaranId: b.spkPembayaranId,
-        namaSupplier: b.namaSupplier,
+        namaSupplier: normalizeKasbonNamaSupplier(b.namaSupplier),
         keterangan: b.keterangan,
         tanggalPo: b.tanggalPo,
         nominal: Number(b.nominal),
+        fotoBon: b.fotoBon,
       })),
       status: row.status,
       buktiPembayaran: row.buktiPembayaran,

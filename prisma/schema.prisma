@@ -590,6 +590,7 @@ model SpkPembayaranKasbonBaris {
   keterangan      String   @db.VarChar(500)
   tanggalPo       DateTime @map("tanggal_po") @db.Date
   nominal         Decimal  @db.Decimal(15, 2)
+  fotoBon         String?  @map("foto_bon") @db.VarChar(500)
 
   spkPembayaran SpkPembayaran @relation(fields: [spkPembayaranId], references: [id], onDelete: Cascade)
 
