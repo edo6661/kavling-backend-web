@@ -79,21 +79,21 @@ export const createSpkPembayaranRoutes = (
 
   router.patch(
     "/:id/kasbon",
-    requirePermission("SPK", "update"),
+    requirePermission("SPK", "read"),
     validate(updateSpkKasbonSchema),
     controller.updateKasbon as unknown as RequestHandler,
   );
 
   router.patch(
     "/:id/upah",
-    requirePermission("SPK", "update"),
+    requirePermission("SPK", "read"),
     validate(updateSpkUpahSchema),
     controller.updateUpah as unknown as RequestHandler,
   );
 
   router.delete(
     "/:id",
-    requirePermission("SPK", "update"),
+    requirePermission("SPK", "read"),
     controller.deletePengurangan,
   );
 

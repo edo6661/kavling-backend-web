@@ -40,15 +40,7 @@ export const createSpkPembayaranSchema = {
     })
     .superRefine((data, ctx) => {
       if (data.jenis === "KASBON") {
-        if (data.kasbonBaris?.length) {
-          if (!data.kasbonBaris.length) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Minimal satu baris kasbon wajib diisi",
-              path: ["kasbonBaris"],
-            });
-          }
-        } else {
+        if (!data.kasbonBaris?.length) {
           if (!data.keterangan) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -152,7 +144,7 @@ export const getSpkPembayaranPaginatedSchema = {
   query: z.object({
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(600).default(20),
-    status: z.enum(["MENUNGGU_PEMBAYARAN", "SUDAH_DIBAYAR", "DRAFT", "ALL"]).optional(),
+    status: z.enum(["MENUNGGU_PEMBAYARAN", "SUDAH_DIBAYAR", "ALL"]).optional(),
     search: z.string().optional(),
   }),
 };
@@ -201,13 +193,6 @@ export const updateSpkKasbonSchema = {
     })
     .superRefine((data, ctx) => {
       if (data.kasbonBaris?.length) {
-        if (!data.kasbonBaris.length) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Minimal satu baris kasbon wajib diisi",
-            path: ["kasbonBaris"],
-          });
-        }
         return;
       }
       if (!data.keterangan) {

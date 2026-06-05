@@ -241,6 +241,7 @@ export class SpkPembayaranController {
             nominal: req.body.nominal ?? 0,
             tanggalPo: req.body.tanggalPo ?? new Date(),
           },
+      req.user!.userId,
       req.user!.role,
     );
     sendResponse(res, StatusCodes.OK, "Data kasbon berhasil diperbarui", result);
@@ -263,6 +264,7 @@ export class SpkPembayaranController {
         baris: req.body.baris,
         nominal: req.body.upahNominal,
       },
+      req.user!.userId,
       req.user!.role,
     );
     sendResponse(res, StatusCodes.OK, "Data upah berhasil diperbarui", result);
@@ -270,7 +272,11 @@ export class SpkPembayaranController {
 
   deletePengurangan = async (req: Request, res: Response): Promise<void> => {
     const id = Number(req.params.id);
-    await this.deletePenguranganUseCase.execute(id, req.user!.role);
+    await this.deletePenguranganUseCase.execute(
+      id,
+      req.user!.userId,
+      req.user!.role,
+    );
     sendResponse(res, StatusCodes.OK, "Pengajuan kasbon/upah berhasil dihapus", null);
   };
 }

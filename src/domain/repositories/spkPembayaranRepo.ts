@@ -260,8 +260,12 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   }
 
   async findBySpkId(spkId: number): Promise<SpkPembayaranEntity[]> {
+    // Draft kasbon mandor hanya diambil lewat findKasbonDraft — bukan daftar pengajuan.
     const rows = await this.db.spkPembayaran.findMany({
-      where: { spkId },
+      where: {
+        spkId,
+        status: { not: SpkPembayaranStatus.DRAFT },
+      },
       orderBy: [{ createdAt: "asc" }],
       include: SpkPembayaranMapper.include,
     });
@@ -451,18 +455,36 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       );
       if (!capCheck.allowed) throw new Error("KASBON_OVER_CAP");
 
-      const updated = await tx.spkPembayaran.update({
-        where: { id: draft.id },
+      // Buat pengajuan baru — jangan ubah status draft in-place agar pengajuan
+      // sebelumnya (MENUNGGU/SUDAH_DIBAYAR) tidak tertimpa saat ajukan kasbon lagi.
+      const submitted = await tx.spkPembayaran.create({
         data: {
+          spk: { connect: { id: spkId } },
+          jenis: "KASBON",
           status: SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
           mengurangiTermin: target,
+          nominal: draft.nominal,
+          keterangan: draft.keterangan,
+          tanggalPo: draft.tanggalPo,
+          diajukanOleh: { connect: { id: diajukanOlehId } },
+          kasbonBaris: {
+            create: draft.kasbonBaris.map((b) => ({
+              namaSupplier: b.namaSupplier,
+              keterangan: b.keterangan,
+              tanggalPo: b.tanggalPo,
+              nominal: b.nominal,
+              fotoBon: b.fotoBon,
+            })),
+          },
         },
         include: SpkPembayaranMapper.include,
       });
 
+      await tx.spkPembayaran.delete({ where: { id: draft.id } });
+
       await this.syncSpkNominals(tx, spkId);
 
-      return SpkPembayaranMapper.toDomain(updated);
+      return SpkPembayaranMapper.toDomain(submitted);
     });
   }
 
@@ -595,6 +617,18 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         include: SpkPembayaranMapper.include,
       });
 
+      // Hapus draft kasbon mandor setelah pengajuan material terkirim ke finance.
+      if (data.jenis === "KASBON") {
+        await tx.spkPembayaran.deleteMany({
+          where: {
+            spkId: data.spkId,
+            jenis: "KASBON",
+            status: SpkPembayaranStatus.DRAFT,
+            diajukanOlehId: data.diajukanOlehId,
+          },
+        });
+      }
+
       const allRows = await tx.spkPembayaran.findMany({
         where: { spkId: data.spkId },
         select: {
@@ -632,6 +666,12 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         where: { id: data.id },
       });
       if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+      if (existing.status === SpkPembayaranStatus.DRAFT) {
+        throw new Error("IS_DRAFT");
+      }
+      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+        throw new Error("ALREADY_PAID");
+      }
 
       const result = await tx.spkPembayaran.update({
         where: { id: data.id },
@@ -737,9 +777,15 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     limit: number,
     filters?: SpkPembayaranFilterDTO,
   ): Promise<OffsetPaginatedData<SpkPembayaranEntity>> {
-    const where: Prisma.SpkPembayaranWhereInput = {};
-
-    if (filters?.status) where.status = filters.status;
+    // Halaman finance (Bayar SPK): hanya pengajuan yang sudah diajukan mandor.
+    // Draft = bon dikumpulkan mandor, belum ke finance.
+    const where: Prisma.SpkPembayaranWhereInput = {
+      status:
+        filters?.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
+        filters?.status === SpkPembayaranStatus.SUDAH_DIBAYAR
+          ? filters.status
+          : { in: [SpkPembayaranStatus.MENUNGGU_PEMBAYARAN, SpkPembayaranStatus.SUDAH_DIBAYAR] },
+    };
     if (filters?.spkId) where.spkId = filters.spkId;
     if (filters?.search) {
       where.OR = [
@@ -909,7 +955,10 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       if (existing.jenis !== "KASBON" && existing.jenis !== "UPAH") {
         throw new Error("NOT_DELETABLE");
       }
-      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+      if (
+        existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN &&
+        existing.status !== SpkPembayaranStatus.DRAFT
+      ) {
         throw new Error("ALREADY_PAID");
       }
       if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
@@ -926,8 +975,13 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     const uniqueIds = [...new Set(data.ids)];
     if (uniqueIds.length === 0) return [];
 
+    const draftCount = await this.db.spkPembayaran.count({
+      where: { id: { in: uniqueIds }, status: SpkPembayaranStatus.DRAFT },
+    });
+    if (draftCount > 0) throw new Error("CONTAINS_DRAFT");
+
     await this.db.spkPembayaran.updateMany({
-      where: { id: { in: uniqueIds } },
+      where: { id: { in: uniqueIds }, status: { not: SpkPembayaranStatus.DRAFT } },
       data: {
         bsiCmsDilaporkan: data.dilaporkan,
         bsiCmsDilaporkanAt: data.dilaporkan ? new Date() : null,

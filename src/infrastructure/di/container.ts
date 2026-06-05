@@ -801,6 +801,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const updateSpkUpahUseCase = new UpdateSpkUpahUseCase(spkPembayaranRepo, spkRepo);
   const deleteSpkPenguranganUseCase = new DeleteSpkPenguranganUseCase(
     spkPembayaranRepo,
+    spkRepo,
   );
   const uploadKasbonFotoBonUseCase = new UploadKasbonFotoBonUseCase(
     cloudinaryService,

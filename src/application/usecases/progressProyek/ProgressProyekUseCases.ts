@@ -146,15 +146,15 @@ export class UploadTahapanPhotoUseCase {
     }
 
     const progress = await this.repo.findByPenjualanId(penjualanId);
-    const spkMandorId = await this.repo.findSpkMandorIdByPenjualanId(penjualanId);
-    assertMandorCanMutate(progress, ctx, spkMandorId);
-
     if (!progress) {
       throw new AppError(
         StatusCodes.NOT_FOUND,
         "Progress proyek tidak ditemukan",
       );
     }
+
+    const spkMandorId = await this.repo.findSpkMandorIdByPenjualanId(penjualanId);
+    assertMandorCanMutate(progress, ctx, spkMandorId);
 
     const tahapan = progress.tahapan.find((t) => t.namaTahapan === namaTahapan);
     const existingPhotos = tahapan?.foto ?? [];
@@ -287,15 +287,15 @@ export class UploadTahapanPhotoByKavlingUseCase {
     }
 
     const progress = await this.repo.findByKavlingId(kavlingId);
-    const spkMandorId = await this.repo.findSpkMandorIdByKavlingId(kavlingId);
-    assertMandorCanMutate(progress, ctx, spkMandorId);
-
     if (!progress) {
       throw new AppError(
         StatusCodes.NOT_FOUND,
         "Progress proyek tidak ditemukan",
       );
     }
+
+    const spkMandorId = await this.repo.findSpkMandorIdByKavlingId(kavlingId);
+    assertMandorCanMutate(progress, ctx, spkMandorId);
 
     const tahapan = progress.tahapan.find((t) => t.namaTahapan === namaTahapan);
     const existingPhotos = tahapan?.foto ?? [];
