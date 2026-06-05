@@ -8,6 +8,7 @@ export interface ProgressPenjualanEntity {
   penjualanId: number;
   berkasCustomerValid: boolean;
   fileSp3k: string | null;
+  fileSuratPernyataanAkadKredit: string | null;
   fileSalinanAjb: string | null;
   filePpjb: string | null;
   nilaiAjb: number | null;

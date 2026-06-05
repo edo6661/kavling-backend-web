@@ -23,6 +23,8 @@ export class ProgressPenjualanMapper {
       penjualanId: prismaProgress.penjualanId,
       berkasCustomerValid: prismaProgress.berkasCustomerValid,
       fileSp3k: prismaProgress.fileSp3k,
+      fileSuratPernyataanAkadKredit:
+        prismaProgress.fileSuratPernyataanAkadKredit,
       fileSalinanAjb: prismaProgress.fileSalinanAjb,
       filePpjb: prismaProgress.filePpjb,
       notarisId:

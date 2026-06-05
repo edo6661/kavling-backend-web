@@ -45,6 +45,7 @@ export class UploadProgressDocumentUseCase {
     fileBuffer: Buffer,
     docType:
       | "fileSp3k"
+      | "fileSuratPernyataanAkadKredit"
       | "fileSalinanAjb"
       | "filePpjb"
       | "fileAjb"

@@ -40,6 +40,7 @@ export const uploadProgressDocumentSchema = {
     id: z.string().regex(/^\d+$/, "ID Penjualan harus berupa angka"),
     docType: z.enum([
       "fileSp3k",
+      "fileSuratPernyataanAkadKredit",
       "fileSalinanAjb",
       "filePpjb",
       "fileAjb",

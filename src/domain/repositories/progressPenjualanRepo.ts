@@ -55,6 +55,9 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
     if (data.berkasCustomerValid !== undefined)
       updateData.berkasCustomerValid = data.berkasCustomerValid;
     if (data.fileSp3k !== undefined) updateData.fileSp3k = data.fileSp3k;
+    if (data.fileSuratPernyataanAkadKredit !== undefined)
+      updateData.fileSuratPernyataanAkadKredit =
+        data.fileSuratPernyataanAkadKredit;
     if (data.fileSalinanAjb !== undefined)
       updateData.fileSalinanAjb = data.fileSalinanAjb;
     if (data.filePpjb !== undefined) updateData.filePpjb = data.filePpjb;

@@ -796,6 +796,7 @@ model ProgressPenjualan {
   penjualanId         Int       @unique @map("penjualan_id")
   berkasCustomerValid Boolean   @default(false) @map("berkas_customer_valid")
   fileSp3k            String?   @map("file_sp3k") @db.VarChar(255)
+  fileSuratPernyataanAkadKredit String? @map("file_surat_pernyataan_akad_kredit") @db.VarChar(255)
   fileSalinanAjb      String?   @map("file_salinan_ajb") @db.VarChar(255)
   filePpjb            String?   @map("file_ppjb") @db.VarChar(255)
   nilaiAjb            Decimal?  @map("nilai_ajb") @db.Decimal(15, 2)
