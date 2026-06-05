@@ -233,6 +233,119 @@ export class GetSpkPembayaranBySpkUseCase {
   }
 }
 
+export class GetSpkKasbonDraftUseCase {
+  constructor(
+    private readonly spkRepo: ISpkRepository,
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+  ) {}
+
+  async execute(spkId: number, userId: number, userRole: string): Promise<SpkPembayaranEntity | null> {
+    const spk = await this.spkRepo.findById(spkId);
+    if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+
+    if (userRole === Role.MANDOR && spk.mandorId !== userId) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor hanya dapat melihat draft kasbon untuk SPK yang ditugaskan kepadanya.",
+      );
+    }
+
+    return await this.pembayaranRepo.findKasbonDraft(spkId, userId);
+  }
+}
+
+export class SaveSpkKasbonDraftUseCase {
+  constructor(
+    private readonly spkRepo: ISpkRepository,
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+  ) {}
+
+  async execute(
+    spkId: number,
+    kasbonBaris: NonNullable<CreateSpkPembayaranDTO["kasbonBaris"]>,
+    userId: number,
+    userRole: string,
+  ): Promise<SpkPembayaranEntity> {
+    const spk = await this.spkRepo.findById(spkId);
+    if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+
+    if (userRole === Role.MANDOR && spk.mandorId !== userId) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor hanya dapat menyimpan draft kasbon untuk SPK yang ditugaskan kepadanya.",
+      );
+    }
+
+    try {
+      return await this.pembayaranRepo.upsertKasbonDraft(spkId, userId, kasbonBaris);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "SPK_NOT_FOUND") throw new NotFoundError("SPK tidak ditemukan");
+      if (msg === "KASBON_NOT_ALLOWED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Kasbon/upah tidak dapat disimpan: kedua termin sudah dibayar.",
+        );
+      }
+      if (msg === "KASBON_BARIS_EMPTY" || msg === "KASBON_BARIS_INVALID") {
+        throw new AppError(StatusCodes.BAD_REQUEST, "Data kasbon tidak valid.");
+      }
+      if (msg === "KASBON_NOMINAL_INVALID") {
+        throw new AppError(StatusCodes.BAD_REQUEST, "Total kasbon tidak valid.");
+      }
+      throw err;
+    }
+  }
+}
+
+export class SubmitSpkKasbonDraftUseCase {
+  constructor(
+    private readonly spkRepo: ISpkRepository,
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+  ) {}
+
+  async execute(spkId: number, userId: number, userRole: string): Promise<SpkPembayaranEntity> {
+    const spk = await this.spkRepo.findById(spkId);
+    if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+
+    if (userRole === Role.MANDOR && spk.mandorId !== userId) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor hanya dapat mengajukan draft kasbon untuk SPK yang ditugaskan kepadanya.",
+      );
+    }
+
+    try {
+      return await this.pembayaranRepo.submitKasbonDraft(spkId, userId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "SPK_NOT_FOUND") throw new NotFoundError("SPK tidak ditemukan");
+      if (msg === "KASBON_DRAFT_NOT_FOUND") {
+        throw new NotFoundError("Draft kasbon tidak ditemukan. Simpan draft dulu.");
+      }
+      if (msg === "KASBON_NOT_ALLOWED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Kasbon/upah tidak dapat diajukan: kedua termin sudah dibayar.",
+        );
+      }
+      if (msg === "KASBON_BARIS_EMPTY" || msg === "KASBON_BARIS_INVALID") {
+        throw new AppError(StatusCodes.BAD_REQUEST, "Data kasbon tidak valid.");
+      }
+      if (msg === "KASBON_NOMINAL_INVALID") {
+        throw new AppError(StatusCodes.BAD_REQUEST, "Total kasbon tidak valid.");
+      }
+      if (msg === "KASBON_OVER_CAP") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Total kasbon & upah melebihi plafon termin.",
+        );
+      }
+      throw err;
+    }
+  }
+}
+
 export class GetSpkPembayaranPaginatedUseCase {
   constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
 

@@ -9,10 +9,13 @@ import {
   addBuktiSpkPembayaranSchema,
   bayarSpkPembayaranSchema,
   createSpkPembayaranSchema,
+  getSpkKasbonDraftSchema,
   getSpkPembayaranBySpkSchema,
   getSpkPembayaranPaginatedSchema,
   removeBuktiSpkPembayaranSchema,
+  saveSpkKasbonDraftSchema,
   setBsiCmsDilaporkanSchema,
+  submitSpkKasbonDraftSchema,
   updateSpkKasbonSchema,
   updateSpkUpahSchema,
 } from "../../validations/spkPembayaranSchema.js";
@@ -37,6 +40,27 @@ export const createSpkPembayaranRoutes = (
     requirePermission("SPK", "read"),
     validate(getSpkPembayaranBySpkSchema),
     controller.getBySpk,
+  );
+
+  router.get(
+    "/spk/:spkId/kasbon-draft",
+    requirePermission("SPK", "read"),
+    validate(getSpkKasbonDraftSchema),
+    controller.getKasbonDraft as unknown as RequestHandler,
+  );
+
+  router.put(
+    "/spk/:spkId/kasbon-draft",
+    requirePermission("SPK", "read"),
+    validate(saveSpkKasbonDraftSchema),
+    controller.saveKasbonDraft as unknown as RequestHandler,
+  );
+
+  router.post(
+    "/spk/:spkId/kasbon-draft/submit",
+    requirePermission("SPK", "read"),
+    validate(submitSpkKasbonDraftSchema),
+    controller.submitKasbonDraft as unknown as RequestHandler,
   );
 
   router.post(

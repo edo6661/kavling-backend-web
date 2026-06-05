@@ -26,6 +26,7 @@ import {
   calcSpkPembayaranNominal,
   calcSisaNilaiKontrak,
   getKasbonTargetTermin,
+  getPengurangTerminCapacity,
   type SpkPembayaranCalcRow,
 } from "../spk/spkPembayaranCalc.js";
 
@@ -40,16 +41,19 @@ function toCalcRows(
     keterangan?: string | null;
   }[],
 ): SpkPembayaranCalcRow[] {
-  return rows.map((p) => ({
-    jenis: p.jenis,
-    status: p.status,
-    nominal: Number(p.nominal),
-    mengurangiTermin:
-      p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"
-        ? p.mengurangiTermin
-        : null,
-    keterangan: p.keterangan ?? null,
-  }));
+  // Draft tidak boleh mempengaruhi kalkulasi termin / plafon.
+  return rows
+    .filter((p) => p.status !== SpkPembayaranStatus.DRAFT)
+    .map((p) => ({
+      jenis: p.jenis,
+      status: p.status,
+      nominal: Number(p.nominal),
+      mengurangiTermin:
+        p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"
+          ? p.mengurangiTermin
+          : null,
+      keterangan: p.keterangan ?? null,
+    }));
 }
 
 export class SpkPembayaranRepository implements ISpkPembayaranRepository {
@@ -271,6 +275,195 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     });
     if (!row) return null;
     return SpkPembayaranMapper.toDomain(row);
+  }
+
+  async findKasbonDraft(
+    spkId: number,
+    diajukanOlehId: number,
+  ): Promise<SpkPembayaranEntity | null> {
+    const row = await this.db.spkPembayaran.findFirst({
+      where: {
+        spkId,
+        jenis: "KASBON",
+        status: SpkPembayaranStatus.DRAFT,
+        diajukanOlehId,
+      },
+      orderBy: [{ createdAt: "desc" }],
+      include: SpkPembayaranMapper.include,
+    });
+    return row ? SpkPembayaranMapper.toDomain(row) : null;
+  }
+
+  async upsertKasbonDraft(
+    spkId: number,
+    diajukanOlehId: number,
+    kasbonBaris: NonNullable<CreateSpkPembayaranDTO["kasbonBaris"]>,
+  ): Promise<SpkPembayaranEntity> {
+    return await this.db.$transaction(async (tx) => {
+      if (!kasbonBaris.length) throw new Error("KASBON_BARIS_EMPTY");
+
+      const spk = await tx.spk.findUnique({
+        where: { id: spkId },
+        select: { id: true, nilaiKontrak: true },
+      });
+      if (!spk) throw new Error("SPK_NOT_FOUND");
+
+      const existingRows = await tx.spkPembayaran.findMany({
+        where: { spkId },
+        select: {
+          id: true,
+          jenis: true,
+          status: true,
+          nominal: true,
+          mengurangiTermin: true,
+          keterangan: true,
+        },
+      });
+      const calcRows = toCalcRows(existingRows);
+      const target = getKasbonTargetTermin(calcRows);
+      if (!target) throw new Error("KASBON_NOT_ALLOWED");
+
+      const normalizedBaris = this.normalizeKasbonBaris(kasbonBaris);
+      const { totalNominal, keterangan, tanggalPo } =
+        this.summarizeKasbonBaris(normalizedBaris);
+      if (totalNominal <= 0) throw new Error("KASBON_NOMINAL_INVALID");
+
+      const draft = await tx.spkPembayaran.findFirst({
+        where: {
+          spkId,
+          jenis: "KASBON",
+          status: SpkPembayaranStatus.DRAFT,
+          diajukanOlehId,
+        },
+        orderBy: [{ createdAt: "desc" }],
+        select: { id: true },
+      });
+
+      if (draft) {
+        await tx.spkPembayaranKasbonBaris.deleteMany({
+          where: { spkPembayaranId: draft.id },
+        });
+
+        const updated = await tx.spkPembayaran.update({
+          where: { id: draft.id },
+          data: {
+            status: SpkPembayaranStatus.DRAFT,
+            mengurangiTermin: target,
+            nominal: new Prisma.Decimal(totalNominal),
+            keterangan,
+            tanggalPo,
+            kasbonBaris: {
+              create: normalizedBaris.map((b) => ({
+                namaSupplier: b.namaSupplier,
+                keterangan: b.keterangan,
+                tanggalPo: b.tanggalPo,
+                nominal: new Prisma.Decimal(b.nominal),
+                fotoBon: b.fotoBon ?? null,
+              })),
+            },
+          },
+          include: SpkPembayaranMapper.include,
+        });
+
+        return SpkPembayaranMapper.toDomain(updated);
+      }
+
+      const created = await tx.spkPembayaran.create({
+        data: {
+          spk: { connect: { id: spkId } },
+          jenis: "KASBON",
+          status: SpkPembayaranStatus.DRAFT,
+          mengurangiTermin: target,
+          nominal: new Prisma.Decimal(totalNominal),
+          keterangan,
+          tanggalPo,
+          diajukanOleh: { connect: { id: diajukanOlehId } },
+          kasbonBaris: {
+            create: normalizedBaris.map((b) => ({
+              namaSupplier: b.namaSupplier,
+              keterangan: b.keterangan,
+              tanggalPo: b.tanggalPo,
+              nominal: new Prisma.Decimal(b.nominal),
+              fotoBon: b.fotoBon ?? null,
+            })),
+          },
+        },
+        include: SpkPembayaranMapper.include,
+      });
+
+      return SpkPembayaranMapper.toDomain(created);
+    });
+  }
+
+  async submitKasbonDraft(spkId: number, diajukanOlehId: number): Promise<SpkPembayaranEntity> {
+    return await this.db.$transaction(async (tx) => {
+      const draft = await tx.spkPembayaran.findFirst({
+        where: {
+          spkId,
+          jenis: "KASBON",
+          status: SpkPembayaranStatus.DRAFT,
+          diajukanOlehId,
+        },
+        include: { kasbonBaris: true },
+        orderBy: [{ createdAt: "desc" }],
+      });
+      if (!draft) throw new Error("KASBON_DRAFT_NOT_FOUND");
+      if (!draft.kasbonBaris.length) throw new Error("KASBON_BARIS_EMPTY");
+
+      const spk = await tx.spk.findUnique({
+        where: { id: spkId },
+        select: { id: true, nilaiKontrak: true },
+      });
+      if (!spk) throw new Error("SPK_NOT_FOUND");
+
+      const existingRows = await tx.spkPembayaran.findMany({
+        where: { spkId },
+        select: {
+          id: true,
+          jenis: true,
+          status: true,
+          nominal: true,
+          mengurangiTermin: true,
+          keterangan: true,
+        },
+      });
+      const calcRows = toCalcRows(existingRows);
+      const target = getKasbonTargetTermin(calcRows);
+      if (!target) throw new Error("KASBON_NOT_ALLOWED");
+
+      const totalNominal = Number(draft.nominal);
+      if (totalNominal <= 0) throw new Error("KASBON_NOMINAL_INVALID");
+
+      const capRows = existingRows
+        .filter((p) => p.status !== SpkPembayaranStatus.DRAFT && p.id !== draft.id)
+        .map((p) => ({
+          id: p.id,
+          jenis: p.jenis,
+          nominal: Number(p.nominal),
+          mengurangiTermin: p.mengurangiTermin,
+        }));
+
+      const capCheck = getPengurangTerminCapacity(
+        Number(spk.nilaiKontrak),
+        capRows,
+        target,
+        { additionalNominal: totalNominal },
+      );
+      if (!capCheck.allowed) throw new Error("KASBON_OVER_CAP");
+
+      const updated = await tx.spkPembayaran.update({
+        where: { id: draft.id },
+        data: {
+          status: SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
+          mengurangiTermin: target,
+        },
+        include: SpkPembayaranMapper.include,
+      });
+
+      await this.syncSpkNominals(tx, spkId);
+
+      return SpkPembayaranMapper.toDomain(updated);
+    });
   }
 
   async createRequest(data: CreateSpkPembayaranDTO): Promise<SpkPembayaranEntity> {

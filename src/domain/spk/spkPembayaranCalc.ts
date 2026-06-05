@@ -268,7 +268,7 @@ export function getPrerequisiteJenis(
 export interface SpkPembayaranStatusRow {
   id?: number;
   jenis: SpkPembayaranJenis;
-  status: "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR";
+  status: "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR" | "DRAFT";
   nominal?: number;
   mengurangiTermin?: SpkKasbonTargetTermin | null;
 }
@@ -276,15 +276,18 @@ export interface SpkPembayaranStatusRow {
 export function toSpkPembayaranCalcRows(
   pembayaranList: SpkPembayaranStatusRow[],
 ): SpkPembayaranCalcRow[] {
-  return pembayaranList.map((p) => ({
-    jenis: p.jenis,
-    status: p.status,
-    nominal: p.nominal ?? 0,
-    mengurangiTermin:
-      p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"
-        ? p.mengurangiTermin
-        : null,
-  }));
+  // Draft tidak boleh mempengaruhi kalkulasi termin / plafon.
+  return pembayaranList
+    .filter((p) => p.status !== "DRAFT")
+    .map((p) => ({
+      jenis: p.jenis,
+      status: p.status,
+      nominal: p.nominal ?? 0,
+      mengurangiTermin:
+        p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"
+          ? p.mengurangiTermin
+          : null,
+    }));
 }
 
 export type CanRequestKasbonResult =

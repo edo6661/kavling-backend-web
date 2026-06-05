@@ -7,6 +7,9 @@ import {
   AddBuktiSpkPembayaranUseCase,
   BayarSpkPembayaranUseCase,
   CreateSpkPembayaranRequestUseCase,
+  GetSpkKasbonDraftUseCase,
+  SaveSpkKasbonDraftUseCase,
+  SubmitSpkKasbonDraftUseCase,
   GetSpkPembayaranBySpkUseCase,
   GetSpkPembayaranPaginatedUseCase,
   RemoveBuktiSpkPembayaranUseCase,
@@ -771,6 +774,9 @@ export const createContainer = (dbClient: PrismaClient) => {
     spkPembayaranRepo,
   );
   const getSpkPembayaranBySpkUseCase = new GetSpkPembayaranBySpkUseCase(spkPembayaranRepo);
+  const getSpkKasbonDraftUseCase = new GetSpkKasbonDraftUseCase(spkRepo, spkPembayaranRepo);
+  const saveSpkKasbonDraftUseCase = new SaveSpkKasbonDraftUseCase(spkRepo, spkPembayaranRepo);
+  const submitSpkKasbonDraftUseCase = new SubmitSpkKasbonDraftUseCase(spkRepo, spkPembayaranRepo);
   const getSpkPembayaranPaginatedUseCase = new GetSpkPembayaranPaginatedUseCase(
     spkPembayaranRepo,
   );
@@ -802,6 +808,9 @@ export const createContainer = (dbClient: PrismaClient) => {
   const spkPembayaranController = new SpkPembayaranController(
     createSpkPembayaranRequestUseCase,
     getSpkPembayaranBySpkUseCase,
+    getSpkKasbonDraftUseCase,
+    saveSpkKasbonDraftUseCase,
+    submitSpkKasbonDraftUseCase,
     getSpkPembayaranPaginatedUseCase,
     bayarSpkPembayaranUseCase,
     addBuktiSpkPembayaranUseCase,

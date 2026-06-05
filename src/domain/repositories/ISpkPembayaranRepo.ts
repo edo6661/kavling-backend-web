@@ -13,6 +13,13 @@ export interface ISpkPembayaranRepository {
   findBySpkId(spkId: number): Promise<SpkPembayaranEntity[]>;
   findById(id: number): Promise<SpkPembayaranEntity | null>;
   createRequest(data: CreateSpkPembayaranDTO): Promise<SpkPembayaranEntity>;
+  findKasbonDraft(spkId: number, diajukanOlehId: number): Promise<SpkPembayaranEntity | null>;
+  upsertKasbonDraft(
+    spkId: number,
+    diajukanOlehId: number,
+    kasbonBaris: NonNullable<CreateSpkPembayaranDTO["kasbonBaris"]>,
+  ): Promise<SpkPembayaranEntity>;
+  submitKasbonDraft(spkId: number, diajukanOlehId: number): Promise<SpkPembayaranEntity>;
   markAsPaid(data: BayarSpkPembayaranDTO): Promise<SpkPembayaranEntity>;
   findPaginated(
     page: number,

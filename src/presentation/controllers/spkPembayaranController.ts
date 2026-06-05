@@ -5,6 +5,9 @@ import type { TypedRequest } from "../../types/request.js";
 import type {
   CreateSpkPembayaranRequestUseCase,
   GetSpkPembayaranBySpkUseCase,
+  GetSpkKasbonDraftUseCase,
+  SaveSpkKasbonDraftUseCase,
+  SubmitSpkKasbonDraftUseCase,
   GetSpkPembayaranPaginatedUseCase,
   BayarSpkPembayaranUseCase,
   AddBuktiSpkPembayaranUseCase,
@@ -31,6 +34,9 @@ export class SpkPembayaranController {
   constructor(
     private readonly createRequestUseCase: CreateSpkPembayaranRequestUseCase,
     private readonly getBySpkUseCase: GetSpkPembayaranBySpkUseCase,
+    private readonly getKasbonDraftUseCase: GetSpkKasbonDraftUseCase,
+    private readonly saveKasbonDraftUseCase: SaveSpkKasbonDraftUseCase,
+    private readonly submitKasbonDraftUseCase: SubmitSpkKasbonDraftUseCase,
     private readonly getPaginatedUseCase: GetSpkPembayaranPaginatedUseCase,
     private readonly bayarUseCase: BayarSpkPembayaranUseCase,
     private readonly addBuktiUseCase: AddBuktiSpkPembayaranUseCase,
@@ -117,6 +123,40 @@ export class SpkPembayaranController {
     const spkId = parseInt(routeParam(req.params.spkId), 10);
     const result = await this.getBySpkUseCase.execute(spkId);
     sendResponse(res, StatusCodes.OK, "Riwayat pembayaran SPK berhasil diambil", result);
+  };
+
+  getKasbonDraft = async (req: Request, res: Response): Promise<void> => {
+    const spkId = parseInt(routeParam(req.params.spkId), 10);
+    const userId = req.user!.userId;
+    const result = await this.getKasbonDraftUseCase.execute(spkId, userId, req.user!.role);
+    sendResponse(res, StatusCodes.OK, "Draft kasbon berhasil diambil", result);
+  };
+
+  saveKasbonDraft = async (req: Request, res: Response): Promise<void> => {
+    const spkId = parseInt(routeParam(req.params.spkId), 10);
+    const userId = req.user!.userId;
+    const body = req.body as { kasbonBaris: any[] };
+
+    const result = await this.saveKasbonDraftUseCase.execute(
+      spkId,
+      body.kasbonBaris.map((b) => ({
+        namaSupplier: b.namaSupplier,
+        keterangan: b.keterangan,
+        nominal: b.nominal,
+        tanggalPo: b.tanggalPo,
+        fotoBon: b.fotoBon ?? null,
+      })),
+      userId,
+      req.user!.role,
+    );
+    sendResponse(res, StatusCodes.OK, "Draft kasbon berhasil disimpan", result);
+  };
+
+  submitKasbonDraft = async (req: Request, res: Response): Promise<void> => {
+    const spkId = parseInt(routeParam(req.params.spkId), 10);
+    const userId = req.user!.userId;
+    const result = await this.submitKasbonDraftUseCase.execute(spkId, userId, req.user!.role);
+    sendResponse(res, StatusCodes.OK, "Draft kasbon berhasil diajukan ke finance", result);
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {

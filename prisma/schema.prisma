@@ -614,6 +614,7 @@ enum SpkKasbonTargetTermin {
 enum SpkPembayaranStatus {
   MENUNGGU_PEMBAYARAN @map("menunggu_pembayaran")
   SUDAH_DIBAYAR       @map("sudah_dibayar")
+  DRAFT               @map("draft")
 }
 
 model NotarisPembayaran {
