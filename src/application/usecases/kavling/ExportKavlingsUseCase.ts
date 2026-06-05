@@ -33,6 +33,11 @@ const STATUS_FONT: Record<UnitStatus, string> = {
   HOLD: "FFE65100",
 };
 
+const getDefaultDiskon = (namaTipe: string): number => {
+  const tipeKavling = namaTipe?.toLowerCase() || "";
+  return tipeKavling === "aruna" ? 10000000 : 6000000;
+};
+
 const sanitizeSheetName = (name: string): string => {
   const cleaned = name.replace(/[\\/?*[\]:]/g, "-").slice(0, 31);
   return cleaned.length > 0 ? cleaned : "Sheet";
@@ -73,6 +78,7 @@ const appendDataRows = (worksheet: ExcelJS.Worksheet, items: KavlingEntity[]) =>
       luasTanah: item.luasTanah,
       namaTipe: item.namaTipe,
       hargaDasar: item.hargaDasar,
+      diskon: getDefaultDiskon(item.namaTipe),
       status: STATUS_LABEL[status] ?? item.status,
     });
 
@@ -93,12 +99,12 @@ const appendDataRows = (worksheet: ExcelJS.Worksheet, items: KavlingEntity[]) =>
       };
       cell.alignment = { vertical: "middle", horizontal: "center" };
 
-      if (colNumber === 5) {
+      if (colNumber === 5 || colNumber === 6) {
         cell.numFmt = "#,##0";
         cell.alignment = { vertical: "middle", horizontal: "right" };
       }
 
-      if (colNumber === 6) {
+      if (colNumber === 7) {
         cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
         cell.fill = {
           type: "pattern",
@@ -165,6 +171,7 @@ export class ExportKavlingsUseCase {
       { header: "LT (m²)", key: "luasTanah", width: 10 },
       { header: "Tipe", key: "namaTipe", width: 18 },
       { header: "Harga", key: "hargaDasar", width: 18 },
+      { header: "Diskon", key: "diskon", width: 18 },
       { header: "Status Kavling", key: "status", width: 16 },
     ];
 
