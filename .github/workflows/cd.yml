@@ -15,6 +15,8 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          timeout: 60s
+          command_timeout: 20m
           script: |
             set -e
             cd ~/apps/kavling-backend
@@ -37,9 +39,9 @@ jobs:
             SENTRY_DSN="${{ secrets.SENTRY_DSN }}"
             GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
 
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER="${{ secrets.DB_USER }}"
+            DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            DB_NAME="${{ secrets.DB_NAME }}"
             SMTP_EMAIL="${{ secrets.SMTP_EMAIL }}"
             SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}"
 
@@ -51,7 +53,5 @@ jobs:
             EOT
 
             docker compose up -d --build
-
             docker compose exec -T app npx prisma migrate deploy
-
             docker image prune -af
