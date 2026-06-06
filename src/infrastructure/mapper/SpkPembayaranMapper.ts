@@ -4,6 +4,7 @@ import { normalizeKasbonNamaSupplier } from "../../domain/spk/kasbonNamaSupplier
 
 export const spkPembayaranInclude = {
   diajukanOleh: { select: { id: true, username: true } },
+  disetujuiOleh: { select: { id: true, username: true } },
   dibayarOleh: { select: { id: true, username: true } },
   upahBaris: {
     orderBy: { id: "asc" as const },
@@ -115,8 +116,11 @@ export class SpkPembayaranMapper {
       bsiCmsDilaporkan: row.bsiCmsDilaporkan,
       bsiCmsDilaporkanAt: row.bsiCmsDilaporkanAt,
       diajukanOlehId: row.diajukanOlehId,
+      disetujuiOlehId: row.disetujuiOlehId,
+      tanggalDisetujui: row.tanggalDisetujui,
       dibayarOlehId: row.dibayarOlehId,
       diajukanOleh: row.diajukanOleh,
+      disetujuiOleh: row.disetujuiOleh,
       dibayarOleh: row.dibayarOleh,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

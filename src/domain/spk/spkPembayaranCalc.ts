@@ -268,9 +268,16 @@ export function getPrerequisiteJenis(
 export interface SpkPembayaranStatusRow {
   id?: number;
   jenis: SpkPembayaranJenis;
-  status: "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR" | "DRAFT";
+  status: "MENUNGGU_PEMBAYARAN" | "MENUNGGU_PERSETUJUAN" | "SUDAH_DIBAYAR" | "DRAFT";
   nominal?: number;
   mengurangiTermin?: SpkKasbonTargetTermin | null;
+}
+
+function normalizeCalcStatus(
+  status: SpkPembayaranStatusRow["status"],
+): "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR" {
+  if (status === "SUDAH_DIBAYAR") return "SUDAH_DIBAYAR";
+  return "MENUNGGU_PEMBAYARAN";
 }
 
 export function toSpkPembayaranCalcRows(
@@ -281,7 +288,7 @@ export function toSpkPembayaranCalcRows(
     .filter((p) => p.status !== "DRAFT")
     .map((p) => ({
       jenis: p.jenis,
-      status: p.status,
+      status: normalizeCalcStatus(p.status),
       nominal: p.nominal ?? 0,
       mengurangiTermin:
         p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"

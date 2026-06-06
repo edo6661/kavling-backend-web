@@ -18,6 +18,7 @@ import {
   UpdateSpkUpahUseCase,
   DeleteSpkPenguranganUseCase,
   UploadKasbonFotoBonUseCase,
+  ApproveSpkPembayaranUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import { TukangRepository } from "../../domain/repositories/tukangRepo.js";
 import { TukangController } from "../../presentation/controllers/tukangController.js";
@@ -806,6 +807,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const uploadKasbonFotoBonUseCase = new UploadKasbonFotoBonUseCase(
     cloudinaryService,
   );
+  const approveSpkPembayaranUseCase = new ApproveSpkPembayaranUseCase(spkPembayaranRepo);
   const spkPembayaranController = new SpkPembayaranController(
     createSpkPembayaranRequestUseCase,
     getSpkPembayaranBySpkUseCase,
@@ -821,6 +823,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     updateSpkUpahUseCase,
     deleteSpkPenguranganUseCase,
     uploadKasbonFotoBonUseCase,
+    approveSpkPembayaranUseCase,
   );
 
   const tukangRepo = new TukangRepository(dbClient);

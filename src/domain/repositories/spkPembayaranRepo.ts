@@ -32,6 +32,22 @@ import {
 
 const TERMIN_JENIS: SpkPembayaranJenis[] = ["TERMIN_55", "TERMIN_100", "RETENSI"];
 
+function toCalcStatus(
+  status: SpkPembayaranStatus,
+): SpkPembayaranStatus.MENUNGGU_PEMBAYARAN | SpkPembayaranStatus.SUDAH_DIBAYAR {
+  if (status === SpkPembayaranStatus.SUDAH_DIBAYAR) {
+    return SpkPembayaranStatus.SUDAH_DIBAYAR;
+  }
+  return SpkPembayaranStatus.MENUNGGU_PEMBAYARAN;
+}
+
+function isEditablePenguranganStatus(status: SpkPembayaranStatus): boolean {
+  return (
+    status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
+    status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN
+  );
+}
+
 function toCalcRows(
   rows: {
     jenis: SpkPembayaranJenis;
@@ -46,7 +62,7 @@ function toCalcRows(
     .filter((p) => p.status !== SpkPembayaranStatus.DRAFT)
     .map((p) => ({
       jenis: p.jenis,
-      status: p.status,
+      status: toCalcStatus(p.status),
       nominal: Number(p.nominal),
       mengurangiTermin:
         p.mengurangiTermin === "TERMIN_55" || p.mengurangiTermin === "TERMIN_100"
@@ -189,7 +205,10 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
     for (const jenis of TERMIN_JENIS) {
       const row = pembayaranRows.find(
-        (p) => p.jenis === jenis && p.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
+        (p) =>
+          p.jenis === jenis &&
+          (p.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
+            p.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN),
       );
       if (!row) continue;
 
@@ -461,7 +480,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         data: {
           spk: { connect: { id: spkId } },
           jenis: "KASBON",
-          status: SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
+          status: SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
           mengurangiTermin: target,
           nominal: draft.nominal,
           keterangan: draft.keterangan,
@@ -526,6 +545,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           createData = {
             spk: { connect: { id: data.spkId } },
             jenis: "KASBON",
+            status: SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
             nominal: new Prisma.Decimal(totalNominal),
             keterangan,
             tanggalPo,
@@ -551,6 +571,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           createData = {
             spk: { connect: { id: data.spkId } },
             jenis: "KASBON",
+            status: SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
             nominal: new Prisma.Decimal(nominal),
             keterangan,
             tanggalPo: data.tanggalPo,
@@ -579,6 +600,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         createData = {
           spk: { connect: { id: data.spkId } },
           jenis: "UPAH",
+          status: SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
           nominal: new Prisma.Decimal(totalNominal),
           tanggalDari: data.tanggalDari,
           tanggalSampai: data.tanggalSampai,
@@ -607,6 +629,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         createData = {
           spk: { connect: { id: data.spkId } },
           jenis: data.jenis,
+          status: SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
           nominal: new Prisma.Decimal(nominal),
           diajukanOleh: { connect: { id: data.diajukanOlehId } },
         };
@@ -782,9 +805,16 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     const where: Prisma.SpkPembayaranWhereInput = {
       status:
         filters?.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
+        filters?.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN ||
         filters?.status === SpkPembayaranStatus.SUDAH_DIBAYAR
           ? filters.status
-          : { in: [SpkPembayaranStatus.MENUNGGU_PEMBAYARAN, SpkPembayaranStatus.SUDAH_DIBAYAR] },
+          : {
+              in: [
+                SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
+                SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
+                SpkPembayaranStatus.SUDAH_DIBAYAR,
+              ],
+            },
     };
     if (filters?.spkId) where.spkId = filters.spkId;
     if (filters?.search) {
@@ -831,7 +861,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       });
       if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
       if (existing.jenis !== "KASBON") throw new Error("NOT_KASBON");
-      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+      if (!isEditablePenguranganStatus(existing.status)) {
         throw new Error("ALREADY_PAID");
       }
       if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
@@ -899,7 +929,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       });
       if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
       if (existing.jenis !== "UPAH") throw new Error("NOT_UPAH");
-      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+      if (!isEditablePenguranganStatus(existing.status)) {
         throw new Error("ALREADY_PAID");
       }
       if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
@@ -957,6 +987,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       }
       if (
         existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN &&
+        existing.status !== SpkPembayaranStatus.MENUNGGU_PERSETUJUAN &&
         existing.status !== SpkPembayaranStatus.DRAFT
       ) {
         throw new Error("ALREADY_PAID");
@@ -966,6 +997,33 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       await tx.spkPembayaran.delete({ where: { id } });
 
       await this.syncSpkNominals(tx, existing.spkId);
+    });
+  }
+
+  async approvePengajuan(
+    id: number,
+    disetujuiOlehId: number,
+  ): Promise<SpkPembayaranEntity> {
+    return await this.db.$transaction(async (tx) => {
+      const existing = await tx.spkPembayaran.findUnique({
+        where: { id },
+      });
+      if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PERSETUJUAN) {
+        throw new Error("NOT_PENDING_APPROVAL");
+      }
+
+      const result = await tx.spkPembayaran.update({
+        where: { id },
+        data: {
+          status: SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
+          disetujuiOleh: { connect: { id: disetujuiOlehId } },
+          tanggalDisetujui: new Date(),
+        },
+        include: SpkPembayaranMapper.include,
+      });
+
+      return SpkPembayaranMapper.toDomain(result);
     });
   }
 

@@ -68,7 +68,7 @@ function assertMandorCanEditPengurangan(
   ) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "Hanya pengajuan yang masih menunggu pembayaran yang dapat diubah.",
+      "Hanya pengajuan yang masih menunggu persetujuan atau pembayaran yang dapat diubah.",
     );
   }
 }
@@ -92,11 +92,12 @@ function assertMandorCanDeletePengurangan(
   }
   if (
     record.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN &&
+    record.status !== SpkPembayaranStatus.MENUNGGU_PERSETUJUAN &&
     record.status !== SpkPembayaranStatus.DRAFT
   ) {
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      "Hanya pengajuan yang masih menunggu pembayaran atau draft yang dapat dihapus.",
+      "Hanya pengajuan yang masih menunggu persetujuan, pembayaran, atau draft yang dapat dihapus.",
     );
   }
 }
@@ -450,7 +451,12 @@ export class BayarSpkPembayaranUseCase {
       throw new AppError(StatusCodes.BAD_REQUEST, "Pembayaran ini sudah diproses.");
     }
     if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Status pembayaran tidak valid untuk diproses.");
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        existing.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN
+          ? "Pengajuan masih menunggu persetujuan pengawas."
+          : "Status pembayaran tidak valid untuk diproses.",
+      );
     }
 
     const spk = await this.spkRepo.findById(existing.spkId);
@@ -880,6 +886,35 @@ export class SetBsiCmsDilaporkanUseCase {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           "Pembayaran draft tidak dapat ditandai di BSI CMS.",
+        );
+      }
+      throw err;
+    }
+  }
+}
+
+export class ApproveSpkPembayaranUseCase {
+  constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
+
+  async execute(id: number, userId: number, userRole: string): Promise<SpkPembayaranEntity> {
+    if (userRole !== Role.PENGAWAS && userRole !== Role.SUPERADMIN && userRole !== Role.ADMIN) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Hanya pengawas yang dapat menyetujui pengajuan pembayaran SPK.",
+      );
+    }
+
+    try {
+      return await this.pembayaranRepo.approvePengajuan(id, userId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {
+        throw new NotFoundError("Pengajuan pembayaran SPK tidak ditemukan.");
+      }
+      if (msg === "NOT_PENDING_APPROVAL") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Pengajuan tidak dalam status menunggu persetujuan.",
         );
       }
       throw err;

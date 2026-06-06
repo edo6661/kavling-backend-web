@@ -25,6 +25,7 @@ model User {
   progressProyekAsMandor  ProgressProyek[]      @relation("ProgressMandor")
   spkAsMandor             Spk[]                 @relation("SpkMandor")
   spkPembayaranDiajukan   SpkPembayaran[]       @relation("SpkPembayaranDiajukan")
+  spkPembayaranDisetujui  SpkPembayaran[]       @relation("SpkPembayaranDisetujui")
   spkPembayaranDibayar    SpkPembayaran[]       @relation("SpkPembayaranDibayar")
   notarisPembayaranDibayar NotarisPembayaran[]  @relation("NotarisPembayaranDibayar")
   bankKprPembayaranDibayar BankKprPembayaran[]  @relation("BankKprPembayaranDibayar")
@@ -550,19 +551,23 @@ model SpkPembayaran {
   tanggalPembayaran DateTime?         @map("tanggal_pembayaran") @db.Date
   bsiCmsDilaporkan  Boolean           @default(false) @map("bsi_cms_dilaporkan")
   bsiCmsDilaporkanAt DateTime?        @map("bsi_cms_dilaporkan_at")
-  diajukanOlehId  Int                 @map("diajukan_oleh_id")
-  dibayarOlehId   Int?                @map("dibayar_oleh_id")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  diajukanOlehId    Int                 @map("diajukan_oleh_id")
+  disetujuiOlehId   Int?                @map("disetujui_oleh_id")
+  tanggalDisetujui  DateTime?           @map("tanggal_disetujui")
+  dibayarOlehId     Int?                @map("dibayar_oleh_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   spk           Spk  @relation(fields: [spkId], references: [id], onDelete: Cascade)
   diajukanOleh  User @relation("SpkPembayaranDiajukan", fields: [diajukanOlehId], references: [id])
+  disetujuiOleh User? @relation("SpkPembayaranDisetujui", fields: [disetujuiOlehId], references: [id])
   dibayarOleh   User? @relation("SpkPembayaranDibayar", fields: [dibayarOlehId], references: [id])
   upahBaris     SpkPembayaranUpahBaris[]
   kasbonBaris   SpkPembayaranKasbonBaris[]
 
   @@index([spkId], map: "spk_pembayaran_spk_id_fkey")
   @@index([diajukanOlehId], map: "spk_pembayaran_diajukan_oleh_id_fkey")
+  @@index([disetujuiOlehId], map: "spk_pembayaran_disetujui_oleh_id_fkey")
   @@index([dibayarOlehId], map: "spk_pembayaran_dibayar_oleh_id_fkey")
   @@map("spk_pembayaran")
 }
@@ -613,6 +618,7 @@ enum SpkKasbonTargetTermin {
 
 enum SpkPembayaranStatus {
   MENUNGGU_PEMBAYARAN @map("menunggu_pembayaran")
+  MENUNGGU_PERSETUJUAN @map("menunggu_persetujuan")
   SUDAH_DIBAYAR       @map("sudah_dibayar")
   DRAFT               @map("draft")
 }
@@ -844,6 +850,7 @@ enum Role {
   BANK       @map("bank")
   AGENT      @map("agent")
   MANDOR     @map("mandor")
+  PENGAWAS   @map("pengawas")
 }
 
 enum UnitStatus {

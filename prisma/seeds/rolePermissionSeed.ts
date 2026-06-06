@@ -10,6 +10,7 @@ export async function seedRolePermission(prisma: PrismaClient) {
     Role.MARKETING,
     Role.CUSTOMER,
     Role.MANDOR,
+    Role.PENGAWAS,
     
   ];
 
@@ -58,6 +59,18 @@ export async function seedRolePermission(prisma: PrismaClient) {
   for (const perm of mandorPermissions) {
     permissionsToInsert.push({
       role: Role.MANDOR,
+      ...perm,
+    });
+  }
+
+  const pengawasPermissions = [
+    { resource: "SPK", canCreate: false, canRead: true, canUpdate: true, canDelete: false },
+    { resource: "PROGRESS_PROYEK", canCreate: false, canRead: true, canUpdate: false, canDelete: false },
+  ];
+
+  for (const perm of pengawasPermissions) {
+    permissionsToInsert.push({
+      role: Role.PENGAWAS,
       ...perm,
     });
   }

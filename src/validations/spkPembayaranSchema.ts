@@ -144,7 +144,7 @@ export const getSpkPembayaranPaginatedSchema = {
   query: z.object({
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(600).default(20),
-    status: z.enum(["MENUNGGU_PEMBAYARAN", "SUDAH_DIBAYAR", "ALL"]).optional(),
+    status: z.enum(["MENUNGGU_PEMBAYARAN", "MENUNGGU_PERSETUJUAN", "SUDAH_DIBAYAR", "ALL"]).optional(),
     search: z.string().optional(),
   }),
 };
@@ -177,6 +177,12 @@ export const setBsiCmsDilaporkanSchema = {
   body: z.object({
     ids: z.array(z.coerce.number().int().positive()).min(1),
     dilaporkan: z.boolean(),
+  }),
+};
+
+export const approveSpkPembayaranSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
   }),
 };
 

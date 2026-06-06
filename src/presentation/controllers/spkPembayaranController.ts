@@ -17,6 +17,7 @@ import type {
   UpdateSpkUpahUseCase,
   DeleteSpkPenguranganUseCase,
   UploadKasbonFotoBonUseCase,
+  ApproveSpkPembayaranUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import type {
   updateSpkKasbonSchema,
@@ -46,6 +47,7 @@ export class SpkPembayaranController {
     private readonly updateUpahUseCase: UpdateSpkUpahUseCase,
     private readonly deletePenguranganUseCase: DeleteSpkPenguranganUseCase,
     private readonly uploadKasbonFotoBonUseCase: UploadKasbonFotoBonUseCase,
+    private readonly approveUseCase: ApproveSpkPembayaranUseCase,
   ) {}
 
   uploadFotoBon = async (req: Request, res: Response): Promise<void> => {
@@ -156,7 +158,22 @@ export class SpkPembayaranController {
     const spkId = parseInt(routeParam(req.params.spkId), 10);
     const userId = req.user!.userId;
     const result = await this.submitKasbonDraftUseCase.execute(spkId, userId, req.user!.role);
-    sendResponse(res, StatusCodes.OK, "Draft kasbon berhasil diajukan ke finance", result);
+    sendResponse(res, StatusCodes.OK, "Draft kasbon berhasil diajukan ke pengawas", result);
+  };
+
+  approve = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(routeParam(req.params.id), 10);
+    const result = await this.approveUseCase.execute(
+      id,
+      req.user!.userId,
+      req.user!.role,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Pengajuan pembayaran SPK disetujui dan diteruskan ke finance",
+      result,
+    );
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {

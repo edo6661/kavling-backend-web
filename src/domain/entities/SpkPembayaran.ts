@@ -42,8 +42,11 @@ export interface SpkPembayaranEntity {
   bsiCmsDilaporkan: boolean;
   bsiCmsDilaporkanAt: Date | null;
   diajukanOlehId: number;
+  disetujuiOlehId: number | null;
+  tanggalDisetujui: Date | null;
   dibayarOlehId: number | null;
   diajukanOleh: { id: number; username: string };
+  disetujuiOleh: { id: number; username: string } | null;
   dibayarOleh: { id: number; username: string } | null;
   createdAt: Date;
   updatedAt: Date;

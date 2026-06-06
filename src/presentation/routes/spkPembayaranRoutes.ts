@@ -16,6 +16,7 @@ import {
   saveSpkKasbonDraftSchema,
   setBsiCmsDilaporkanSchema,
   submitSpkKasbonDraftSchema,
+  approveSpkPembayaranSchema,
   updateSpkKasbonSchema,
   updateSpkUpahSchema,
 } from "../../validations/spkPembayaranSchema.js";
@@ -95,6 +96,13 @@ export const createSpkPembayaranRoutes = (
     "/:id",
     requirePermission("SPK", "read"),
     controller.deletePengurangan,
+  );
+
+  router.patch(
+    "/:id/approve",
+    requirePermission("SPK", "update"),
+    validate(approveSpkPembayaranSchema),
+    controller.approve as unknown as RequestHandler,
   );
 
   router.patch(

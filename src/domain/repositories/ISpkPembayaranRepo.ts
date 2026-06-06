@@ -30,4 +30,5 @@ export interface ISpkPembayaranRepository {
   updateKasbon(data: UpdateSpkKasbonDTO): Promise<SpkPembayaranEntity>;
   updateUpah(data: UpdateSpkUpahDTO): Promise<SpkPembayaranEntity>;
   deletePengurangan(id: number): Promise<void>;
+  approvePengajuan(id: number, disetujuiOlehId: number): Promise<SpkPembayaranEntity>;
 }
