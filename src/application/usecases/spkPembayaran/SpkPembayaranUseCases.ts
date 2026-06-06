@@ -24,8 +24,62 @@ import {
   type SpkPengurangTerminRow,
 } from "../../../domain/spk/spkPembayaranCalc.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
+import {
+  buildSpkDibayarNotification,
+  buildSpkDisetujuiNotification,
+  buildSpkPengajuanBaruNotification,
+} from "../../notifications/spkNotificationHelpers.js";
 import { Role, SpkPembayaranStatus } from "@prisma/client";
 import type { SpkEntity } from "../../../domain/entities/Spk.js";
+
+async function notifySpkPengajuanBaru(
+  notificationService: NotificationService | undefined,
+  spk: SpkEntity,
+  pembayaran: SpkPembayaranEntity,
+): Promise<void> {
+  if (!notificationService) return;
+  try {
+    await notificationService.notifyRoles(
+      [Role.PENGAWAS, Role.ADMIN, Role.SUPERADMIN],
+      buildSpkPengajuanBaruNotification(spk, pembayaran),
+    );
+  } catch (error) {
+    console.error("Gagal mengirim notifikasi pengajuan SPK:", error);
+  }
+}
+
+async function notifySpkDisetujui(
+  notificationService: NotificationService | undefined,
+  spk: SpkEntity,
+  pembayaran: SpkPembayaranEntity,
+): Promise<void> {
+  if (!notificationService) return;
+  try {
+    await notificationService.notifyRoles(
+      [Role.FINANCE, Role.ADMIN, Role.SUPERADMIN],
+      buildSpkDisetujuiNotification(spk, pembayaran),
+    );
+  } catch (error) {
+    console.error("Gagal mengirim notifikasi persetujuan SPK:", error);
+  }
+}
+
+async function notifySpkDibayar(
+  notificationService: NotificationService | undefined,
+  spk: SpkEntity,
+  pembayaran: SpkPembayaranEntity,
+): Promise<void> {
+  if (!notificationService) return;
+  try {
+    await notificationService.notifyUser(
+      spk.mandorId,
+      buildSpkDibayarNotification(spk, pembayaran),
+    );
+  } catch (error) {
+    console.error("Gagal mengirim notifikasi pembayaran SPK:", error);
+  }
+}
 
 const toPengurangRows = (list: SpkPembayaranEntity[]): SpkPengurangTerminRow[] =>
   list
@@ -106,6 +160,7 @@ export class CreateSpkPembayaranRequestUseCase {
   constructor(
     private readonly spkRepo: ISpkRepository,
     private readonly pembayaranRepo: SpkPembayaranRepository,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(
@@ -219,7 +274,7 @@ export class CreateSpkPembayaranRequestUseCase {
     }
 
     try {
-      return await this.pembayaranRepo.createRequestWithSync(
+      const created = await this.pembayaranRepo.createRequestWithSync(
         data.jenis === "KASBON"
           ? {
               spkId: data.spkId,
@@ -249,6 +304,8 @@ export class CreateSpkPembayaranRequestUseCase {
                 diajukanOlehId: userId,
               },
       );
+      await notifySpkPengajuanBaru(this.notificationService, spk, created);
+      return created;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "PEMBAYARAN_JENIS_EXISTS") {
@@ -365,6 +422,7 @@ export class SubmitSpkKasbonDraftUseCase {
   constructor(
     private readonly spkRepo: ISpkRepository,
     private readonly pembayaranRepo: SpkPembayaranRepository,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(spkId: number, userId: number, userRole: string): Promise<SpkPembayaranEntity> {
@@ -379,7 +437,9 @@ export class SubmitSpkKasbonDraftUseCase {
     }
 
     try {
-      return await this.pembayaranRepo.submitKasbonDraft(spkId, userId);
+      const submitted = await this.pembayaranRepo.submitKasbonDraft(spkId, userId);
+      await notifySpkPengajuanBaru(this.notificationService, spk, submitted);
+      return submitted;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "SPK_NOT_FOUND") throw new NotFoundError("SPK tidak ditemukan");
@@ -426,6 +486,7 @@ export class BayarSpkPembayaranUseCase {
     private readonly spkRepo: ISpkRepository,
     private readonly pembayaranRepo: SpkPembayaranRepository,
     private readonly cloudinary: CloudinaryService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(
@@ -477,7 +538,9 @@ export class BayarSpkPembayaranUseCase {
     if (tanggalPembayaran) payDto.tanggalPembayaran = tanggalPembayaran;
 
     try {
-      return await this.pembayaranRepo.markAsPaidWithSync(payDto);
+      const paid = await this.pembayaranRepo.markAsPaidWithSync(payDto);
+      await notifySpkDibayar(this.notificationService, spk, paid);
+      return paid;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "IS_DRAFT") {
@@ -894,7 +957,11 @@ export class SetBsiCmsDilaporkanUseCase {
 }
 
 export class ApproveSpkPembayaranUseCase {
-  constructor(private readonly pembayaranRepo: SpkPembayaranRepository) {}
+  constructor(
+    private readonly pembayaranRepo: SpkPembayaranRepository,
+    private readonly spkRepo: ISpkRepository,
+    private readonly notificationService?: NotificationService,
+  ) {}
 
   async execute(id: number, userId: number, userRole: string): Promise<SpkPembayaranEntity> {
     if (userRole !== Role.PENGAWAS && userRole !== Role.SUPERADMIN && userRole !== Role.ADMIN) {
@@ -905,7 +972,12 @@ export class ApproveSpkPembayaranUseCase {
     }
 
     try {
-      return await this.pembayaranRepo.approvePengajuan(id, userId);
+      const approved = await this.pembayaranRepo.approvePengajuan(id, userId);
+      const spk = await this.spkRepo.findById(approved.spkId);
+      if (spk) {
+        await notifySpkDisetujui(this.notificationService, spk, approved);
+      }
+      return approved;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {

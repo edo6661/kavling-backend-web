@@ -28,6 +28,7 @@ import { createNotarisPembayaranRoutes } from "./notarisPembayaranRoutes.js";
 import { createBankKprPembayaranRoutes } from "./bankKprPembayaranRoutes.js";
 import { createKodeBillingPphRoutes } from "./kodeBillingPphRoutes.js";
 import { createSuketPphRoutes } from "./suketPphRoutes.js";
+import { createNotificationRoutes } from "./notificationRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -35,6 +36,7 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use("/verify", createVerifyRoutes(deps.verifyController));
 
   router.use("/auth", createAuthRoutes(deps.authController));
+  router.use("/notifications", createNotificationRoutes(deps.notificationController));
   router.use("/users", createUserRoutes(deps.userController));
   router.use("/ocr", createOcrRoutes(deps.ocrController));
 

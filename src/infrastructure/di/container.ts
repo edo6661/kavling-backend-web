@@ -233,6 +233,15 @@ import {
 } from "../../application/usecases/suketPph/SuketPphUseCases.js";
 import { SuketPphController } from "../../presentation/controllers/suketPphController.js";
 import { SocketService } from "../websocket/SocketService.js";
+import { NotificationRepository } from "../../domain/repositories/notificationRepo.js";
+import { NotificationService } from "../notifications/NotificationService.js";
+import {
+  GetNotificationsUseCase,
+  GetUnreadNotificationCountUseCase,
+  MarkAllNotificationsAsReadUseCase,
+  MarkNotificationAsReadUseCase,
+} from "../../application/usecases/notification/NotificationUseCases.js";
+import { NotificationController } from "../../presentation/controllers/notificationController.js";
 import { UpdateCustomerSelfUseCase } from "../../application/usecases/auth/UpdateCustomerSelfUseCase.js";
 import { GenerateAgentAccountUseCase } from "../../application/usecases/agent/GenerateAgentAccountUseCase.js";
 import { UploadAgentDocumentUseCase } from "../../application/usecases/agent/UploadAgentDocumentUseCase.js";
@@ -249,8 +258,30 @@ export const createContainer = (dbClient: PrismaClient) => {
   const cloudinaryService = new CloudinaryService();
   const socketService = new SocketService();
   const emailService = new EmailService();
+  const notificationRepo = new NotificationRepository(dbClient);
 
   const userRepo = new UserRepository(dbClient);
+  const notificationService = new NotificationService(
+    notificationRepo,
+    userRepo,
+    socketService,
+  );
+  const getNotificationsUseCase = new GetNotificationsUseCase(notificationRepo);
+  const getUnreadNotificationCountUseCase = new GetUnreadNotificationCountUseCase(
+    notificationRepo,
+  );
+  const markNotificationAsReadUseCase = new MarkNotificationAsReadUseCase(
+    notificationRepo,
+  );
+  const markAllNotificationsAsReadUseCase = new MarkAllNotificationsAsReadUseCase(
+    notificationRepo,
+  );
+  const notificationController = new NotificationController(
+    getNotificationsUseCase,
+    getUnreadNotificationCountUseCase,
+    markNotificationAsReadUseCase,
+    markAllNotificationsAsReadUseCase,
+  );
   const bankRekeningPtRepo = new BankRekeningPtRepository(dbClient);
   const customerRepo = new CustomerRepository(dbClient);
   const updateCustomerSelfUseCase = new UpdateCustomerSelfUseCase(
@@ -503,7 +534,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
     generateSprPdfUseCase,
   );
-  const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient, socketService);
+  const gantiKavlingUseCase = new GantiKavlingUseCase(dbClient, notificationService);
   const approveBatalUseCase = new ApproveBatalUseCase(dbClient);
   const approveGantiKavlingUseCase = new ApproveGantiKavlingUseCase(
     dbClient,
@@ -539,7 +570,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
     penjualanRepo,
     generateSprPdfUseCase,
-    socketService,
+    notificationService,
   );
   const uploadBuktiRefundUseCase = new UploadBuktiRefundUseCase(
     dbClient,
@@ -773,11 +804,16 @@ export const createContainer = (dbClient: PrismaClient) => {
   const createSpkPembayaranRequestUseCase = new CreateSpkPembayaranRequestUseCase(
     spkRepo,
     spkPembayaranRepo,
+    notificationService,
   );
   const getSpkPembayaranBySpkUseCase = new GetSpkPembayaranBySpkUseCase(spkPembayaranRepo);
   const getSpkKasbonDraftUseCase = new GetSpkKasbonDraftUseCase(spkRepo, spkPembayaranRepo);
   const saveSpkKasbonDraftUseCase = new SaveSpkKasbonDraftUseCase(spkRepo, spkPembayaranRepo);
-  const submitSpkKasbonDraftUseCase = new SubmitSpkKasbonDraftUseCase(spkRepo, spkPembayaranRepo);
+  const submitSpkKasbonDraftUseCase = new SubmitSpkKasbonDraftUseCase(
+    spkRepo,
+    spkPembayaranRepo,
+    notificationService,
+  );
   const getSpkPembayaranPaginatedUseCase = new GetSpkPembayaranPaginatedUseCase(
     spkPembayaranRepo,
   );
@@ -785,6 +821,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     spkRepo,
     spkPembayaranRepo,
     cloudinaryService,
+    notificationService,
   );
   const addBuktiSpkPembayaranUseCase = new AddBuktiSpkPembayaranUseCase(
     spkPembayaranRepo,
@@ -807,7 +844,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   const uploadKasbonFotoBonUseCase = new UploadKasbonFotoBonUseCase(
     cloudinaryService,
   );
-  const approveSpkPembayaranUseCase = new ApproveSpkPembayaranUseCase(spkPembayaranRepo);
+  const approveSpkPembayaranUseCase = new ApproveSpkPembayaranUseCase(
+    spkPembayaranRepo,
+    spkRepo,
+    notificationService,
+  );
   const spkPembayaranController = new SpkPembayaranController(
     createSpkPembayaranRequestUseCase,
     getSpkPembayaranBySpkUseCase,
@@ -898,6 +939,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     telegramBotService,
     rolePermissionController,
     socketService,
+    notificationService,
+    notificationController,
     perusahaanAgentController,
     progressProyekController,
     spkController,

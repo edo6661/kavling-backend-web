@@ -8,7 +8,8 @@ import { collectTagihanFileBuktiUrls } from "../../../utils/tagihanBukti.js";
 
 import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
 import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
-import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
+import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
+import { Role } from "@prisma/client";
 
 export class UploadBuktiTagihanUseCase {
   constructor(
@@ -16,8 +17,7 @@ export class UploadBuktiTagihanUseCase {
     private readonly cloudinaryService: CloudinaryService,
     private readonly penjualanRepo: IPenjualanRepository,
     private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
-
-    private readonly socketService: SocketService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(
@@ -101,13 +101,21 @@ export class UploadBuktiTagihanUseCase {
       }
     }
 
-    if (isCustomer) {
-      this.socketService.notifyAdmin("notifikasi-admin", {
-        type: "UPLOAD_BUKTI",
-        title: "Bukti Pembayaran Baru",
-        message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
-        data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
-      });
+    if (isCustomer && this.notificationService) {
+      try {
+        await this.notificationService.notifyRoles(
+          [Role.ADMIN, Role.SUPERADMIN, Role.FINANCE],
+          {
+            type: "UPLOAD_BUKTI",
+            title: "Bukti Pembayaran Baru",
+            message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
+            data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
+            linkPath: "/finance/approve-pembayaran",
+          },
+        );
+      } catch (error) {
+        console.error("Gagal mengirim notifikasi upload bukti:", error);
+      }
     }
 
     return updatedTagihan;

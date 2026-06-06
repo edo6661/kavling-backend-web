@@ -3,12 +3,13 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
-import type { SocketService } from "../../../infrastructure/websocket/SocketService.js";
+import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
+import { Role } from "@prisma/client";
 
 export class GantiKavlingUseCase {
   constructor(
     private readonly db: PrismaClient,
-    private readonly socketService: SocketService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(
@@ -63,12 +64,22 @@ export class GantiKavlingUseCase {
         },
       });
 
-      this.socketService.notifyAdmin("notifikasi-admin", {
-        type: "GANTI_KAVLING",
-        title: "Pengajuan Ganti Kavling",
-        message: `Terdapat pengajuan ganti kavling untuk transaksi ${noTransaksi} yang memerlukan persetujuan.`,
-        data: { riwayatId: riwayat.id, noTransaksi },
-      });
+      if (this.notificationService) {
+        try {
+          await this.notificationService.notifyRoles(
+            [Role.ADMIN, Role.SUPERADMIN],
+            {
+              type: "GANTI_KAVLING",
+              title: "Pengajuan Ganti Kavling",
+              message: `Terdapat pengajuan ganti kavling untuk transaksi ${noTransaksi} yang memerlukan persetujuan.`,
+              data: { riwayatId: riwayat.id, noTransaksi },
+              linkPath: "/management/ganti-kavling",
+            },
+          );
+        } catch (error) {
+          console.error("Gagal mengirim notifikasi ganti kavling:", error);
+        }
+      }
 
       return riwayat;
     });
