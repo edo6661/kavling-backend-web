@@ -22,6 +22,7 @@ import type { KavlingFilterDTO } from "../../domain/dtos/KavlingDTO.js";
 import type { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
 import type { UploadKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingSertifikatTambahanDocumentUseCase.js";
 import type { ExportKavlingsUseCase } from "../../application/usecases/kavling/ExportKavlingsUseCase.js";
+import type { ExportKavlingPengeluaranUseCase } from "../../application/usecases/kavling/ExportKavlingPengeluaranUseCase.js";
 import { getKavlingExportSchema } from "../../validations/kavlingSchema.js";
 
 export class KavlingController {
@@ -34,6 +35,7 @@ export class KavlingController {
     private readonly uploadDocumentUseCase: UploadKavlingDocumentUseCase,
     private readonly uploadSertifikatTambahanUseCase: UploadKavlingSertifikatTambahanDocumentUseCase,
     private readonly exportKavlingsUseCase: ExportKavlingsUseCase,
+    private readonly exportKavlingPengeluaranUseCase: ExportKavlingPengeluaranUseCase,
   ) {}
 
   create = async (
@@ -131,6 +133,24 @@ export class KavlingController {
     const excelBuffer = await this.exportKavlingsUseCase.execute(filters);
     const timestamp = new Date().toISOString().slice(0, 10);
     const filename = `Data_Kavling_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(excelBuffer);
+  };
+
+  exportPengeluaranExcel = async (req: Request, res: Response): Promise<void> => {
+    const filters = getKavlingExportSchema.query.parse(
+      req.query,
+    ) as KavlingFilterDTO;
+
+    const excelBuffer =
+      await this.exportKavlingPengeluaranUseCase.execute(filters);
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Pengeluaran_Kavling_${timestamp}.xlsx`;
 
     res.setHeader(
       "Content-Type",

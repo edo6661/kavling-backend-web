@@ -3,6 +3,7 @@ import type {
   CreateKavlingDTO,
   UpdateKavlingDTO,
   KavlingFilterDTO,
+  KavlingPengeluaranExportRow,
 } from "../dtos/KavlingDTO.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 
@@ -17,6 +18,9 @@ export interface IKavlingRepository {
     filters?: KavlingFilterDTO,
   ): Promise<OffsetPaginatedData<KavlingEntity>>;
   findAll(filters?: KavlingFilterDTO): Promise<KavlingEntity[]>;
+  findAllForPengeluaranExport(
+    filters?: KavlingFilterDTO,
+  ): Promise<KavlingPengeluaranExportRow[]>;
   upsertSertifikatTambahanDocument(
     kavlingId: number,
     urutan: number,

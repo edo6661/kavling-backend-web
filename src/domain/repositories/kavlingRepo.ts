@@ -6,6 +6,7 @@ import type {
   CreateKavlingDTO,
   UpdateKavlingDTO,
   KavlingFilterDTO,
+  KavlingPengeluaranExportRow,
 } from "../dtos/KavlingDTO.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
@@ -177,6 +178,69 @@ export class KavlingRepository implements IKavlingRepository {
       include: kavlingInclude,
     });
     return items.map((item) => KavlingMapper.toDomain(item));
+  }
+
+  async findAllForPengeluaranExport(
+    filters?: KavlingFilterDTO,
+  ): Promise<KavlingPengeluaranExportRow[]> {
+    const where = this.buildWhere(filters);
+    const orderBy = this.buildOrderBy(filters);
+    const items = await this.db.kavling.findMany({
+      where,
+      orderBy,
+      select: {
+        blok: true,
+        nomorUnit: true,
+        luasBangunan: true,
+        luasTanah: true,
+        penjualan: {
+          where: { status: { not: "BATAL" } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            progressPenjualan: {
+              select: {
+                nilaiAjb: true,
+                biayaBphtb: true,
+                biayaPph: true,
+              },
+            },
+            detailKavlingPajak: {
+              select: { biayaNotaris: true },
+            },
+            agent: {
+              select: { feeMarketingPct: true },
+            },
+          },
+        },
+      },
+    });
+
+    return items.map((item) => {
+      const penjualan = item.penjualan[0];
+      const progress = penjualan?.progressPenjualan;
+      const pajak = penjualan?.detailKavlingPajak;
+      const nilaiAjb = progress?.nilaiAjb ? Number(progress.nilaiAjb) : null;
+      const feeMarketingPct = penjualan?.agent?.feeMarketingPct
+        ? Number(penjualan.agent.feeMarketingPct)
+        : 0;
+      const feeMarketing =
+        nilaiAjb && nilaiAjb > 0 && feeMarketingPct > 0
+          ? nilaiAjb * (feeMarketingPct / 100)
+          : null;
+
+      return {
+        blok: item.blok,
+        nomorUnit: item.nomorUnit,
+        luasBangunan: Number(item.luasBangunan),
+        luasTanah: Number(item.luasTanah),
+        biayaNotaris: pajak?.biayaNotaris ? Number(pajak.biayaNotaris) : null,
+        biayaBphtb: progress?.biayaBphtb ? Number(progress.biayaBphtb) : null,
+        biayaPph: progress?.biayaPph ? Number(progress.biayaPph) : null,
+        nilaiAjb,
+        feeMarketing,
+      };
+    });
   }
 
   async findWithCursorPagination(

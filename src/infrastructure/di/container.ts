@@ -146,6 +146,7 @@ import {
   DeleteKavlingUseCase,
 } from "../../application/usecases/kavling/KavlingUseCases.js";
 import { ExportKavlingsUseCase } from "../../application/usecases/kavling/ExportKavlingsUseCase.js";
+import { ExportKavlingPengeluaranUseCase } from "../../application/usecases/kavling/ExportKavlingPengeluaranUseCase.js";
 import { KavlingController } from "../../presentation/controllers/kavlingController.js";
 
 import { DetailKavlingPajakRepository } from "../../domain/repositories/detailKavlingPajakRepo.js";
@@ -408,6 +409,9 @@ export const createContainer = (dbClient: PrismaClient) => {
       cloudinaryService,
     );
   const exportKavlingsUseCase = new ExportKavlingsUseCase(kavlingRepo);
+  const exportKavlingPengeluaranUseCase = new ExportKavlingPengeluaranUseCase(
+    kavlingRepo,
+  );
 
   const kavlingController = new KavlingController(
     createKavlingUseCase,
@@ -418,6 +422,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     uploadKavlingDocumentUseCase,
     uploadKavlingSertifikatTambahanDocumentUseCase,
     exportKavlingsUseCase,
+    exportKavlingPengeluaranUseCase,
   );
 
   const detailKavlingPajakRepo = new DetailKavlingPajakRepository(dbClient);

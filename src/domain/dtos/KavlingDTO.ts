@@ -44,3 +44,15 @@ export interface KavlingFilterDTO extends BaseFilterDTO {
   status?: UnitStatus | undefined;
   jenisKavling?: JenisKavling | undefined;
 }
+
+export interface KavlingPengeluaranExportRow {
+  blok: string;
+  nomorUnit: string;
+  luasBangunan: number;
+  luasTanah: number;
+  biayaNotaris: number | null;
+  biayaBphtb: number | null;
+  biayaPph: number | null;
+  nilaiAjb: number | null;
+  feeMarketing: number | null;
+}

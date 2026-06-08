@@ -42,6 +42,13 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
   );
 
   router.get(
+    "/export/pengeluaran/excel",
+    requirePermission("KAVLING", "read"),
+    validate(getKavlingExportSchema),
+    controller.exportPengeluaranExcel,
+  );
+
+  router.get(
     "/:id",
     requirePermission(["KAVLING", "SPK"], "read"),
     validate({ params: updateKavlingSchema.params }),
