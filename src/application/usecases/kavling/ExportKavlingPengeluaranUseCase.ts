@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
 import type { KavlingFilterDTO } from "../../../domain/dtos/KavlingDTO.js";
 
-const CURRENCY_COLUMNS = [5, 6, 7, 8, 9];
+const CURRENCY_COLUMNS = [7, 8, 9, 10, 11, 12];
 
 const styleHeaderRow = (worksheet: ExcelJS.Worksheet) => {
   const headerRow = worksheet.getRow(1);
@@ -31,6 +31,9 @@ export class ExportKavlingPengeluaranUseCase {
       { header: "Nomor Unit", key: "nomorUnit", width: 12 },
       { header: "LB (m²)", key: "luasBangunan", width: 10 },
       { header: "LT (m²)", key: "luasTanah", width: 10 },
+      { header: "Cara Pembayaran", key: "caraPembayaran", width: 18 },
+      { header: "Agent", key: "namaAgent", width: 22 },
+      { header: "Harga", key: "harga", width: 18 },
       { header: "Biaya Notaris", key: "biayaNotaris", width: 18 },
       { header: "BPHTB", key: "biayaBphtb", width: 18 },
       { header: "PPh", key: "biayaPph", width: 18 },
@@ -65,6 +68,7 @@ export class ExportKavlingPengeluaranUseCase {
 
       const totals = items.reduce(
         (acc, item) => ({
+          harga: acc.harga + item.harga,
           biayaNotaris: acc.biayaNotaris + (item.biayaNotaris ?? 0),
           biayaBphtb: acc.biayaBphtb + (item.biayaBphtb ?? 0),
           biayaPph: acc.biayaPph + (item.biayaPph ?? 0),
@@ -72,6 +76,7 @@ export class ExportKavlingPengeluaranUseCase {
           feeMarketing: acc.feeMarketing + (item.feeMarketing ?? 0),
         }),
         {
+          harga: 0,
           biayaNotaris: 0,
           biayaBphtb: 0,
           biayaPph: 0,
@@ -84,7 +89,9 @@ export class ExportKavlingPengeluaranUseCase {
         blok: "",
         nomorUnit: "",
         luasBangunan: "",
-        luasTanah: "TOTAL",
+        luasTanah: "",
+        caraPembayaran: "",
+        namaAgent: "TOTAL",
         ...totals,
       });
       totalRow.font = { bold: true };

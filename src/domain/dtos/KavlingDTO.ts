@@ -50,6 +50,9 @@ export interface KavlingPengeluaranExportRow {
   nomorUnit: string;
   luasBangunan: number;
   luasTanah: number;
+  caraPembayaran: string | null;
+  namaAgent: string | null;
+  harga: number;
   biayaNotaris: number | null;
   biayaBphtb: number | null;
   biayaPph: number | null;

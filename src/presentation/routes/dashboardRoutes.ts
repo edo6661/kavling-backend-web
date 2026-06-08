@@ -16,6 +16,11 @@ export const createDashboardRoutes = (
     requirePermission("DASHBOARD", "read"),
     controller.getSummary,
   );
+  router.get(
+    "/drilldown",
+    requirePermission("DASHBOARD", "read"),
+    controller.getDrilldown,
+  );
 
   return router;
 };

@@ -121,6 +121,7 @@ import {
 } from "../../application/usecases/perumahan/PerumahanUseCases.js";
 import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
 import { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
+import { GetDashboardDrilldownUseCase } from "../../application/usecases/dashboard/GetDashboardDrilldownUseCase.js";
 import { DashboardController } from "../../presentation/controllers/dashboardController.js";
 import { CloudinaryService } from "../external/CloudinaryService.js";
 
@@ -441,6 +442,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
 
   const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
+  const getDashboardDrilldownUseCase = new GetDashboardDrilldownUseCase(dbClient);
 
   const notarisRepo = new NotarisRepository(dbClient);
   const createNotarisUseCase = new CreateNotarisUseCase(notarisRepo);
@@ -461,6 +463,7 @@ export const createContainer = (dbClient: PrismaClient) => {
 
   const dashboardController = new DashboardController(
     getDashboardSummaryUseCase,
+    getDashboardDrilldownUseCase,
   );
 
   const ocrController = new OcrController(

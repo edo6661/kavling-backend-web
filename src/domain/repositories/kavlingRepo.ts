@@ -19,6 +19,11 @@ const kavlingInclude = {
   sertifikatTanahTambahan: { orderBy: { urutan: "asc" as const } },
 } satisfies Prisma.KavlingInclude;
 
+const formatCaraPembayaran = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  return value.replace(/_/g, " ");
+};
+
 export class KavlingRepository implements IKavlingRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -193,11 +198,15 @@ export class KavlingRepository implements IKavlingRepository {
         nomorUnit: true,
         luasBangunan: true,
         luasTanah: true,
+        hargaDasar: true,
         penjualan: {
           where: { status: { not: "BATAL" } },
           orderBy: { createdAt: "desc" },
           take: 1,
           select: {
+            caraPembayaran: true,
+            hargaJual: true,
+            hargaDasar: true,
             progressPenjualan: {
               select: {
                 nilaiAjb: true,
@@ -209,7 +218,7 @@ export class KavlingRepository implements IKavlingRepository {
               select: { biayaNotaris: true },
             },
             agent: {
-              select: { feeMarketingPct: true },
+              select: { nama: true, feeMarketingPct: true },
             },
           },
         },
@@ -229,11 +238,20 @@ export class KavlingRepository implements IKavlingRepository {
           ? nilaiAjb * (feeMarketingPct / 100)
           : null;
 
+      const harga = penjualan
+        ? Number(penjualan.hargaJual ?? penjualan.hargaDasar)
+        : Number(item.hargaDasar);
+
       return {
         blok: item.blok,
         nomorUnit: item.nomorUnit,
         luasBangunan: Number(item.luasBangunan),
         luasTanah: Number(item.luasTanah),
+        caraPembayaran: penjualan
+          ? formatCaraPembayaran(penjualan.caraPembayaran)
+          : null,
+        namaAgent: penjualan?.agent?.nama ?? null,
+        harga,
         biayaNotaris: pajak?.biayaNotaris ? Number(pajak.biayaNotaris) : null,
         biayaBphtb: progress?.biayaBphtb ? Number(progress.biayaBphtb) : null,
         biayaPph: progress?.biayaPph ? Number(progress.biayaPph) : null,
