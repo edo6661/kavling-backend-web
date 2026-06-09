@@ -386,14 +386,5 @@ export function canRequestSpkPembayaran(
     };
   }
 
-  const nominal = calcSpkPembayaranNominal(jenis, spk, calcRows);
-  if (nominal <= 0) {
-    return {
-      allowed: false,
-      reason:
-        "Nominal pembayaran tidak valid (≤ 0). Kasbon mungkin sudah melebihi nilai termin.",
-    };
-  }
-
   return { allowed: true };
 }
