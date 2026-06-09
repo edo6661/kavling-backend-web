@@ -27,6 +27,7 @@ import {
   calcSisaNilaiKontrak,
   getKasbonTargetTermin,
   getPengurangTerminCapacity,
+  getTerminPaymentStatus,
   type SpkPembayaranCalcRow,
 } from "../spk/spkPembayaranCalc.js";
 
@@ -48,8 +49,49 @@ function isEditablePenguranganStatus(status: SpkPembayaranStatus): boolean {
   );
 }
 
+function toPengurangRowsFromDb(
+  rows: {
+    id: number;
+    jenis: SpkPembayaranJenis;
+    status: SpkPembayaranStatus;
+    nominal: Prisma.Decimal;
+    mengurangiTermin?: SpkKasbonTargetTermin | null;
+  }[],
+) {
+  return rows
+    .filter(
+      (p) =>
+        p.status !== SpkPembayaranStatus.DRAFT &&
+        (p.jenis === "KASBON" || p.jenis === "UPAH"),
+    )
+    .map((p) => ({
+      id: p.id,
+      jenis: p.jenis,
+      nominal: Number(p.nominal),
+      mengurangiTermin: p.mengurangiTermin,
+    }));
+}
+
+function resolveKasbonTargetTermin(
+  calcRows: SpkPembayaranCalcRow[],
+  existingRows: {
+    id: number;
+    jenis: SpkPembayaranJenis;
+    status: SpkPembayaranStatus;
+    nominal: Prisma.Decimal;
+    mengurangiTermin?: SpkKasbonTargetTermin | null;
+  }[],
+  nilaiKontrak: number,
+) {
+  return getKasbonTargetTermin(calcRows, {
+    nilaiKontrak,
+    pengurangRows: toPengurangRowsFromDb(existingRows),
+  });
+}
+
 function toCalcRows(
   rows: {
+    id?: number;
     jenis: SpkPembayaranJenis;
     status: SpkPembayaranStatus;
     nominal: Prisma.Decimal;
@@ -61,6 +103,7 @@ function toCalcRows(
   return rows
     .filter((p) => p.status !== SpkPembayaranStatus.DRAFT)
     .map((p) => ({
+      id: p.id,
       jenis: p.jenis,
       status: toCalcStatus(p.status),
       nominal: Number(p.nominal),
@@ -343,7 +386,12 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         },
       });
       const calcRows = toCalcRows(existingRows);
-      const target = getKasbonTargetTermin(calcRows);
+      const nilaiKontrakDraft = Number(spk.nilaiKontrak);
+      const target = resolveKasbonTargetTermin(
+        calcRows,
+        existingRows,
+        nilaiKontrakDraft,
+      );
       if (!target) throw new Error("KASBON_NOT_ALLOWED");
 
       const normalizedBaris = this.normalizeKasbonBaris(kasbonBaris);
@@ -451,7 +499,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         },
       });
       const calcRows = toCalcRows(existingRows);
-      const target = getKasbonTargetTermin(calcRows);
+      const target = resolveKasbonTargetTermin(
+        calcRows,
+        existingRows,
+        Number(spk.nilaiKontrak),
+      );
       if (!target) throw new Error("KASBON_NOT_ALLOWED");
 
       const totalNominal = Number(draft.nominal);
@@ -470,7 +522,10 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         Number(spk.nilaiKontrak),
         capRows,
         target,
-        { additionalNominal: totalNominal },
+        {
+          additionalNominal: totalNominal,
+          terminStatus: getTerminPaymentStatus(calcRows),
+        },
       );
       if (!capCheck.allowed) throw new Error("KASBON_OVER_CAP");
 
@@ -533,7 +588,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       let createData: Prisma.SpkPembayaranCreateInput;
 
       if (data.jenis === "KASBON") {
-        const target = getKasbonTargetTermin(calcRows);
+        const target = resolveKasbonTargetTermin(
+          calcRows,
+          existingRows,
+          nilaiKontrak,
+        );
         if (!target) throw new Error("KASBON_NOT_ALLOWED");
 
         if (data.kasbonBaris?.length) {
@@ -580,7 +639,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           };
         }
       } else if (data.jenis === "UPAH") {
-        const target = getKasbonTargetTermin(calcRows);
+        const target = resolveKasbonTargetTermin(
+          calcRows,
+          existingRows,
+          nilaiKontrak,
+        );
         if (!target) throw new Error("UPAH_NOT_ALLOWED");
         if (!data.baris.length) throw new Error("UPAH_BARIS_EMPTY");
 

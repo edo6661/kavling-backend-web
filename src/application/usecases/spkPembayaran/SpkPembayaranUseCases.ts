@@ -19,6 +19,7 @@ import {
   canRequestKasbon,
   canRequestSpkPembayaran,
   getKasbonTargetTermin,
+  getTerminPaymentStatus,
   toSpkPembayaranCalcRows,
   validatePengurangTerminNominal,
   type SpkPengurangTerminRow,
@@ -188,6 +189,7 @@ export class CreateSpkPembayaranRequestUseCase {
       mengurangiTermin: p.mengurangiTermin,
     }));
     const pengurangRows = toPengurangRows(existing);
+    const terminStatus = getTerminPaymentStatus(toSpkPembayaranCalcRows(statusRows));
 
     if (data.jenis === "KASBON") {
       const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak);
@@ -217,6 +219,8 @@ export class CreateSpkPembayaranRequestUseCase {
         pengurangRows,
         kasbonCheck.targetTermin,
         additionalNominal,
+        undefined,
+        terminStatus,
       );
       if (!capCheck.allowed) {
         throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -254,6 +258,8 @@ export class CreateSpkPembayaranRequestUseCase {
         pengurangRows,
         upahCheck.targetTermin,
         additionalNominal,
+        undefined,
+        terminStatus,
       );
       if (!capCheck.allowed) {
         throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -615,12 +621,24 @@ export class UpdateSpkKasbonUseCase {
       additionalNominal = data.nominal;
     }
 
+    const terminStatusKasbon = getTerminPaymentStatus(
+      toSpkPembayaranCalcRows(
+        all.map((p) => ({
+          id: p.id,
+          jenis: p.jenis,
+          status: p.status,
+          nominal: p.nominal,
+          mengurangiTermin: p.mengurangiTermin,
+        })),
+      ),
+    );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
       toPengurangRows(all),
       mengurangiTermin,
       additionalNominal,
       data.id,
+      terminStatusKasbon,
     );
     if (!capCheck.allowed) {
       throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -732,12 +750,24 @@ export class UpdateSpkUpahUseCase {
       );
     }
 
+    const terminStatusUpah = getTerminPaymentStatus(
+      toSpkPembayaranCalcRows(
+        allUpah.map((p) => ({
+          id: p.id,
+          jenis: p.jenis,
+          status: p.status,
+          nominal: p.nominal,
+          mengurangiTermin: p.mengurangiTermin,
+        })),
+      ),
+    );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
       toPengurangRows(allUpah),
       mengurangiTerminUpah,
       data.nominal,
       data.id,
+      terminStatusUpah,
     );
     if (!capCheck.allowed) {
       throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
