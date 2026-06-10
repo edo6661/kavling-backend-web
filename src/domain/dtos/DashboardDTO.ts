@@ -170,10 +170,24 @@ export interface BookingRateRowDTO {
   tingkatPersen: number;
 }
 
+/** Unit penjualan per hari (booking / proses) */
+export interface TodayUnitItemDTO {
+  id: string;
+  customer: string;
+  kavling: string;
+  amount: number;
+  caraPembayaran?: string;
+  waktu: string;
+}
+
 /** Ringkasan dashboard eksekutif (layout baru) */
 export interface ExecutiveDashboardDTO {
   year: number;
+  /** Tanggal referensi data harian (YYYY-MM-DD) */
+  todayDate: string;
   kpi: ExecutiveKpiDTO;
+  bookingHariIni: TodayUnitItemDTO[];
+  prosesHariIni: TodayUnitItemDTO[];
   pendapatanTahunIni: MonthlyMetricRowDTO[];
   akadTahunIni: MonthlyMetricRowDTO[];
   penjualanCashTahunIni: MonthlyMetricRowDTO[];

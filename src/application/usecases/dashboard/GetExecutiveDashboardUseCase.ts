@@ -4,7 +4,49 @@ import type {
   ExecutiveDashboardDTO,
   ExecutiveKpiDTO,
   MonthlyMetricRowDTO,
+  TodayUnitItemDTO,
 } from "../../../domain/dtos/DashboardDTO.js";
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH_KERAS: "Cash Keras",
+  CASH_BERTAHAP: "Cash Bertahap",
+  KPR: "KPR",
+};
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function mapTodayPenjualan(
+  penjualan: {
+    noTransaksi: string;
+    hargaJual: unknown;
+    caraPembayaran: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    customer: { nama: string };
+    kavling: { blok: string; nomorUnit: string };
+  },
+  waktuField: "createdAt" | "updatedAt",
+): TodayUnitItemDTO {
+  const item: TodayUnitItemDTO = {
+    id: penjualan.noTransaksi,
+    customer: penjualan.customer.nama,
+    kavling: `Blok ${penjualan.kavling.blok} - ${penjualan.kavling.nomorUnit}`,
+    amount: Number(penjualan.hargaJual ?? 0),
+    waktu: formatTime(penjualan[waktuField]),
+  };
+
+  if (penjualan.caraPembayaran) {
+    item.caraPembayaran =
+      PAYMENT_METHOD_LABELS[penjualan.caraPembayaran] ?? penjualan.caraPembayaran;
+  }
+
+  return item;
+}
 
 const FULL_MONTH_LABELS = [
   "Januari",
@@ -69,6 +111,8 @@ export class GetExecutiveDashboardUseCase {
       akadDetailsYear,
       penjualanCashYear,
       penjualanYear,
+      bookingHariIniRows,
+      prosesHariIniRows,
     ] = await Promise.all([
       this.db.kavling.count({ where: { status: "AVAILABLE" } }),
       this.db.detailKavlingPajak.count({
@@ -128,7 +172,36 @@ export class GetExecutiveDashboardUseCase {
         },
         select: { createdAt: true },
       }),
+      this.db.penjualan.findMany({
+        where: {
+          status: { not: "BATAL" },
+          createdAt: { gte: todayStart, lte: todayEnd },
+        },
+        orderBy: { createdAt: "desc" },
+        include: {
+          customer: { select: { nama: true } },
+          kavling: { select: { blok: true, nomorUnit: true } },
+        },
+      }),
+      this.db.penjualan.findMany({
+        where: {
+          status: "PROSES",
+          updatedAt: { gte: todayStart, lte: todayEnd },
+        },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          customer: { select: { nama: true } },
+          kavling: { select: { blok: true, nomorUnit: true } },
+        },
+      }),
     ]);
+
+    const bookingHariIni = bookingHariIniRows.map((p) =>
+      mapTodayPenjualan(p, "createdAt"),
+    );
+    const prosesHariIni = prosesHariIniRows.map((p) =>
+      mapTodayPenjualan(p, "updatedAt"),
+    );
 
     const kpi: ExecutiveKpiDTO = {
       unitTersedia,
@@ -192,9 +265,14 @@ export class GetExecutiveDashboardUseCase {
       },
     );
 
+    const todayDate = todayStart.toISOString().substring(0, 10);
+
     return {
       year,
+      todayDate,
       kpi,
+      bookingHariIni,
+      prosesHariIni,
       pendapatanTahunIni,
       akadTahunIni,
       penjualanCashTahunIni,
