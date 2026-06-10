@@ -144,6 +144,42 @@ export interface DashboardDrilldownQueryDTO {
   blok?: string;
 }
 
+/** Baris metrik bulanan untuk dashboard eksekutif */
+export interface MonthlyMetricRowDTO {
+  month: number;
+  monthLabel: string;
+  total: number;
+  count: number;
+}
+
+/** KPI ringkas dashboard eksekutif */
+export interface ExecutiveKpiDTO {
+  unitTersedia: number;
+  akadBulanIni: number;
+  unitBookingHariIni: number;
+  unitProsesHariIni: number;
+  totalUnitKpr: number;
+  totalUnitCashBertahap: number;
+}
+
+/** Tingkat pemesanan unit per bulan */
+export interface BookingRateRowDTO {
+  month: number;
+  monthLabel: string;
+  jumlahPemesanan: number;
+  tingkatPersen: number;
+}
+
+/** Ringkasan dashboard eksekutif (layout baru) */
+export interface ExecutiveDashboardDTO {
+  year: number;
+  kpi: ExecutiveKpiDTO;
+  pendapatanTahunIni: MonthlyMetricRowDTO[];
+  akadTahunIni: MonthlyMetricRowDTO[];
+  penjualanCashTahunIni: MonthlyMetricRowDTO[];
+  tingkatPemesanan: BookingRateRowDTO[];
+}
+
 export interface DashboardResponseDTO {
   stats: DashboardStatsDTO;
   recentTransactions: RecentTransactionDTO[];
@@ -170,4 +206,6 @@ export interface DashboardResponseDTO {
   kpiAlerts: KpiAlertDTO[];
   /** Metadata filter aktif */
   filters: DashboardFiltersDTO;
+  /** Dashboard eksekutif — KPI & tabel bulanan */
+  executive: ExecutiveDashboardDTO;
 }

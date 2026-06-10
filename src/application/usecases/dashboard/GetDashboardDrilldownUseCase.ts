@@ -33,6 +33,14 @@ function progressInRange(pct: number, range: string): boolean {
   return true;
 }
 
+function dayStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function dayEnd(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
 export class GetDashboardDrilldownUseCase {
   constructor(private readonly db: PrismaClient) {}
 
@@ -76,6 +84,106 @@ export class GetDashboardDrilldownUseCase {
   }
 
   private async drilldownPenjualan(status?: string): Promise<DrilldownItemDTO[]> {
+    const now = new Date();
+    const todayStart = dayStart(now);
+    const todayEnd = dayEnd(now);
+    const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    if (status === "BOOKED_TODAY") {
+      return this.mapPenjualanItems(
+        await this.db.penjualan.findMany({
+          where: {
+            status: { not: "BATAL" },
+            createdAt: { gte: todayStart, lte: todayEnd },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            customer: { select: { nama: true } },
+            kavling: { select: { blok: true, nomorUnit: true } },
+          },
+        }),
+      );
+    }
+
+    if (status === "PROSES_TODAY") {
+      return this.mapPenjualanItems(
+        await this.db.penjualan.findMany({
+          where: {
+            status: "PROSES",
+            updatedAt: { gte: todayStart, lte: todayEnd },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 50,
+          include: {
+            customer: { select: { nama: true } },
+            kavling: { select: { blok: true, nomorUnit: true } },
+          },
+        }),
+      );
+    }
+
+    if (status === "KPR") {
+      return this.mapPenjualanItems(
+        await this.db.penjualan.findMany({
+          where: { caraPembayaran: "KPR", status: { not: "BATAL" } },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            customer: { select: { nama: true } },
+            kavling: { select: { blok: true, nomorUnit: true } },
+          },
+        }),
+      );
+    }
+
+    if (status === "CASH_BERTAHAP") {
+      return this.mapPenjualanItems(
+        await this.db.penjualan.findMany({
+          where: { caraPembayaran: "CASH_BERTAHAP", status: { not: "BATAL" } },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            customer: { select: { nama: true } },
+            kavling: { select: { blok: true, nomorUnit: true } },
+          },
+        }),
+      );
+    }
+
+    if (status === "AKAD_BULAN_INI") {
+      const akadDetails = await this.db.detailKavlingPajak.findMany({
+        where: {
+          tanggalAkadPpjb: { gte: monthStartDate, lte: monthEndDate },
+          penjualan: { status: { not: "BATAL" } },
+        },
+        orderBy: { tanggalAkadPpjb: "desc" },
+        take: 50,
+        include: {
+          penjualan: {
+            include: {
+              customer: { select: { nama: true } },
+              kavling: { select: { blok: true, nomorUnit: true } },
+            },
+          },
+        },
+      });
+
+      return akadDetails.map((d) => {
+        const p = d.penjualan;
+        return {
+          id: p.noTransaksi,
+          label: p.customer.nama,
+          sublabel: `Blok ${p.kavling.blok} - ${p.kavling.nomorUnit}`,
+          value: `Rp ${Number(p.hargaJual ?? 0).toLocaleString("id-ID")}`,
+          status: d.tanggalAkadPpjb
+            ? d.tanggalAkadPpjb.toISOString().substring(0, 10)
+            : "Akad PPJB",
+        };
+      });
+    }
+
     const penjualan = await this.db.penjualan.findMany({
       where: status ? { status: status as "BOOKED" | "PROSES" | "LUNAS" | "BATAL" } : { status: { not: "BATAL" } },
       orderBy: { createdAt: "desc" },
@@ -86,6 +194,18 @@ export class GetDashboardDrilldownUseCase {
       },
     });
 
+    return this.mapPenjualanItems(penjualan);
+  }
+
+  private mapPenjualanItems(
+    penjualan: {
+      noTransaksi: string;
+      hargaJual: unknown;
+      status: string;
+      customer: { nama: string };
+      kavling: { blok: string; nomorUnit: string };
+    }[],
+  ): DrilldownItemDTO[] {
     return penjualan.map((p) => ({
       id: p.noTransaksi,
       label: p.customer.nama,

@@ -12,6 +12,7 @@ import type {
   TrendPointDTO,
   DashboardKpiPeriod,
 } from "../../../domain/dtos/DashboardDTO.js";
+import { GetExecutiveDashboardUseCase } from "./GetExecutiveDashboardUseCase.js";
 
 const MONTH_LABELS = [
   "Jan",
@@ -219,7 +220,11 @@ function buildBlokHeatmap(
 }
 
 export class GetDashboardSummaryUseCase {
-  constructor(private readonly db: PrismaClient) {}
+  private readonly executiveDashboard: GetExecutiveDashboardUseCase;
+
+  constructor(private readonly db: PrismaClient) {
+    this.executiveDashboard = new GetExecutiveDashboardUseCase(db);
+  }
 
   async execute(params: DashboardQueryDTO = {}): Promise<DashboardResponseDTO> {
     const now = new Date();
@@ -546,6 +551,7 @@ export class GetDashboardSummaryUseCase {
 
     const blokHeatmap = buildBlokHeatmap(allKavlingsForHeatmap);
     const kpiAlerts = buildKpiAlerts(revenueTrend, salesTrend);
+    const executive = await this.executiveDashboard.execute(now);
 
     return {
       stats: {
@@ -592,6 +598,7 @@ export class GetDashboardSummaryUseCase {
         kpiPeriodLabel: periodRanges.kpiPeriodLabel,
         comparisonLabel: periodRanges.comparisonLabel,
       },
+      executive,
     };
   }
 }
