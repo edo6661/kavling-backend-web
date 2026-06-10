@@ -29,6 +29,7 @@ import { createBankKprPembayaranRoutes } from "./bankKprPembayaranRoutes.js";
 import { createKodeBillingPphRoutes } from "./kodeBillingPphRoutes.js";
 import { createSuketPphRoutes } from "./suketPphRoutes.js";
 import { createNotificationRoutes } from "./notificationRoutes.js";
+import { createReportRoutes } from "./reportRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -48,6 +49,7 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use("/customers", createCustomerRoutes(deps.customerController));
   router.use("/perumahan", createPerumahanRoutes(deps.perumahanController));
   router.use("/dashboard", createDashboardRoutes(deps.dashboardController));
+  router.use("/reports", createReportRoutes(deps.reportController));
   router.use("/agents", createAgentRoutes(deps.agentController));
   router.use("/notaris", createNotarisRoutes(deps.notarisController));
   router.use("/kavling", createKavlingRoutes(deps.kavlingController));

@@ -13,12 +13,12 @@ export const createDashboardRoutes = (
   router.use(authenticate);
   router.get(
     "/summary",
-    requirePermission("DASHBOARD", "read"),
+    requirePermission(["DASHBOARD", "LAPORAN"], "read"),
     controller.getSummary,
   );
   router.get(
     "/drilldown",
-    requirePermission("DASHBOARD", "read"),
+    requirePermission(["DASHBOARD", "LAPORAN"], "read"),
     controller.getDrilldown,
   );
 

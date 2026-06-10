@@ -123,6 +123,13 @@ import { PerumahanController } from "../../presentation/controllers/perumahanCon
 import { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
 import { GetDashboardDrilldownUseCase } from "../../application/usecases/dashboard/GetDashboardDrilldownUseCase.js";
 import { DashboardController } from "../../presentation/controllers/dashboardController.js";
+import { GetBiayaProyekReportUseCase } from "../../application/usecases/report/GetBiayaProyekReportUseCase.js";
+import { GetProgressProyekReportUseCase } from "../../application/usecases/report/GetProgressProyekReportUseCase.js";
+import { GetPenjualanReportUseCase } from "../../application/usecases/report/GetPenjualanReportUseCase.js";
+import { GetKeuanganReportUseCase } from "../../application/usecases/report/GetKeuanganReportUseCase.js";
+import { GetMarketingReportUseCase } from "../../application/usecases/report/GetMarketingReportUseCase.js";
+import { ExportMarketingReportUseCase } from "../../application/usecases/report/ExportMarketingReportUseCase.js";
+import { ReportController } from "../../presentation/controllers/reportController.js";
 import { CloudinaryService } from "../external/CloudinaryService.js";
 
 import { AgentRepository } from "../../domain/repositories/agentRepo.js";
@@ -464,6 +471,25 @@ export const createContainer = (dbClient: PrismaClient) => {
   const dashboardController = new DashboardController(
     getDashboardSummaryUseCase,
     getDashboardDrilldownUseCase,
+  );
+
+  const getBiayaProyekReportUseCase = new GetBiayaProyekReportUseCase(dbClient);
+  const getProgressProyekReportUseCase = new GetProgressProyekReportUseCase(
+    dbClient,
+  );
+  const getPenjualanReportUseCase = new GetPenjualanReportUseCase(dbClient);
+  const getKeuanganReportUseCase = new GetKeuanganReportUseCase(dbClient);
+  const getMarketingReportUseCase = new GetMarketingReportUseCase(dbClient);
+  const exportMarketingReportUseCase = new ExportMarketingReportUseCase(
+    getMarketingReportUseCase,
+  );
+  const reportController = new ReportController(
+    getBiayaProyekReportUseCase,
+    getProgressProyekReportUseCase,
+    getPenjualanReportUseCase,
+    getKeuanganReportUseCase,
+    getMarketingReportUseCase,
+    exportMarketingReportUseCase,
   );
 
   const ocrController = new OcrController(
@@ -932,6 +958,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     perumahanRepo,
     perumahanController,
     dashboardController,
+    reportController,
     agentController,
     notarisController,
     kavlingController,

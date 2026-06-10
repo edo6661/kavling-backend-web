@@ -33,6 +33,7 @@ export async function seedRolePermission(prisma: PrismaClient) {
     "FEE_AGENT",
     "SPK",
     "PROGRESS_PROYEK",
+    "LAPORAN",
   ];
 
   const permissionsToInsert: Prisma.RolePermissionCreateManyInput[] = [];
