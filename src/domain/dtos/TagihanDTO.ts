@@ -53,8 +53,11 @@ export interface TagihanResponseDTO {
   updatedAt: Date;
 }
 
+export type TagihanKsoFilter = "MAHLIGAI" | "GAJAH";
+
 export interface TagihanFilterDTO extends BaseFilterDTO {
   customerId?: number;
   penjualanId?: number;
   status?: PaymentStatus;
+  kso?: TagihanKsoFilter;
 }

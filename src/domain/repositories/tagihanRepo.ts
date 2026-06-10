@@ -117,6 +117,22 @@ export class TagihanRepository implements ITagihanRepository {
     if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
     if (filters?.status) where.status = filters.status;
 
+    if (filters?.kso) {
+      const ksoKeyword = filters.kso === "MAHLIGAI" ? "Mahligai" : "Gajah";
+      const penjualanWhere =
+        typeof where.penjualan === "object" && where.penjualan !== null
+          ? where.penjualan
+          : { status: { not: "BATAL" as const } };
+      where.penjualan = {
+        ...penjualanWhere,
+        kavling: {
+          rekeningTujuan: {
+            atasNama: { contains: ksoKeyword },
+          },
+        },
+      };
+    }
+
     if (filters?.search) {
       where.OR = [
         { noTagihan: { contains: filters.search } },

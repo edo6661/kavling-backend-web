@@ -644,6 +644,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     dbClient,
     cloudinaryService,
     googleVisionService,
+    notificationService,
   );
   const uploadBuktiBayarKodeBillingPphUseCase =
     new UploadBuktiBayarKodeBillingPphUseCase(

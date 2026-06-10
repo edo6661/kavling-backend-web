@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { Role, type PrismaClient } from "@prisma/client";
 import type { KodeBillingPphRepository } from "../../../domain/repositories/kodeBillingPphRepo.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type {
@@ -16,6 +16,8 @@ import {
 } from "../../../infrastructure/utils/billingPphPdfUtils.js";
 import { isPdfBuffer, unlockPdf } from "../../../infrastructure/utils/pdfUtils.js";
 import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
+import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
+import { buildKodeBillingPphBaruNotification } from "../../notifications/kodeBillingPphNotificationHelpers.js";
 
 export class UploadKodeBillingPphUseCase {
   constructor(
@@ -23,6 +25,7 @@ export class UploadKodeBillingPphUseCase {
     private readonly db: PrismaClient,
     private readonly cloudinaryService: CloudinaryService,
     private readonly googleVisionService: GoogleVisionService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(params: {
@@ -161,6 +164,17 @@ export class UploadKodeBillingPphUseCase {
         fileBilling: fileUrl,
         uploadedBy: uploadedBy ?? null,
       });
+    }
+
+    if (this.notificationService) {
+      try {
+        await this.notificationService.notifyRoles(
+          [Role.ADMIN, Role.SUPERADMIN, Role.FINANCE],
+          buildKodeBillingPphBaruNotification(record),
+        );
+      } catch (error) {
+        console.error("Gagal mengirim notifikasi kode billing PPh:", error);
+      }
     }
 
     return record;

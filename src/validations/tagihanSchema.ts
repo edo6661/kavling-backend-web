@@ -43,6 +43,7 @@ export const getTagihansPaginatedSchema = {
       z.coerce.number().int().positive().optional(),
     ),
     status: emptyAsUndefined(z.nativeEnum(PaymentStatus).optional()),
+    kso: emptyAsUndefined(z.enum(["MAHLIGAI", "GAJAH"]).optional()),
   }),
 };
 

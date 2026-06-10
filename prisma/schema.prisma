@@ -938,4 +938,5 @@ enum NotificationType {
   SPK_DIBAYAR        @map("spk_dibayar")
   UPLOAD_BUKTI       @map("upload_bukti")
   GANTI_KAVLING      @map("ganti_kavling")
+  KODE_BILLING_PPH   @map("kode_billing_pph")
 }
