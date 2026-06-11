@@ -7,6 +7,9 @@ export interface RekapPembayaranReportFilterDTO {
   caraPembayaran?: PaymentMethod;
   startDate?: string;
   endDate?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface RekapPembayaranReportItemDTO {
@@ -37,4 +40,10 @@ export interface RekapPembayaranReportDTO {
     totalCicilanTerbayar: number;
   };
   items: RekapPembayaranReportItemDTO[];
+  meta: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
 }

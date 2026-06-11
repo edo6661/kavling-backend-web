@@ -81,6 +81,24 @@ export class GetRekapPembayaranReportUseCase {
         : {}),
     };
 
+    if (filters.search) {
+      const searchClause: Prisma.PenjualanWhereInput = {
+        OR: [
+          { customer: { nama: { contains: filters.search } } },
+          { kavling: { blok: { contains: filters.search } } },
+          { kavling: { nomorUnit: { contains: filters.search } } },
+        ],
+      };
+      penjualanWhere.AND = [
+        ...(Array.isArray(penjualanWhere.AND)
+          ? penjualanWhere.AND
+          : penjualanWhere.AND
+            ? [penjualanWhere.AND]
+            : []),
+        searchClause,
+      ];
+    }
+
     const rows = await this.db.penjualan.findMany({
       where: penjualanWhere,
       orderBy: [{ kavling: { blok: "asc" } }, { kavling: { nomorUnit: "asc" } }],
@@ -159,17 +177,30 @@ export class GetRekapPembayaranReportUseCase {
       };
     });
 
+    const page = filters.page && filters.page > 0 ? filters.page : 1;
+    const limit = filters.limit && filters.limit > 0 ? filters.limit : 10;
+    const totalItems = items.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    const startIndex = (page - 1) * limit;
+    const paginatedItems = items.slice(startIndex, startIndex + limit);
+
     return {
       filters,
       summary: {
-        jumlahPenjualan: items.length,
+        jumlahPenjualan: totalItems,
         totalHargaJual,
         totalDp,
         totalSisaPembayaran,
         totalDpTerbayar,
         totalCicilanTerbayar,
       },
-      items,
+      items: paginatedItems,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+      },
     };
   }
 }
