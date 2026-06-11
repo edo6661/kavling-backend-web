@@ -52,6 +52,19 @@ export const getPenjualanReportSchema = {
   }),
 };
 
+export const getRekapPembayaranReportSchema = {
+  query: z.object({
+    perumahanId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
+    blok: emptyAsUndefined(z.string().min(1).optional()),
+    status: emptyAsUndefined(
+      z.union([z.nativeEnum(PenjualanStatus), z.literal("ALL")]).optional(),
+    ),
+    caraPembayaran: emptyAsUndefined(z.nativeEnum(PaymentMethod).optional()),
+    startDate: dateOnlySchema,
+    endDate: dateOnlySchema,
+  }),
+};
+
 export const getMarketingReportSchema = {
   query: z.object({
     startDate: dateOnlySchema,

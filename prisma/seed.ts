@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log("Memulai proses seeding...");
-  seedTagihan(prisma);
+  // seedTagihan(prisma);
 
   // clearDatabase(prisma);
   // seedKavling(prisma);
