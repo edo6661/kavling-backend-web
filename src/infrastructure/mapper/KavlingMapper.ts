@@ -32,6 +32,7 @@ export class KavlingMapper {
               filePbg: row.filePbg,
               fileSertifikatTanah: row.fileSertifikatTanah,
               fileNopPbb: row.fileNopPbb,
+              nopd: row.nopd,
             }))
         : [];
 
@@ -63,6 +64,7 @@ export class KavlingMapper {
       filePbg: prismaKavling.filePbg,
       fileSertifikatTanah: prismaKavling.fileSertifikatTanah,
       fileNopPbb: prismaKavling.fileNopPbb,
+      nopd: prismaKavling.nopd,
       jumlahSertifikatTanah: prismaKavling.jumlahSertifikatTanah ?? 1,
       sertifikatTanahTambahan,
 

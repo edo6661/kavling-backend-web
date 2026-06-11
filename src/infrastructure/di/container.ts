@@ -410,11 +410,13 @@ export const createContainer = (dbClient: PrismaClient) => {
   const uploadKavlingDocumentUseCase = new UploadKavlingDocumentUseCase(
     kavlingRepo,
     cloudinaryService,
+    googleVisionService,
   );
   const uploadKavlingSertifikatTambahanDocumentUseCase =
     new UploadKavlingSertifikatTambahanDocumentUseCase(
       kavlingRepo,
       cloudinaryService,
+      googleVisionService,
     );
   const exportKavlingsUseCase = new ExportKavlingsUseCase(kavlingRepo);
   const exportKavlingPengeluaranUseCase = new ExportKavlingPengeluaranUseCase(

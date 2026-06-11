@@ -26,5 +26,6 @@ export interface IKavlingRepository {
     urutan: number,
     docType: "filePbg" | "fileSertifikatTanah" | "fileNopPbb",
     fileUrl: string,
+    extra?: { nopd?: string | null },
   ): Promise<KavlingEntity>;
 }

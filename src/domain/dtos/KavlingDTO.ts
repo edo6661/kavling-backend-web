@@ -17,6 +17,7 @@ export interface CreateKavlingDTO {
   filePbg?: string | undefined;
   fileSertifikatTanah?: string | undefined;
   fileNopPbb?: string | undefined;
+  nopd?: string | undefined;
   jumlahSertifikatTanah?: number | undefined;
 }
 
@@ -34,6 +35,7 @@ export interface UpdateKavlingDTO {
   filePbg?: string | undefined;
   fileSertifikatTanah?: string | undefined;
   fileNopPbb?: string | undefined;
+  nopd?: string | undefined;
   jumlahSertifikatTanah?: number | undefined;
 }
 

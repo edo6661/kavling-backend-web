@@ -594,16 +594,19 @@ export class PenjualanRepository implements IPenjualanRepository {
             filePbg: string | null;
             fileSertifikatTanah: string | null;
             fileNopPbb: string | null;
+            nopd: string | null;
           }) => ({
             urutan: row.urutan,
             filePbg: row.filePbg,
             fileSertifikatTanah: row.fileSertifikatTanah,
             fileNopPbb: row.fileNopPbb,
+            nopd: row.nopd,
           }),
         ),
         filePbg: item.kavling.filePbg,
         fileSertifikatTanah: item.kavling.fileSertifikatTanah,
         fileNopPbb: item.kavling.fileNopPbb,
+        nopd: item.kavling.nopd,
 
         plafonAwal: item.plafonAwal ? Number(item.plafonAwal) : null,
         plafonAcc: item.plafonAcc ? Number(item.plafonAcc) : null,

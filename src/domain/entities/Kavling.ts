@@ -7,6 +7,7 @@ export interface KavlingSertifikatTanahTambahanEntity {
   filePbg: string | null;
   fileSertifikatTanah: string | null;
   fileNopPbb: string | null;
+  nopd: string | null;
 }
 
 export interface KavlingEntity {
@@ -29,6 +30,7 @@ export interface KavlingEntity {
   filePbg: string | null;
   fileSertifikatTanah: string | null;
   fileNopPbb: string | null;
+  nopd: string | null;
   jumlahSertifikatTanah: number;
   sertifikatTanahTambahan?: KavlingSertifikatTanahTambahanEntity[] | undefined;
   penjualan?:

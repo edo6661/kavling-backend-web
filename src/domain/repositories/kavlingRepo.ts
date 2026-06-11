@@ -37,6 +37,12 @@ export class KavlingRepository implements IKavlingRepository {
         { blok: { contains: filters.search } },
         { nomorUnit: { contains: filters.search } },
         { namaTipe: { contains: filters.search } },
+        { nopd: { contains: filters.search } },
+        {
+          sertifikatTanahTambahan: {
+            some: { nopd: { contains: filters.search } },
+          },
+        },
       ];
     }
     return where;
@@ -151,6 +157,7 @@ export class KavlingRepository implements IKavlingRepository {
       updateData.fileSertifikatTanah = data.fileSertifikatTanah ?? null;
     if (data.fileNopPbb !== undefined)
       updateData.fileNopPbb = data.fileNopPbb ?? null;
+    if (data.nopd !== undefined) updateData.nopd = data.nopd ?? null;
     if (data.jumlahSertifikatTanah !== undefined) {
       updateData.jumlahSertifikatTanah = data.jumlahSertifikatTanah;
     }
@@ -337,6 +344,7 @@ export class KavlingRepository implements IKavlingRepository {
     urutan: number,
     docType: "filePbg" | "fileSertifikatTanah" | "fileNopPbb",
     fileUrl: string,
+    extra?: { nopd?: string | null },
   ): Promise<KavlingEntity> {
     const existing = await this.findById(kavlingId);
     if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
@@ -354,9 +362,11 @@ export class KavlingRepository implements IKavlingRepository {
         kavlingId,
         urutan,
         [docType]: fileUrl,
+        ...(extra?.nopd ? { nopd: extra.nopd } : {}),
       },
       update: {
         [docType]: fileUrl,
+        ...(extra?.nopd ? { nopd: extra.nopd } : {}),
       },
     });
 

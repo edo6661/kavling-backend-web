@@ -1,13 +1,16 @@
 import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import { extractNopdFromPbbPdfBuffer } from "../../../infrastructure/utils/pbbPdfUtils.js";
 
 export class UploadKavlingSertifikatTambahanDocumentUseCase {
   constructor(
     private readonly repo: IKavlingRepository,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly googleVisionService: GoogleVisionService,
   ) {}
 
   async execute(
@@ -46,11 +49,20 @@ export class UploadKavlingSertifikatTambahanDocumentUseCase {
       `bumantara/kavling/tambahan/${docType}`,
     );
 
+    let nopd: string | null | undefined;
+    if (docType === "fileNopPbb") {
+      nopd = await extractNopdFromPbbPdfBuffer(
+        fileBuffer,
+        this.googleVisionService,
+      );
+    }
+
     return await this.repo.upsertSertifikatTambahanDocument(
       id,
       urutan,
       docType,
       fileUrl,
+      nopd ? { nopd } : undefined,
     );
   }
 }

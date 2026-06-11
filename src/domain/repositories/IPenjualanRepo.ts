@@ -70,10 +70,12 @@ export interface PenjualanPaginatedItem {
     filePbg: string | null;
     fileSertifikatTanah: string | null;
     fileNopPbb: string | null;
+    nopd: string | null;
   }[];
   filePbg: string | null;
   fileSertifikatTanah: string | null;
   fileNopPbb: string | null;
+  nopd: string | null;
   luasBangunan: number;
   luasTanah: number;
 

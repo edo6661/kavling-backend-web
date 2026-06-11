@@ -1,12 +1,16 @@
 import type { IKavlingRepository } from "../../../domain/repositories/IKavlingRepo.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { GoogleVisionService } from "../../../infrastructure/external/GoogleVisionService.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import { extractNopdFromPbbPdfBuffer } from "../../../infrastructure/utils/pbbPdfUtils.js";
+
 export class UploadKavlingDocumentUseCase {
   constructor(
     private readonly repo: IKavlingRepository,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly googleVisionService: GoogleVisionService,
   ) {}
   async execute(
     id: number,
@@ -30,7 +34,22 @@ export class UploadKavlingDocumentUseCase {
       fileBuffer,
       `bumantara/kavling/${docType}`,
     );
-    const updateData = { [docType]: fileUrl };
+
+    const updateData: {
+      filePbg?: string;
+      fileSertifikatTanah?: string;
+      fileNopPbb?: string;
+      nopd?: string;
+    } = { [docType]: fileUrl };
+
+    if (docType === "fileNopPbb") {
+      const nopd = await extractNopdFromPbbPdfBuffer(
+        fileBuffer,
+        this.googleVisionService,
+      );
+      if (nopd) updateData.nopd = nopd;
+    }
+
     return await this.repo.update(id, updateData);
   }
 }

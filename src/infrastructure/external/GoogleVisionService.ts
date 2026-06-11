@@ -4,6 +4,7 @@ import {
   type Schema,
 } from "@google/generative-ai";
 import { normalizeKasbonNamaSupplier } from "../../domain/spk/kasbonNamaSupplier.js";
+import { normalizeNopd } from "../utils/pbbPdfUtils.js";
 import { AppError } from "../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { existsSync, readFileSync, writeFileSync } from "fs";
@@ -317,6 +318,68 @@ ATURAN KETAT:
         StatusCodes.INTERNAL_SERVER_ERROR,
         "Gagal memproses PDF scan Kode Billing.",
       );
+    }
+  }
+
+  /**
+   * OCR PDF SPPT PBB — ekstrak NOPD (Nomor Objek Pajak Daerah).
+   */
+  async extractNopdFromPbbPdf(pdfBuffer: Buffer): Promise<string | null> {
+    try {
+      const nopdSchema: Schema = {
+        type: SchemaType.OBJECT,
+        properties: {
+          nopd: {
+            type: SchemaType.STRING,
+            description:
+              "NOPD (Nomor Objek Pajak Daerah) dari SPPT PBB, format dengan titik dan strip (contoh: 32.03.140.007.037-2439.0).",
+          },
+        },
+        required: ["nopd"],
+      };
+
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: nopdSchema,
+          temperature: 0.0,
+        },
+      });
+
+      const pdfPart = {
+        inlineData: {
+          data: pdfBuffer.toString("base64"),
+          mimeType: "application/pdf",
+        },
+      };
+
+      const prompt = `
+Anda mengekstrak NOPD (Nomor Objek Pajak Daerah) dari dokumen SPPT PBB Indonesia.
+
+TUGAS: Temukan teks "NOPD :" atau "NOPD:" pada dokumen. Biasanya ada 2 kemunculan (bagian atas dan bawah) dengan nilai yang sama.
+
+ATURAN KETAT:
+1. Hanya nilai yang benar-benar terlihat di dokumen. Dilarang mengarang.
+2. Format umum: XX.XX.XXX.XXX.XXX-XXXX.X (contoh: 32.03.140.007.037-2439.0).
+3. Prioritas: NOPD di bagian atas (dekat TAHUN), lalu NOPD di bagian bawah (dekat SPPT Tahun/Rp).
+4. Jangan ambil NPWPD, NPWP, kode billing, atau nominal uang.
+5. Jika tidak terbaca dengan yakin, set nopd ke null.
+6. Kembalikan persis seperti format di dokumen (dengan titik dan strip).
+`;
+
+      const result = await model.generateContent([prompt, pdfPart]);
+      const responseText = result.response.text();
+
+      interface ExpectedNopdJson {
+        nopd?: string | null;
+      }
+
+      const parsed = JSON.parse(responseText) as ExpectedNopdJson;
+      return parsed.nopd ? normalizeNopd(parsed.nopd) : null;
+    } catch (error) {
+      console.error("Gemini NOPD PBB PDF OCR Error:", error);
+      return null;
     }
   }
 
