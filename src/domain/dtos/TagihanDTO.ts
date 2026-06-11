@@ -15,6 +15,8 @@ export interface CreateTagihanDTO {
 export interface UpdateTagihanDTO {
   pembayaran?: string | undefined;
   tujuan?: TagihanTujuan | undefined;
+  /** Di-set server saat `tujuan` berubah agar nomor dokumen selaras. */
+  noTagihan?: string | undefined;
   nominal?: number | undefined;
   jatuhTempo?: string | Date | undefined;
   status?: PaymentStatus | undefined;

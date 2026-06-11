@@ -78,6 +78,7 @@ export class TagihanRepository implements ITagihanRepository {
     const updateData: Prisma.TagihanUpdateInput = {};
     if (data.pembayaran !== undefined) updateData.pembayaran = data.pembayaran;
     if (data.tujuan !== undefined) updateData.tujuan = data.tujuan;
+    if (data.noTagihan !== undefined) updateData.noTagihan = data.noTagihan;
     if (data.nominal !== undefined) updateData.nominal = data.nominal;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.fileBukti !== undefined) updateData.fileBukti = data.fileBukti;

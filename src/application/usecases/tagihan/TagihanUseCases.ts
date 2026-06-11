@@ -96,7 +96,63 @@ export class UpdateTagihanUseCase {
     const before = await this.repo.findById(id);
     if (!before) throw new NotFoundError("Tagihan tidak ditemukan");
 
-    const updated = await this.repo.update(id, data);
+    const patch: UpdateTagihanDTO = { ...data };
+    const pembayaranAfter = data.pembayaran ?? before.pembayaran;
+    const tujuanBeforeEffective = effectiveTagihanTujuan(before);
+    const tujuanAfterEffective = effectiveTagihanTujuan({
+      tujuan: data.tujuan ?? before.tujuan,
+      pembayaran: pembayaranAfter,
+    });
+
+    if (
+      data.tujuan !== undefined &&
+      tujuanAfterEffective !== tujuanBeforeEffective
+    ) {
+      const penjualan = await this.db.penjualan.findUnique({
+        where: { id: before.penjualanId },
+        select: { noTransaksi: true },
+      });
+      if (!penjualan) {
+        throw new NotFoundError("Data penjualan tidak ditemukan");
+      }
+
+      const pembayaran = pembayaranAfter;
+      const newTujuan = tujuanAfterEffective;
+      let newNoTagihan: string;
+
+      if (newTujuan === "DP") {
+        const dpRows = await this.db.tagihan.findMany({
+          where: { penjualanId: before.penjualanId, id: { not: id } },
+          select: { noTagihan: true, pembayaran: true, tujuan: true },
+        });
+        const existingDpNoTagihans = dpRows
+          .filter((t) => effectiveTagihanTujuan(t) === "DP")
+          .map((t) => t.noTagihan);
+        newNoTagihan = resolveDpNoTagihanForCreate({
+          noTransaksi: penjualan.noTransaksi,
+          pembayaran,
+          existingDpNoTagihans,
+        });
+      } else {
+        newNoTagihan = buildNoTagihanForCreate({
+          noTransaksi: penjualan.noTransaksi,
+          tujuan: newTujuan,
+          pembayaran,
+        });
+      }
+
+      if (newNoTagihan !== before.noTagihan) {
+        const duplicate = await this.repo.findByNoTagihan(newNoTagihan);
+        if (duplicate && duplicate.id !== id) {
+          throw new ConflictError(
+            duplicateNoTagihanMessage(newNoTagihan, newTujuan),
+          );
+        }
+        patch.noTagihan = newNoTagihan;
+      }
+    }
+
+    const updated = await this.repo.update(id, patch);
 
     const newNominal =
       data.nominal !== undefined ? Number(data.nominal) : before.nominal;
@@ -107,10 +163,12 @@ export class UpdateTagihanUseCase {
       where: { id: before.penjualanId },
       select: { noTransaksi: true },
     });
+    const noTagihanAfter = patch.noTagihan ?? before.noTagihan;
     const isCanonicalDpInvoice =
       !!penjualanRow &&
+      tujuanAfterEffective === "DP" &&
       isLegacyCanonicalDpNoTagihan(
-        before.noTagihan,
+        noTagihanAfter,
         penjualanRow.noTransaksi,
       );
 
