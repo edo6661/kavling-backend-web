@@ -191,10 +191,6 @@ export async function seedTagihan(prisma: PrismaClient) {
       console.log(`  ⏭️  Skip (Ga Nemu)  : ${skipCount}`);
       console.log(`==========================================================`);
 
-      // 🛑 MEKANISME DRY-RUN ROLLBACK
-      // Kita lemparkan error secara sengaja agar Prisma menggagalkan (rollback) seluruh insert yang baru saja dilakukan.
-      throw new Error("DRY_RUN_ROLLBACK");
-      
     });
   } catch (error: any) {
     if (error.message === "DRY_RUN_ROLLBACK") {
