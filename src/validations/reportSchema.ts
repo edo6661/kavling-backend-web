@@ -59,6 +59,9 @@ const pemasukanPenjualanReportQuerySchema = z.object({
     z.union([z.nativeEnum(PenjualanStatus), z.literal("ALL")]).optional(),
   ),
   caraPembayaran: emptyAsUndefined(z.nativeEnum(PaymentMethod).optional()),
+  skemaPembayaran: emptyAsUndefined(
+    z.enum(["Bertahap", "KPR"]).optional(),
+  ),
   startDate: dateOnlySchema,
   endDate: dateOnlySchema,
   search: emptyAsUndefined(z.string().min(1).optional()),

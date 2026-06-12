@@ -269,20 +269,27 @@ function buildSummary(rows: SummarySourceRow[]) {
   );
 }
 
+function resolveCaraPembayaranFilter(
+  filters: PemasukanPenjualanReportFilterDTO,
+): PaymentMethod | undefined {
+  if (filters.skemaPembayaran === "Bertahap") return "CASH_BERTAHAP";
+  if (filters.skemaPembayaran === "KPR") return "KPR";
+  return filters.caraPembayaran;
+}
+
 function buildPenjualanWhere(
   filters: PemasukanPenjualanReportFilterDTO,
   perumahanId?: number,
 ): Prisma.PenjualanWhereInput {
   const start = parseDateStart(filters.startDate);
   const end = parseDateEnd(filters.endDate);
+  const caraPembayaran = resolveCaraPembayaranFilter(filters);
 
   const penjualanWhere: Prisma.PenjualanWhereInput = {
     ...(filters.status && filters.status !== "ALL"
       ? { status: filters.status }
       : { status: { not: "BATAL" } }),
-    ...(filters.caraPembayaran
-      ? { caraPembayaran: filters.caraPembayaran }
-      : {}),
+    ...(caraPembayaran ? { caraPembayaran } : {}),
     ...(perumahanId || filters.blok
       ? {
           kavling: {

@@ -1,10 +1,14 @@
 import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
 
+export type PemasukanSkemaPembayaranFilter = "Bertahap" | "KPR";
+
 export interface PemasukanPenjualanReportFilterDTO {
   perumahanId?: number;
   blok?: string;
   status?: PenjualanStatus | "ALL";
   caraPembayaran?: PaymentMethod;
+  /** Filter baris tabel: Cash Bertahap atau KPR */
+  skemaPembayaran?: PemasukanSkemaPembayaranFilter;
   startDate?: string;
   endDate?: string;
   search?: string;
