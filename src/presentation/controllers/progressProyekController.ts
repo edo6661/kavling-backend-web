@@ -58,11 +58,15 @@ export class ProgressProyekController {
   };
 
   getProyekList = async (req: Request, res: Response): Promise<void> => {
-    const { page, limit } = getProgressProyekListSchema.query.parse(req.query);
+    const { page, limit, search } =
+      getProgressProyekListSchema.query.parse(req.query);
 
     const filters: ProgressProyekListFilterDTO = {};
     if (req.user?.role === Role.MANDOR && req.user.userId) {
       filters.mandorUserId = req.user.userId;
+    }
+    if (search) {
+      filters.search = search;
     }
 
     const result = await this.getListUseCase.execute(page, limit, filters);

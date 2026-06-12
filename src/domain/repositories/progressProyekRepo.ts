@@ -84,6 +84,28 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     };
   }
 
+  private matchesProyekListSearch(
+    item: ProgressProyekListItemDTO,
+    noSpk: string | null,
+    search: string,
+  ): boolean {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+
+    const candidates = [
+      item.nama !== "-" ? item.nama : null,
+      item.blok,
+      item.nomorUnit,
+      `${item.blok}-${item.nomorUnit}`,
+      item.progressProyek?.mandor?.username,
+      noSpk,
+    ];
+
+    return candidates
+      .filter((value): value is string => !!value)
+      .some((value) => value.toLowerCase().includes(term));
+  }
+
   private buildMandorPenjualanWhere(
     mandorUserId: number,
   ): PrismaTypes.PenjualanWhereInput {
@@ -156,14 +178,14 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       },
     });
 
-    const penjualanItems: ProgressProyekListItemDTO[] = penjualanRows.map(
-      (item) => {
-        const progressProyek = this.resolveProgressProyekSummary(
-          item.progressProyek,
-          item.kavling.spkItem,
-        );
+    const penjualanItems = penjualanRows.map((item) => {
+      const progressProyek = this.resolveProgressProyekSummary(
+        item.progressProyek,
+        item.kavling.spkItem,
+      );
 
-        return {
+      return {
+        item: {
           kavlingId: item.kavling.id,
           penjualanId: item.id,
           penjualanNoTransaksi: item.noTransaksi,
@@ -172,18 +194,19 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
           nama: item.customer.nama,
           status: item.status,
           progressProyek,
-        };
-      },
-    );
+        },
+        noSpk: item.kavling.spkItem?.spk?.noSpk ?? null,
+      };
+    });
 
-    const kavlingOnlyItems: ProgressProyekListItemDTO[] = kavlingOnlyRows.map(
-      (k) => {
-        const progressProyek = this.resolveProgressProyekSummary(
-          k.progressProyek,
-          k.spkItem,
-        );
+    const kavlingOnlyItems = kavlingOnlyRows.map((k) => {
+      const progressProyek = this.resolveProgressProyekSummary(
+        k.progressProyek,
+        k.spkItem,
+      );
 
-        return {
+      return {
+        item: {
           kavlingId: k.id,
           penjualanId: null,
           penjualanNoTransaksi: null,
@@ -192,11 +215,20 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
           nama: "-",
           status: "BELUM_TERJUAL",
           progressProyek,
-        };
-      },
-    );
+        },
+        noSpk: k.spkItem?.spk?.noSpk ?? null,
+      };
+    });
 
-    const allItems = [...penjualanItems, ...kavlingOnlyItems].sort((a, b) =>
+    const search = filters?.search?.trim();
+    const mergedRows = [...penjualanItems, ...kavlingOnlyItems];
+    const filteredRows = search
+      ? mergedRows.filter((row) =>
+          this.matchesProyekListSearch(row.item, row.noSpk, search),
+        )
+      : mergedRows;
+
+    const allItems = filteredRows.map((row) => row.item).sort((a, b) =>
       compareProgressProyekList(
         {
           hasMandor: !!a.progressProyek?.mandorId,

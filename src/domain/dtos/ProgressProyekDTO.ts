@@ -41,6 +41,7 @@ export interface ProgressProyekResponseDTO {
 
 export interface ProgressProyekListFilterDTO {
   mandorUserId?: number;
+  search?: string;
 }
 
 export interface ProgressProyekListItemDTO {
