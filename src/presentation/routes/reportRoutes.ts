@@ -10,6 +10,7 @@ import {
   getMarketingReportSchema,
   getPenjualanReportSchema,
   getProgressProyekReportSchema,
+  getPemasukanPenjualanReportSchema,
   getRekapPembayaranReportSchema,
 } from "../../validations/reportSchema.js";
 import type { ReportController } from "../controllers/reportController.js";
@@ -45,6 +46,13 @@ export const createReportRoutes = (controller: ReportController): Router => {
     requirePermission(["LAPORAN", "PENJUALAN"], "read"),
     validate(getRekapPembayaranReportSchema),
     controller.getRekapPembayaran,
+  );
+
+  router.get(
+    "/pemasukan-penjualan",
+    requirePermission(["LAPORAN", "PENJUALAN", "TAGIHAN"], "read"),
+    validate(getPemasukanPenjualanReportSchema),
+    controller.getPemasukanPenjualan,
   );
 
   router.get(

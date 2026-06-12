@@ -52,20 +52,26 @@ export const getPenjualanReportSchema = {
   }),
 };
 
+const pemasukanPenjualanReportQuerySchema = z.object({
+  perumahanId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
+  blok: emptyAsUndefined(z.string().min(1).optional()),
+  status: emptyAsUndefined(
+    z.union([z.nativeEnum(PenjualanStatus), z.literal("ALL")]).optional(),
+  ),
+  caraPembayaran: emptyAsUndefined(z.nativeEnum(PaymentMethod).optional()),
+  startDate: dateOnlySchema,
+  endDate: dateOnlySchema,
+  search: emptyAsUndefined(z.string().min(1).optional()),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+});
+
 export const getRekapPembayaranReportSchema = {
-  query: z.object({
-    perumahanId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
-    blok: emptyAsUndefined(z.string().min(1).optional()),
-    status: emptyAsUndefined(
-      z.union([z.nativeEnum(PenjualanStatus), z.literal("ALL")]).optional(),
-    ),
-    caraPembayaran: emptyAsUndefined(z.nativeEnum(PaymentMethod).optional()),
-    startDate: dateOnlySchema,
-    endDate: dateOnlySchema,
-    search: emptyAsUndefined(z.string().min(1).optional()),
-    page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(10),
-  }),
+  query: pemasukanPenjualanReportQuerySchema,
+};
+
+export const getPemasukanPenjualanReportSchema = {
+  query: pemasukanPenjualanReportQuerySchema,
 };
 
 export const getMarketingReportSchema = {
