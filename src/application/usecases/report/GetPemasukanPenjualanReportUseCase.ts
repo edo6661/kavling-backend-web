@@ -205,6 +205,7 @@ function mapPenjualanRowToItem(row: PenjualanRow): PemasukanPenjualanReportItemD
     nomorUnit: row.kavling.nomorUnit,
     perumahanNama: row.kavling.perumahan.nama,
     caraPembayaran: row.caraPembayaran as PaymentMethod | null,
+    hargaJual,
     bookingLunas: resolveBookingLunas(bookingNominal, bookingTagihan),
     dp: buildBucket(dp, dpTagihan),
     cicilan: buildCicilanBucket(

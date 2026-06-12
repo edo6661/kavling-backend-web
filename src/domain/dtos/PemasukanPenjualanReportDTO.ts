@@ -45,6 +45,7 @@ export interface PemasukanPenjualanReportItemDTO {
   nomorUnit: string;
   perumahanNama: string;
   caraPembayaran: PaymentMethod | null;
+  hargaJual: number;
   /** null = tidak ada booking fee, true = lunas, false = belum lunas */
   bookingLunas: boolean | null;
   dp: PemasukanPenjualanBucketDTO;
