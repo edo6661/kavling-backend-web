@@ -155,11 +155,11 @@ export class GenerateSprPdfUseCase {
             ? `      Email: ${customer.email}`
             : "";
 
-        // 3. Perbaiki NIK (Hilangkan prefix DUMMY- jika ada)
-        let nikStr = customer.nikKtp || "";
-        if (nikStr.startsWith("DUMMY-")) {
-          nikStr = nikStr.replace("DUMMY-", "");
-        }
+        // 3. NIK placeholder (DUMMY-) tidak ditampilkan di SPR
+        const nikStr =
+          customer.nikKtp && !customer.nikKtp.startsWith("DUMMY-")
+            ? customer.nikKtp
+            : "";
         drawField("Nama", customer.nama);
         drawField("Alamat", customer.alamatKtp);
         drawField("No. Telepon / HP", `${phoneStr}${emailStr}`);

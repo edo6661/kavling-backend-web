@@ -18,6 +18,10 @@ import {
   effectiveTagihanTujuan,
   isCicilanHargaJualTagihan,
 } from "../tagihan/tagihanTujuan.js";
+import {
+  formatCustomerNikForDisplay,
+  resolveCustomerNik,
+} from "../customer/customerNik.js";
 
 type ProgressProyekSummary = NonNullable<
   PenjualanPaginatedItem["progressProyek"]
@@ -107,14 +111,16 @@ export class PenjualanRepository implements IPenjualanRepository {
     data: CreatePenjualanDTO,
   ): Promise<PenjualanWithRelations> {
     return await this.db.$transaction(async (tx) => {
+      const nikKtp = resolveCustomerNik(data.noIdentitas);
+
       let customer = await tx.customer.findUnique({
-        where: { nikKtp: data.noIdentitas },
+        where: { nikKtp },
       });
 
       if (!customer) {
         customer = await tx.customer.create({
           data: {
-            nikKtp: data.noIdentitas,
+            nikKtp,
             nama: data.nama,
             noHp: data.noTelepon,
             alamatKtp: data.alamat,
@@ -575,7 +581,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         nama: item.customer.nama,
         alamat: item.customer.alamatKtp,
         noTelepon: item.customer.noHp,
-        noIdentitas: item.customer.nikKtp,
+        noIdentitas: formatCustomerNikForDisplay(item.customer.nikKtp),
         perusahaan: item.customer.perusahaan ?? "",
         alamatKoresponden: item.customer.alamatKoresponden ?? "",
         perumahan: item.kavling.perumahan.nama,

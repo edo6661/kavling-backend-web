@@ -6,6 +6,7 @@ import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
 import { syncBankKprPembayaranForPenjualan } from "../../../domain/kpr/bankKprPembayaranSync.js";
+import { resolveCustomerNik } from "../../../domain/customer/customerNik.js";
 
 interface IBiayaTambahan {
   nama: string;
@@ -57,7 +58,7 @@ export class UpdatePenjualanUseCase {
         const updateCustomerData: Prisma.CustomerUpdateInput = {};
         if (data.nama !== undefined) updateCustomerData.nama = data.nama;
         if (data.noIdentitas !== undefined)
-          updateCustomerData.nikKtp = data.noIdentitas;
+          updateCustomerData.nikKtp = resolveCustomerNik(data.noIdentitas);
         if (data.noTelepon !== undefined)
           updateCustomerData.noHp = data.noTelepon;
         if (data.alamat !== undefined)

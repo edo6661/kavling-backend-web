@@ -1,7 +1,7 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
 export interface CreatePenjualanDTO {
-  noIdentitas: string;
+  noIdentitas?: string | undefined;
   nama: string;
   noTelepon: string;
   alamat: string;

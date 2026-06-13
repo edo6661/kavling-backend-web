@@ -12,7 +12,9 @@ const optionalClearableString = z.preprocess(
 
 export const createPenjualanSchema = {
   body: z.object({
-    noIdentitas: z.string().min(16, "NIK minimal 16 karakter"),
+    noIdentitas: emptyAsUndefined(
+      z.string().min(16, "NIK minimal 16 karakter").optional(),
+    ),
     nama: z.string().min(3, "Nama minimal 3 karakter"),
     noTelepon: z.string().min(9, "No Telepon minimal 9 karakter"),
     alamat: z.string().min(5, "Alamat minimal 5 karakter"),
@@ -102,7 +104,12 @@ export const updatePenjualanSchema = {
   body: z
     .object({
       nama: emptyAsUndefined(z.string().min(3).optional()),
-      noIdentitas: emptyAsUndefined(z.string().min(16).optional()),
+      noIdentitas: z
+        .union([
+          z.literal(""),
+          z.string().min(16, "NIK minimal 16 karakter"),
+        ])
+        .optional(),
       noTelepon: emptyAsUndefined(z.string().optional()),
       alamat: emptyAsUndefined(z.string().optional()),
       perusahaan: emptyAsUndefined(z.string().optional()),
