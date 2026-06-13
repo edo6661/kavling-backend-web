@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { ITagihanRepository } from "../../../domain/repositories/ITagihanRepo.js";
 import type {
@@ -13,6 +12,7 @@ import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { inferTagihanTujuanFromPembayaran } from "../../../domain/tagihan/tagihanTujuan.js";
 import { effectiveTagihanTujuan } from "../../../domain/tagihan/tagihanTujuan.js";
+import { syncCicilanTagihanForPenjualan } from "../../../domain/tagihan/syncPenjualanTagihan.js";
 import {
   buildNoTagihanForCreate,
   duplicateNoTagihanMessage,
@@ -211,14 +211,14 @@ export class UpdateTagihanUseCase {
           where: { id: penjualanId },
           data: { dp: newNominal },
         });
-        await this.recalcCicilanAfterDpChange(tx, {
+        await syncCicilanTagihanForPenjualan(tx, {
           penjualanId,
           noTransaksi: pjj.noTransaksi,
           tanggal: pjj.tanggal,
           customerId: pjj.customerId,
           hargaJual: Number(pjj.hargaJual ?? 0),
           bookingFee: Number(pjj.bookingFee ?? 0),
-          termin: pjj.termin,
+          termin: pjj.termin ?? 0,
           dp: newNominal,
         });
       } else if (cara === "KPR") {
@@ -242,102 +242,6 @@ export class UpdateTagihanUseCase {
         }
       }
     });
-  }
-
-  private async recalcCicilanAfterDpChange(
-    tx: Prisma.TransactionClient,
-    args: {
-      penjualanId: number;
-      noTransaksi: string;
-      tanggal: Date;
-      customerId: number;
-      hargaJual: number;
-      bookingFee: number;
-      termin: number | null;
-      dp: number;
-    },
-  ): Promise<void> {
-    const termin = args.termin ?? 0;
-    if (termin <= 0) return;
-
-    const sisaPembayaran = Math.max(
-      0,
-      args.hargaJual - args.dp - args.bookingFee,
-    );
-    const cicilanPerBulan = sisaPembayaran / termin;
-
-    const existingCicilans = await tx.tagihan.findMany({
-      where: {
-        penjualanId: args.penjualanId,
-        OR: [
-          { noTagihan: { startsWith: `INV-CCL-${args.noTransaksi}-` } },
-          { pembayaran: { startsWith: "Cicilan Ke-" } },
-        ],
-      },
-    });
-
-    const parseCicilanIndex = (pembayaran: string): number => {
-      const m = /^Cicilan Ke-(\d+)$/.exec(pembayaran.trim());
-      return m ? parseInt(m[1]!, 10) : 0;
-    };
-
-    const byIndex = new Map<number, (typeof existingCicilans)[number]>();
-    for (const c of existingCicilans) {
-      const idx = parseCicilanIndex(c.pembayaran);
-      if (idx > 0) byIndex.set(idx, c);
-    }
-
-    const baseDate = new Date(args.tanggal);
-
-    for (let i = 1; i <= termin; i++) {
-      const jatuhTempoCicilan = new Date(baseDate);
-      jatuhTempoCicilan.setMonth(jatuhTempoCicilan.getMonth() + i);
-
-      const existing = byIndex.get(i);
-      if (!existing) {
-        if (sisaPembayaran <= 0) continue;
-        await tx.tagihan.create({
-          data: {
-            noTagihan: `INV-CCL-${args.noTransaksi}-${i}`,
-            customerId: args.customerId,
-            penjualanId: args.penjualanId,
-            pembayaran: `Cicilan Ke-${i}`,
-            tujuan: "HARGA_JUAL",
-            nominal: cicilanPerBulan,
-            jatuhTempo: jatuhTempoCicilan,
-            status: "BELUM_BAYAR",
-          },
-        });
-      } else {
-        const patch: { nominal?: number; jatuhTempo?: Date } = {};
-        if (Number(existing.nominal) !== cicilanPerBulan) {
-          patch.nominal = cicilanPerBulan;
-        }
-        if (
-          existing.status === "BELUM_BAYAR" &&
-          existing.jatuhTempo.getTime() !== jatuhTempoCicilan.getTime()
-        ) {
-          patch.jatuhTempo = jatuhTempoCicilan;
-        }
-        if (Object.keys(patch).length > 0) {
-          await tx.tagihan.update({
-            where: { id: existing.id },
-            data: patch,
-          });
-        }
-      }
-    }
-
-    for (const [idx, cicilan] of byIndex) {
-      if (idx <= termin) continue;
-      if (cicilan.status === "BELUM_BAYAR") {
-        await tx.tagihan.delete({ where: { id: cicilan.id } });
-      } else {
-        throw new ConflictError(
-          `Tidak dapat memperpendek termin: cicilan ke-${idx} sudah lunas atau menunggu konfirmasi.`,
-        );
-      }
-    }
   }
 }
 
