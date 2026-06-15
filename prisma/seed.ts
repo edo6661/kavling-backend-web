@@ -9,12 +9,14 @@ import { seedPenjualan } from "./seeds/penjualanSeed.ts";
 import { seedRolePermission } from "./seeds/rolePermissionSeed.ts";
 import { seedKavlingTersedia } from "./seeds/kavlingTersediaSeed.ts";
 import { seedTagihan } from "./seeds/tagihanSeed.ts";
+import { seedPenjualanBatal } from "./seeds/seedPenjualanBatal.ts";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("Memulai proses seeding...");
   // seedTagihan(prisma);
+  seedPenjualanBatal(prisma)
 
   // clearDatabase(prisma);
   // seedKavling(prisma);
