@@ -72,13 +72,15 @@ import {
           });
   
           if (!customer) {
-            // Buat customer dummy jika tidak ada, berhubung nikKtp unique, kita generate acak
-            const dummyNik = `BTL-${Date.now()}-${i}`;
+            // Kita potong Date.now() agar tidak melebihi 20 karakter VarChar MySQL
+            const shortTimestamp = Date.now().toString().slice(-8);
+            const dummyNik = `BTL-${shortTimestamp}-${i}`;
+            
             customer = await tx.customer.create({
               data: {
                 nama: namaCustomer,
                 nikKtp: dummyNik,
-                noHp: "080000000000", // Dummy phone
+                noHp: "080000000000",
                 alamatKtp: "Alamat belum tersedia (Data Batal Awal)"
               }
             });
@@ -146,13 +148,9 @@ import {
   
         console.log(`\n🎉 SELESAI! Total data siap di-insert: ${countInserted} baris.`);
   
-        // --- 9. ROLLBACK (DI SENGAJA) ---
-        // Lemparkan error agar MySQL me-rollback seluruh transaksi yang sudah terjadi di atas
-        throw new Error("ROLLBACK_TESTING");
-  
       }, {
         // Perpanjang timeout jika data excelnya nanti besar
-        timeout: 15000 
+        timeout: 120000
       });
   
     } catch (error: any) {
