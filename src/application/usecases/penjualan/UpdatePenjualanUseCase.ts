@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { type PrismaClient } from "@prisma/client";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
 import type { CreatePenjualanDTO } from "../../../domain/dtos/PenjualanDTO.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
@@ -205,20 +206,47 @@ export class UpdatePenjualanUseCase {
           dp = data.dp ?? 0;
         }
       } else if (currentCaraPembayaran === "KPR") {
-        biayaKpr = data.biayaKpr ?? Math.round(plafonAwal * 0.06);
-        plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
-        const baseHargaJual = plafonKredit / 0.9;
-        hargaJual =
-          data.hargaJual ??
-          Math.round(baseHargaJual + currentDiskon + totalTambahanKpr);
+        const isTanpaBiayaKpr = data.biayaKpr === 0;
 
-        dpTidakDibayar =
-          data.dpTidakDibayar ??
-          Math.round((hargaJual - currentDiskon) * 0.1 - currentBookingFee);
-        nilaiPengajuanKpr =
-          data.nilaiPengajuanKpr ??
-          plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
-        dp = dpDibayar > 0 ? dpDibayar : dpTidakDibayar;
+        if (isTanpaBiayaKpr) {
+          if (!dpDibayar || dpDibayar <= 0) {
+            throw new AppError(
+              400,
+              "DP Dibayar wajib diisi jika tanpa biaya KPR",
+            );
+          }
+          biayaKpr = 0;
+          plafonKredit = data.plafonKredit ?? plafonAwal;
+          const baseHargaJualTanpaBiaya = plafonKredit / 0.9;
+          hargaJual =
+            data.hargaJual ??
+            Math.round(
+              baseHargaJualTanpaBiaya + currentDiskon + totalTambahanKpr,
+            );
+          dpTidakDibayar =
+            data.dpTidakDibayar !== undefined && data.dpTidakDibayar !== null
+              ? Number(data.dpTidakDibayar)
+              : 0;
+          nilaiPengajuanKpr =
+            data.nilaiPengajuanKpr ??
+            plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
+          dp = dpDibayar;
+        } else {
+          biayaKpr = data.biayaKpr ?? Math.round(plafonAwal * 0.06);
+          plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
+          const baseHargaJual = plafonKredit / 0.9;
+          hargaJual =
+            data.hargaJual ??
+            Math.round(baseHargaJual + currentDiskon + totalTambahanKpr);
+
+          dpTidakDibayar =
+            data.dpTidakDibayar ??
+            Math.round((hargaJual - currentDiskon) * 0.1 - currentBookingFee);
+          nilaiPengajuanKpr =
+            data.nilaiPengajuanKpr ??
+            plafonKredit - totalSemuaBiayaTambahan + totalTambahanKpr;
+          dp = dpDibayar > 0 ? dpDibayar : dpTidakDibayar;
+        }
       }
 
       updateData.hargaDasar = currentHargaDasar;

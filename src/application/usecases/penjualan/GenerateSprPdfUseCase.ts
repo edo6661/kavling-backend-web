@@ -359,6 +359,12 @@ export class GenerateSprPdfUseCase {
         y += extraGap; // Terapkan gap yang sudah dikalkulasi
 
         const w = contentWidth / 4;
+        const sigTitleY = y;
+        const sigImageY = y + 16;
+        const sigImageH = 28;
+        const sigDateY = y + 48;
+        const sigLineY = y + 60;
+        const sigNameY = y + 65;
 
         // Render Tanda Tangan & Nama
         sigData.forEach((title, i) => {
@@ -367,25 +373,22 @@ export class GenerateSprPdfUseCase {
           doc
             .font("Helvetica")
             .fontSize(9)
-            .text(title, currentX, y, { width: w, align: "center" });
+            .text(title, currentX, sigTitleY, { width: w, align: "center" });
 
           if (ttdData?.[title]) {
             const ttd = ttdData[title];
 
-            // Cetak gambar TTD
             if (sigBuffers[title]) {
               try {
-                // Diangkat ke y + 5 agar tidak membuang space kosong
-                doc.image(sigBuffers[title], currentX + w / 2 - 25, y + 5, {
+                doc.image(sigBuffers[title], currentX + w / 2 - 25, sigImageY, {
                   width: 50,
-                  height: 30,
+                  height: sigImageH,
                 });
               } catch (imgErr) {
                 console.error(`Gagal render gambar PDF untuk ${title}`, imgErr);
               }
             }
 
-            // Cetak Tanggal TTD ditarik ke atas
             if (ttd.tanggal) {
               const tglStr = new Date(ttd.tanggal).toLocaleDateString("id-ID", {
                 day: "2-digit",
@@ -395,32 +398,30 @@ export class GenerateSprPdfUseCase {
               doc
                 .fontSize(7)
                 .font("Helvetica")
-                .text(tglStr, currentX, y + 40, { width: w, align: "center" });
+                .text(tglStr, currentX, sigDateY, { width: w, align: "center" });
             }
 
-            // Cetak Nama ditarik ke atas
             doc
               .fontSize(8)
               .font("Helvetica-Bold")
-              .text(ttd.nama, currentX, y + 55, { width: w, align: "center" });
+              .text(ttd.nama, currentX, sigNameY, { width: w, align: "center" });
 
-            doc.fontSize(9).font("Helvetica"); // Reset
+            doc.fontSize(9).font("Helvetica");
           }
         });
 
-        y += 50; // Jarak untuk menarik garis jauh lebih pendek
         const lineW = w - 20;
 
-        // Render Garis TTD
+        // Render Garis TTD di bawah tanggal
         sigData.forEach((_, i) => {
           const cx = startX + w * i + w / 2;
           doc
-            .moveTo(cx - lineW / 2, y)
-            .lineTo(cx + lineW / 2, y)
+            .moveTo(cx - lineW / 2, sigLineY)
+            .lineTo(cx + lineW / 2, sigLineY)
             .stroke();
         });
 
-        y += 20; // Jarak sebelum Terms dikurangi drastis
+        y = sigNameY + 15;
 
         // --- TERMS & BANK INFO ---
         checkY(70);
