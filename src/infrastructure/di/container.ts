@@ -37,6 +37,14 @@ import {
 import { SpkPembayaranController } from "../../presentation/controllers/spkPembayaranController.js";
 import { NotarisPembayaranController } from "../../presentation/controllers/notarisPembayaranController.js";
 import { BankKprPembayaranController } from "../../presentation/controllers/bankKprPembayaranController.js";
+import { AgentPencairanRepository } from "../../domain/repositories/agentPencairanRepo.js";
+import {
+  AjukanAgentPencairanUseCase,
+  BayarAgentPencairanUseCase,
+  GetAgentPencairanPaginatedUseCase,
+  SetAgentBsiCmsDilaporkanUseCase,
+} from "../../application/usecases/agentPencairan/AgentPencairanUseCases.js";
+import { AgentPencairanController } from "../../presentation/controllers/agentPencairanController.js";
 import {
   CreateSpkUseCase,
   UpdateSpkUseCase,
@@ -958,6 +966,28 @@ export const createContainer = (dbClient: PrismaClient) => {
     syncAllBankKprPembayaranUseCase,
   );
 
+  const agentPencairanRepo = new AgentPencairanRepository(dbClient);
+  const getAgentPencairanPaginatedUseCase = new GetAgentPencairanPaginatedUseCase(
+    agentPencairanRepo,
+  );
+  const ajukanAgentPencairanUseCase = new AjukanAgentPencairanUseCase(
+    agentPencairanRepo,
+    dbClient,
+  );
+  const bayarAgentPencairanUseCase = new BayarAgentPencairanUseCase(
+    agentPencairanRepo,
+    cloudinaryService,
+  );
+  const setAgentBsiCmsDilaporkanUseCase = new SetAgentBsiCmsDilaporkanUseCase(
+    agentPencairanRepo,
+  );
+  const agentPencairanController = new AgentPencairanController(
+    getAgentPencairanPaginatedUseCase,
+    ajukanAgentPencairanUseCase,
+    bayarAgentPencairanUseCase,
+    setAgentBsiCmsDilaporkanUseCase,
+  );
+
   return {
     authController,
     userRepo,
@@ -995,6 +1025,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     tukangController,
     notarisPembayaranController,
     bankKprPembayaranController,
+    agentPencairanController,
   };
 };
 

@@ -26,6 +26,7 @@ import { createSpkPembayaranRoutes } from "./spkPembayaranRoutes.js";
 import { createTukangRoutes } from "./tukangRoutes.js";
 import { createNotarisPembayaranRoutes } from "./notarisPembayaranRoutes.js";
 import { createBankKprPembayaranRoutes } from "./bankKprPembayaranRoutes.js";
+import { createAgentPencairanRoutes } from "./agentPencairanRoutes.js";
 import { createKodeBillingPphRoutes } from "./kodeBillingPphRoutes.js";
 import { createSuketPphRoutes } from "./suketPphRoutes.js";
 import { createNotificationRoutes } from "./notificationRoutes.js";
@@ -92,6 +93,10 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use(
     "/bank-kpr-pembayaran",
     createBankKprPembayaranRoutes(deps.bankKprPembayaranController),
+  );
+  router.use(
+    "/agent-pencairan",
+    createAgentPencairanRoutes(deps.agentPencairanController),
   );
   return router;
 };

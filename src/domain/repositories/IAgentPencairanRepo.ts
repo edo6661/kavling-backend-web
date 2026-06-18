@@ -1,0 +1,30 @@
+import type {
+  AgentPencairanFilterDTO,
+  BayarAgentPencairanDTO,
+  CreateAgentPencairanDTO,
+  SetAgentBsiCmsDilaporkanDTO,
+} from "../dtos/AgentPencairanDTO.js";
+import type { AgentPencairanEntity } from "../entities/AgentPencairan.js";
+import type { OffsetPaginatedData } from "../../types/response.js";
+
+export interface IAgentPencairanRepository {
+  findById(id: number): Promise<AgentPencairanEntity | null>;
+  findByFeeAgentId(feeAgentId: number): Promise<AgentPencairanEntity | null>;
+  findPaginated(
+    page: number,
+    limit: number,
+    filters?: AgentPencairanFilterDTO,
+  ): Promise<OffsetPaginatedData<AgentPencairanEntity>>;
+  create(data: CreateAgentPencairanDTO & {
+    penjualanId: number;
+    agentId: number;
+    closingNominal: number;
+    marketingNominal: number;
+    potonganPph: number;
+    totalNominal: number;
+  }): Promise<AgentPencairanEntity>;
+  markAsPaid(data: BayarAgentPencairanDTO): Promise<AgentPencairanEntity>;
+  setBsiCmsDilaporkan(
+    data: SetAgentBsiCmsDilaporkanDTO,
+  ): Promise<AgentPencairanEntity[]>;
+}

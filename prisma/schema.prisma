@@ -29,6 +29,8 @@ model User {
   spkPembayaranDibayar    SpkPembayaran[]       @relation("SpkPembayaranDibayar")
   notarisPembayaranDibayar NotarisPembayaran[]  @relation("NotarisPembayaranDibayar")
   bankKprPembayaranDibayar BankKprPembayaran[]  @relation("BankKprPembayaranDibayar")
+  agentPencairanDiajukan  AgentPencairan[]       @relation("AgentPencairanDiajukan")
+  agentPencairanDibayar   AgentPencairan[]       @relation("AgentPencairanDibayar")
   tahapanReports          TahapanProyek[]       @relation("TahapanReporter")
   mandorProfile           Mandor?
   tukangList              Tukang[]              @relation("TukangMandor")
@@ -211,6 +213,7 @@ model Agent {
   fees                   FeeAgent[]
   penjualan              Penjualan[]
   pics                   PicAgent[]
+  agentPencairanList     AgentPencairan[]
 
   @@index([perusahaanAgentId], map: "agents_perusahaan_agent_id_fkey")
   @@index([userId], map: "agents_user_id_fkey")
@@ -336,6 +339,7 @@ model Penjualan {
   suketPph            SuketPph[]
   notarisPembayaranList NotarisPembayaran[]
   bankKprPembayaranList BankKprPembayaran[]
+  agentPencairan       AgentPencairan?
 
   @@index([agentId], map: "penjualan_agent_id_fkey")
   @@index([customerId], map: "penjualan_customer_id_fkey")
@@ -496,9 +500,46 @@ model FeeAgent {
   penjualanId      Int       @unique @map("penjualan_id")
   agent            Agent     @relation(fields: [agentId], references: [id])
   penjualan        Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  pencairan        AgentPencairan?
 
   @@index([agentId], map: "fee_agent_agent_id_fkey")
   @@map("fee_agent")
+}
+
+model AgentPencairan {
+  id                Int                  @id @default(autoincrement())
+  feeAgentId        Int                  @unique @map("fee_agent_id")
+  penjualanId       Int                  @unique @map("penjualan_id")
+  agentId           Int                  @map("agent_id")
+  closingNominal    Decimal              @default(0) @map("closing_nominal") @db.Decimal(15, 2)
+  marketingNominal  Decimal              @default(0) @map("marketing_nominal") @db.Decimal(15, 2)
+  potonganPph       Decimal              @default(0) @map("potongan_pph") @db.Decimal(15, 2)
+  totalNominal      Decimal              @map("total_nominal") @db.Decimal(15, 2)
+  status            AgentPencairanStatus @default(MENUNGGU_PEMBAYARAN)
+  buktiPembayaran   String?              @map("bukti_pembayaran") @db.VarChar(500)
+  tanggalPembayaran DateTime?            @map("tanggal_pembayaran") @db.Date
+  bsiCmsDilaporkan  Boolean              @default(false) @map("bsi_cms_dilaporkan")
+  bsiCmsDilaporkanAt DateTime?           @map("bsi_cms_dilaporkan_at")
+  diajukanOlehId    Int                  @map("diajukan_oleh_id")
+  dibayarOlehId     Int?                 @map("dibayar_oleh_id")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  feeAgent     FeeAgent @relation(fields: [feeAgentId], references: [id], onDelete: Cascade)
+  penjualan    Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  agent        Agent    @relation(fields: [agentId], references: [id])
+  diajukanOleh User     @relation("AgentPencairanDiajukan", fields: [diajukanOlehId], references: [id])
+  dibayarOleh  User?    @relation("AgentPencairanDibayar", fields: [dibayarOlehId], references: [id])
+
+  @@index([agentId], map: "agent_pencairan_agent_id_fkey")
+  @@index([diajukanOlehId], map: "agent_pencairan_diajukan_oleh_id_fkey")
+  @@index([dibayarOlehId], map: "agent_pencairan_dibayar_oleh_id_fkey")
+  @@map("agent_pencairan")
+}
+
+enum AgentPencairanStatus {
+  MENUNGGU_PEMBAYARAN @map("menunggu_pembayaran")
+  SUDAH_DIBAYAR       @map("sudah_dibayar")
 }
 
 model Spk {
