@@ -1,7 +1,7 @@
 import type {
   AgentPencairanFilterDTO,
   BayarAgentPencairanDTO,
-  CreateAgentPencairanDTO,
+  PersistAgentPencairanDTO,
   SetAgentBsiCmsDilaporkanDTO,
 } from "../dtos/AgentPencairanDTO.js";
 import type {
@@ -22,15 +22,16 @@ export interface IAgentPencairanRepository {
     limit: number,
     filters?: AgentPencairanFilterDTO,
   ): Promise<OffsetPaginatedData<AgentPencairanEntity>>;
-  create(data: CreateAgentPencairanDTO & {
-    penjualanId: number;
-    agentId: number;
-    tahap: AgentPencairanTahap;
-    closingNominal: number;
-    marketingNominal: number;
-    potonganPph: number;
-    totalNominal: number;
-  }): Promise<AgentPencairanEntity>;
+  create(data: PersistAgentPencairanDTO): Promise<AgentPencairanEntity>;
+  updatePendingAjukan(
+    id: number,
+    data: {
+      closingNominal: number;
+      marketingNominal: number;
+      potonganPph: number;
+      totalNominal: number;
+    },
+  ): Promise<AgentPencairanEntity>;
   markAsPaid(data: BayarAgentPencairanDTO): Promise<AgentPencairanEntity>;
   setBsiCmsDilaporkan(
     data: SetAgentBsiCmsDilaporkanDTO,

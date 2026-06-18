@@ -1,6 +1,7 @@
 import { effectiveTagihanTujuan } from "../tagihan/tagihanTujuan.js";
 
 export type AgentPencairanTahap = "PPJB" | "AJB";
+export type AgentPencairanStatus = "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR";
 export type PencairanKomponen = "closing" | "marketing";
 
 /** Komisi cash: 50% di tahap PPJB, 50% di tahap AJB */
@@ -65,6 +66,16 @@ export interface PencairanSubmitResult {
   potonganPph: number;
   totalNominal: number;
   totalFeeReferensi: number;
+  /** Gabung ke pengajuan PPJB yang masih menunggu (mis. closing dulu, komisi belakangan) */
+  mergeIntoExistingId?: number;
+}
+
+export interface PencairanExistingRecord {
+  id: number;
+  tahap: AgentPencairanTahap;
+  status: AgentPencairanStatus;
+  closingNominal: number;
+  marketingNominal: number;
 }
 
 export function isCashPayment(
@@ -466,27 +477,79 @@ function calcMarketingSubmitAmount(
   };
 }
 
+function findPpjbRecord(
+  existingRecords: PencairanExistingRecord[],
+): PencairanExistingRecord | undefined {
+  return existingRecords.find((r) => r.tahap === "PPJB");
+}
+
+function findAjbRecord(
+  existingRecords: PencairanExistingRecord[],
+): PencairanExistingRecord | undefined {
+  return existingRecords.find((r) => r.tahap === "AJB");
+}
+
+/** PPJB masih menunggu bayar — komponen lain bisa digabung ke baris yang sama */
+function canMergeIntoPendingPpjb(
+  ppjb: PencairanExistingRecord | undefined,
+): boolean {
+  return !!ppjb && ppjb.status === "MENUNGGU_PEMBAYARAN";
+}
+
+/** Closing PPJB sudah dibayar; sisa komisi 50% PPJB masuk slot AJB */
+function shouldUseAjbForRemainingPpjbMarketing(
+  ppjb: PencairanExistingRecord | undefined,
+  ajb: PencairanExistingRecord | undefined,
+  ppjbPortion: number,
+): boolean {
+  return (
+    ppjbPortion > 0 &&
+    !!ppjb &&
+    ppjb.status === "SUDAH_DIBAYAR" &&
+    Number(ppjb.marketingNominal) === 0 &&
+    !ajb
+  );
+}
+
 export function resolvePencairanTahap(
   includeClosing: boolean,
   includeMarketing: boolean,
   sudah: PencairanSudahDiajukan,
   marketingBreakdown: { ppjbPortion: number; ajbPortion: number },
+  existingRecords: PencairanExistingRecord[] = [],
 ): AgentPencairanTahap {
+  const ppjb = findPpjbRecord(existingRecords);
+  const ajb = findAjbRecord(existingRecords);
+
   if (includeMarketing) {
-    if (sudah.tahaps.includes("AJB")) {
+    if (ajb) {
       throw new Error("AJB_ALREADY_SUBMITTED");
     }
     if (marketingBreakdown.ajbPortion > 0) {
       return "AJB";
     }
-    if (sudah.tahaps.includes("PPJB")) {
-      throw new Error("PPJB_ALREADY_SUBMITTED");
+    if (marketingBreakdown.ppjbPortion > 0) {
+      if (canMergeIntoPendingPpjb(ppjb)) {
+        return "PPJB";
+      }
+      if (shouldUseAjbForRemainingPpjbMarketing(ppjb, ajb, marketingBreakdown.ppjbPortion)) {
+        return "AJB";
+      }
+      if (sudah.tahaps.includes("PPJB")) {
+        throw new Error("PPJB_ALREADY_SUBMITTED");
+      }
+      return "PPJB";
     }
+  }
+
+  if (canMergeIntoPendingPpjb(ppjb) && Number(ppjb!.closingNominal) === 0) {
     return "PPJB";
   }
+
   if (sudah.tahaps.includes("PPJB")) {
     throw new Error("PPJB_ALREADY_SUBMITTED");
   }
+
   return "PPJB";
 }
 
@@ -494,6 +557,7 @@ export function calcPencairanSubmit(
   ctx: AgentPencairanCalcContext,
   sudah: PencairanSudahDiajukan,
   selected: PencairanKomponen[],
+  existingRecords: PencairanExistingRecord[] = [],
 ): PencairanSubmitResult {
   const preview = getPencairanPreview(ctx, sudah);
   const closingInfo = preview.komponen.find((k) => k.key === "closing")!;
@@ -531,27 +595,46 @@ export function calcPencairanSubmit(
     ajbPortion = m.ajbPortion;
   }
 
-  const selectedGross = closingNominal + marketingNominal;
   const potonganPph = preview.potonganPph;
-  const totalNominal = selectedGross - potonganPph;
-
-  if (totalNominal <= 0) {
-    throw new Error("TOTAL_NOT_POSITIVE");
-  }
 
   const tahap = resolvePencairanTahap(
     includeClosing,
     includeMarketing,
     sudah,
     { ppjbPortion, ajbPortion },
+    existingRecords,
   );
 
-  return {
+  const ppjb = findPpjbRecord(existingRecords);
+  let mergeIntoExistingId: number | undefined;
+  let finalClosing = closingNominal;
+  let finalMarketing = marketingNominal;
+
+  if (canMergeIntoPendingPpjb(ppjb) && tahap === "PPJB" && ppjb) {
+    mergeIntoExistingId = ppjb.id;
+    finalClosing = Number(ppjb.closingNominal) + closingNominal;
+    finalMarketing = Number(ppjb.marketingNominal) + marketingNominal;
+  }
+
+  const finalGross = finalClosing + finalMarketing;
+  const finalTotal = finalGross - potonganPph;
+
+  if (finalTotal <= 0) {
+    throw new Error("TOTAL_NOT_POSITIVE");
+  }
+
+  const result: PencairanSubmitResult = {
     tahap,
-    closingNominal,
-    marketingNominal,
+    closingNominal: finalClosing,
+    marketingNominal: finalMarketing,
     potonganPph,
-    totalNominal,
+    totalNominal: finalTotal,
     totalFeeReferensi: preview.totalFeeReferensi,
   };
+
+  if (mergeIntoExistingId !== undefined) {
+    result.mergeIntoExistingId = mergeIntoExistingId;
+  }
+
+  return result;
 }

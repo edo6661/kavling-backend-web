@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { AgentEntity } from "../../domain/entities/Agent.js";
+import { resolveAgentCommercialProfile } from "../../domain/agent/agentCommercialProfile.js";
 
 export type AgentWithRelations = Prisma.AgentGetPayload<{
   include: {
@@ -27,6 +28,8 @@ export type AgentWithRelations = Prisma.AgentGetPayload<{
 
 export class AgentMapper {
   static toDomain(prismaAgent: AgentWithRelations): AgentEntity {
+    const commercial = resolveAgentCommercialProfile(prismaAgent);
+
     return {
       id: prismaAgent.id,
       userId: prismaAgent.userId ?? null,
@@ -38,18 +41,12 @@ export class AgentMapper {
       email: prismaAgent.email,
       status: prismaAgent.status,
       type: prismaAgent.type,
-      namaBank: prismaAgent.namaBank ?? null,
-      noRekening: prismaAgent.noRekening ?? null,
-      atasNamaRekening: prismaAgent.atasNamaRekening ?? null,
-      feeMarketingPct: prismaAgent.feeMarketingPct
-        ? Number(prismaAgent.feeMarketingPct)
-        : null,
-      feeClosingNominal: prismaAgent.feeClosingNominal
-        ? Number(prismaAgent.feeClosingNominal)
-        : null, // <-- Ubah ini
-      potonganPph: prismaAgent.potonganPph
-        ? Number(prismaAgent.potonganPph)
-        : null,
+      namaBank: commercial.namaBank,
+      noRekening: commercial.noRekening,
+      atasNamaRekening: commercial.atasNamaRekening,
+      feeMarketingPct: commercial.feeMarketingPct,
+      feeClosingNominal: commercial.feeClosingNominal,
+      potonganPph: commercial.potonganPph,
       fileKtp: prismaAgent.fileKtp ?? null,
       fileNpwp: prismaAgent.fileNpwp ?? null,
       kwitansiBookingFee: prismaAgent.kwitansiBookingFee ?? null,

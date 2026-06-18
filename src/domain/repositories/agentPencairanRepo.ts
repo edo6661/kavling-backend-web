@@ -4,7 +4,7 @@ import type { IAgentPencairanRepository } from "./IAgentPencairanRepo.js";
 import type {
   AgentPencairanFilterDTO,
   BayarAgentPencairanDTO,
-  CreateAgentPencairanDTO,
+  PersistAgentPencairanDTO,
   SetAgentBsiCmsDilaporkanDTO,
 } from "../dtos/AgentPencairanDTO.js";
 import type { AgentPencairanEntity, AgentPencairanTahap } from "../entities/AgentPencairan.js";
@@ -99,17 +99,7 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
     };
   }
 
-  async create(
-    data: CreateAgentPencairanDTO & {
-      penjualanId: number;
-      agentId: number;
-      tahap: AgentPencairanTahap;
-      closingNominal: number;
-      marketingNominal: number;
-      potonganPph: number;
-      totalNominal: number;
-    },
-  ): Promise<AgentPencairanEntity> {
+  async create(data: PersistAgentPencairanDTO): Promise<AgentPencairanEntity> {
     const result = await this.db.agentPencairan.create({
       data: {
         feeAgentId: data.feeAgentId,
@@ -121,6 +111,29 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
         potonganPph: data.potonganPph,
         totalNominal: data.totalNominal,
         diajukanOlehId: data.diajukanOlehId,
+      },
+      include: AgentPencairanMapper.include,
+    });
+
+    return AgentPencairanMapper.toDomain(result);
+  }
+
+  async updatePendingAjukan(
+    id: number,
+    data: {
+      closingNominal: number;
+      marketingNominal: number;
+      potonganPph: number;
+      totalNominal: number;
+    },
+  ): Promise<AgentPencairanEntity> {
+    const result = await this.db.agentPencairan.update({
+      where: { id },
+      data: {
+        closingNominal: data.closingNominal,
+        marketingNominal: data.marketingNominal,
+        potonganPph: data.potonganPph,
+        totalNominal: data.totalNominal,
       },
       include: AgentPencairanMapper.include,
     });

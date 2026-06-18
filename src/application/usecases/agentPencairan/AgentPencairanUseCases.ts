@@ -17,6 +17,7 @@ import {
   sumSudahDiajukan,
   type PencairanKomponen,
 } from "../../../domain/agent/agentPencairanCalc.js";
+import { resolveAgentCommercialProfile } from "../../../domain/agent/agentCommercialProfile.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
@@ -57,7 +58,11 @@ export class AjukanAgentPencairanUseCase {
     const feeAgent = await this.db.feeAgent.findUnique({
       where: { id: data.feeAgentId },
       include: {
-        agent: true,
+        agent: {
+          include: {
+            perusahaanAgent: true,
+          },
+        },
         penjualan: {
           include: {
             tagihan: {
@@ -85,6 +90,8 @@ export class AjukanAgentPencairanUseCase {
       ? Number(feeAgent.penjualan.progressPenjualan.nilaiAjb)
       : 0;
 
+    const commercial = resolveAgentCommercialProfile(feeAgent.agent);
+
     const calcCtx = {
       penjualanStatus: feeAgent.penjualan.status,
       caraPembayaran: feeAgent.penjualan.caraPembayaran,
@@ -92,15 +99,9 @@ export class AjukanAgentPencairanUseCase {
         ? Number(feeAgent.penjualan.hargaJual)
         : 0,
       agent: {
-        feeMarketingPct: feeAgent.agent.feeMarketingPct
-          ? Number(feeAgent.agent.feeMarketingPct)
-          : null,
-        feeClosingNominal: feeAgent.agent.feeClosingNominal
-          ? Number(feeAgent.agent.feeClosingNominal)
-          : null,
-        potonganPph: feeAgent.agent.potonganPph
-          ? Number(feeAgent.agent.potonganPph)
-          : null,
+        feeMarketingPct: commercial.feeMarketingPct,
+        feeClosingNominal: commercial.feeClosingNominal,
+        potonganPph: commercial.potonganPph,
       },
       feeAgent: {
         closingNominal: feeAgent.closingNominal
@@ -121,9 +122,17 @@ export class AjukanAgentPencairanUseCase {
     if (data.includeClosing) selected.push("closing");
     if (data.includeMarketing) selected.push("marketing");
 
+    const existingRecords = existingList.map((r) => ({
+      id: r.id,
+      tahap: r.tahap,
+      status: r.status,
+      closingNominal: Number(r.closingNominal),
+      marketingNominal: Number(r.marketingNominal),
+    }));
+
     let amounts;
     try {
-      amounts = calcPencairanSubmit(calcCtx, sudah, selected);
+      amounts = calcPencairanSubmit(calcCtx, sudah, selected, existingRecords);
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       if (code === "AJB_ALREADY_SUBMITTED" || code === "PPJB_ALREADY_SUBMITTED") {
@@ -148,6 +157,21 @@ export class AjukanAgentPencairanUseCase {
         );
       }
       throw err;
+    }
+
+    if (amounts.mergeIntoExistingId) {
+      const pending = existingList.find((r) => r.id === amounts.mergeIntoExistingId);
+      if (!pending || pending.status !== "MENUNGGU_PEMBAYARAN") {
+        throw new ConflictError(
+          "Pengajuan PPJB sudah diproses — tidak bisa menambah komponen.",
+        );
+      }
+      return await this.repo.updatePendingAjukan(amounts.mergeIntoExistingId, {
+        closingNominal: amounts.closingNominal,
+        marketingNominal: amounts.marketingNominal,
+        potonganPph: amounts.potonganPph,
+        totalNominal: amounts.totalNominal,
+      });
     }
 
     return await this.repo.create({

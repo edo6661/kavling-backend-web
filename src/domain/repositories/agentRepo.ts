@@ -1,4 +1,4 @@
-import { AgentStatus, Prisma } from "@prisma/client";
+import { AgentStatus, AgentType, Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { IAgentRepository } from "./IAgentRepo.js";
 import type { AgentEntity } from "../entities/Agent.js";
@@ -11,6 +11,7 @@ import type { OffsetPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
+import { isAgentPerusahaan } from "../agent/agentCommercialProfile.js";
 
 export class AgentRepository implements IAgentRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -30,23 +31,37 @@ export class AgentRepository implements IAgentRepository {
       noHp: data.noHp,
       email: data.email ?? null,
       alamat: data.alamat ?? null,
-      namaBank: data.namaBank ?? null,
-      noRekening: data.noRekening ?? null,
-      atasNamaRekening: data.atasNamaRekening ?? null,
       status: AgentStatus.AKTIF,
     };
+
+    const isPerusahaanCreate =
+      isAgentPerusahaan(data.type ?? AgentType.PRIBADI) &&
+      data.perusahaanAgentId != null;
+
+    if (!isPerusahaanCreate) {
+      createData.namaBank = data.namaBank ?? null;
+      createData.noRekening = data.noRekening ?? null;
+      createData.atasNamaRekening = data.atasNamaRekening ?? null;
+    }
 
     if (data.status) createData.status = data.status;
     if (data.type) createData.type = data.type;
     if (data.perusahaanAgentId !== undefined) {
       createData.perusahaanAgent = { connect: { id: data.perusahaanAgentId } };
     }
-    if (data.feeMarketingPct !== undefined)
-      createData.feeMarketingPct = data.feeMarketingPct;
-    if (data.feeClosingNominal !== undefined)
-      createData.feeClosingNominal = data.feeClosingNominal;
-    if (data.potonganPph !== undefined)
-      createData.potonganPph = data.potonganPph;
+
+    const isPerusahaan =
+      isAgentPerusahaan(data.type ?? AgentType.PRIBADI) &&
+      data.perusahaanAgentId != null;
+
+    if (!isPerusahaan) {
+      if (data.feeMarketingPct !== undefined)
+        createData.feeMarketingPct = data.feeMarketingPct;
+      if (data.feeClosingNominal !== undefined)
+        createData.feeClosingNominal = data.feeClosingNominal;
+      if (data.potonganPph !== undefined)
+        createData.potonganPph = data.potonganPph;
+    }
 
     if (data.pics && data.pics.length > 0) {
       createData.pics = {
@@ -144,19 +159,36 @@ export class AgentRepository implements IAgentRepository {
     if (data.perusahaanAgentId !== undefined) {
       updateData.perusahaanAgentId = data.perusahaanAgentId;
     }
-    if (data.namaBank !== undefined)
-      updateData.namaBank = data.namaBank ?? null;
-    if (data.noRekening !== undefined)
-      updateData.noRekening = data.noRekening ?? null;
-    if (data.atasNamaRekening !== undefined)
-      updateData.atasNamaRekening = data.atasNamaRekening ?? null;
 
-    if (data.feeMarketingPct !== undefined)
-      updateData.feeMarketingPct = data.feeMarketingPct ?? null;
-    if (data.feeClosingNominal !== undefined)
-      updateData.feeClosingNominal = data.feeClosingNominal ?? null;
-    if (data.potonganPph !== undefined)
-      updateData.potonganPph = data.potonganPph ?? null;
+    const nextType = data.type ?? existing.type;
+    const nextPerusahaanId =
+      data.perusahaanAgentId !== undefined
+        ? data.perusahaanAgentId
+        : (existing.perusahaanAgent?.id ?? null);
+    const isPerusahaan =
+      isAgentPerusahaan(nextType) && nextPerusahaanId != null;
+
+    if (isPerusahaan) {
+      updateData.feeMarketingPct = null;
+      updateData.feeClosingNominal = null;
+      updateData.potonganPph = null;
+      updateData.namaBank = null;
+      updateData.noRekening = null;
+      updateData.atasNamaRekening = null;
+    } else {
+      if (data.namaBank !== undefined)
+        updateData.namaBank = data.namaBank ?? null;
+      if (data.noRekening !== undefined)
+        updateData.noRekening = data.noRekening ?? null;
+      if (data.atasNamaRekening !== undefined)
+        updateData.atasNamaRekening = data.atasNamaRekening ?? null;
+      if (data.feeMarketingPct !== undefined)
+        updateData.feeMarketingPct = data.feeMarketingPct ?? null;
+      if (data.feeClosingNominal !== undefined)
+        updateData.feeClosingNominal = data.feeClosingNominal ?? null;
+      if (data.potonganPph !== undefined)
+        updateData.potonganPph = data.potonganPph ?? null;
+    }
 
     if (data.fileKtp !== undefined) updateData.fileKtp = data.fileKtp ?? null;
     if (data.fileNpwp !== undefined)

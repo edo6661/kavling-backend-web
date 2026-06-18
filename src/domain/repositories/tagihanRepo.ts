@@ -120,17 +120,17 @@ export class TagihanRepository implements ITagihanRepository {
 
     if (filters?.kso) {
       const ksoKeyword = filters.kso === "MAHLIGAI" ? "Mahligai" : "Gajah";
-      const penjualanWhere =
-        typeof where.penjualan === "object" && where.penjualan !== null
-          ? where.penjualan
-          : { status: { not: "BATAL" as const } };
       where.penjualan = {
-        ...penjualanWhere,
-        kavling: {
-          rekeningTujuan: {
-            atasNama: { contains: ksoKeyword },
+        AND: [
+          { status: { not: "BATAL" } },
+          {
+            kavling: {
+              rekeningTujuan: {
+                atasNama: { contains: ksoKeyword },
+              },
+            },
           },
-        },
+        ],
       };
     }
 

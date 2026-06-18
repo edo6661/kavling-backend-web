@@ -14,6 +14,18 @@ export interface CreateAgentPencairanDTO {
   diajukanOlehId: number;
 }
 
+export interface PersistAgentPencairanDTO {
+  feeAgentId: number;
+  penjualanId: number;
+  agentId: number;
+  tahap: AgentPencairanTahap;
+  diajukanOlehId: number;
+  closingNominal: number;
+  marketingNominal: number;
+  potonganPph: number;
+  totalNominal: number;
+}
+
 export interface BayarAgentPencairanDTO {
   id: number;
   dibayarOlehId: number;

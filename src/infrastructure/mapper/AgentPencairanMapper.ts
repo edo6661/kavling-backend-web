@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { AgentPencairanEntity } from "../../domain/entities/AgentPencairan.js";
+import { resolveAgentCommercialProfile } from "../../domain/agent/agentCommercialProfile.js";
 
 export const agentPencairanInclude = {
   diajukanOleh: { select: { id: true, username: true } },
@@ -8,9 +9,17 @@ export const agentPencairanInclude = {
     select: {
       id: true,
       nama: true,
+      type: true,
       namaBank: true,
       noRekening: true,
       atasNamaRekening: true,
+      perusahaanAgent: {
+        select: {
+          namaBank: true,
+          noRekening: true,
+          atasNamaRekening: true,
+        },
+      },
     },
   },
   penjualan: {
@@ -37,6 +46,8 @@ export class AgentPencairanMapper {
   static readonly include = agentPencairanInclude;
 
   static toDomain(row: AgentPencairanWithRelations): AgentPencairanEntity {
+    const commercial = resolveAgentCommercialProfile(row.agent);
+
     return {
       id: row.id,
       feeAgentId: row.feeAgentId,
@@ -58,7 +69,13 @@ export class AgentPencairanMapper {
       updatedAt: row.updatedAt,
       diajukanOleh: row.diajukanOleh,
       dibayarOleh: row.dibayarOleh,
-      agent: row.agent,
+      agent: {
+        id: row.agent.id,
+        nama: row.agent.nama,
+        namaBank: commercial.namaBank,
+        noRekening: commercial.noRekening,
+        atasNamaRekening: commercial.atasNamaRekening,
+      },
       penjualan: row.penjualan,
     };
   }
