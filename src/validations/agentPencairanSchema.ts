@@ -12,10 +12,15 @@ export const getAgentPencairanPaginatedSchema = {
 };
 
 export const ajukanAgentPencairanSchema = {
-  body: z.object({
-    feeAgentId: z.coerce.number().int().positive(),
-    tahap: z.enum(["PPJB", "AJB"]),
-  }),
+  body: z
+    .object({
+      feeAgentId: z.coerce.number().int().positive(),
+      includeClosing: z.boolean().default(true),
+      includeMarketing: z.boolean().default(false),
+    })
+    .refine((d) => d.includeClosing || d.includeMarketing, {
+      message: "Pilih minimal satu komponen pencairan",
+    }),
 };
 
 export const bayarAgentPencairanSchema = {

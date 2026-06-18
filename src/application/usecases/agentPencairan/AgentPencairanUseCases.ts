@@ -6,20 +6,14 @@ import type {
   CreateAgentPencairanDTO,
   SetAgentBsiCmsDilaporkanDTO,
 } from "../../../domain/dtos/AgentPencairanDTO.js";
-import type {
-  AgentPencairanEntity,
-  AgentPencairanTahap,
-} from "../../../domain/entities/AgentPencairan.js";
+import type { AgentPencairanEntity } from "../../../domain/entities/AgentPencairan.js";
 import type { OffsetPaginatedData } from "../../../types/response.js";
 import {
-  calcAgentPencairanAmounts,
-  determineNextPencairanTahap,
+  calcPencairanSubmit,
   hasPpjbComplete,
   hasSp3kComplete,
-  isBookingFeePaid,
-  isCashPayment,
-  isPenjualanBatal,
-  isPencairanTahapEligible,
+  sumSudahDiajukan,
+  type PencairanKomponen,
 } from "../../../domain/agent/agentPencairanCalc.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
@@ -48,14 +42,15 @@ export class AjukanAgentPencairanUseCase {
   async execute(
     data: CreateAgentPencairanDTO,
   ): Promise<AgentPencairanEntity> {
-    const existingList = await this.repo.findByFeeAgentId(data.feeAgentId);
-    const existingTahaps = existingList.map((p) => p.tahap);
-
-    if (existingTahaps.includes(data.tahap)) {
-      throw new ConflictError(
-        `Pencairan tahap ${data.tahap} untuk penjualan ini sudah pernah diajukan.`,
+    if (!data.includeClosing && !data.includeMarketing) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Pilih minimal satu komponen pencairan (closing fee atau komisi marketing).",
       );
     }
+
+    const existingList = await this.repo.findByFeeAgentId(data.feeAgentId);
+    const sudah = sumSudahDiajukan(existingList);
 
     const feeAgent = await this.db.feeAgent.findUnique({
       where: { id: data.feeAgentId },
@@ -78,53 +73,16 @@ export class AjukanAgentPencairanUseCase {
       throw new NotFoundError("Data fee agent tidak ditemukan");
     }
 
-    const penjualanStatus = feeAgent.penjualan.status;
-    const isBatal = isPenjualanBatal(penjualanStatus);
-
     const nilaiAjb = feeAgent.penjualan.progressPenjualan?.nilaiAjb
       ? Number(feeAgent.penjualan.progressPenjualan.nilaiAjb)
       : 0;
-    const hargaJual = feeAgent.penjualan.hargaJual
-      ? Number(feeAgent.penjualan.hargaJual)
-      : 0;
-    const caraPembayaran = feeAgent.penjualan.caraPembayaran;
-    const isCash = isCashPayment(caraPembayaran);
-    const hasPpjb = hasPpjbComplete(feeAgent.penjualan.progressPenjualan);
-    const hasSp3k = hasSp3kComplete(feeAgent.penjualan.progressPenjualan);
-    const bookingPaid = isBookingFeePaid(feeAgent.penjualan.tagihan);
-    const ppjbRecord = existingList.find((p) => p.tahap === "PPJB");
-    const ppjbSudahDibayar = ppjbRecord?.status === "SUDAH_DIBAYAR";
 
-    const nextTahap = determineNextPencairanTahap({
-      penjualanStatus,
-      isCash,
-      hasPpjb,
-      hasSp3k,
-      hasAjb: nilaiAjb > 0,
-      bookingPaid,
-      existingTahaps,
-      ppjbSudahDibayar,
-    });
-
-    if (!nextTahap || nextTahap !== data.tahap) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        isBatal
-          ? "Pencairan closing fee untuk transaksi batal belum memenuhi syarat (booking fee harus sudah lunas)."
-          : data.tahap === "PPJB"
-            ? isCash
-              ? "Tahap PPJB belum memenuhi syarat (cash, booking fee lunas, dokumen PPJB sudah diunggah)."
-              : "Tahap SP3K belum memenuhi syarat (KPR, booking fee lunas, dokumen SP3K sudah diunggah)."
-            : isCash
-              ? "Tahap AJB belum memenuhi syarat (nilai AJB ada & pencairan PPJB sudah dibayar)."
-              : "Tahap AJB belum memenuhi syarat (nilai AJB ada & pencairan closing fee sudah dibayar).",
-      );
-    }
-
-    const calcInput = {
-      penjualanStatus,
-      caraPembayaran,
-      hargaJual,
+    const calcCtx = {
+      penjualanStatus: feeAgent.penjualan.status,
+      caraPembayaran: feeAgent.penjualan.caraPembayaran,
+      hargaJual: feeAgent.penjualan.hargaJual
+        ? Number(feeAgent.penjualan.hargaJual)
+        : 0,
       agent: {
         feeMarketingPct: feeAgent.agent.feeMarketingPct
           ? Number(feeAgent.agent.feeMarketingPct)
@@ -143,28 +101,48 @@ export class AjukanAgentPencairanUseCase {
       },
       nilaiAjb,
       tagihanList: feeAgent.penjualan.tagihan,
-      hasPpjb,
-      hasSp3k,
-      ppjbSudahDibayar,
+      hasPpjb: hasPpjbComplete(feeAgent.penjualan.progressPenjualan),
+      hasSp3k: hasSp3kComplete(feeAgent.penjualan.progressPenjualan),
     };
 
-    if (!isPencairanTahapEligible(data.tahap, calcInput)) {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Nominal pencairan untuk tahap ini belum tersedia.",
-      );
-    }
+    const selected: PencairanKomponen[] = [];
+    if (data.includeClosing) selected.push("closing");
+    if (data.includeMarketing) selected.push("marketing");
 
-    const amounts = calcAgentPencairanAmounts({
-      ...calcInput,
-      tahap: data.tahap,
-    });
+    let amounts;
+    try {
+      amounts = calcPencairanSubmit(calcCtx, sudah, selected);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "AJB_ALREADY_SUBMITTED" || code === "PPJB_ALREADY_SUBMITTED") {
+        throw new ConflictError("Komponen pencairan ini sudah pernah diajukan.");
+      }
+      if (code === "CLOSING_NOT_ELIGIBLE") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Closing fee belum memenuhi syarat pencairan.",
+        );
+      }
+      if (code === "MARKETING_NOT_ELIGIBLE") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Komisi marketing belum memenuhi syarat pencairan.",
+        );
+      }
+      if (code === "TOTAL_NOT_POSITIVE") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Nominal pencairan setelah PPh tidak valid.",
+        );
+      }
+      throw err;
+    }
 
     return await this.repo.create({
       feeAgentId: data.feeAgentId,
       penjualanId: feeAgent.penjualanId,
       agentId: feeAgent.agentId,
-      tahap: data.tahap,
+      tahap: amounts.tahap,
       diajukanOlehId: data.diajukanOlehId,
       closingNominal: amounts.closingNominal,
       marketingNominal: amounts.marketingNominal,

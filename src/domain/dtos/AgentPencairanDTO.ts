@@ -9,7 +9,8 @@ export interface AgentPencairanFilterDTO {
 
 export interface CreateAgentPencairanDTO {
   feeAgentId: number;
-  tahap: AgentPencairanTahap;
+  includeClosing: boolean;
+  includeMarketing: boolean;
   diajukanOlehId: number;
 }
 

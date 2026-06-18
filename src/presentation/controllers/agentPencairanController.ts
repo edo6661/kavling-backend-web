@@ -39,13 +39,15 @@ export class AgentPencairanController {
   };
 
   ajukan = async (req: Request, res: Response): Promise<void> => {
-    const { feeAgentId, tahap } = req.body as {
+    const { feeAgentId, includeClosing, includeMarketing } = req.body as {
       feeAgentId: number;
-      tahap: "PPJB" | "AJB";
+      includeClosing: boolean;
+      includeMarketing: boolean;
     };
     const result = await this.ajukanUseCase.execute({
       feeAgentId,
-      tahap,
+      includeClosing,
+      includeMarketing,
       diajukanOlehId: req.user!.userId,
     });
     sendResponse(

@@ -1,12 +1,12 @@
 import { effectiveTagihanTujuan } from "../tagihan/tagihanTujuan.js";
 
 export type AgentPencairanTahap = "PPJB" | "AJB";
+export type PencairanKomponen = "closing" | "marketing";
 
-/** Komisi cash yang boleh dicairkan per tahap (PPJB / AJB) */
+/** Komisi cash saat nilai AJB belum ada (hanya 50% di PPJB) */
 export const KOMISI_CASH_PPJB_RATIO = 0.5;
 
-export interface AgentPencairanCalcInput {
-  tahap: AgentPencairanTahap;
+export interface AgentPencairanCalcContext {
   penjualanStatus?: string | null;
   caraPembayaran: string | null;
   hargaJual: number;
@@ -24,16 +24,38 @@ export interface AgentPencairanCalcInput {
     pembayaran: string;
     status: string;
   }>;
+  hasPpjb: boolean;
+  hasSp3k: boolean;
 }
 
-export interface AgentPencairanCalcResult {
+export interface PencairanSudahDiajukan {
+  closingNominal: number;
+  marketingNominal: number;
+  tahaps: AgentPencairanTahap[];
+}
+
+export interface PencairanKomponenInfo {
+  key: PencairanKomponen;
+  nominalPenuh: number;
+  nominalSisa: number;
+  eligible: boolean;
+  alasan?: string;
+}
+
+export interface PencairanPreviewResult {
+  komponen: PencairanKomponenInfo[];
+  totalFeeReferensi: number;
+  potonganPph: number;
+  potonganPphPct: number;
+}
+
+export interface PencairanSubmitResult {
   tahap: AgentPencairanTahap;
-  bookingFeePaid: boolean;
   closingNominal: number;
   marketingNominal: number;
   potonganPph: number;
   totalNominal: number;
-  eligible: boolean;
+  totalFeeReferensi: number;
 }
 
 export function isCashPayment(
@@ -41,13 +63,6 @@ export function isCashPayment(
 ): boolean {
   const key = (caraPembayaran ?? "").replace(/\s/g, "_").toUpperCase();
   return key === "CASH_KERAS" || key === "CASH_BERTAHAP";
-}
-
-export function isKprPayment(
-  caraPembayaran: string | null | undefined,
-): boolean {
-  const key = (caraPembayaran ?? "").replace(/\s/g, "_").toUpperCase();
-  return key === "KPR";
 }
 
 export function isPenjualanBatal(
@@ -69,7 +84,7 @@ export function hasSp3kComplete(
 }
 
 export function isBookingFeePaid(
-  tagihanList: AgentPencairanCalcInput["tagihanList"],
+  tagihanList: AgentPencairanCalcContext["tagihanList"],
 ): boolean {
   return tagihanList.some(
     (t) =>
@@ -98,133 +113,285 @@ export function getClosingFeeAmount(
   return Number(feeAgentClosing) || Number(agentClosing) || 0;
 }
 
-export function determineNextPencairanTahap(input: {
-  penjualanStatus?: string | null;
-  isCash: boolean;
-  hasPpjb: boolean;
-  hasSp3k: boolean;
-  hasAjb: boolean;
-  bookingPaid: boolean;
-  existingTahaps: AgentPencairanTahap[];
-  ppjbSudahDibayar: boolean;
-}): AgentPencairanTahap | null {
-  const {
-    penjualanStatus,
-    isCash,
-    hasPpjb,
-    hasSp3k,
-    hasAjb,
+/** Total fee (+ closing) referensi tabel — basis perhitungan PPh */
+export function getTotalFeeReferensi(ctx: AgentPencairanCalcContext): number {
+  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const nilaiAjb = Number(ctx.nilaiAjb) || 0;
+  const hargaJual = Number(ctx.hargaJual) || 0;
+  const feeMarketingPct = Number(ctx.agent.feeMarketingPct) || 0;
+  const isBatal = isPenjualanBatal(ctx.penjualanStatus);
+
+  if (isBatal) {
+    return getClosingFeeAmount(
+      bookingPaid,
+      ctx.feeAgent?.closingNominal,
+      ctx.agent.feeClosingNominal,
+    );
+  }
+
+  const closingFull = getClosingFeeAmount(
     bookingPaid,
-    existingTahaps,
-    ppjbSudahDibayar,
-  } = input;
+    ctx.feeAgent?.closingNominal,
+    ctx.agent.feeClosingNominal,
+  );
+  const base = getMarketingBase(nilaiAjb, hargaJual);
+  const fullMarketing = calcFullMarketingFee(base, feeMarketingPct);
 
-  if (isPenjualanBatal(penjualanStatus)) {
-    if (bookingPaid && !existingTahaps.includes("PPJB")) {
-      return "PPJB";
-    }
-    return null;
-  }
-
-  if (isCash) {
-    if (hasPpjb && bookingPaid && !existingTahaps.includes("PPJB")) {
-      return "PPJB";
-    }
-    if (hasAjb && ppjbSudahDibayar && !existingTahaps.includes("AJB")) {
-      return "AJB";
-    }
-    return null;
-  }
-
-  if (hasSp3k && bookingPaid && !existingTahaps.includes("PPJB")) {
-    return "PPJB";
-  }
-  if (hasAjb && ppjbSudahDibayar && !existingTahaps.includes("AJB")) {
-    return "AJB";
-  }
-  return null;
+  return closingFull + fullMarketing;
 }
 
-export function calcAgentPencairanAmounts(
-  input: AgentPencairanCalcInput,
-): AgentPencairanCalcResult {
-  const bookingFeePaid = isBookingFeePaid(input.tagihanList);
-  const isCash = isCashPayment(input.caraPembayaran);
-  const isBatal = isPenjualanBatal(input.penjualanStatus);
-  const nilaiAjb = Number(input.nilaiAjb) || 0;
-  const hargaJual = Number(input.hargaJual) || 0;
-  const feeMarketingPct = Number(input.agent.feeMarketingPct) || 0;
-  const potonganPphPct = Number(input.agent.potonganPph) || 0;
+/** Pot. PPh = total fee (+ closing) × % PPh */
+export function calcPotonganPph(
+  totalFeeReferensi: number,
+  potonganPphPct: number,
+): number {
+  return totalFeeReferensi * (potonganPphPct / 100);
+}
+
+export function sumSudahDiajukan(
+  records: Array<{ closingNominal: number; marketingNominal: number; tahap: AgentPencairanTahap }>,
+): PencairanSudahDiajukan {
+  return {
+    closingNominal: records.reduce((s, r) => s + Number(r.closingNominal), 0),
+    marketingNominal: records.reduce((s, r) => s + Number(r.marketingNominal), 0),
+    tahaps: records.map((r) => r.tahap),
+  };
+}
+
+/** Batas komisi marketing yang berhak (bukan sisa — total entitlement) */
+export function getMarketingEntitlement(
+  ctx: AgentPencairanCalcContext,
+): number {
+  if (isPenjualanBatal(ctx.penjualanStatus)) return 0;
+
+  const isCash = isCashPayment(ctx.caraPembayaran);
+  const nilaiAjb = Number(ctx.nilaiAjb) || 0;
+  const hargaJual = Number(ctx.hargaJual) || 0;
+  const feeMarketingPct = Number(ctx.agent.feeMarketingPct) || 0;
+  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+
+  if (!bookingPaid) return 0;
+
+  if (nilaiAjb > 0) {
+    return calcFullMarketingFee(nilaiAjb, feeMarketingPct);
+  }
+
+  if (isCash && ctx.hasPpjb) {
+    return (
+      calcFullMarketingFee(hargaJual, feeMarketingPct) * KOMISI_CASH_PPJB_RATIO
+    );
+  }
+
+  return 0;
+}
+
+function getClosingEligibility(
+  ctx: AgentPencairanCalcContext,
+  closingFull: number,
+  sudah: PencairanSudahDiajukan,
+): PencairanKomponenInfo {
+  const isCash = isCashPayment(ctx.caraPembayaran);
+  const isBatal = isPenjualanBatal(ctx.penjualanStatus);
+  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const nominalSisa = Math.max(0, closingFull - sudah.closingNominal);
+
+  let eligible = false;
+  let alasan = "Closing fee sudah diajukan semua";
+
+  if (nominalSisa <= 0) {
+    return { key: "closing", nominalPenuh: closingFull, nominalSisa: 0, eligible: false, alasan };
+  }
+
+  if (!bookingPaid) {
+    alasan = "Booking fee belum lunas";
+  } else if (isBatal) {
+    eligible = true;
+    alasan = "Transaksi batal — closing fee dapat dicairkan";
+  } else if (isCash && ctx.hasPpjb) {
+    eligible = true;
+    alasan = "Dokumen PPJB sudah diunggah & booking lunas";
+  } else if (!isCash && ctx.hasSp3k) {
+    eligible = true;
+    alasan = "Dokumen SP3K sudah diunggah & booking lunas";
+  } else if (isCash) {
+    alasan = "Upload dokumen PPJB di Progress Penjualan";
+  } else {
+    alasan = "Upload dokumen SP3K di Progress Penjualan";
+  }
+
+  return { key: "closing", nominalPenuh: closingFull, nominalSisa, eligible, alasan };
+}
+
+function getMarketingEligibility(
+  ctx: AgentPencairanCalcContext,
+  entitlement: number,
+  sudah: PencairanSudahDiajukan,
+): PencairanKomponenInfo {
+  const isCash = isCashPayment(ctx.caraPembayaran);
+  const isBatal = isPenjualanBatal(ctx.penjualanStatus);
+  const nilaiAjb = Number(ctx.nilaiAjb) || 0;
+  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const nominalSisa = Math.max(0, entitlement - sudah.marketingNominal);
+
+  if (isBatal || entitlement <= 0) {
+    return {
+      key: "marketing",
+      nominalPenuh: entitlement,
+      nominalSisa: 0,
+      eligible: false,
+      alasan: isBatal
+        ? "Transaksi batal — komisi marketing tidak dicairkan"
+        : "Komisi marketing belum tersedia",
+    };
+  }
+
+  if (nominalSisa <= 0) {
+    return {
+      key: "marketing",
+      nominalPenuh: entitlement,
+      nominalSisa: 0,
+      eligible: false,
+      alasan: "Komisi marketing sudah diajukan semua",
+    };
+  }
+
+  let eligible = false;
+  let alasan = "Belum memenuhi syarat komisi marketing";
+
+  if (!bookingPaid) {
+    alasan = "Booking fee belum lunas";
+  } else if (nilaiAjb > 0) {
+    if (isCash && ctx.hasPpjb) {
+      eligible = true;
+      alasan = "Nilai AJB & PPJB sudah ada — komisi penuh dapat dicairkan";
+    } else if (!isCash && ctx.hasSp3k) {
+      eligible = true;
+      alasan = "Nilai AJB & SP3K sudah ada — komisi dapat dicairkan";
+    } else if (isCash) {
+      alasan = "Upload dokumen PPJB di Progress Penjualan";
+    } else {
+      alasan = "Upload dokumen SP3K di Progress Penjualan";
+    }
+  } else if (isCash && ctx.hasPpjb) {
+    eligible = true;
+    alasan = `Komisi 50% (nilai AJB belum ada) — sisa 50% setelah nilai AJB diisi`;
+  }
+
+  return {
+    key: "marketing",
+    nominalPenuh: entitlement,
+    nominalSisa,
+    eligible,
+    alasan,
+  };
+}
+
+export function getPencairanPreview(
+  ctx: AgentPencairanCalcContext,
+  sudah: PencairanSudahDiajukan,
+): PencairanPreviewResult {
+  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const closingFull = getClosingFeeAmount(
+    bookingPaid,
+    ctx.feeAgent?.closingNominal,
+    ctx.agent.feeClosingNominal,
+  );
+  const entitlement = getMarketingEntitlement(ctx);
+  const potonganPphPct = Number(ctx.agent.potonganPph) || 0;
+  const totalFeeReferensi = getTotalFeeReferensi(ctx);
+
+  return {
+    komponen: [
+      getClosingEligibility(ctx, closingFull, sudah),
+      getMarketingEligibility(ctx, entitlement, sudah),
+    ],
+    totalFeeReferensi,
+    potonganPph: calcPotonganPph(totalFeeReferensi, potonganPphPct),
+    potonganPphPct,
+  };
+}
+
+export function hasAnyEligiblePencairan(
+  ctx: AgentPencairanCalcContext,
+  sudah: PencairanSudahDiajukan,
+): boolean {
+  return getPencairanPreview(ctx, sudah).komponen.some(
+    (k) => k.eligible && k.nominalSisa > 0,
+  );
+}
+
+export function resolvePencairanTahap(
+  includeClosing: boolean,
+  includeMarketing: boolean,
+  sudah: PencairanSudahDiajukan,
+): AgentPencairanTahap {
+  if (includeMarketing) {
+    if (sudah.tahaps.includes("AJB")) {
+      throw new Error("AJB_ALREADY_SUBMITTED");
+    }
+    return "AJB";
+  }
+  if (sudah.tahaps.includes("PPJB")) {
+    throw new Error("PPJB_ALREADY_SUBMITTED");
+  }
+  return "PPJB";
+}
+
+export function calcPencairanSubmit(
+  ctx: AgentPencairanCalcContext,
+  sudah: PencairanSudahDiajukan,
+  selected: PencairanKomponen[],
+): PencairanSubmitResult {
+  const preview = getPencairanPreview(ctx, sudah);
+  const closingInfo = preview.komponen.find((k) => k.key === "closing")!;
+  const marketingInfo = preview.komponen.find((k) => k.key === "marketing")!;
+
+  const includeClosing = selected.includes("closing");
+  const includeMarketing = selected.includes("marketing");
+
+  if (!includeClosing && !includeMarketing) {
+    throw new Error("NO_KOMPONEN_SELECTED");
+  }
 
   let closingNominal = 0;
   let marketingNominal = 0;
 
-  const closingFull = getClosingFeeAmount(
-    bookingFeePaid,
-    input.feeAgent?.closingNominal,
-    input.agent.feeClosingNominal,
-  );
-
-  if (input.tahap === "PPJB") {
-    closingNominal = closingFull;
-    if (isCash && !isBatal) {
-      const base = getMarketingBase(0, hargaJual);
-      const fullMarketing = calcFullMarketingFee(base, feeMarketingPct);
-      marketingNominal = fullMarketing * KOMISI_CASH_PPJB_RATIO;
+  if (includeClosing) {
+    if (!closingInfo.eligible || closingInfo.nominalSisa <= 0) {
+      throw new Error("CLOSING_NOT_ELIGIBLE");
     }
-  } else {
-    const base = getMarketingBase(nilaiAjb, hargaJual);
-    const fullMarketing = calcFullMarketingFee(base, feeMarketingPct);
-
-    if (isCash) {
-      marketingNominal = fullMarketing * KOMISI_CASH_PPJB_RATIO;
-    } else {
-      marketingNominal = nilaiAjb > 0 ? fullMarketing : 0;
-    }
+    closingNominal = closingInfo.nominalSisa;
   }
 
-  const potonganPph =
-    (closingNominal + marketingNominal) * (potonganPphPct / 100);
-  const totalNominal = closingNominal + marketingNominal - potonganPph;
+  if (includeMarketing) {
+    if (!marketingInfo.eligible || marketingInfo.nominalSisa <= 0) {
+      throw new Error("MARKETING_NOT_ELIGIBLE");
+    }
+    marketingNominal = marketingInfo.nominalSisa;
+  }
+
+  const selectedGross = closingNominal + marketingNominal;
+  const potonganPph = preview.potonganPph;
+  const totalNominal = selectedGross - potonganPph;
+
+  if (totalNominal <= 0) {
+    throw new Error("TOTAL_NOT_POSITIVE");
+  }
+
+  const tahap = resolvePencairanTahap(
+    includeClosing,
+    includeMarketing,
+    sudah,
+  );
 
   return {
-    tahap: input.tahap,
-    bookingFeePaid,
+    tahap,
     closingNominal,
     marketingNominal,
     potonganPph,
     totalNominal,
-    eligible: totalNominal > 0,
+    totalFeeReferensi: preview.totalFeeReferensi,
   };
-}
-
-export function isPencairanTahapEligible(
-  tahap: AgentPencairanTahap,
-  input: Omit<AgentPencairanCalcInput, "tahap"> & {
-    hasPpjb: boolean;
-    hasSp3k: boolean;
-    ppjbSudahDibayar: boolean;
-  },
-): boolean {
-  const isCash = isCashPayment(input.caraPembayaran);
-  const isBatal = isPenjualanBatal(input.penjualanStatus);
-  const bookingPaid = isBookingFeePaid(input.tagihanList);
-  const hasAjb = Number(input.nilaiAjb) > 0;
-
-  if (tahap === "PPJB") {
-    if (isBatal) {
-      if (!bookingPaid) return false;
-    } else if (isCash) {
-      if (!input.hasPpjb || !bookingPaid) return false;
-    } else if (!input.hasSp3k || !bookingPaid) {
-      return false;
-    }
-  } else if (tahap === "AJB") {
-    if (isBatal) return false;
-    if (!hasAjb || !input.ppjbSudahDibayar) return false;
-  }
-
-  return calcAgentPencairanAmounts({ ...input, tahap }).eligible;
 }
 
 export function getPencairanTahapLabel(
@@ -232,16 +399,21 @@ export function getPencairanTahapLabel(
   context: {
     penjualanStatus?: string | null;
     caraPembayaran?: string | null;
+    hasMarketing: boolean;
+    hasClosing: boolean;
   },
 ): string {
   const isBatal = isPenjualanBatal(context.penjualanStatus);
   const isCash = isCashPayment(context.caraPembayaran);
 
-  if (tahap === "PPJB") {
+  if (context.hasClosing && context.hasMarketing) {
+    return isCash ? "PPJB + AJB (Closing & Komisi)" : "SP3K + AJB (Closing & Komisi)";
+  }
+  if (context.hasClosing) {
     if (isBatal) return "Closing Fee (Transaksi Batal)";
-    if (isCash) return "PPJB (Closing 100% + Komisi 50%)";
+    if (isCash) return "PPJB (Closing Fee)";
     return "SP3K (Closing Fee)";
   }
-  if (isCash) return "AJB (Sisa Komisi 50%)";
+  if (isCash) return "AJB (Komisi Marketing)";
   return "AJB (Komisi Marketing)";
 }
