@@ -103,6 +103,7 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
     data: CreateAgentPencairanDTO & {
       penjualanId: number;
       agentId: number;
+      tahap: AgentPencairanTahap;
       closingNominal: number;
       marketingNominal: number;
       potonganPph: number;

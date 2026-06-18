@@ -10,6 +10,8 @@ import type { AgentPencairanEntity } from "../../../domain/entities/AgentPencair
 import type { OffsetPaginatedData } from "../../../types/response.js";
 import {
   calcPencairanSubmit,
+  hasAjbComplete,
+  hasAkadKreditComplete,
   hasPpjbComplete,
   hasSp3kComplete,
   sumSudahDiajukan,
@@ -62,7 +64,13 @@ export class AjukanAgentPencairanUseCase {
               select: { tujuan: true, pembayaran: true, status: true },
             },
             progressPenjualan: {
-              select: { nilaiAjb: true, filePpjb: true, fileSp3k: true },
+              select: {
+                nilaiAjb: true,
+                filePpjb: true,
+                fileAjb: true,
+                fileSp3k: true,
+                fileSuratPernyataanAkadKredit: true,
+              },
             },
           },
         },
@@ -103,6 +111,10 @@ export class AjukanAgentPencairanUseCase {
       tagihanList: feeAgent.penjualan.tagihan,
       hasPpjb: hasPpjbComplete(feeAgent.penjualan.progressPenjualan),
       hasSp3k: hasSp3kComplete(feeAgent.penjualan.progressPenjualan),
+      hasAjb: hasAjbComplete(feeAgent.penjualan.progressPenjualan),
+      hasAkadKredit: hasAkadKreditComplete(
+        feeAgent.penjualan.progressPenjualan,
+      ),
     };
 
     const selected: PencairanKomponen[] = [];
