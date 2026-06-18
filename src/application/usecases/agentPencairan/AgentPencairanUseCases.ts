@@ -15,8 +15,10 @@ import {
   calcAgentPencairanAmounts,
   determineNextPencairanTahap,
   hasPpjbComplete,
+  hasSp3kComplete,
   isBookingFeePaid,
   isCashPayment,
+  isPenjualanBatal,
   isPencairanTahapEligible,
 } from "../../../domain/agent/agentPencairanCalc.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
@@ -65,7 +67,7 @@ export class AjukanAgentPencairanUseCase {
               select: { tujuan: true, pembayaran: true, status: true },
             },
             progressPenjualan: {
-              select: { nilaiAjb: true, filePpjb: true },
+              select: { nilaiAjb: true, filePpjb: true, fileSp3k: true },
             },
           },
         },
@@ -76,12 +78,8 @@ export class AjukanAgentPencairanUseCase {
       throw new NotFoundError("Data fee agent tidak ditemukan");
     }
 
-    if (feeAgent.penjualan.status === "BATAL") {
-      throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Tidak dapat mengajukan pencairan untuk transaksi yang dibatalkan.",
-      );
-    }
+    const penjualanStatus = feeAgent.penjualan.status;
+    const isBatal = isPenjualanBatal(penjualanStatus);
 
     const nilaiAjb = feeAgent.penjualan.progressPenjualan?.nilaiAjb
       ? Number(feeAgent.penjualan.progressPenjualan.nilaiAjb)
@@ -92,13 +90,16 @@ export class AjukanAgentPencairanUseCase {
     const caraPembayaran = feeAgent.penjualan.caraPembayaran;
     const isCash = isCashPayment(caraPembayaran);
     const hasPpjb = hasPpjbComplete(feeAgent.penjualan.progressPenjualan);
+    const hasSp3k = hasSp3kComplete(feeAgent.penjualan.progressPenjualan);
     const bookingPaid = isBookingFeePaid(feeAgent.penjualan.tagihan);
     const ppjbRecord = existingList.find((p) => p.tahap === "PPJB");
     const ppjbSudahDibayar = ppjbRecord?.status === "SUDAH_DIBAYAR";
 
     const nextTahap = determineNextPencairanTahap({
+      penjualanStatus,
       isCash,
       hasPpjb,
+      hasSp3k,
       hasAjb: nilaiAjb > 0,
       bookingPaid,
       existingTahaps,
@@ -108,15 +109,20 @@ export class AjukanAgentPencairanUseCase {
     if (!nextTahap || nextTahap !== data.tahap) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        data.tahap === "PPJB"
-          ? "Tahap PPJB belum memenuhi syarat (cash, booking fee lunas, dokumen PPJB sudah diunggah)."
-          : isCash
-            ? "Tahap AJB belum memenuhi syarat (nilai AJB ada & pencairan PPJB sudah dibayar)."
-            : "Tahap AJB belum memenuhi syarat (booking fee lunas atau nilai AJB sudah ada).",
+        isBatal
+          ? "Pencairan closing fee untuk transaksi batal belum memenuhi syarat (booking fee harus sudah lunas)."
+          : data.tahap === "PPJB"
+            ? isCash
+              ? "Tahap PPJB belum memenuhi syarat (cash, booking fee lunas, dokumen PPJB sudah diunggah)."
+              : "Tahap SP3K belum memenuhi syarat (KPR, booking fee lunas, dokumen SP3K sudah diunggah)."
+            : isCash
+              ? "Tahap AJB belum memenuhi syarat (nilai AJB ada & pencairan PPJB sudah dibayar)."
+              : "Tahap AJB belum memenuhi syarat (nilai AJB ada & pencairan closing fee sudah dibayar).",
       );
     }
 
     const calcInput = {
+      penjualanStatus,
       caraPembayaran,
       hargaJual,
       agent: {
@@ -138,6 +144,7 @@ export class AjukanAgentPencairanUseCase {
       nilaiAjb,
       tagihanList: feeAgent.penjualan.tagihan,
       hasPpjb,
+      hasSp3k,
       ppjbSudahDibayar,
     };
 
