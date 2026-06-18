@@ -1,10 +1,12 @@
 export type AgentPencairanStatus = "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR";
+export type AgentPencairanTahap = "PPJB" | "AJB";
 
 export interface AgentPencairanEntity {
   id: number;
   feeAgentId: number;
   penjualanId: number;
   agentId: number;
+  tahap: AgentPencairanTahap;
   closingNominal: number;
   marketingNominal: number;
   potonganPph: number;

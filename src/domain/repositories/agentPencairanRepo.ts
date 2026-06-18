@@ -7,7 +7,7 @@ import type {
   CreateAgentPencairanDTO,
   SetAgentBsiCmsDilaporkanDTO,
 } from "../dtos/AgentPencairanDTO.js";
-import type { AgentPencairanEntity } from "../entities/AgentPencairan.js";
+import type { AgentPencairanEntity, AgentPencairanTahap } from "../entities/AgentPencairan.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 import { AgentPencairanMapper } from "../../infrastructure/mapper/AgentPencairanMapper.js";
 
@@ -23,9 +23,21 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
     return AgentPencairanMapper.toDomain(row);
   }
 
-  async findByFeeAgentId(feeAgentId: number): Promise<AgentPencairanEntity | null> {
-    const row = await this.db.agentPencairan.findUnique({
+  async findByFeeAgentId(feeAgentId: number): Promise<AgentPencairanEntity[]> {
+    const rows = await this.db.agentPencairan.findMany({
       where: { feeAgentId },
+      include: AgentPencairanMapper.include,
+      orderBy: [{ tahap: "asc" }],
+    });
+    return rows.map((r) => AgentPencairanMapper.toDomain(r));
+  }
+
+  async findByFeeAgentIdAndTahap(
+    feeAgentId: number,
+    tahap: AgentPencairanTahap,
+  ): Promise<AgentPencairanEntity | null> {
+    const row = await this.db.agentPencairan.findUnique({
+      where: { feeAgentId_tahap: { feeAgentId, tahap } },
       include: AgentPencairanMapper.include,
     });
     if (!row) return null;
@@ -102,6 +114,7 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
         feeAgentId: data.feeAgentId,
         penjualanId: data.penjualanId,
         agentId: data.agentId,
+        tahap: data.tahap,
         closingNominal: data.closingNominal,
         marketingNominal: data.marketingNominal,
         potonganPph: data.potonganPph,
@@ -133,6 +146,9 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
 
       const closingNominal = Number(pencairan.closingNominal);
       const marketingNominal = Number(pencairan.marketingNominal);
+      const existingFee = await tx.feeAgent.findUnique({
+        where: { id: pencairan.feeAgentId },
+      });
       const feeUpdate: Prisma.FeeAgentUpdateInput = {};
 
       if (closingNominal > 0) {
@@ -141,7 +157,10 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
         feeUpdate.closingBukti = data.buktiPembayaran;
       }
       if (marketingNominal > 0) {
-        feeUpdate.marketingNominal = marketingNominal;
+        const prevMarketing = existingFee?.marketingNominal
+          ? Number(existingFee.marketingNominal)
+          : 0;
+        feeUpdate.marketingNominal = prevMarketing + marketingNominal;
         feeUpdate.marketingTanggal = tanggalPembayaran;
         feeUpdate.marketingBukti = data.buktiPembayaran;
       }

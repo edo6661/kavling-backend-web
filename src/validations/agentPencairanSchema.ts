@@ -14,6 +14,7 @@ export const getAgentPencairanPaginatedSchema = {
 export const ajukanAgentPencairanSchema = {
   body: z.object({
     feeAgentId: z.coerce.number().int().positive(),
+    tahap: z.enum(["PPJB", "AJB"]),
   }),
 };
 

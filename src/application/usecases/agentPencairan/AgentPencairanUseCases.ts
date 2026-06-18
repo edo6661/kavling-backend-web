@@ -6,9 +6,19 @@ import type {
   CreateAgentPencairanDTO,
   SetAgentBsiCmsDilaporkanDTO,
 } from "../../../domain/dtos/AgentPencairanDTO.js";
-import type { AgentPencairanEntity } from "../../../domain/entities/AgentPencairan.js";
+import type {
+  AgentPencairanEntity,
+  AgentPencairanTahap,
+} from "../../../domain/entities/AgentPencairan.js";
 import type { OffsetPaginatedData } from "../../../types/response.js";
-import { calcAgentPencairanAmounts } from "../../../domain/agent/agentPencairanCalc.js";
+import {
+  calcAgentPencairanAmounts,
+  determineNextPencairanTahap,
+  hasPpjbComplete,
+  isBookingFeePaid,
+  isCashPayment,
+  isPencairanTahapEligible,
+} from "../../../domain/agent/agentPencairanCalc.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
@@ -36,10 +46,12 @@ export class AjukanAgentPencairanUseCase {
   async execute(
     data: CreateAgentPencairanDTO,
   ): Promise<AgentPencairanEntity> {
-    const existing = await this.repo.findByFeeAgentId(data.feeAgentId);
-    if (existing) {
+    const existingList = await this.repo.findByFeeAgentId(data.feeAgentId);
+    const existingTahaps = existingList.map((p) => p.tahap);
+
+    if (existingTahaps.includes(data.tahap)) {
       throw new ConflictError(
-        "Pencairan untuk penjualan ini sudah pernah diajukan.",
+        `Pencairan tahap ${data.tahap} untuk penjualan ini sudah pernah diajukan.`,
       );
     }
 
@@ -53,7 +65,7 @@ export class AjukanAgentPencairanUseCase {
               select: { tujuan: true, pembayaran: true, status: true },
             },
             progressPenjualan: {
-              select: { nilaiAjb: true },
+              select: { nilaiAjb: true, filePpjb: true },
             },
           },
         },
@@ -74,8 +86,39 @@ export class AjukanAgentPencairanUseCase {
     const nilaiAjb = feeAgent.penjualan.progressPenjualan?.nilaiAjb
       ? Number(feeAgent.penjualan.progressPenjualan.nilaiAjb)
       : 0;
+    const hargaJual = feeAgent.penjualan.hargaJual
+      ? Number(feeAgent.penjualan.hargaJual)
+      : 0;
+    const caraPembayaran = feeAgent.penjualan.caraPembayaran;
+    const isCash = isCashPayment(caraPembayaran);
+    const hasPpjb = hasPpjbComplete(feeAgent.penjualan.progressPenjualan);
+    const bookingPaid = isBookingFeePaid(feeAgent.penjualan.tagihan);
+    const ppjbRecord = existingList.find((p) => p.tahap === "PPJB");
+    const ppjbSudahDibayar = ppjbRecord?.status === "SUDAH_DIBAYAR";
 
-    const amounts = calcAgentPencairanAmounts({
+    const nextTahap = determineNextPencairanTahap({
+      isCash,
+      hasPpjb,
+      hasAjb: nilaiAjb > 0,
+      bookingPaid,
+      existingTahaps,
+      ppjbSudahDibayar,
+    });
+
+    if (!nextTahap || nextTahap !== data.tahap) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        data.tahap === "PPJB"
+          ? "Tahap PPJB belum memenuhi syarat (cash, booking fee lunas, dokumen PPJB sudah diunggah)."
+          : isCash
+            ? "Tahap AJB belum memenuhi syarat (nilai AJB ada & pencairan PPJB sudah dibayar)."
+            : "Tahap AJB belum memenuhi syarat (booking fee lunas atau nilai AJB sudah ada).",
+      );
+    }
+
+    const calcInput = {
+      caraPembayaran,
+      hargaJual,
       agent: {
         feeMarketingPct: feeAgent.agent.feeMarketingPct
           ? Number(feeAgent.agent.feeMarketingPct)
@@ -94,19 +137,27 @@ export class AjukanAgentPencairanUseCase {
       },
       nilaiAjb,
       tagihanList: feeAgent.penjualan.tagihan,
-    });
+      hasPpjb,
+      ppjbSudahDibayar,
+    };
 
-    if (!amounts.eligible) {
+    if (!isPencairanTahapEligible(data.tahap, calcInput)) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Belum memenuhi syarat pencairan. Customer harus sudah bayar booking fee atau sudah AJB.",
+        "Nominal pencairan untuk tahap ini belum tersedia.",
       );
     }
+
+    const amounts = calcAgentPencairanAmounts({
+      ...calcInput,
+      tahap: data.tahap,
+    });
 
     return await this.repo.create({
       feeAgentId: data.feeAgentId,
       penjualanId: feeAgent.penjualanId,
       agentId: feeAgent.agentId,
+      tahap: data.tahap,
       diajukanOlehId: data.diajukanOlehId,
       closingNominal: amounts.closingNominal,
       marketingNominal: amounts.marketingNominal,

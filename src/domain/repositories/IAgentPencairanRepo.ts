@@ -4,12 +4,19 @@ import type {
   CreateAgentPencairanDTO,
   SetAgentBsiCmsDilaporkanDTO,
 } from "../dtos/AgentPencairanDTO.js";
-import type { AgentPencairanEntity } from "../entities/AgentPencairan.js";
+import type {
+  AgentPencairanEntity,
+  AgentPencairanTahap,
+} from "../entities/AgentPencairan.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 
 export interface IAgentPencairanRepository {
   findById(id: number): Promise<AgentPencairanEntity | null>;
-  findByFeeAgentId(feeAgentId: number): Promise<AgentPencairanEntity | null>;
+  findByFeeAgentId(feeAgentId: number): Promise<AgentPencairanEntity[]>;
+  findByFeeAgentIdAndTahap(
+    feeAgentId: number,
+    tahap: AgentPencairanTahap,
+  ): Promise<AgentPencairanEntity | null>;
   findPaginated(
     page: number,
     limit: number,

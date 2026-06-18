@@ -42,6 +42,7 @@ export class AgentPencairanMapper {
       feeAgentId: row.feeAgentId,
       penjualanId: row.penjualanId,
       agentId: row.agentId,
+      tahap: row.tahap,
       closingNominal: Number(row.closingNominal),
       marketingNominal: Number(row.marketingNominal),
       potonganPph: Number(row.potonganPph),

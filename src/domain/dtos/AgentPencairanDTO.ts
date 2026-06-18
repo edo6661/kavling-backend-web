@@ -1,4 +1,4 @@
-import type { AgentPencairanStatus } from "../entities/AgentPencairan.js";
+import type { AgentPencairanStatus, AgentPencairanTahap } from "../entities/AgentPencairan.js";
 
 export interface AgentPencairanFilterDTO {
   status?: AgentPencairanStatus;
@@ -9,6 +9,7 @@ export interface AgentPencairanFilterDTO {
 
 export interface CreateAgentPencairanDTO {
   feeAgentId: number;
+  tahap: AgentPencairanTahap;
   diajukanOlehId: number;
 }
 
