@@ -223,7 +223,7 @@ function getClosingEligibility(
       nominalPenuh: closingFull,
       nominalSisa: 0,
       eligible: false,
-      alasan: "Closing fee sudah diajukan semua",
+      alasan: "",
     };
   }
 
