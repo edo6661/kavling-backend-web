@@ -271,7 +271,9 @@ export class PenjualanRepository implements IPenjualanRepository {
           biayaKpr = data.biayaKpr ?? Math.round(plafonAwal * 0.06);
           plafonKredit = data.plafonKredit ?? plafonAwal + biayaKpr;
 
-          nilaiPengajuanKpr = data.nilaiPengajuanKpr ?? plafonKredit;
+          nilaiPengajuanKpr =
+            data.nilaiPengajuanKpr ??
+            plafonKredit - (dpDibayar > 0 ? dpDibayar : 0);
 
           const baseHargaJual = plafonKredit / 0.9;
           hargaJual = data.hargaJual ?? baseHargaJual + diskon;
