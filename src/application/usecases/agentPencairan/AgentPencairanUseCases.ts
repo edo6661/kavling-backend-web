@@ -102,6 +102,7 @@ export class AjukanAgentPencairanUseCase {
         feeMarketingPct: commercial.feeMarketingPct,
         feeClosingNominal: commercial.feeClosingNominal,
         potonganPph: commercial.potonganPph,
+        isPkp: commercial.isPkp,
       },
       feeAgent: {
         closingNominal: feeAgent.closingNominal

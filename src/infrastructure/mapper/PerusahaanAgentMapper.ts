@@ -19,6 +19,7 @@ export class PerusahaanAgentMapper {
       potonganPph: prismaData.potonganPph
         ? Number(prismaData.potonganPph)
         : null,
+      isPkp: prismaData.isPkp,
       akte: prismaData.akte,
       createdAt: prismaData.createdAt,
       updatedAt: prismaData.updatedAt,

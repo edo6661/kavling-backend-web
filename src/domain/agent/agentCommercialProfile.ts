@@ -12,6 +12,7 @@ export interface AgentCommercialSource {
     feeMarketingPct?: unknown;
     feeClosingNominal?: unknown;
     potonganPph?: unknown;
+    isPkp?: boolean;
     namaBank?: string | null;
     noRekening?: string | null;
     atasNamaRekening?: string | null;
@@ -22,6 +23,7 @@ export interface ResolvedAgentCommercialProfile {
   feeMarketingPct: number | null;
   feeClosingNominal: number | null;
   potonganPph: number | null;
+  isPkp: boolean;
   namaBank: string | null;
   noRekening: string | null;
   atasNamaRekening: string | null;
@@ -50,6 +52,7 @@ export function resolveAgentCommercialProfile(
     feeMarketingPct: toNum(src.feeMarketingPct),
     feeClosingNominal: toNum(src.feeClosingNominal),
     potonganPph: toNum(src.potonganPph),
+    isPkp: usePerusahaan ? !!agent.perusahaanAgent?.isPkp : false,
     namaBank: src.namaBank ?? null,
     noRekening: src.noRekening ?? null,
     atasNamaRekening: src.atasNamaRekening ?? null,

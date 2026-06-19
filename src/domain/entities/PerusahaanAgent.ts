@@ -8,6 +8,7 @@ export interface PerusahaanAgentEntity {
   feeMarketingPct: number | null;
   feeClosingNominal: number | null;
   potonganPph: number | null;
+  isPkp: boolean;
   akte: string | null;
   createdAt: Date;
   updatedAt: Date;

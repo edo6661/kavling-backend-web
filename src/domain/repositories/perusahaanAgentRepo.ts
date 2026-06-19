@@ -24,6 +24,7 @@ export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
         feeMarketingPct: data.feeMarketingPct ?? null,
         feeClosingNominal: data.feeClosingNominal ?? null,
         potonganPph: data.potonganPph ?? null,
+        isPkp: data.isPkp ?? false,
       },
     });
     return PerusahaanAgentMapper.toDomain(result);
@@ -53,6 +54,7 @@ export class PerusahaanAgentRepository implements IPerusahaanAgentRepository {
     if (data.feeClosingNominal !== undefined)
       updateData.feeClosingNominal = data.feeClosingNominal;
     if (data.potonganPph !== undefined) updateData.potonganPph = data.potonganPph;
+    if (data.isPkp !== undefined) updateData.isPkp = data.isPkp;
     if (data.akte !== undefined) updateData.akte = data.akte;
 
     const result = await this.db.perusahaanAgent.update({

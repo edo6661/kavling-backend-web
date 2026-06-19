@@ -16,6 +16,7 @@ export const createPerusahaanAgentSchema = {
     potonganPph: emptyAsUndefined(
       z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
     ),
+    isPkp: z.coerce.boolean().optional(),
   }),
 };
 
@@ -32,6 +33,7 @@ export const updatePerusahaanAgentSchema = {
     ),
     feeClosingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()),
     potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
+    isPkp: z.coerce.boolean().optional(),
   }),
 };
 

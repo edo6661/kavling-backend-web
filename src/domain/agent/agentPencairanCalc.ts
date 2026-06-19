@@ -1,4 +1,5 @@
 import { effectiveTagihanTujuan } from "../tagihan/tagihanTujuan.js";
+import { extractClosingDpp } from "./agentPkpTax.js";
 
 export type AgentPencairanTahap = "PPJB" | "AJB";
 export type AgentPencairanStatus = "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR";
@@ -22,6 +23,7 @@ export interface AgentPencairanCalcContext {
     feeMarketingPct: number | null;
     feeClosingNominal: number | null;
     potonganPph: number | null;
+    isPkp?: boolean;
   };
   feeAgent?: {
     closingNominal: number | null;
@@ -167,9 +169,11 @@ export function getClosingFeeAmount(
   bookingPaid: boolean,
   feeAgentClosing: number | null | undefined,
   agentClosing: number | null | undefined,
+  isPkp = false,
 ): number {
   if (!bookingPaid) return 0;
-  return Number(feeAgentClosing) || Number(agentClosing) || 0;
+  const gross = Number(feeAgentClosing) || Number(agentClosing) || 0;
+  return extractClosingDpp(gross, isPkp);
 }
 
 /** Komisi marketing penuh — KPR wajib nilai AJB; cash boleh dari harga jual sebelum AJB */
@@ -194,6 +198,7 @@ export function getTotalFeeReferensi(ctx: AgentPencairanCalcContext): number {
     bookingPaid,
     ctx.feeAgent?.closingNominal,
     ctx.agent.feeClosingNominal,
+    ctx.agent.isPkp,
   );
 
   if (isBatal) return closingFull;
@@ -463,6 +468,7 @@ export function getPencairanPreview(
     bookingPaid,
     ctx.feeAgent?.closingNominal,
     ctx.agent.feeClosingNominal,
+    ctx.agent.isPkp,
   );
   const potonganPphPct = Number(ctx.agent.potonganPph) || 0;
   const totalFeeReferensi = getTotalFeeReferensi(ctx);

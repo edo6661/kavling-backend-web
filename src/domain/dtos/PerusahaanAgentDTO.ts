@@ -9,6 +9,7 @@ export interface CreatePerusahaanAgentDTO {
   feeMarketingPct?: number;
   feeClosingNominal?: number;
   potonganPph?: number;
+  isPkp?: boolean;
 }
 
 export interface UpdatePerusahaanAgentDTO extends Partial<CreatePerusahaanAgentDTO> {
