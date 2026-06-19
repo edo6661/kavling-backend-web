@@ -128,6 +128,7 @@ function sumAccumulator(acc: Accumulator): number {
   return (
     acc.bookingFee +
     acc.dp +
+    acc.cicilanDp +
     acc.cicilanCashBertahap +
     acc.cicilanKpr
   );
@@ -195,6 +196,7 @@ function buildRingkasan(totals: Accumulator): RekapPemasukanKategoriDTO[] {
     ),
     kategori("bookingFee", "Booking Fee", totals.bookingFee, true),
     kategori("dp", "DP", totals.dp, true),
+    kategori("cicilanDp", "Cicilan DP", totals.cicilanDp, true),
     kategori(
       "pencairanKpr",
       "Pencairan KPR",
@@ -206,6 +208,7 @@ function buildRingkasan(totals: Accumulator): RekapPemasukanKategoriDTO[] {
       "Cicilan Cash Bertahap",
       totals.cicilanCashBertahap,
       true,
+      "Cicilan harga jual (cash bertahap)",
     ),
     kategori(
       "bagiHasilBank",
