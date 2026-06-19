@@ -324,7 +324,7 @@ function buildSkemaCashBertahap(totals: Accumulator): RekapPemasukanSkemaDTO {
   return {
     dp: kategori(
       "dpCashBertahap",
-      "DP (non-cicilan)",
+      "DP",
       Math.max(0, totals.dp - totals.dpKpr),
       true,
       "DP awal cash bertahap (bukan cicilan DP)",
