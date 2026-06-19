@@ -148,14 +148,9 @@ export function isBookingFeePaid(
   );
 }
 
-export function getMarketingBase(
-  nilaiAjb: number,
-  hargaJual: number,
-  isCash: boolean,
-): number {
-  if (nilaiAjb > 0) return nilaiAjb;
-  if (isCash) return hargaJual;
-  return 0;
+/** Basis komisi marketing — cash & KPR dari nilai AJB */
+export function getMarketingBase(nilaiAjb: number): number {
+  return nilaiAjb > 0 ? nilaiAjb : 0;
 }
 
 export function calcFullMarketingFee(
@@ -176,18 +171,12 @@ export function getClosingFeeAmount(
   return extractClosingDpp(gross, isPkp);
 }
 
-/** Komisi marketing penuh — KPR wajib nilai AJB; cash boleh dari harga jual sebelum AJB */
+/** Komisi marketing penuh — dari nilai AJB (cash & KPR) */
 export function getFullMarketingFee(ctx: AgentPencairanCalcContext): number {
   if (isPenjualanBatal(ctx.penjualanStatus)) return 0;
   const nilaiAjb = Number(ctx.nilaiAjb) || 0;
-  const hargaJual = Number(ctx.hargaJual) || 0;
   const pct = Number(ctx.agent.feeMarketingPct) || 0;
-  const base = getMarketingBase(
-    nilaiAjb,
-    hargaJual,
-    isCashPayment(ctx.caraPembayaran),
-  );
-  return calcFullMarketingFee(base, pct);
+  return calcFullMarketingFee(getMarketingBase(nilaiAjb), pct);
 }
 
 export function getTotalFeeReferensi(ctx: AgentPencairanCalcContext): number {
@@ -315,14 +304,18 @@ function getMarketingEligibility(
 
   if (fullMarketing <= 0) {
     let alasan = "Komisi marketing belum tersedia";
-    if (!isCash && bookingPaid) {
-      if (!ctx.hasSp3k) {
-        alasan = "Upload dokumen SP3K di menu Progress Penjualan";
-      } else if (!ctx.hasAkadKredit) {
-        alasan =
-          "Upload dokumen PPJB atau AJB (akad kredit) di menu Progress Penjualan";
-      } else if (nilaiAjb <= 0) {
+    if (bookingPaid) {
+      if (isCash && nilaiAjb <= 0) {
         alasan = "Isi nilai AJB di menu Progress Penjualan";
+      } else if (!isCash) {
+        if (!ctx.hasSp3k) {
+          alasan = "Upload dokumen SP3K di menu Progress Penjualan";
+        } else if (!ctx.hasAkadKredit) {
+          alasan =
+            "Upload dokumen PPJB atau AJB (akad kredit) di menu Progress Penjualan";
+        } else if (nilaiAjb <= 0) {
+          alasan = "Isi nilai AJB di menu Progress Penjualan";
+        }
       }
     }
     return {
@@ -358,7 +351,8 @@ function getMarketingEligibility(
       };
     }
 
-    const ppjbEligible = buckets.ppjbSisa > 0 && ctx.hasPpjb;
+    const ppjbEligible =
+      buckets.ppjbSisa > 0 && ctx.hasPpjb && nilaiAjb > 0;
     const ajbEligible =
       buckets.ajbSisa > 0 && ctx.hasPpjb && ctx.hasAjb && nilaiAjb > 0;
 
@@ -382,6 +376,16 @@ function getMarketingEligibility(
         nominalSisa: buckets.ppjbSisa,
         eligible: false,
         alasan: "Belum PPJB (tahap 50%)",
+      };
+    }
+
+    if (buckets.ppjbSisa > 0 && ctx.hasPpjb && nilaiAjb <= 0) {
+      return {
+        key: "marketing",
+        nominalPenuh: fullMarketing,
+        nominalSisa: buckets.ppjbSisa,
+        eligible: false,
+        alasan: "Isi nilai AJB di menu Progress Penjualan",
       };
     }
 
@@ -502,7 +506,10 @@ function calcMarketingSubmitAmount(
 
   if (isCashPayment(ctx.caraPembayaran)) {
     const buckets = getCashMarketingBuckets(ctx, sudah);
-    const ppjbPortion = buckets.ppjbSisa > 0 && ctx.hasPpjb ? buckets.ppjbSisa : 0;
+    const ppjbPortion =
+      buckets.ppjbSisa > 0 && ctx.hasPpjb && Number(ctx.nilaiAjb) > 0
+        ? buckets.ppjbSisa
+        : 0;
     const ajbPortion =
       buckets.ajbSisa > 0 && ctx.hasAjb && Number(ctx.nilaiAjb) > 0
         ? buckets.ajbSisa

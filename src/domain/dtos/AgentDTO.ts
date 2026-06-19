@@ -23,7 +23,7 @@ export interface CreateAgentDTO {
   namaBank?: string | undefined;
   noRekening?: string | undefined;
   atasNamaRekening?: string | undefined;
-  perusahaanAgentId?: number | undefined;
+  perusahaanAgentId?: number | null | undefined;
 
   feeMarketingPct?: number | undefined;
   feeClosingNominal?: number | null | undefined;
@@ -41,7 +41,7 @@ export interface UpdateAgentDTO {
   defaultSuratPernyataan?: string | null | undefined;
   email?: string | undefined;
   status?: AgentStatus | undefined;
-  perusahaanAgentId?: number | undefined;
+  perusahaanAgentId?: number | null | undefined;
 
   type?: AgentType | undefined;
   namaBank?: string | undefined;
@@ -103,6 +103,6 @@ export interface RegisterAgentDTO {
   namaBank?: string | undefined;
   noRekening?: string | undefined;
   atasNamaRekening?: string | undefined;
-  perusahaanAgentId?: number | undefined;
+  perusahaanAgentId?: number | null | undefined;
   ttdData?: string | undefined;
 }

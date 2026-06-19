@@ -44,7 +44,7 @@ export const updateAgentSchema = {
     alamat: emptyAsUndefined(z.string().optional()),
     status: emptyAsUndefined(z.nativeEnum(AgentStatus).optional()),
     type: emptyAsUndefined(z.nativeEnum(AgentType).optional()),
-    perusahaanAgentId: emptyAsUndefined(z.coerce.number().optional()),
+    perusahaanAgentId: z.union([z.coerce.number(), z.null()]).optional(),
     namaBank: emptyAsUndefined(z.string().optional()),
     noRekening: emptyAsUndefined(z.string().optional()),
     atasNamaRekening: emptyAsUndefined(z.string().optional()),
