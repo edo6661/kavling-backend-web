@@ -97,6 +97,10 @@ export class CustomerRepository implements ICustomerRepository {
       if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
     }
 
+    if (filters?.agentId) {
+      where.penjualan = { some: { agentId: filters.agentId } };
+    }
+
     if (filters?.search) {
       where.OR = [
         { nama: { contains: filters.search } },

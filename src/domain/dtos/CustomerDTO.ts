@@ -53,7 +53,10 @@ export interface CustomerResponseDTO {
   createdAt: Date;
 }
 
-export type CustomerFilterDTO = BaseFilterDTO;
+export interface CustomerFilterDTO extends BaseFilterDTO {
+  /** Filter customer yang pernah diclosing oleh agent tertentu */
+  agentId?: number;
+}
 
 export interface CustomerLoginInput {
   username: string;

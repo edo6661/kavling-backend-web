@@ -37,6 +37,17 @@ export class AgentLoginUseCase {
       where: { userId: user.id },
     });
 
+    const permissions = await this.db.rolePermission.findMany({
+      where: { role: user.role },
+      select: {
+        resource: true,
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: true,
+      },
+    });
+
     const payload: JwtUserPayload = {
       userId: user.id,
       username: user.username,
@@ -54,6 +65,7 @@ export class AgentLoginUseCase {
         username: user.username,
         email: user.email,
         role: user.role,
+        permissions,
       },
       agentProfile: agentProfile
         ? {

@@ -312,7 +312,7 @@ function getMarketingEligibility(
           alasan = "Upload dokumen SP3K di menu Progress Penjualan";
         } else if (!ctx.hasAkadKredit) {
           alasan =
-            "Upload dokumen PPJB atau AJB (akad kredit) di menu Progress Penjualan";
+            "Upload Dokumen PPJB atau AJB";
         } else if (nilaiAjb <= 0) {
           alasan = "Isi nilai AJB di menu Progress Penjualan";
         }
@@ -440,7 +440,7 @@ function getMarketingEligibility(
       nominalSisa,
       eligible: false,
       alasan:
-        "Upload dokumen PPJB atau AJB (akad kredit) di menu Progress Penjualan",
+        "Upload Dokumen PPJB atau AJB",
     };
   }
 

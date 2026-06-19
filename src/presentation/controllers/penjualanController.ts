@@ -33,6 +33,10 @@ import { Role } from "@prisma/client";
 import { NotFoundError } from "../../domain/errors/NotFoundError.js";
 import { omitUndefined } from "../../utils/object.js";
 import type { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
+import {
+  resolveAgentIdFilter,
+  resolveAgentNameForUser,
+} from "../../utils/agentScope.js";
 
 export class PenjualanController {
   constructor(
@@ -61,9 +65,17 @@ export class PenjualanController {
       throw new NotFoundError("User tidak ditemukan");
     }
 
+    let body = { ...req.body };
+    if (req.user?.role === Role.AGENT) {
+      body = {
+        ...body,
+        agent: await resolveAgentNameForUser(userId),
+      };
+    }
+
     const result = await this.createUseCase.execute(
       omitUndefined({
-        ...req.body,
+        ...body,
         createdBy: pembuat,
         userId,
       }),
@@ -82,8 +94,11 @@ export class PenjualanController {
       req.query,
     );
 
+    const agentId = await resolveAgentIdFilter(req);
+
     const filterDto = omitUndefined({
       ...filters,
+      ...(agentId ? { agentId } : {}),
       ...(req.user?.role === Role.MANDOR && req.user.userId
         ? { mandorUserId: req.user.userId }
         : {}),

@@ -136,6 +136,7 @@ import { GetProgressProyekReportUseCase } from "../../application/usecases/repor
 import { GetPenjualanReportUseCase } from "../../application/usecases/report/GetPenjualanReportUseCase.js";
 import { GetRekapPembayaranReportUseCase } from "../../application/usecases/report/GetRekapPembayaranReportUseCase.js";
 import { GetPemasukanPenjualanReportUseCase } from "../../application/usecases/report/GetPemasukanPenjualanReportUseCase.js";
+import { GetRekapPemasukanReportUseCase } from "../../application/usecases/report/GetRekapPemasukanReportUseCase.js";
 import { GetKeuanganReportUseCase } from "../../application/usecases/report/GetKeuanganReportUseCase.js";
 import { GetMarketingReportUseCase } from "../../application/usecases/report/GetMarketingReportUseCase.js";
 import { ExportMarketingReportUseCase } from "../../application/usecases/report/ExportMarketingReportUseCase.js";
@@ -495,6 +496,9 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const getPemasukanPenjualanReportUseCase =
     new GetPemasukanPenjualanReportUseCase(dbClient);
+  const getRekapPemasukanReportUseCase = new GetRekapPemasukanReportUseCase(
+    dbClient,
+  );
   const getKeuanganReportUseCase = new GetKeuanganReportUseCase(dbClient);
   const getMarketingReportUseCase = new GetMarketingReportUseCase(dbClient);
   const exportMarketingReportUseCase = new ExportMarketingReportUseCase(
@@ -506,6 +510,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     getPenjualanReportUseCase,
     getRekapPembayaranReportUseCase,
     getPemasukanPenjualanReportUseCase,
+    getRekapPemasukanReportUseCase,
     getKeuanganReportUseCase,
     getMarketingReportUseCase,
     exportMarketingReportUseCase,

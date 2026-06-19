@@ -6,6 +6,7 @@ import type { GetProgressProyekReportUseCase } from "../../application/usecases/
 import type { GetPenjualanReportUseCase } from "../../application/usecases/report/GetPenjualanReportUseCase.js";
 import type { GetRekapPembayaranReportUseCase } from "../../application/usecases/report/GetRekapPembayaranReportUseCase.js";
 import type { GetPemasukanPenjualanReportUseCase } from "../../application/usecases/report/GetPemasukanPenjualanReportUseCase.js";
+import type { GetRekapPemasukanReportUseCase } from "../../application/usecases/report/GetRekapPemasukanReportUseCase.js";
 import type { GetKeuanganReportUseCase } from "../../application/usecases/report/GetKeuanganReportUseCase.js";
 import type { GetMarketingReportUseCase } from "../../application/usecases/report/GetMarketingReportUseCase.js";
 import type { ExportMarketingReportUseCase } from "../../application/usecases/report/ExportMarketingReportUseCase.js";
@@ -14,8 +15,10 @@ import type { ProgressProyekReportFilterDTO } from "../../domain/dtos/ProgressPr
 import type { PenjualanReportFilterDTO } from "../../domain/dtos/PenjualanReportDTO.js";
 import type { RekapPembayaranReportFilterDTO } from "../../domain/dtos/RekapPembayaranReportDTO.js";
 import type { PemasukanPenjualanReportFilterDTO } from "../../domain/dtos/PemasukanPenjualanReportDTO.js";
+import type { RekapPemasukanReportFilterDTO } from "../../domain/dtos/RekapPemasukanReportDTO.js";
 import {
   getPemasukanPenjualanReportSchema,
+  getRekapPemasukanReportSchema,
   getRekapPembayaranReportSchema,
 } from "../../validations/reportSchema.js";
 import type { KeuanganReportFilterDTO } from "../../domain/dtos/KeuanganReportDTO.js";
@@ -28,6 +31,7 @@ export class ReportController {
     private readonly getPenjualanReportUseCase: GetPenjualanReportUseCase,
     private readonly getRekapPembayaranReportUseCase: GetRekapPembayaranReportUseCase,
     private readonly getPemasukanPenjualanReportUseCase: GetPemasukanPenjualanReportUseCase,
+    private readonly getRekapPemasukanReportUseCase: GetRekapPemasukanReportUseCase,
     private readonly getKeuanganReportUseCase: GetKeuanganReportUseCase,
     private readonly getMarketingReportUseCase: GetMarketingReportUseCase,
     private readonly exportMarketingReportUseCase: ExportMarketingReportUseCase,
@@ -91,6 +95,19 @@ export class ReportController {
       res,
       StatusCodes.OK,
       "Berhasil mengambil laporan pemasukan penjualan kavling",
+      result,
+    );
+  };
+
+  getRekapPemasukan = async (req: Request, res: Response): Promise<void> => {
+    const filters = getRekapPemasukanReportSchema.query.parse(
+      req.query,
+    ) as RekapPemasukanReportFilterDTO;
+    const result = await this.getRekapPemasukanReportUseCase.execute(filters);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Berhasil mengambil rekap pemasukan",
       result,
     );
   };

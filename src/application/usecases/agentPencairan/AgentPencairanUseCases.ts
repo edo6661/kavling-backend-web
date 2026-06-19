@@ -1,4 +1,4 @@
-import type { PrismaClient, Role } from "@prisma/client";
+import { Role, type PrismaClient } from "@prisma/client";
 import type { IAgentPencairanRepository } from "../../../domain/repositories/IAgentPencairanRepo.js";
 import type {
   AgentPencairanFilterDTO,

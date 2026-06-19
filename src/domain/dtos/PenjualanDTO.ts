@@ -61,6 +61,8 @@ export interface PenjualanResponseDTO {
   createdAt: Date;
 }
 export interface PenjualanFilterDTO extends BaseFilterDTO {
+  /** Filter penjualan milik agent tertentu */
+  agentId?: number;
   /** Filter proyek yang ditugaskan ke mandor tertentu */
   mandorUserId?: number;
   /** Kecualikan status tertentu (mis. BATAL di halaman progress) */

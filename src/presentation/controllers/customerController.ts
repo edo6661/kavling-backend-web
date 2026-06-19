@@ -22,6 +22,10 @@ import type { ExportCustomersPdfUseCase } from "../../application/usecases/custo
 import type { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
 import { AppError } from "../../domain/errors/AppError.js";
 import type { UploadBuktiTagihanUseCase } from "../../application/usecases/tagihan/UploadBuktiTagihanUseCase.js";
+import {
+  assertAgentOwnsCustomer,
+  resolveAgentIdFilter,
+} from "../../utils/agentScope.js";
 
 export class CustomerController {
   constructor(
@@ -60,6 +64,10 @@ export class CustomerController {
     res: Response,
   ): Promise<void> => {
     const id = parseInt(req.params.id, 10);
+    const agentId = await resolveAgentIdFilter(req);
+    if (agentId) {
+      await assertAgentOwnsCustomer(agentId, id);
+    }
     const result = await this.updateCustomerUseCase.execute(id, req.body);
     sendResponse(res, StatusCodes.OK, "Customer berhasil diperbarui", result);
   };
@@ -69,6 +77,10 @@ export class CustomerController {
     res: Response,
   ): Promise<void> => {
     const id = parseInt(req.params.id, 10);
+    const agentId = await resolveAgentIdFilter(req);
+    if (agentId) {
+      await assertAgentOwnsCustomer(agentId, id);
+    }
     const result = await this.getCustomerByIdUseCase.execute(id);
     sendResponse(res, StatusCodes.OK, "Data customer berhasil diambil", result);
   };
@@ -77,10 +89,15 @@ export class CustomerController {
     const { page, limit, ...filters } =
       getCustomersPaginatedSchema.query.parse(req.query);
 
+    const agentId = await resolveAgentIdFilter(req);
+
     const result = await this.getCustomersPaginatedUseCase.execute(
       page,
       limit,
-      filters as CustomerFilterDTO,
+      {
+        ...(filters as CustomerFilterDTO),
+        ...(agentId ? { agentId } : {}),
+      },
     );
     sendResponse(
       res,
@@ -121,6 +138,11 @@ export class CustomerController {
     if (!req.file?.buffer) {
       sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
       return;
+    }
+
+    const agentId = await resolveAgentIdFilter(req);
+    if (agentId) {
+      await assertAgentOwnsCustomer(agentId, id);
     }
 
     const result = await this.uploadDocumentUseCase.execute(

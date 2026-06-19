@@ -77,6 +77,14 @@ export const getPemasukanPenjualanReportSchema = {
   query: pemasukanPenjualanReportQuerySchema,
 };
 
+const rekapPemasukanReportQuerySchema = pemasukanPenjualanReportQuerySchema.omit({
+  skemaPembayaran: true,
+});
+
+export const getRekapPemasukanReportSchema = {
+  query: rekapPemasukanReportQuerySchema,
+};
+
 export const getMarketingReportSchema = {
   query: z.object({
     startDate: dateOnlySchema,

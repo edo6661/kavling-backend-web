@@ -412,6 +412,10 @@ export class PenjualanRepository implements IPenjualanRepository {
       where.status = { not: filters.excludeStatus as any };
     }
 
+    if (filters?.agentId) {
+      where.agentId = filters.agentId;
+    }
+
     if (filters?.mandorUserId) {
       const mandorUserId = filters.mandorUserId;
       const mandorScope: Prisma.PenjualanWhereInput = {
