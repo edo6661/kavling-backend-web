@@ -518,6 +518,7 @@ model AgentPencairan {
   potonganPph       Decimal              @default(0) @map("potongan_pph") @db.Decimal(15, 2)
   totalNominal      Decimal              @map("total_nominal") @db.Decimal(15, 2)
   status            AgentPencairanStatus @default(MENUNGGU_PEMBAYARAN)
+  fileInvoice       String?              @map("file_invoice") @db.VarChar(500)
   buktiPembayaran   String?              @map("bukti_pembayaran") @db.VarChar(500)
   tanggalPembayaran DateTime?            @map("tanggal_pembayaran") @db.Date
   bsiCmsDilaporkan  Boolean              @default(false) @map("bsi_cms_dilaporkan")

@@ -44,11 +44,13 @@ export class AgentPencairanController {
       includeClosing: boolean;
       includeMarketing: boolean;
     };
+    const file = req.file as Express.Multer.File | undefined;
     const result = await this.ajukanUseCase.execute({
       feeAgentId,
       includeClosing,
       includeMarketing,
       diajukanOlehId: req.user!.userId,
+      invoiceFileBuffer: file?.buffer,
     });
     sendResponse(
       res,

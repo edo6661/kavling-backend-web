@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/** Boolean dari multipart/form-data ("true"/"false") atau JSON body. */
+const multipartBoolean = z
+  .union([z.boolean(), z.enum(["true", "false"])])
+  .transform((val) => val === true || val === "true");
+
 export const getAgentPencairanPaginatedSchema = {
   query: z.object({
     page: z.coerce.number().int().positive().default(1),
@@ -15,8 +20,8 @@ export const ajukanAgentPencairanSchema = {
   body: z
     .object({
       feeAgentId: z.coerce.number().int().positive(),
-      includeClosing: z.boolean().default(true),
-      includeMarketing: z.boolean().default(false),
+      includeClosing: multipartBoolean.default(true),
+      includeMarketing: multipartBoolean.default(false),
     })
     .refine((d) => d.includeClosing || d.includeMarketing, {
       message: "Pilih minimal satu komponen pencairan",

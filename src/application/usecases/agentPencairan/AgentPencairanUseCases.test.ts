@@ -1,0 +1,279 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { mock, type MockProxy } from "vitest-mock-extended";
+import type { PrismaClient } from "@prisma/client";
+import {
+  AjukanAgentPencairanUseCase,
+  BayarAgentPencairanUseCase,
+} from "./AgentPencairanUseCases.js";
+import type { IAgentPencairanRepository } from "../../../domain/repositories/IAgentPencairanRepo.js";
+import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { AgentPencairanEntity } from "../../../domain/entities/AgentPencairan.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+
+const INVOICE_URL = "https://cloudinary.com/invoice.pdf";
+const BUKTI_URL = "https://cloudinary.com/bukti.pdf";
+
+function buildFeeAgent(agentType: "PRIBADI" | "PERUSAHAAN") {
+  return {
+    id: 1,
+    penjualanId: 10,
+    agentId: 5,
+    closingNominal: null,
+    agent: {
+      type: agentType,
+      feeMarketingPct: 2,
+      feeClosingNominal: 5_000_000,
+      potonganPph: 2.5,
+      isPkp: false,
+      perusahaanAgent:
+        agentType === "PERUSAHAAN"
+          ? {
+              feeMarketingPct: 2,
+              feeClosingNominal: 5_000_000,
+              potonganPph: 2.5,
+              isPkp: false,
+              namaBank: "BCA",
+              noRekening: "123",
+              atasNamaRekening: "PT Test",
+            }
+          : null,
+    },
+    penjualan: {
+      status: "AKTIF",
+      caraPembayaran: "CASH_KERAS",
+      hargaJual: 500_000_000,
+      tagihan: [
+        { tujuan: "BOOKING_FEE", pembayaran: "CASH", status: "LUNAS" },
+      ],
+      progressPenjualan: {
+        nilaiAjb: 0,
+        filePpjb: "https://example.com/ppjb.pdf",
+        fileAjb: null,
+        fileSp3k: null,
+        fileSuratPernyataanAkadKredit: null,
+      },
+    },
+  };
+}
+
+function buildCreatedPencairan(
+  overrides: Partial<AgentPencairanEntity> = {},
+): AgentPencairanEntity {
+  return {
+    id: 99,
+    feeAgentId: 1,
+    penjualanId: 10,
+    agentId: 5,
+    tahap: "PPJB",
+    closingNominal: 5_000_000,
+    marketingNominal: 0,
+    potonganPph: 125_000,
+    totalNominal: 4_875_000,
+    status: "MENUNGGU_PEMBAYARAN",
+    fileInvoice: null,
+    buktiPembayaran: null,
+    tanggalPembayaran: null,
+    bsiCmsDilaporkan: false,
+    bsiCmsDilaporkanAt: null,
+    diajukanOlehId: 1,
+    dibayarOlehId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+describe("AjukanAgentPencairanUseCase — invoice agent perusahaan", () => {
+  let repoMock: MockProxy<IAgentPencairanRepository>;
+  let dbMock: { feeAgent: { findUnique: ReturnType<typeof vi.fn> } };
+  let cloudinaryMock: MockProxy<CloudinaryService>;
+  let useCase: AjukanAgentPencairanUseCase;
+
+  beforeEach(() => {
+    repoMock = mock<IAgentPencairanRepository>();
+    dbMock = {
+      feeAgent: {
+        findUnique: vi.fn(),
+      },
+    };
+    cloudinaryMock = mock<CloudinaryService>();
+    useCase = new AjukanAgentPencairanUseCase(
+      repoMock,
+      dbMock as unknown as PrismaClient,
+      cloudinaryMock,
+    );
+    vi.clearAllMocks();
+    repoMock.findByFeeAgentId.mockResolvedValue([]);
+    repoMock.create.mockImplementation(async (data) =>
+      buildCreatedPencairan({
+        closingNominal: data.closingNominal,
+        marketingNominal: data.marketingNominal,
+        fileInvoice: data.fileInvoice ?? null,
+      }),
+    );
+  });
+
+  it("agent pribadi: ajukan tanpa invoice berhasil", async () => {
+    dbMock.feeAgent.findUnique.mockResolvedValue(buildFeeAgent("PRIBADI"));
+
+    const result = await useCase.execute({
+      feeAgentId: 1,
+      includeClosing: true,
+      includeMarketing: false,
+      diajukanOlehId: 1,
+    });
+
+    expect(cloudinaryMock.uploadFile).not.toHaveBeenCalled();
+    expect(repoMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({ fileInvoice: null }),
+    );
+    expect(result.fileInvoice).toBeNull();
+  });
+
+  it("agent perusahaan: ajukan tanpa invoice ditolak", async () => {
+    dbMock.feeAgent.findUnique.mockResolvedValue(buildFeeAgent("PERUSAHAAN"));
+
+    await expect(
+      useCase.execute({
+        feeAgentId: 1,
+        includeClosing: true,
+        includeMarketing: false,
+        diajukanOlehId: 1,
+      }),
+    ).rejects.toMatchObject({
+      message: "Invoice wajib diunggah untuk agent perusahaan (PDF atau gambar).",
+    });
+
+    expect(repoMock.create).not.toHaveBeenCalled();
+  });
+
+  it("agent perusahaan: ajukan dengan invoice berhasil", async () => {
+    dbMock.feeAgent.findUnique.mockResolvedValue(buildFeeAgent("PERUSAHAAN"));
+    cloudinaryMock.uploadFile.mockResolvedValue(INVOICE_URL);
+    const buffer = Buffer.from("fake-pdf");
+
+    const result = await useCase.execute({
+      feeAgentId: 1,
+      includeClosing: true,
+      includeMarketing: false,
+      diajukanOlehId: 1,
+      invoiceFileBuffer: buffer,
+    });
+
+    expect(cloudinaryMock.uploadFile).toHaveBeenCalledWith(
+      buffer,
+      "bumantara/agent-pencairan-invoice",
+    );
+    expect(repoMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({ fileInvoice: INVOICE_URL }),
+    );
+    expect(result.fileInvoice).toBe(INVOICE_URL);
+  });
+
+  it("agent perusahaan: merge ke pending tanpa invoice lama wajib upload", async () => {
+    dbMock.feeAgent.findUnique.mockResolvedValue(buildFeeAgent("PERUSAHAAN"));
+    repoMock.findByFeeAgentId.mockResolvedValue([
+      buildCreatedPencairan({
+        id: 50,
+        tahap: "PPJB",
+        status: "MENUNGGU_PEMBAYARAN",
+        closingNominal: 2_500_000,
+        marketingNominal: 0,
+        fileInvoice: null,
+      }),
+    ]);
+
+    await expect(
+      useCase.execute({
+        feeAgentId: 1,
+        includeClosing: false,
+        includeMarketing: true,
+        diajukanOlehId: 1,
+      }),
+    ).rejects.toBeInstanceOf(AppError);
+
+    expect(repoMock.updatePendingAjukan).not.toHaveBeenCalled();
+  });
+
+  it("agent perusahaan: merge ke pending yang sudah punya invoice tidak wajib upload ulang", async () => {
+    const feeAgent = buildFeeAgent("PERUSAHAAN");
+    feeAgent.penjualan.progressPenjualan.nilaiAjb = 500_000_000;
+    dbMock.feeAgent.findUnique.mockResolvedValue(feeAgent);
+    repoMock.findByFeeAgentId.mockResolvedValue([
+      buildCreatedPencairan({
+        id: 50,
+        tahap: "PPJB",
+        status: "MENUNGGU_PEMBAYARAN",
+        closingNominal: 2_500_000,
+        marketingNominal: 0,
+        potonganPph: 62_500,
+        totalNominal: 2_437_500,
+        fileInvoice: INVOICE_URL,
+      }),
+    ]);
+    repoMock.updatePendingAjukan.mockResolvedValue(
+      buildCreatedPencairan({
+        id: 50,
+        fileInvoice: INVOICE_URL,
+        marketingNominal: 2_500_000,
+      }),
+    );
+
+    await useCase.execute({
+      feeAgentId: 1,
+      includeClosing: false,
+      includeMarketing: true,
+      diajukanOlehId: 1,
+    });
+
+    expect(cloudinaryMock.uploadFile).not.toHaveBeenCalled();
+    expect(repoMock.updatePendingAjukan).toHaveBeenCalled();
+    expect(repoMock.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("BayarAgentPencairanUseCase — existing flow", () => {
+  let repoMock: MockProxy<IAgentPencairanRepository>;
+  let cloudinaryMock: MockProxy<CloudinaryService>;
+  let useCase: BayarAgentPencairanUseCase;
+
+  beforeEach(() => {
+    repoMock = mock<IAgentPencairanRepository>();
+    cloudinaryMock = mock<CloudinaryService>();
+    useCase = new BayarAgentPencairanUseCase(repoMock, cloudinaryMock);
+    vi.clearAllMocks();
+  });
+
+  it("masih menolak bayar tanpa bukti pembayaran", async () => {
+    repoMock.findById.mockResolvedValue(buildCreatedPencairan());
+
+    await expect(
+      useCase.execute(99, 1, Buffer.alloc(0)),
+    ).rejects.toMatchObject({
+      message: "Bukti pembayaran wajib diunggah",
+    });
+  });
+
+  it("masih memproses bayar dengan bukti pembayaran", async () => {
+    const pending = buildCreatedPencairan();
+    repoMock.findById.mockResolvedValue(pending);
+    cloudinaryMock.uploadFile.mockResolvedValue(BUKTI_URL);
+    repoMock.markAsPaid.mockResolvedValue({
+      ...pending,
+      status: "SUDAH_DIBAYAR",
+      buktiPembayaran: BUKTI_URL,
+    });
+
+    const buffer = Buffer.from("bukti");
+    const result = await useCase.execute(99, 2, buffer);
+
+    expect(cloudinaryMock.uploadFile).toHaveBeenCalledWith(
+      buffer,
+      "bumantara/agent-pencairan",
+    );
+    expect(repoMock.markAsPaid).toHaveBeenCalledWith(
+      expect.objectContaining({ buktiPembayaran: BUKTI_URL }),
+    );
+    expect(result.status).toBe("SUDAH_DIBAYAR");
+  });
+});

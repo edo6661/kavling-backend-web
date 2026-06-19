@@ -59,6 +59,7 @@ export class AgentPencairanMapper {
       potonganPph: Number(row.potonganPph),
       totalNominal: Number(row.totalNominal),
       status: row.status,
+      fileInvoice: row.fileInvoice,
       buktiPembayaran: row.buktiPembayaran,
       tanggalPembayaran: row.tanggalPembayaran,
       bsiCmsDilaporkan: row.bsiCmsDilaporkan,

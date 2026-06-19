@@ -42,6 +42,7 @@ export class AjukanAgentPencairanUseCase {
   constructor(
     private readonly repo: IAgentPencairanRepository,
     private readonly db: PrismaClient,
+    private readonly cloudinary: CloudinaryService,
     private readonly notificationService?: NotificationService,
   ) {}
 
@@ -171,13 +172,25 @@ export class AjukanAgentPencairanUseCase {
           "Pengajuan PPJB sudah diproses — tidak bisa menambah komponen.",
         );
       }
+      const fileInvoice = await this.resolveFileInvoice(
+        feeAgent.agent.type,
+        pending.fileInvoice,
+        data.invoiceFileBuffer,
+      );
       return await this.repo.updatePendingAjukan(amounts.mergeIntoExistingId, {
         closingNominal: amounts.closingNominal,
         marketingNominal: amounts.marketingNominal,
         potonganPph: amounts.potonganPph,
         totalNominal: amounts.totalNominal,
+        ...(fileInvoice ? { fileInvoice } : {}),
       });
     }
+
+    const fileInvoice = await this.resolveFileInvoice(
+      feeAgent.agent.type,
+      null,
+      data.invoiceFileBuffer,
+    );
 
     const created = await this.repo.create({
       feeAgentId: data.feeAgentId,
@@ -189,6 +202,7 @@ export class AjukanAgentPencairanUseCase {
       marketingNominal: amounts.marketingNominal,
       potonganPph: amounts.potonganPph,
       totalNominal: amounts.totalNominal,
+      fileInvoice,
     });
 
     if (this.notificationService) {
@@ -203,6 +217,32 @@ export class AjukanAgentPencairanUseCase {
     }
 
     return created;
+  }
+
+  private async resolveFileInvoice(
+    agentType: string,
+    existingInvoice: string | null,
+    invoiceFileBuffer?: Buffer,
+  ): Promise<string | null> {
+    if (agentType !== "PERUSAHAAN") {
+      return null;
+    }
+
+    if (invoiceFileBuffer?.length) {
+      return await this.cloudinary.uploadFile(
+        invoiceFileBuffer,
+        "bumantara/agent-pencairan-invoice",
+      );
+    }
+
+    if (existingInvoice) {
+      return null;
+    }
+
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Invoice wajib diunggah untuk agent perusahaan (PDF atau gambar).",
+    );
   }
 }
 

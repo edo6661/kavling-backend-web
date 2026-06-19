@@ -111,6 +111,7 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
         potonganPph: data.potonganPph,
         totalNominal: data.totalNominal,
         diajukanOlehId: data.diajukanOlehId,
+        fileInvoice: data.fileInvoice ?? null,
       },
       include: AgentPencairanMapper.include,
     });
@@ -125,6 +126,7 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
       marketingNominal: number;
       potonganPph: number;
       totalNominal: number;
+      fileInvoice?: string;
     },
   ): Promise<AgentPencairanEntity> {
     const result = await this.db.agentPencairan.update({
@@ -134,6 +136,7 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
         marketingNominal: data.marketingNominal,
         potonganPph: data.potonganPph,
         totalNominal: data.totalNominal,
+        ...(data.fileInvoice !== undefined ? { fileInvoice: data.fileInvoice } : {}),
       },
       include: AgentPencairanMapper.include,
     });
