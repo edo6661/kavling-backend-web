@@ -73,6 +73,24 @@ export class AgentMapper {
         ? {
             id: prismaAgent.perusahaanAgent.id,
             nama: prismaAgent.perusahaanAgent.nama,
+            npwp: prismaAgent.perusahaanAgent.npwp ?? null,
+            namaBank: prismaAgent.perusahaanAgent.namaBank ?? null,
+            noRekening: prismaAgent.perusahaanAgent.noRekening ?? null,
+            atasNamaRekening: prismaAgent.perusahaanAgent.atasNamaRekening ?? null,
+            feeMarketingPct:
+              prismaAgent.perusahaanAgent.feeMarketingPct != null
+                ? Number(prismaAgent.perusahaanAgent.feeMarketingPct)
+                : null,
+            feeClosingNominal:
+              prismaAgent.perusahaanAgent.feeClosingNominal != null
+                ? Number(prismaAgent.perusahaanAgent.feeClosingNominal)
+                : null,
+            potonganPph:
+              prismaAgent.perusahaanAgent.potonganPph != null
+                ? Number(prismaAgent.perusahaanAgent.potonganPph)
+                : null,
+            isPkp: prismaAgent.perusahaanAgent.isPkp ?? false,
+            akte: prismaAgent.perusahaanAgent.akte ?? null,
           }
         : null,
 

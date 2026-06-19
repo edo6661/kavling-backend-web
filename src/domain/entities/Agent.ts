@@ -55,7 +55,19 @@ export interface AgentEntity {
   hasAccount: boolean;
   pics: PicAgentEntity[];
   perusahaanAgentId: number | null;
-  perusahaanAgent?: { id: number; nama: string } | null | undefined;
+  perusahaanAgent?: {
+    id: number;
+    nama: string;
+    npwp?: string | null;
+    namaBank?: string | null;
+    noRekening?: string | null;
+    atasNamaRekening?: string | null;
+    feeMarketingPct?: number | null;
+    feeClosingNominal?: number | null;
+    potonganPph?: number | null;
+    isPkp?: boolean;
+    akte?: string | null;
+  } | null | undefined;
   penjualan?: PenjualanAgentEntity[];
   createdAt: Date;
   updatedAt: Date;
