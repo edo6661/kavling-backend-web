@@ -991,4 +991,5 @@ enum NotificationType {
   UPLOAD_BUKTI       @map("upload_bukti")
   GANTI_KAVLING      @map("ganti_kavling")
   KODE_BILLING_PPH   @map("kode_billing_pph")
+  AGENT_PENCAIRAN    @map("agent_pencairan")
 }

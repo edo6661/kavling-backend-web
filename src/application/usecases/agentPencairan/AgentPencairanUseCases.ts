@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, Role } from "@prisma/client";
 import type { IAgentPencairanRepository } from "../../../domain/repositories/IAgentPencairanRepo.js";
 import type {
   AgentPencairanFilterDTO,
@@ -23,6 +23,8 @@ import { AppError } from "../../../domain/errors/AppError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import { StatusCodes } from "http-status-codes";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
+import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
+import { buildAgentPencairanBaruNotification } from "../../notifications/agentPencairanNotificationHelpers.js";
 
 export class GetAgentPencairanPaginatedUseCase {
   constructor(private readonly repo: IAgentPencairanRepository) {}
@@ -40,6 +42,7 @@ export class AjukanAgentPencairanUseCase {
   constructor(
     private readonly repo: IAgentPencairanRepository,
     private readonly db: PrismaClient,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(
@@ -176,7 +179,7 @@ export class AjukanAgentPencairanUseCase {
       });
     }
 
-    return await this.repo.create({
+    const created = await this.repo.create({
       feeAgentId: data.feeAgentId,
       penjualanId: feeAgent.penjualanId,
       agentId: feeAgent.agentId,
@@ -187,6 +190,19 @@ export class AjukanAgentPencairanUseCase {
       potonganPph: amounts.potonganPph,
       totalNominal: amounts.totalNominal,
     });
+
+    if (this.notificationService) {
+      try {
+        await this.notificationService.notifyRoles(
+          [Role.ADMIN, Role.SUPERADMIN, Role.FINANCE],
+          buildAgentPencairanBaruNotification(created),
+        );
+      } catch (error) {
+        console.error("Gagal mengirim notifikasi pencairan agent:", error);
+      }
+    }
+
+    return created;
   }
 }
 

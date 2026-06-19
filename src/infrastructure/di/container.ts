@@ -973,6 +973,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const ajukanAgentPencairanUseCase = new AjukanAgentPencairanUseCase(
     agentPencairanRepo,
     dbClient,
+    notificationService,
   );
   const bayarAgentPencairanUseCase = new BayarAgentPencairanUseCase(
     agentPencairanRepo,
