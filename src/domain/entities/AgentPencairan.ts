@@ -13,6 +13,7 @@ export interface AgentPencairanEntity {
   totalNominal: number;
   status: AgentPencairanStatus;
   fileInvoice: string | null;
+  fileInvoiceList: string[];
   buktiPembayaran: string | null;
   tanggalPembayaran: Date | null;
   bsiCmsDilaporkan: boolean;

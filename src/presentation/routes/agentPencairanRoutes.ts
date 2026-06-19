@@ -30,7 +30,7 @@ export const createAgentPencairanRoutes = (
   router.post(
     "/",
     requirePermission(["FEE_AGENT", "AGENT"], "update"),
-    upload.single("fileInvoice"),
+    upload.array("fileInvoice", 10),
     validate(ajukanAgentPencairanSchema),
     controller.ajukan,
   );

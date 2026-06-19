@@ -11,6 +11,7 @@ import type { AgentPencairanEntity } from "../../../domain/entities/AgentPencair
 import { AppError } from "../../../domain/errors/AppError.js";
 
 const INVOICE_URL = "https://cloudinary.com/invoice.pdf";
+const INVOICE_URL_2 = "https://cloudinary.com/invoice-2.pdf";
 const BUKTI_URL = "https://cloudinary.com/bukti.pdf";
 
 function buildFeeAgent(agentType: "PRIBADI" | "PERUSAHAAN") {
@@ -71,6 +72,7 @@ function buildCreatedPencairan(
     totalNominal: 4_875_000,
     status: "MENUNGGU_PEMBAYARAN",
     fileInvoice: null,
+    fileInvoiceList: [],
     buktiPembayaran: null,
     tanggalPembayaran: null,
     bsiCmsDilaporkan: false,
@@ -108,7 +110,8 @@ describe("AjukanAgentPencairanUseCase — invoice agent perusahaan", () => {
       buildCreatedPencairan({
         closingNominal: data.closingNominal,
         marketingNominal: data.marketingNominal,
-        fileInvoice: data.fileInvoice ?? null,
+        fileInvoice: data.fileInvoice ?? data.fileInvoiceList?.[0] ?? null,
+        fileInvoiceList: data.fileInvoiceList ?? [],
       }),
     );
   });
@@ -125,9 +128,9 @@ describe("AjukanAgentPencairanUseCase — invoice agent perusahaan", () => {
 
     expect(cloudinaryMock.uploadFile).not.toHaveBeenCalled();
     expect(repoMock.create).toHaveBeenCalledWith(
-      expect.objectContaining({ fileInvoice: null }),
+      expect.objectContaining({ fileInvoiceList: null }),
     );
-    expect(result.fileInvoice).toBeNull();
+    expect(result.fileInvoiceList).toEqual([]);
   });
 
   it("agent perusahaan: ajukan tanpa invoice ditolak", async () => {
@@ -147,27 +150,28 @@ describe("AjukanAgentPencairanUseCase — invoice agent perusahaan", () => {
     expect(repoMock.create).not.toHaveBeenCalled();
   });
 
-  it("agent perusahaan: ajukan dengan invoice berhasil", async () => {
+  it("agent perusahaan: ajukan dengan beberapa invoice berhasil", async () => {
     dbMock.feeAgent.findUnique.mockResolvedValue(buildFeeAgent("PERUSAHAAN"));
-    cloudinaryMock.uploadFile.mockResolvedValue(INVOICE_URL);
-    const buffer = Buffer.from("fake-pdf");
+    cloudinaryMock.uploadFile
+      .mockResolvedValueOnce(INVOICE_URL)
+      .mockResolvedValueOnce(INVOICE_URL_2);
 
     const result = await useCase.execute({
       feeAgentId: 1,
       includeClosing: true,
       includeMarketing: false,
       diajukanOlehId: 1,
-      invoiceFileBuffer: buffer,
+      invoiceFileBuffers: [Buffer.from("pdf-1"), Buffer.from("pdf-2")],
     });
 
-    expect(cloudinaryMock.uploadFile).toHaveBeenCalledWith(
-      buffer,
-      "bumantara/agent-pencairan-invoice",
-    );
+    expect(cloudinaryMock.uploadFile).toHaveBeenCalledTimes(2);
     expect(repoMock.create).toHaveBeenCalledWith(
-      expect.objectContaining({ fileInvoice: INVOICE_URL }),
+      expect.objectContaining({
+        fileInvoiceList: [INVOICE_URL, INVOICE_URL_2],
+        fileInvoice: INVOICE_URL,
+      }),
     );
-    expect(result.fileInvoice).toBe(INVOICE_URL);
+    expect(result.fileInvoiceList).toEqual([INVOICE_URL, INVOICE_URL_2]);
   });
 
   it("agent perusahaan: merge ke pending tanpa invoice lama wajib upload", async () => {
@@ -179,7 +183,6 @@ describe("AjukanAgentPencairanUseCase — invoice agent perusahaan", () => {
         status: "MENUNGGU_PEMBAYARAN",
         closingNominal: 2_500_000,
         marketingNominal: 0,
-        fileInvoice: null,
       }),
     ]);
 
@@ -209,12 +212,14 @@ describe("AjukanAgentPencairanUseCase — invoice agent perusahaan", () => {
         potonganPph: 62_500,
         totalNominal: 2_437_500,
         fileInvoice: INVOICE_URL,
+        fileInvoiceList: [INVOICE_URL],
       }),
     ]);
     repoMock.updatePendingAjukan.mockResolvedValue(
       buildCreatedPencairan({
         id: 50,
         fileInvoice: INVOICE_URL,
+        fileInvoiceList: [INVOICE_URL],
         marketingNominal: 2_500_000,
       }),
     );

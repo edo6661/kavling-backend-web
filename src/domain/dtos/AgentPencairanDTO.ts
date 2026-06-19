@@ -12,7 +12,7 @@ export interface CreateAgentPencairanDTO {
   includeClosing: boolean;
   includeMarketing: boolean;
   diajukanOlehId: number;
-  invoiceFileBuffer?: Buffer;
+  invoiceFileBuffers?: Buffer[];
 }
 
 export interface PersistAgentPencairanDTO {
@@ -26,6 +26,7 @@ export interface PersistAgentPencairanDTO {
   potonganPph: number;
   totalNominal: number;
   fileInvoice?: string | null;
+  fileInvoiceList?: string[] | null;
 }
 
 export interface BayarAgentPencairanDTO {

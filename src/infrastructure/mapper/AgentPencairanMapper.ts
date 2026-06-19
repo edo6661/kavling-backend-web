@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import type { AgentPencairanEntity } from "../../domain/entities/AgentPencairan.js";
 import { resolveAgentCommercialProfile } from "../../domain/agent/agentCommercialProfile.js";
+import { normalizeAgentPencairanInvoiceList } from "../../utils/agentPencairanInvoice.js";
 
 export const agentPencairanInclude = {
   diajukanOleh: { select: { id: true, username: true } },
@@ -47,6 +48,10 @@ export class AgentPencairanMapper {
 
   static toDomain(row: AgentPencairanWithRelations): AgentPencairanEntity {
     const commercial = resolveAgentCommercialProfile(row.agent);
+    const fileInvoiceList = normalizeAgentPencairanInvoiceList(
+      row.fileInvoiceList,
+      row.fileInvoice,
+    );
 
     return {
       id: row.id,
@@ -59,7 +64,8 @@ export class AgentPencairanMapper {
       potonganPph: Number(row.potonganPph),
       totalNominal: Number(row.totalNominal),
       status: row.status,
-      fileInvoice: row.fileInvoice,
+      fileInvoice: fileInvoiceList[0] ?? null,
+      fileInvoiceList,
       buktiPembayaran: row.buktiPembayaran,
       tanggalPembayaran: row.tanggalPembayaran,
       bsiCmsDilaporkan: row.bsiCmsDilaporkan,

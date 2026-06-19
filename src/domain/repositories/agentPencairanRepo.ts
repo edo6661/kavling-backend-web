@@ -111,7 +111,11 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
         potonganPph: data.potonganPph,
         totalNominal: data.totalNominal,
         diajukanOlehId: data.diajukanOlehId,
-        fileInvoice: data.fileInvoice ?? null,
+        fileInvoice: data.fileInvoice ?? data.fileInvoiceList?.[0] ?? null,
+        fileInvoiceList:
+          data.fileInvoiceList && data.fileInvoiceList.length > 0
+            ? data.fileInvoiceList
+            : Prisma.JsonNull,
       },
       include: AgentPencairanMapper.include,
     });
@@ -126,7 +130,7 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
       marketingNominal: number;
       potonganPph: number;
       totalNominal: number;
-      fileInvoice?: string;
+      fileInvoiceList?: string[];
     },
   ): Promise<AgentPencairanEntity> {
     const result = await this.db.agentPencairan.update({
@@ -136,7 +140,15 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
         marketingNominal: data.marketingNominal,
         potonganPph: data.potonganPph,
         totalNominal: data.totalNominal,
-        ...(data.fileInvoice !== undefined ? { fileInvoice: data.fileInvoice } : {}),
+        ...(data.fileInvoiceList !== undefined
+          ? {
+              fileInvoiceList:
+                data.fileInvoiceList.length > 0
+                  ? data.fileInvoiceList
+                  : Prisma.JsonNull,
+              fileInvoice: data.fileInvoiceList[0] ?? null,
+            }
+          : {}),
       },
       include: AgentPencairanMapper.include,
     });

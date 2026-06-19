@@ -30,7 +30,7 @@ export interface IAgentPencairanRepository {
       marketingNominal: number;
       potonganPph: number;
       totalNominal: number;
-      fileInvoice?: string;
+      fileInvoiceList?: string[];
     },
   ): Promise<AgentPencairanEntity>;
   markAsPaid(data: BayarAgentPencairanDTO): Promise<AgentPencairanEntity>;

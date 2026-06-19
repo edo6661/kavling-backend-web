@@ -25,6 +25,10 @@ import { StatusCodes } from "http-status-codes";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
 import { buildAgentPencairanBaruNotification } from "../../notifications/agentPencairanNotificationHelpers.js";
+import {
+  collectAgentPencairanInvoiceUrls,
+  MAX_AGENT_PENCAIRAN_INVOICE_FILES,
+} from "../../../utils/agentPencairanInvoice.js";
 
 export class GetAgentPencairanPaginatedUseCase {
   constructor(private readonly repo: IAgentPencairanRepository) {}
@@ -172,24 +176,27 @@ export class AjukanAgentPencairanUseCase {
           "Pengajuan PPJB sudah diproses — tidak bisa menambah komponen.",
         );
       }
-      const fileInvoice = await this.resolveFileInvoice(
+      const fileInvoiceList = await this.resolveFileInvoiceList(
         feeAgent.agent.type,
-        pending.fileInvoice,
-        data.invoiceFileBuffer,
+        collectAgentPencairanInvoiceUrls(
+          pending.fileInvoice,
+          pending.fileInvoiceList,
+        ),
+        data.invoiceFileBuffers,
       );
       return await this.repo.updatePendingAjukan(amounts.mergeIntoExistingId, {
         closingNominal: amounts.closingNominal,
         marketingNominal: amounts.marketingNominal,
         potonganPph: amounts.potonganPph,
         totalNominal: amounts.totalNominal,
-        ...(fileInvoice ? { fileInvoice } : {}),
+        ...(fileInvoiceList ? { fileInvoiceList } : {}),
       });
     }
 
-    const fileInvoice = await this.resolveFileInvoice(
+    const fileInvoiceList = await this.resolveFileInvoiceList(
       feeAgent.agent.type,
-      null,
-      data.invoiceFileBuffer,
+      [],
+      data.invoiceFileBuffers,
     );
 
     const created = await this.repo.create({
@@ -202,7 +209,8 @@ export class AjukanAgentPencairanUseCase {
       marketingNominal: amounts.marketingNominal,
       potonganPph: amounts.potonganPph,
       totalNominal: amounts.totalNominal,
-      fileInvoice,
+      fileInvoiceList,
+      fileInvoice: fileInvoiceList?.[0] ?? null,
     });
 
     if (this.notificationService) {
@@ -219,23 +227,47 @@ export class AjukanAgentPencairanUseCase {
     return created;
   }
 
-  private async resolveFileInvoice(
+  private async resolveFileInvoiceList(
     agentType: string,
-    existingInvoice: string | null,
-    invoiceFileBuffer?: Buffer,
-  ): Promise<string | null> {
+    existingInvoices: string[],
+    invoiceFileBuffers?: Buffer[],
+  ): Promise<string[] | null> {
     if (agentType !== "PERUSAHAAN") {
       return null;
     }
 
-    if (invoiceFileBuffer?.length) {
-      return await this.cloudinary.uploadFile(
-        invoiceFileBuffer,
-        "bumantara/agent-pencairan-invoice",
+    const buffers =
+      invoiceFileBuffers?.filter((buffer) => buffer?.length) ?? [];
+
+    if (buffers.length > MAX_AGENT_PENCAIRAN_INVOICE_FILES) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `Maksimal ${MAX_AGENT_PENCAIRAN_INVOICE_FILES} file invoice per pengajuan.`,
       );
     }
 
-    if (existingInvoice) {
+    if (existingInvoices.length + buffers.length > MAX_AGENT_PENCAIRAN_INVOICE_FILES) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `Total invoice tidak boleh lebih dari ${MAX_AGENT_PENCAIRAN_INVOICE_FILES} file.`,
+      );
+    }
+
+    const uploaded: string[] = [];
+    for (const buffer of buffers) {
+      uploaded.push(
+        await this.cloudinary.uploadFile(
+          buffer,
+          "bumantara/agent-pencairan-invoice",
+        ),
+      );
+    }
+
+    if (uploaded.length > 0) {
+      return [...existingInvoices, ...uploaded];
+    }
+
+    if (existingInvoices.length > 0) {
       return null;
     }
 
