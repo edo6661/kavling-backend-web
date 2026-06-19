@@ -1,4 +1,33 @@
 import type { PaymentMethod, PenjualanStatus } from "@prisma/client";
+import type { PemasukanTerbayarDetailDTO } from "./PemasukanPenjualanReportDTO.js";
+
+/** Kunci kategori untuk drill-down detail pembayaran. */
+export type RekapPemasukanKategoriKey =
+  | "bookingFee"
+  | "dp"
+  | "cicilanDp"
+  | "pencairanKpr"
+  | "cicilanCashBertahap"
+  | "dpKpr"
+  | "cicilanRumah"
+  | "dpCashBertahap";
+
+export interface RekapPemasukanTerbayarBucketsDTO {
+  bookingFee: PemasukanTerbayarDetailDTO[];
+  dp: PemasukanTerbayarDetailDTO[];
+  cicilanCashBertahap: PemasukanTerbayarDetailDTO[];
+  cicilanDp: PemasukanTerbayarDetailDTO[];
+  cicilanRumah: PemasukanTerbayarDetailDTO[];
+  dpKpr: PemasukanTerbayarDetailDTO[];
+  cicilanKpr: PemasukanTerbayarDetailDTO[];
+}
+
+export interface RekapPemasukanTerbayarDetailDTO extends PemasukanTerbayarDetailDTO {
+  penjualanId: number;
+  noTransaksi: string;
+  customerNama: string;
+  kavlingLabel: string;
+}
 
 export interface RekapPemasukanReportFilterDTO {
   perumahanId?: number;
@@ -43,6 +72,7 @@ export interface RekapPemasukanDetailItemDTO {
   dpKpr: number;
   cicilanKpr: number;
   totalTerima: number;
+  terbayar: RekapPemasukanTerbayarBucketsDTO;
 }
 
 export interface RekapPemasukanReportDTO {
@@ -52,6 +82,10 @@ export interface RekapPemasukanReportDTO {
   cashBertahap: RekapPemasukanSkemaDTO;
   totalTerima: number;
   jumlahPenjualan: number;
+  /** Semua tagihan lunas per kategori (untuk klik ringkasan/skema). */
+  kategoriTerbayar: Partial<
+    Record<RekapPemasukanKategoriKey, RekapPemasukanTerbayarDetailDTO[]>
+  >;
   items: RekapPemasukanDetailItemDTO[];
   meta: {
     page: number;

@@ -68,6 +68,7 @@ export class AgentMapper {
         createdAt: pic.createdAt,
         updatedAt: pic.updatedAt,
       })),
+      perusahaanAgentId: prismaAgent.perusahaanAgentId ?? null,
       perusahaanAgent: prismaAgent.perusahaanAgent
         ? {
             id: prismaAgent.perusahaanAgent.id,

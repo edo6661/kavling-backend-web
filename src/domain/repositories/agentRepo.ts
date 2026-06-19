@@ -8,8 +8,10 @@ import type {
   AgentFilterDTO,
 } from "../dtos/AgentDTO.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
+import { StatusCodes } from "http-status-codes";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { AppError } from "../errors/AppError.js";
 import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
 import { isAgentPerusahaan } from "../agent/agentCommercialProfile.js";
 
@@ -156,17 +158,48 @@ export class AgentRepository implements IAgentRepository {
     if (data.alamat !== undefined) updateData.alamat = data.alamat ?? null;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.type !== undefined) updateData.type = data.type;
-    if (data.perusahaanAgentId !== undefined) {
-      updateData.perusahaanAgentId = data.perusahaanAgentId;
-    }
-
     const nextType = data.type ?? existing.type;
     const nextPerusahaanId =
       data.perusahaanAgentId !== undefined
         ? data.perusahaanAgentId
-        : (existing.perusahaanAgent?.id ?? null);
+        : (existing.perusahaanAgentId ?? existing.perusahaanAgent?.id ?? null);
     const isPerusahaan =
       isAgentPerusahaan(nextType) && nextPerusahaanId != null;
+
+    if (data.perusahaanAgentId !== undefined) {
+      if (isAgentPerusahaan(nextType)) {
+        if (data.perusahaanAgentId == null || data.perusahaanAgentId <= 0) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            "Agent perusahaan wajib memilih perusahaan yang valid.",
+          );
+        }
+        const company = await this.db.perusahaanAgent.findUnique({
+          where: { id: data.perusahaanAgentId },
+          select: { id: true },
+        });
+        if (!company) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            "Perusahaan agent tidak ditemukan. Pilih perusahaan yang masih terdaftar.",
+          );
+        }
+        updateData.perusahaanAgentId = data.perusahaanAgentId;
+      } else {
+        updateData.perusahaanAgentId = null;
+      }
+    } else if (isAgentPerusahaan(nextType) && nextPerusahaanId != null) {
+      const company = await this.db.perusahaanAgent.findUnique({
+        where: { id: nextPerusahaanId },
+        select: { id: true },
+      });
+      if (!company) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Perusahaan agent tidak ditemukan. Pilih perusahaan yang masih terdaftar.",
+        );
+      }
+    }
 
     if (isPerusahaan) {
       updateData.feeMarketingPct = null;

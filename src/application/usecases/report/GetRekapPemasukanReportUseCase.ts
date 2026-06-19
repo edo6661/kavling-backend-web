@@ -3,15 +3,20 @@ import { Prisma } from "@prisma/client";
 import type {
   RekapPemasukanDetailItemDTO,
   RekapPemasukanKategoriDTO,
+  RekapPemasukanKategoriKey,
   RekapPemasukanReportDTO,
   RekapPemasukanReportFilterDTO,
   RekapPemasukanSkemaDTO,
+  RekapPemasukanTerbayarBucketsDTO,
+  RekapPemasukanTerbayarDetailDTO,
 } from "../../../domain/dtos/RekapPemasukanReportDTO.js";
+import type { PemasukanTerbayarDetailDTO } from "../../../domain/dtos/PemasukanPenjualanReportDTO.js";
 import {
   effectiveTagihanTujuan,
   isCicilanHargaJualTagihan,
 } from "../../../domain/tagihan/tagihanTujuan.js";
 import { parseDpSequenceFromPembayaran } from "../../../domain/tagihan/noTagihan.js";
+import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 
 function parseDateStart(value?: string): Date | undefined {
   if (!value) return undefined;
@@ -40,9 +45,16 @@ function isCicilanDpPembayaran(pembayaran: string): boolean {
 }
 
 type TagihanRow = {
+  id: number;
+  noTagihan: string;
   nominal: unknown;
   tujuan: TagihanTujuan;
   pembayaran: string;
+  jatuhTempo: Date;
+  status: string;
+  fileBukti: string | null;
+  fileBuktiList: Prisma.JsonValue | null;
+  updatedAt: Date;
 };
 
 type PenjualanRow = {
@@ -69,6 +81,163 @@ type Accumulator = {
   cicilanDp: number;
   cicilanRumah: number;
 };
+
+function extractCicilanOrder(pembayaran: string): number {
+  const match = pembayaran.match(/(\d+)/);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function mapTerbayarDetail(tagihan: TagihanRow): PemasukanTerbayarDetailDTO {
+  const fileBuktiList = normalizeTagihanFileBuktiList(
+    tagihan.fileBuktiList,
+    tagihan.fileBukti,
+  );
+  return {
+    tagihanId: tagihan.id,
+    noTagihan: tagihan.noTagihan,
+    nominal: Number(tagihan.nominal),
+    pembayaran: tagihan.pembayaran,
+    jatuhTempo: tagihan.jatuhTempo.toISOString(),
+    status: tagihan.status,
+    fileBukti: fileBuktiList[0] ?? tagihan.fileBukti,
+    fileBuktiList,
+    updatedAt: tagihan.updatedAt.toISOString(),
+  };
+}
+
+function sortTerbayarDetails<T extends PemasukanTerbayarDetailDTO>(
+  items: T[],
+): T[] {
+  return [...items].sort(
+    (a, b) => extractCicilanOrder(a.pembayaran) - extractCicilanOrder(b.pembayaran),
+  );
+}
+
+function emptyTerbayarBuckets(): RekapPemasukanTerbayarBucketsDTO {
+  return {
+    bookingFee: [],
+    dp: [],
+    cicilanCashBertahap: [],
+    cicilanDp: [],
+    cicilanRumah: [],
+    dpKpr: [],
+    cicilanKpr: [],
+  };
+}
+
+function getTagihanCategories(
+  tagihan: TagihanRow,
+  caraPembayaran: string | null,
+): RekapPemasukanKategoriKey[] {
+  const nominal = Number(tagihan.nominal);
+  if (!Number.isFinite(nominal) || nominal <= 0) return [];
+
+  const tujuan = effectiveTagihanTujuan(tagihan);
+
+  if (tujuan === "BOOKING_FEE") {
+    return ["bookingFee"];
+  }
+
+  if (tujuan === "DP") {
+    const isCicilanDp = isCicilanDpPembayaran(tagihan.pembayaran);
+    if (caraPembayaran === "KPR") {
+      return ["dpKpr", "dp"];
+    }
+    if (caraPembayaran === "CASH_BERTAHAP" && isCicilanDp) {
+      return ["cicilanDp"];
+    }
+    if (caraPembayaran === "CASH_BERTAHAP" && !isCicilanDp) {
+      return ["dp", "dpCashBertahap"];
+    }
+    return ["dp"];
+  }
+
+  if (isCicilanHargaJualTagihan(tagihan)) {
+    if (caraPembayaran === "KPR") {
+      return ["pencairanKpr", "cicilanKpr"];
+    }
+    if (caraPembayaran === "CASH_BERTAHAP") {
+      return ["cicilanRumah", "cicilanCashBertahap"];
+    }
+  }
+
+  return [];
+}
+
+function pushToBucket(
+  buckets: RekapPemasukanTerbayarBucketsDTO,
+  category: RekapPemasukanKategoriKey,
+  detail: PemasukanTerbayarDetailDTO,
+): void {
+  switch (category) {
+    case "bookingFee":
+      buckets.bookingFee.push(detail);
+      break;
+    case "dp":
+    case "dpCashBertahap":
+      buckets.dp.push(detail);
+      break;
+    case "cicilanDp":
+      buckets.cicilanDp.push(detail);
+      break;
+    case "pencairanKpr":
+    case "cicilanKpr":
+      buckets.cicilanKpr.push(detail);
+      break;
+    case "cicilanCashBertahap":
+      buckets.cicilanCashBertahap.push(detail);
+      break;
+    case "cicilanRumah":
+      buckets.cicilanRumah.push(detail);
+      break;
+    case "dpKpr":
+      buckets.dpKpr.push(detail);
+      break;
+    default:
+      break;
+  }
+}
+
+function dedupeTerbayarDetails(
+  items: PemasukanTerbayarDetailDTO[],
+): PemasukanTerbayarDetailDTO[] {
+  const seen = new Set<number>();
+  const result: PemasukanTerbayarDetailDTO[] = [];
+  for (const item of items) {
+    if (seen.has(item.tagihanId)) continue;
+    seen.add(item.tagihanId);
+    result.push(item);
+  }
+  return sortTerbayarDetails(result);
+}
+
+function finalizeBuckets(
+  buckets: RekapPemasukanTerbayarBucketsDTO,
+): RekapPemasukanTerbayarBucketsDTO {
+  return {
+    bookingFee: sortTerbayarDetails(buckets.bookingFee),
+    dp: dedupeTerbayarDetails(buckets.dp),
+    cicilanCashBertahap: sortTerbayarDetails(buckets.cicilanCashBertahap),
+    cicilanDp: sortTerbayarDetails(buckets.cicilanDp),
+    cicilanRumah: sortTerbayarDetails(buckets.cicilanRumah),
+    dpKpr: sortTerbayarDetails(buckets.dpKpr),
+    cicilanKpr: dedupeTerbayarDetails(buckets.cicilanKpr),
+  };
+}
+
+function buildTerbayarBuckets(
+  tagihanList: TagihanRow[],
+  caraPembayaran: string | null,
+): RekapPemasukanTerbayarBucketsDTO {
+  const buckets = emptyTerbayarBuckets();
+  for (const tagihan of tagihanList) {
+    const detail = mapTerbayarDetail(tagihan);
+    for (const category of getTagihanCategories(tagihan, caraPembayaran)) {
+      pushToBucket(buckets, category, detail);
+    }
+  }
+  return finalizeBuckets(buckets);
+}
 
 function emptyAccumulator(): Accumulator {
   return {
@@ -226,6 +395,8 @@ function mapPenjualanToDetail(row: PenjualanRow): RekapPemasukanDetailItemDTO {
     accumulateTagihan(acc, t, row.caraPembayaran);
   }
 
+  const terbayar = buildTerbayarBuckets(row.tagihan, row.caraPembayaran);
+
   return {
     penjualanId: row.id,
     noTransaksi: row.noTransaksi,
@@ -241,7 +412,32 @@ function mapPenjualanToDetail(row: PenjualanRow): RekapPemasukanDetailItemDTO {
     dpKpr: acc.dpKpr,
     cicilanKpr: acc.cicilanKpr,
     totalTerima: sumAccumulator(acc),
+    terbayar,
   };
+}
+
+function appendKategoriTerbayar(
+  aggregate: Partial<Record<RekapPemasukanKategoriKey, RekapPemasukanTerbayarDetailDTO[]>>,
+  category: RekapPemasukanKategoriKey,
+  detail: RekapPemasukanTerbayarDetailDTO,
+): void {
+  if (!aggregate[category]) {
+    aggregate[category] = [];
+  }
+  aggregate[category]!.push(detail);
+}
+
+function finalizeKategoriTerbayar(
+  aggregate: Partial<Record<RekapPemasukanKategoriKey, RekapPemasukanTerbayarDetailDTO[]>>,
+): Partial<Record<RekapPemasukanKategoriKey, RekapPemasukanTerbayarDetailDTO[]>> {
+  const result: Partial<
+    Record<RekapPemasukanKategoriKey, RekapPemasukanTerbayarDetailDTO[]>
+  > = {};
+  for (const [key, items] of Object.entries(aggregate)) {
+    if (!items || items.length === 0) continue;
+    result[key as RekapPemasukanKategoriKey] = sortTerbayarDetails(items);
+  }
+  return result;
 }
 
 function buildPenjualanWhere(
@@ -327,10 +523,18 @@ export class GetRekapPemasukanReportUseCase {
         detailKavlingPajak: { select: { pembiayaan: true } },
         tagihan: {
           where: { isRefunded: false, status: "LUNAS" },
+          orderBy: [{ jatuhTempo: "asc" }, { id: "asc" }],
           select: {
+            id: true,
+            noTagihan: true,
             nominal: true,
             tujuan: true,
             pembayaran: true,
+            jatuhTempo: true,
+            status: true,
+            fileBukti: true,
+            fileBuktiList: true,
+            updatedAt: true,
           },
         },
       },
@@ -339,11 +543,28 @@ export class GetRekapPemasukanReportUseCase {
     const totals = emptyAccumulator();
     const kprTotals = emptyAccumulator();
     const cashBertahapTotals = emptyAccumulator();
+    const kategoriTerbayar: Partial<
+      Record<RekapPemasukanKategoriKey, RekapPemasukanTerbayarDetailDTO[]>
+    > = {};
 
     const allItems = (rows as PenjualanRow[]).map((row) => {
       const acc = emptyAccumulator();
+      const kavlingLabel = `${row.kavling.blok}-${row.kavling.nomorUnit}`;
+
       for (const t of row.tagihan) {
         accumulateTagihan(acc, t, row.caraPembayaran);
+
+        const detail = mapTerbayarDetail(t);
+        const withContext: RekapPemasukanTerbayarDetailDTO = {
+          ...detail,
+          penjualanId: row.id,
+          noTransaksi: row.noTransaksi,
+          customerNama: row.customer.nama,
+          kavlingLabel,
+        };
+        for (const category of getTagihanCategories(t, row.caraPembayaran)) {
+          appendKategoriTerbayar(kategoriTerbayar, category, withContext);
+        }
       }
 
       for (const key of Object.keys(totals) as (keyof Accumulator)[]) {
@@ -377,6 +598,7 @@ export class GetRekapPemasukanReportUseCase {
       cashBertahap: buildSkemaCashBertahap(cashBertahapTotals),
       totalTerima: sumAccumulator(totals),
       jumlahPenjualan: totalItems,
+      kategoriTerbayar: finalizeKategoriTerbayar(kategoriTerbayar),
       items: paginatedItems,
       meta: {
         page: safePage,
