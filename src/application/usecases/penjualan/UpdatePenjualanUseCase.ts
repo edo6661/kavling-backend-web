@@ -78,14 +78,56 @@ export class UpdatePenjualanUseCase {
         });
       }
 
-      if (data.agent && old.agentId) {
-        await tx.agent.update({
-          where: { id: old.agentId },
-          data: { nama: data.agent },
-        });
-      }
-
       const updateData: Prisma.PenjualanUpdateInput = {};
+
+      if (data.agent !== undefined && data.agent.trim()) {
+        const agentNama = data.agent.trim();
+        const currentAgentNama = old.agent?.nama ?? null;
+
+        if (agentNama !== currentAgentNama) {
+          let agent = await tx.agent.findFirst({
+            where: { nama: agentNama },
+          });
+
+          if (!agent) {
+            const dummyNik = `MKT-${Date.now().toString().slice(-10)}`;
+            agent = await tx.agent.create({
+              data: {
+                nik: dummyNik,
+                nama: agentNama,
+                noHp: "-",
+                status: "AKTIF",
+              },
+            });
+          }
+
+          if (agent.id !== old.agentId) {
+            updateData.agent = { connect: { id: agent.id } };
+
+            const existingFeeAgent = await tx.feeAgent.findUnique({
+              where: { penjualanId: old.id },
+            });
+
+            if (existingFeeAgent) {
+              await tx.feeAgent.update({
+                where: { id: existingFeeAgent.id },
+                data: { agentId: agent.id },
+              });
+              await tx.agentPencairan.updateMany({
+                where: { penjualanId: old.id },
+                data: { agentId: agent.id },
+              });
+            } else {
+              await tx.feeAgent.create({
+                data: {
+                  agentId: agent.id,
+                  penjualanId: old.id,
+                },
+              });
+            }
+          }
+        }
+      }
       let formattedPayment = data.caraPembayaran as string | undefined;
       if (formattedPayment) {
         formattedPayment = formattedPayment.toUpperCase().replace(/\s+/g, "_");
