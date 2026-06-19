@@ -76,6 +76,22 @@ export interface PencairanExistingRecord {
   status: AgentPencairanStatus;
   closingNominal: number;
   marketingNominal: number;
+  potonganPph: number;
+}
+
+export function sumPotonganPphSudahDiajukan(
+  records: Array<{ potonganPph: number }>,
+): number {
+  return records.reduce((s, r) => s + Number(r.potonganPph), 0);
+}
+
+/** PPh total sekali per penjualan; pengajuan berikutnya tidak memotong lagi */
+export function calcPotonganPphSisa(
+  pphTotalPenuh: number,
+  existingRecords: Array<{ potonganPph: number }>,
+): number {
+  const sudah = sumPotonganPphSudahDiajukan(existingRecords);
+  return Math.max(0, pphTotalPenuh - sudah);
 }
 
 export function isCashPayment(
@@ -130,8 +146,14 @@ export function isBookingFeePaid(
   );
 }
 
-export function getMarketingBase(nilaiAjb: number, hargaJual: number): number {
-  return nilaiAjb > 0 ? nilaiAjb : hargaJual;
+export function getMarketingBase(
+  nilaiAjb: number,
+  hargaJual: number,
+  isCash: boolean,
+): number {
+  if (nilaiAjb > 0) return nilaiAjb;
+  if (isCash) return hargaJual;
+  return 0;
 }
 
 export function calcFullMarketingFee(
@@ -150,13 +172,17 @@ export function getClosingFeeAmount(
   return Number(feeAgentClosing) || Number(agentClosing) || 0;
 }
 
-/** Komisi marketing penuh (basis nilai AJB jika ada, else harga jual) */
+/** Komisi marketing penuh — KPR wajib nilai AJB; cash boleh dari harga jual sebelum AJB */
 export function getFullMarketingFee(ctx: AgentPencairanCalcContext): number {
   if (isPenjualanBatal(ctx.penjualanStatus)) return 0;
   const nilaiAjb = Number(ctx.nilaiAjb) || 0;
   const hargaJual = Number(ctx.hargaJual) || 0;
   const pct = Number(ctx.agent.feeMarketingPct) || 0;
-  const base = getMarketingBase(nilaiAjb, hargaJual);
+  const base = getMarketingBase(
+    nilaiAjb,
+    hargaJual,
+    isCashPayment(ctx.caraPembayaran),
+  );
   return calcFullMarketingFee(base, pct);
 }
 
@@ -178,6 +204,7 @@ export function calcPotonganPph(
   totalFeeReferensi: number,
   potonganPphPct: number,
 ): number {
+  /** total fee = closing + marketing; pot. PPh = total fee × % */
   return totalFeeReferensi * (potonganPphPct / 100);
 }
 
@@ -253,9 +280,9 @@ function getClosingEligibility(
     eligible = true;
     alasan = "Dokumen SP3K sudah diunggah & booking lunas";
   } else if (isCash) {
-    alasan = "Upload dokumen PPJB di menu Progress Penjualan";
+    alasan = "Belum PPJB";
   } else {
-    alasan = "Upload dokumen SP3K di menu Progress Penjualan";
+    alasan = "Belum SP3K";
   }
 
   return { key: "closing", nominalPenuh: closingFull, nominalSisa, eligible, alasan };
@@ -282,12 +309,23 @@ function getMarketingEligibility(
   }
 
   if (fullMarketing <= 0) {
+    let alasan = "Komisi marketing belum tersedia";
+    if (!isCash && bookingPaid) {
+      if (!ctx.hasSp3k) {
+        alasan = "Upload dokumen SP3K di menu Progress Penjualan";
+      } else if (!ctx.hasAkadKredit) {
+        alasan =
+          "Upload dokumen PPJB atau AJB (akad kredit) di menu Progress Penjualan";
+      } else if (nilaiAjb <= 0) {
+        alasan = "Isi nilai AJB di menu Progress Penjualan";
+      }
+    }
     return {
       key: "marketing",
       nominalPenuh: 0,
       nominalSisa: 0,
       eligible: false,
-      alasan: "Komisi marketing belum tersedia",
+      alasan,
     };
   }
 
@@ -338,7 +376,7 @@ function getMarketingEligibility(
         nominalPenuh: fullMarketing,
         nominalSisa: buckets.ppjbSisa,
         eligible: false,
-        alasan: "Upload dokumen PPJB di menu Progress Penjualan (tahap 50%)",
+        alasan: "Belum PPJB (tahap 50%)",
       };
     }
 
@@ -350,7 +388,7 @@ function getMarketingEligibility(
         eligible: false,
         alasan: ctx.hasAjb
           ? "Nilai AJB belum diisi"
-          : "Upload dokumen AJB di menu Progress Penjualan (sisa 50%)",
+          : "Belum AJB (sisa 50%)",
       };
     }
 
@@ -382,7 +420,7 @@ function getMarketingEligibility(
       nominalPenuh: fullMarketing,
       nominalSisa,
       eligible: false,
-      alasan: "Upload dokumen SP3K di menu Progress Penjualan",
+      alasan: "Belum SP3K",
     };
   }
 
@@ -595,7 +633,8 @@ export function calcPencairanSubmit(
     ajbPortion = m.ajbPortion;
   }
 
-  const potonganPph = preview.potonganPph;
+  const pphTotalPenuh = preview.potonganPph;
+  const pphSudahAll = sumPotonganPphSudahDiajukan(existingRecords);
 
   const tahap = resolvePencairanTahap(
     includeClosing,
@@ -615,6 +654,12 @@ export function calcPencairanSubmit(
     finalClosing = Number(ppjb.closingNominal) + closingNominal;
     finalMarketing = Number(ppjb.marketingNominal) + marketingNominal;
   }
+
+  const pphForThisSubmit = Math.max(0, pphTotalPenuh - pphSudahAll);
+  const potonganPph =
+    mergeIntoExistingId && ppjb
+      ? Number(ppjb.potonganPph) + pphForThisSubmit
+      : pphForThisSubmit;
 
   const finalGross = finalClosing + finalMarketing;
   const finalTotal = finalGross - potonganPph;

@@ -128,6 +128,7 @@ export class AjukanAgentPencairanUseCase {
       status: r.status,
       closingNominal: Number(r.closingNominal),
       marketingNominal: Number(r.marketingNominal),
+      potonganPph: Number(r.potonganPph),
     }));
 
     let amounts;
