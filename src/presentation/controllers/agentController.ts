@@ -10,12 +10,14 @@ import type {
   GetAgentsPaginatedUseCase,
   DeleteAgentUseCase,
   GetAgentProfileUseCase,
+  UpdateAgentSelfUseCase,
 } from "../../application/usecases/agent/AgentUseCases.js";
 
 import type {
   createAgentSchema,
   generateAgentAccountSchema,
   updateAgentSchema,
+  updateAgentSelfSchema,
 } from "../../validations/agentSchema.js";
 import { getAgentsPaginatedSchema } from "../../validations/agentSchema.js";
 import type { AgentFilterDTO } from "../../domain/dtos/AgentDTO.js";
@@ -33,6 +35,7 @@ export class AgentController {
     private readonly uploadDocumentUseCase: UploadAgentDocumentUseCase,
     private readonly generateAccountUseCase: GenerateAgentAccountUseCase,
     private readonly getProfileUseCase: GetAgentProfileUseCase,
+    private readonly updateSelfUseCase: UpdateAgentSelfUseCase,
   ) {}
 
   create = async (
@@ -139,6 +142,18 @@ export class AgentController {
 
     const result = await this.getProfileUseCase.execute(userId);
     sendResponse(res, StatusCodes.OK, "Data profil berhasil diambil", result);
+  };
+
+  updateMyProfile = async (
+    req: TypedRequest<typeof updateAgentSelfSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const userId = req.user?.userId;
+    if (!userId)
+      throw new AppError(StatusCodes.UNAUTHORIZED, "Sesi tidak valid");
+
+    const result = await this.updateSelfUseCase.execute(userId, req.body);
+    sendResponse(res, StatusCodes.OK, "Profil agent berhasil diperbarui", result);
   };
 
   uploadMyDocument = async (req: Request, res: Response): Promise<void> => {

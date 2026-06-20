@@ -2,11 +2,15 @@ import type { IAgentRepository } from "../../../domain/repositories/IAgentRepo.j
 import type {
   CreateAgentDTO,
   UpdateAgentDTO,
+  UpdateAgentSelfDTO,
   AgentFilterDTO,
 } from "../../../domain/dtos/AgentDTO.js";
 import type { OffsetPaginatedData } from "../../../types/response.js";
 import type { AgentEntity } from "../../../domain/entities/Agent.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
+import { AppError } from "../../../domain/errors/AppError.js";
+import { StatusCodes } from "http-status-codes";
+import { isAgentPerusahaan } from "../../../domain/agent/agentCommercialProfile.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 
 export class CreateAgentUseCase {
@@ -82,5 +86,54 @@ export class GetAgentProfileUseCase {
         "Profil agent tidak ditemukan. Pastikan akun tertaut dengan benar.",
       );
     return result;
+  }
+}
+
+export class UpdateAgentSelfUseCase {
+  constructor(private readonly repo: IAgentRepository) {}
+
+  async execute(userId: number, data: UpdateAgentSelfDTO): Promise<AgentEntity> {
+    const agent = await this.repo.findByUserId(userId);
+    if (!agent) {
+      throw new NotFoundError(
+        "Profil agent tidak ditemukan. Pastikan akun tertaut dengan benar.",
+      );
+    }
+
+    const isPerusahaan =
+      isAgentPerusahaan(agent.type) && agent.perusahaanAgentId != null;
+
+    const hasBankUpdate =
+      data.namaBank !== undefined ||
+      data.noRekening !== undefined ||
+      data.atasNamaRekening !== undefined;
+
+    if (isPerusahaan && hasBankUpdate) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Informasi rekening agent perusahaan mengikuti data perusahaan dan tidak dapat diubah dari portal.",
+      );
+    }
+
+    const updatePayload: UpdateAgentDTO = {};
+
+    if (data.nik !== undefined) updatePayload.nik = data.nik;
+    if (data.nama !== undefined) updatePayload.nama = data.nama;
+    if (data.noHp !== undefined) updatePayload.noHp = data.noHp;
+    if (data.alamat !== undefined) updatePayload.alamat = data.alamat;
+
+    if (!isPerusahaan) {
+      if (data.namaBank !== undefined) updatePayload.namaBank = data.namaBank;
+      if (data.noRekening !== undefined) updatePayload.noRekening = data.noRekening;
+      if (data.atasNamaRekening !== undefined) {
+        updatePayload.atasNamaRekening = data.atasNamaRekening;
+      }
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Tidak ada data yang diperbarui.");
+    }
+
+    return await this.repo.update(agent.id, updatePayload);
   }
 }

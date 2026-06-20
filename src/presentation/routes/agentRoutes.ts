@@ -11,6 +11,7 @@ import {
   updateAgentSchema,
   getAgentsPaginatedSchema,
   generateAgentAccountSchema,
+  updateAgentSelfSchema,
 } from "../../validations/agentSchema.js";
 import type { AgentController } from "../controllers/agentController.js";
 import { upload } from "../../middlewares/upload.js";
@@ -25,6 +26,13 @@ export const createAgentRoutes = (controller: AgentController): Router => {
   // Pastikan rute "/me/..." berada di atas rute "/:id"
   // ==========================================
   router.get("/me/profile", requireRole(["AGENT"]), controller.getMyProfile);
+
+  router.patch(
+    "/me/profile",
+    requireRole(["AGENT"]),
+    validate(updateAgentSelfSchema),
+    controller.updateMyProfile,
+  );
 
   router.patch(
     "/me/upload/:docType",

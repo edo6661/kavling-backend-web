@@ -387,9 +387,9 @@ export class AgentRepository implements IAgentRepository {
   async findByUserId(userId: number): Promise<AgentEntity | null> {
     const result = await this.db.agent.findFirst({
       where: { userId },
-      include: { pics: true },
+      include: this.agentListInclude,
     });
     if (!result) return null;
-    return AgentMapper.toDomain(result as any);
+    return AgentMapper.toDomain(result);
   }
 }

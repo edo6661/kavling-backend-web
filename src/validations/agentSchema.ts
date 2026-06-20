@@ -56,6 +56,28 @@ export const updateAgentSchema = {
     pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),
 };
+export const updateAgentSelfSchema = {
+  body: z.object({
+    nik: emptyAsUndefined(
+      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
+    ),
+    nama: emptyAsUndefined(
+      z.string().min(3, "Nama Agent minimal 3 karakter").optional(),
+    ),
+    noHp: emptyAsUndefined(
+      z.string().min(9, "Nomor HP minimal 9 karakter").optional(),
+    ),
+    alamat: emptyAsUndefined(z.string().optional()),
+    namaBank: emptyAsUndefined(z.string().min(1, "Nama bank wajib diisi").optional()),
+    noRekening: emptyAsUndefined(
+      z.string().min(1, "Nomor rekening wajib diisi").optional(),
+    ),
+    atasNamaRekening: emptyAsUndefined(
+      z.string().min(1, "Atas nama rekening wajib diisi").optional(),
+    ),
+  }),
+};
+
 export const generateAgentAccountSchema = {
   params: z.object({
     id: z.string().regex(/^\d+$/, "ID Agent harus berupa angka"),

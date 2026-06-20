@@ -92,6 +92,16 @@ export interface AgentResponseDTO {
   pics: PicAgentDTO[];
   createdAt: Date;
 }
+export interface UpdateAgentSelfDTO {
+  nik?: string | undefined;
+  nama?: string | undefined;
+  noHp?: string | undefined;
+  alamat?: string | undefined;
+  namaBank?: string | undefined;
+  noRekening?: string | undefined;
+  atasNamaRekening?: string | undefined;
+}
+
 export interface RegisterAgentDTO {
   nik: string;
   nama: string;

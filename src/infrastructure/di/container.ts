@@ -93,6 +93,7 @@ import {
   GetAgentsPaginatedUseCase,
   DeleteAgentUseCase,
   GetAgentProfileUseCase,
+  UpdateAgentSelfUseCase,
 } from "../../application/usecases/agent/AgentUseCases.js";
 
 import { GoogleVisionService } from "../external/GoogleVisionService.js";
@@ -381,6 +382,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
   );
   const getAgentProfileUseCase = new GetAgentProfileUseCase(agentRepo);
+  const updateAgentSelfUseCase = new UpdateAgentSelfUseCase(agentRepo);
   const agentController = new AgentController(
     createAgentUseCase,
     updateAgentUseCase,
@@ -390,6 +392,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     uploadAgentDocumentUseCase,
     generateAgentAccountUseCase,
     getAgentProfileUseCase,
+    updateAgentSelfUseCase,
   );
   const createPerumahanUseCase = new CreatePerumahanUseCase(perumahanRepo);
   const updatePerumahanUseCase = new UpdatePerumahanUseCase(perumahanRepo);
