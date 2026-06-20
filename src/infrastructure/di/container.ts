@@ -53,15 +53,37 @@ import {
   DeleteSpkUseCase,
 } from "../../application/usecases/spk/SpkUseCases.js";
 import { SpkController } from "../../presentation/controllers/spkController.js";
+import { ZonaRepository } from "../../domain/repositories/zonaRepo.js";
+import { PekerjaanInfraRepository } from "../../domain/repositories/pekerjaanInfraRepo.js";
+import {
+  CreateZonaUseCase,
+  UpdateZonaUseCase,
+  GetZonaByIdUseCase,
+  GetZonaListUseCase,
+  DeleteZonaUseCase,
+} from "../../application/usecases/zona/ZonaUseCases.js";
+import { GetPekerjaanInfraListUseCase } from "../../application/usecases/pekerjaanInfra/PekerjaanInfraUseCases.js";
+import {
+  CreatePekerjaanInfraUseCase,
+  UpdatePekerjaanInfraUseCase,
+  DeletePekerjaanInfraUseCase,
+} from "../../application/usecases/pekerjaanInfra/PekerjaanInfraUseCases.js";
+import { ZonaController } from "../../presentation/controllers/zonaController.js";
+import { PekerjaanInfraController } from "../../presentation/controllers/pekerjaanInfraController.js";
 import {
   CreateTahapanLogByKavlingUseCase,
+  CreateTahapanLogBySpkUseCase,
   CreateTahapanLogUseCase,
+  GetProgressInfraBySpkUseCase,
+  GetProgressInfraListPaginatedUseCase,
   GetProgressProyekByKavlingUseCase,
   GetProgressProyekUseCase,
   GetProgressProyekListPaginatedUseCase,
   ListMandorsUseCase,
   ResetTotalProgressByKavlingUseCase,
+  ResetTotalProgressBySpkUseCase,
   SetTotalProgressByKavlingUseCase,
+  SetTotalProgressBySpkUseCase,
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoByKavlingUseCase,
   UploadTahapanPhotoUseCase,
@@ -825,6 +847,11 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const getProgressProyekListPaginatedUseCase =
     new GetProgressProyekListPaginatedUseCase(progressProyekRepo);
+  const getProgressInfraListPaginatedUseCase =
+    new GetProgressInfraListPaginatedUseCase(progressProyekRepo);
+  const getProgressInfraBySpkUseCase = new GetProgressInfraBySpkUseCase(
+    progressProyekRepo,
+  );
   const updateProgressProyekUseCase = new UpdateProgressProyekUseCase(
     progressProyekRepo,
   );
@@ -845,24 +872,39 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressProyekRepo,
     cloudinaryService,
   );
+  const createTahapanLogBySpkUseCase = new CreateTahapanLogBySpkUseCase(
+    progressProyekRepo,
+    cloudinaryService,
+  );
   const listMandorsUseCase = new ListMandorsUseCase(userRepo);
   const setTotalProgressByKavlingUseCase = new SetTotalProgressByKavlingUseCase(
     progressProyekRepo,
   );
   const resetTotalProgressByKavlingUseCase =
     new ResetTotalProgressByKavlingUseCase(progressProyekRepo);
+  const setTotalProgressBySpkUseCase = new SetTotalProgressBySpkUseCase(
+    progressProyekRepo,
+  );
+  const resetTotalProgressBySpkUseCase = new ResetTotalProgressBySpkUseCase(
+    progressProyekRepo,
+  );
   const progressProyekController = new ProgressProyekController(
     getProgressProyekListPaginatedUseCase,
+    getProgressInfraListPaginatedUseCase,
     getProgressProyekUseCase,
     getProgressProyekByKavlingUseCase,
+    getProgressInfraBySpkUseCase,
     updateProgressProyekUseCase,
     uploadTahapanPhotoUseCase,
     uploadTahapanPhotoByKavlingUseCase,
     createTahapanLogUseCase,
     createTahapanLogByKavlingUseCase,
+    createTahapanLogBySpkUseCase,
     listMandorsUseCase,
     setTotalProgressByKavlingUseCase,
     resetTotalProgressByKavlingUseCase,
+    setTotalProgressBySpkUseCase,
+    resetTotalProgressBySpkUseCase,
   );
 
   const spkRepo = new SpkRepository(dbClient);
@@ -877,6 +919,32 @@ export const createContainer = (dbClient: PrismaClient) => {
     getSpkByIdUseCase,
     getSpkPaginatedUseCase,
     deleteSpkUseCase,
+  );
+
+  const zonaRepo = new ZonaRepository(dbClient);
+  const createZonaUseCase = new CreateZonaUseCase(zonaRepo);
+  const updateZonaUseCase = new UpdateZonaUseCase(zonaRepo);
+  const getZonaByIdUseCase = new GetZonaByIdUseCase(zonaRepo);
+  const getZonaListUseCase = new GetZonaListUseCase(zonaRepo);
+  const deleteZonaUseCase = new DeleteZonaUseCase(zonaRepo);
+  const zonaController = new ZonaController(
+    createZonaUseCase,
+    updateZonaUseCase,
+    getZonaByIdUseCase,
+    getZonaListUseCase,
+    deleteZonaUseCase,
+  );
+
+  const pekerjaanInfraRepo = new PekerjaanInfraRepository(dbClient);
+  const getPekerjaanInfraListUseCase = new GetPekerjaanInfraListUseCase(pekerjaanInfraRepo);
+  const createPekerjaanInfraUseCase = new CreatePekerjaanInfraUseCase(pekerjaanInfraRepo);
+  const updatePekerjaanInfraUseCase = new UpdatePekerjaanInfraUseCase(pekerjaanInfraRepo);
+  const deletePekerjaanInfraUseCase = new DeletePekerjaanInfraUseCase(pekerjaanInfraRepo);
+  const pekerjaanInfraController = new PekerjaanInfraController(
+    getPekerjaanInfraListUseCase,
+    createPekerjaanInfraUseCase,
+    updatePekerjaanInfraUseCase,
+    deletePekerjaanInfraUseCase,
   );
 
   const spkPembayaranRepo = new SpkPembayaranRepository(dbClient);
@@ -1048,6 +1116,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     perusahaanAgentController,
     progressProyekController,
     spkController,
+    zonaController,
+    pekerjaanInfraController,
     spkPembayaranController,
     tukangController,
     notarisPembayaranController,

@@ -6,8 +6,13 @@ import type {
   ProgressProyekUnitItemDTO,
   ProgressProyekBlokRowDTO,
   ProgressProyekSpkRowDTO,
+  ProgressProyekInfraItemDTO,
 } from "../../../domain/dtos/ProgressProyekReportDTO.js";
 import { penjualanKavlingWithSpkInclude } from "../../../domain/repositories/IPenjualanRepo.js";
+import {
+  getEffectiveInfraTotalProgress,
+} from "../../../utils/progressProyekCalc.js";
+import { SpkJenis } from "@prisma/client";
 
 function toIsoDate(value: Date): string {
   return value.toISOString().substring(0, 10);
@@ -355,6 +360,135 @@ export class GetProgressProyekReportUseCase {
       }))
       .sort((a, b) => a.noSpk.localeCompare(b.noSpk));
 
+    const infraWhere: Prisma.SpkWhereInput = {
+      jenis: SpkJenis.INFRASTRUKTUR,
+      ...(filters.spkId ? { id: filters.spkId } : {}),
+      ...(filters.mandorId ? { mandorId: filters.mandorId } : {}),
+    };
+
+    const infraSpkRows = await this.db.spk.findMany({
+      where: infraWhere,
+      include: {
+        mandor: { select: { id: true, username: true } },
+        zona: { select: { nama: true } },
+        progressProyek: {
+          include: {
+            tahapan: {
+              orderBy: [{ tanggal: "desc" }, { id: "desc" }],
+              include: {
+                reportedBy: { select: { username: true } },
+              },
+            },
+          },
+        },
+        pekerjaanInfraItems: {
+          include: { pekerjaanInfra: { select: { nama: true, kategori: true } } },
+          orderBy: { urutan: "asc" },
+        },
+      },
+      orderBy: { noSpk: "asc" },
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const infraItems: ProgressProyekInfraItemDTO[] = [];
+    let infraProgressSum = 0;
+    let infraSelesai = 0;
+    let infraProses = 0;
+    let infraBelumMulai = 0;
+    let infraTerlambat = 0;
+
+    for (const spk of infraSpkRows) {
+      const jumlahPekerjaan = spk.pekerjaanInfraItems.length;
+      const kategoriByNama = new Map(
+        spk.pekerjaanInfraItems.map((item) => [
+          item.pekerjaanInfra.nama,
+          item.pekerjaanInfra.kategori,
+        ]),
+      );
+      const allTahapan = spk.progressProyek?.tahapan ?? [];
+      const progress = spk.progressProyek
+        ? getEffectiveInfraTotalProgress({
+            persentase:
+              spk.progressProyek.persentaseOverride != null
+                ? Number(spk.progressProyek.persentaseOverride)
+                : Number(spk.progressProyek.persentase),
+            persentaseIsOverride: spk.progressProyek.persentaseOverride != null,
+            tahapan: allTahapan,
+            pekerjaanItemCount: jumlahPekerjaan,
+          })
+        : spk.progressOverride != null
+          ? Math.min(100, Math.max(0, Number(spk.progressOverride)))
+          : 0;
+
+      const latestMap = new Map<string, number>();
+      const sortedTahapan = [...allTahapan].sort((a, b) => {
+        const dateDiff = b.tanggal.getTime() - a.tanggal.getTime();
+        if (dateDiff !== 0) return dateDiff;
+        return b.id - a.id;
+      });
+      for (const t of sortedTahapan) {
+        if (!latestMap.has(t.namaTahapan)) {
+          latestMap.set(t.namaTahapan, Number(t.persentase));
+        }
+      }
+      const pekerjaanSelesai = Array.from(latestMap.values()).filter(
+        (p) => p >= 100,
+      ).length;
+
+      const mapTahapan = (t: (typeof allTahapan)[number]) => ({
+        id: t.id,
+        namaTahapan: t.namaTahapan,
+        kategori: kategoriByNama.get(t.namaTahapan) ?? null,
+        persentase: Number(t.persentase),
+        deskripsi: t.deskripsi,
+        tanggal: toIsoDate(t.tanggal),
+        reportedBy: t.reportedBy?.username ?? null,
+      });
+
+      const tahapan = allTahapan
+        .filter((t) => tahapanInDateRange(t.tanggal, start, end))
+        .map(mapTahapan);
+
+      if (start || end) {
+        if (tahapan.length === 0) continue;
+      }
+
+      const isLate =
+        spk.jatuhTempo != null &&
+        spk.jatuhTempo < today &&
+        progress < 100;
+
+      infraItems.push({
+        spkId: spk.id,
+        noSpk: spk.noSpk,
+        judulPekerjaan: spk.judulPekerjaan,
+        zonaNama: spk.zona?.nama ?? null,
+        mandor: spk.mandor,
+        progress,
+        jumlahPekerjaan,
+        pekerjaanSelesai,
+        tahapTerakhir:
+          tahapan[0]?.namaTahapan ??
+          allTahapan[0]?.namaTahapan ??
+          "Belum ada laporan",
+        isLate,
+        jatuhTempo: spk.jatuhTempo ? toIsoDate(spk.jatuhTempo) : null,
+        tahapan:
+          tahapan.length > 0
+            ? tahapan
+            : allTahapan.map(mapTahapan),
+      });
+
+      infraProgressSum += progress;
+      const cls = classifyProgress(progress);
+      if (cls === "selesai") infraSelesai++;
+      else if (cls === "proses") infraProses++;
+      else infraBelumMulai++;
+      if (isLate) infraTerlambat++;
+    }
+
     return {
       filters,
       summary: {
@@ -369,6 +503,18 @@ export class GetProgressProyekReportUseCase {
       byBlok,
       bySpk,
       items: rawItems,
+      infraSummary: {
+        totalSpk: infraItems.length,
+        rataRataProgress:
+          infraItems.length > 0
+            ? Math.round(infraProgressSum / infraItems.length)
+            : 0,
+        spkSelesai: infraSelesai,
+        spkProses: infraProses,
+        spkBelumMulai: infraBelumMulai,
+        spkTerlambat: infraTerlambat,
+      },
+      infraItems,
     };
   }
 }

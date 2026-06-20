@@ -1,16 +1,21 @@
+import type { SpkJenis } from "../entities/Spk.js";
+
 export interface CreateSpkDTO {
   noSpk: string;
+  jenis?: SpkJenis;
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;
   bankRekeningPtId?: number | null | undefined;
+  zonaId?: number | null | undefined;
   nilaiSudahDibayarkan?: number | null | undefined;
   sisaNilaiKontrak?: number | null | undefined;
   notesPekerjaan?: string | null | undefined;
   jatuhTempo?: Date | null | undefined;
   fileSpk?: string | null | undefined;
   mandorId: number;
-  kavlingIds: number[];
+  kavlingIds?: number[];
+  pekerjaanInfraIds?: number[];
 }
 
 export interface UpdateSpkDTO {
@@ -19,6 +24,7 @@ export interface UpdateSpkDTO {
   judulPekerjaan?: string | undefined;
   nilaiKontrak?: number | undefined;
   bankRekeningPtId?: number | null | undefined;
+  zonaId?: number | null | undefined;
   nilaiSudahDibayarkan?: number | null | undefined;
   sisaNilaiKontrak?: number | null | undefined;
   progressOverride?: number | null | undefined;
@@ -27,11 +33,13 @@ export interface UpdateSpkDTO {
   fileSpk?: string | null | undefined;
   mandorId?: number | undefined;
   kavlingIds?: number[] | undefined;
+  pekerjaanInfraIds?: number[] | undefined;
 }
 
 export interface SpkFilterDTO {
   search?: string;
   mandorId?: number;
+  jenis?: SpkJenis;
   orderBy?: "mandor:asc" | "mandor:desc" | "id:desc";
 }
 

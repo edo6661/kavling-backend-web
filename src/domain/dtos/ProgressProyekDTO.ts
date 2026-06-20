@@ -1,3 +1,5 @@
+import type { ProgressProyekEntity } from "../entities/ProgressProyek.js";
+
 export interface MandorSummaryDTO {
   id: number;
   username: string;
@@ -61,5 +63,52 @@ export interface ProgressProyekListItemDTO {
     persentaseIsOverride?: boolean;
     mandorId: number | null;
     mandor: MandorSummaryDTO | null;
+    tahapanLatest?: Record<string, number>;
   } | null;
+}
+
+export interface ProgressInfraPekerjaanItemDTO {
+  id: number;
+  pekerjaanInfraId: number;
+  nama: string;
+  kategori: string;
+  urutan: number;
+  latestPersentase?: number | null;
+}
+
+export interface ProgressInfraListItemDTO {
+  spkId: number;
+  noSpk: string;
+  judulPekerjaan: string;
+  zonaNama: string | null;
+  zonaHgb: string | null;
+  mandor: MandorSummaryDTO;
+  jatuhTempo: Date | null;
+  progressProyek: {
+    persentase: number;
+    persentaseIsOverride?: boolean;
+    mandorId: number | null;
+    mandor: MandorSummaryDTO | null;
+  } | null;
+  pekerjaanItems: ProgressInfraPekerjaanItemDTO[];
+}
+
+export interface ProgressInfraListFilterDTO {
+  mandorUserId?: number;
+  search?: string;
+}
+
+export interface ProgressInfraDetailDTO {
+  progress: ProgressProyekEntity;
+  spk: {
+    id: number;
+    noSpk: string;
+    judulPekerjaan: string;
+    jatuhTempo: Date | null;
+    zonaNama: string | null;
+    zonaHgb: string | null;
+    mandorId: number;
+    mandor: MandorSummaryDTO;
+  };
+  pekerjaanItems: ProgressInfraPekerjaanItemDTO[];
 }

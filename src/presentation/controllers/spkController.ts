@@ -71,13 +71,14 @@ export class SpkController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { page, limit, search, orderBy } = getSpkPaginatedSchema.query.parse(
+    const { page, limit, search, orderBy, jenis } = getSpkPaginatedSchema.query.parse(
       req.query,
     );
 
     const filters: SpkFilterDTO = {};
     if (search) filters.search = search;
     if (orderBy) filters.orderBy = orderBy;
+    if (jenis) filters.jenis = jenis;
     if (req.user?.role === Role.MANDOR && req.user.userId) {
       filters.mandorId = req.user.userId;
     }

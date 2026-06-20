@@ -10,6 +10,7 @@ export interface ProgressProyekReportFilterDTO {
 export interface ProgressProyekTahapanDTO {
   id: number;
   namaTahapan: string;
+  kategori?: string | null;
   persentase: number;
   deskripsi: string | null;
   tanggal: string;
@@ -64,10 +65,36 @@ export interface ProgressProyekReportSummaryDTO {
   unitTerlambat: number;
 }
 
+export interface ProgressProyekInfraItemDTO {
+  spkId: number;
+  noSpk: string;
+  judulPekerjaan: string;
+  zonaNama: string | null;
+  mandor: { id: number; username: string };
+  progress: number;
+  jumlahPekerjaan: number;
+  pekerjaanSelesai: number;
+  tahapTerakhir: string;
+  isLate: boolean;
+  jatuhTempo: string | null;
+  tahapan: ProgressProyekTahapanDTO[];
+}
+
+export interface ProgressProyekInfraSummaryDTO {
+  totalSpk: number;
+  rataRataProgress: number;
+  spkSelesai: number;
+  spkProses: number;
+  spkBelumMulai: number;
+  spkTerlambat: number;
+}
+
 export interface ProgressProyekReportDTO {
   filters: ProgressProyekReportFilterDTO;
   summary: ProgressProyekReportSummaryDTO;
   byBlok: ProgressProyekBlokRowDTO[];
   bySpk: ProgressProyekSpkRowDTO[];
   items: ProgressProyekUnitItemDTO[];
+  infraSummary: ProgressProyekInfraSummaryDTO;
+  infraItems: ProgressProyekInfraItemDTO[];
 }

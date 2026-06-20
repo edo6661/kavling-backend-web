@@ -18,6 +18,7 @@ export interface ProgressProyekEntity {
   id: number;
   penjualanId: number | null;
   kavlingId: number | null;
+  spkId: number | null;
   mandorId: number | null;
   mandor: MandorSummary | null;
   persentase: number;

@@ -553,13 +553,53 @@ enum AgentPencairanStatus {
   SUDAH_DIBAYAR       @map("sudah_dibayar")
 }
 
+enum SpkJenis {
+  RUMAH         @map("rumah")
+  INFRASTRUKTUR @map("infrastruktur")
+}
+
+model Zona {
+  id        Int      @id @default(autoincrement())
+  nama      String   @db.VarChar(150)
+  hgb       String   @db.VarChar(255)
+  luas      String   @db.VarChar(50)
+  deskripsi String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  spks      Spk[]
+
+  @@map("zona")
+}
+
+enum PekerjaanInfraKategori {
+  SALURAN
+  JALAN
+  LAINNYA
+}
+
+model PekerjaanInfra {
+  id        Int                    @id @default(autoincrement())
+  nama      String                 @unique @db.VarChar(255)
+  kategori  PekerjaanInfraKategori @default(LAINNYA)
+  urutan    Int                    @default(0)
+  isActive  Boolean                @default(true) @map("is_active")
+  createdAt DateTime               @default(now()) @map("created_at")
+  updatedAt DateTime               @updatedAt @map("updated_at")
+  spkItems  SpkPekerjaanInfra[]
+
+  @@index([kategori], map: "pekerjaan_infra_kategori_idx")
+  @@map("pekerjaan_infra")
+}
+
 model Spk {
   id             Int       @id @default(autoincrement())
   noSpk          String    @unique @map("no_spk") @db.VarChar(100)
+  jenis          SpkJenis  @default(RUMAH)
   tanggalSpk     DateTime  @default(dbgenerated("(CURDATE())")) @map("tanggal_spk") @db.Date
   judulPekerjaan String    @map("judul_pekerjaan") @db.VarChar(255)
   nilaiKontrak   Decimal   @map("nilai_kontrak") @db.Decimal(15, 2)
   bankRekeningPtId Int?     @map("bank_rekening_pt_id")
+  zonaId         Int?      @map("zona_id")
   nilaiSudahDibayarkan Decimal? @map("nilai_sudah_dibayarkan") @db.Decimal(15, 2)
   sisaNilaiKontrak Decimal? @map("sisa_nilai_kontrak") @db.Decimal(15, 2)
   progressOverride Decimal? @map("progress_override") @db.Decimal(5, 2)
@@ -570,14 +610,33 @@ model Spk {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  mandor         User           @relation("SpkMandor", fields: [mandorId], references: [id])
-  bankRekeningPt BankRekeningPt? @relation(fields: [bankRekeningPtId], references: [id])
-  penjualanItems SpkPenjualan[]
-  pembayaranList SpkPembayaran[]
+  mandor              User                @relation("SpkMandor", fields: [mandorId], references: [id])
+  bankRekeningPt      BankRekeningPt?     @relation(fields: [bankRekeningPtId], references: [id])
+  zona                Zona?               @relation(fields: [zonaId], references: [id])
+  penjualanItems      SpkPenjualan[]
+  pekerjaanInfraItems SpkPekerjaanInfra[]
+  pembayaranList      SpkPembayaran[]
+  progressProyek      ProgressProyek?
 
   @@index([mandorId], map: "spk_mandor_id_fkey")
   @@index([bankRekeningPtId], map: "spk_bank_rekening_pt_id_fkey")
+  @@index([zonaId], map: "spk_zona_id_fkey")
+  @@index([jenis], map: "spk_jenis_idx")
   @@map("spk")
+}
+
+model SpkPekerjaanInfra {
+  id               Int @id @default(autoincrement())
+  spkId            Int @map("spk_id")
+  pekerjaanInfraId Int @map("pekerjaan_infra_id")
+  urutan           Int @default(0)
+
+  spk            Spk            @relation(fields: [spkId], references: [id], onDelete: Cascade)
+  pekerjaanInfra PekerjaanInfra @relation(fields: [pekerjaanInfraId], references: [id])
+
+  @@unique([spkId, pekerjaanInfraId])
+  @@index([spkId], map: "spk_pekerjaan_infra_spk_id_fkey")
+  @@map("spk_pekerjaan_infra")
 }
 
 model SpkPenjualan {
@@ -770,13 +829,16 @@ model ProgressProyek {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   penjualanId Int?      @unique @map("penjualan_id")
   kavlingId   Int?      @unique @map("kavling_id")
+  spkId       Int?      @unique @map("spk_id")
   penjualan   Penjualan? @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
   kavling     Kavling?   @relation(fields: [kavlingId], references: [id], onDelete: Cascade)
+  spk         Spk?       @relation(fields: [spkId], references: [id], onDelete: Cascade)
   mandor      User?     @relation("ProgressMandor", fields: [mandorId], references: [id])
 
   tahapan     TahapanProyek[]
 
   @@index([mandorId], map: "progress_proyek_mandor_id_fkey")
+  @@index([spkId], map: "progress_proyek_spk_id_fkey")
   @@map("progress_proyek")
 }
 

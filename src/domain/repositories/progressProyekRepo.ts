@@ -4,6 +4,9 @@ import type { Prisma as PrismaTypes } from "@prisma/client";
 import type {
   CreateProgressProyekByKavlingDTO,
   CreateProgressProyekDTO,
+  ProgressInfraDetailDTO,
+  ProgressInfraListFilterDTO,
+  ProgressInfraListItemDTO,
   ProgressProyekListFilterDTO,
   ProgressProyekListItemDTO,
   UpdateProgressProyekDTO,
@@ -18,8 +21,12 @@ import { ConflictError } from "../errors/ConflictError.js";
 import type { IProgressProyekRepository } from "./IProgressProyekRepo.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 import { penjualanKavlingWithSpkInclude } from "./IPenjualanRepo.js";
+import { SpkJenis } from "@prisma/client";
 import { compareProgressProyekList } from "../../utils/kavlingSort.js";
-import { calculateTotalProgressFromTahapan } from "../../utils/progressProyekCalc.js";
+import {
+  calculateTotalProgressFromTahapan,
+  calculateInfraProgressFromTahapan,
+} from "../../utils/progressProyekCalc.js";
 
 type ProgressProyekSummary = NonNullable<
   ProgressProyekListItemDTO["progressProyek"]
@@ -46,7 +53,32 @@ type PenjualanListRow = PrismaTypes.PenjualanGetPayload<{
       };
     };
     progressProyek: {
-      include: { mandor: { select: { id: true; username: true } } };
+      include: {
+        mandor: { select: { id: true; username: true } },
+        tahapan: {
+          select: { id: true, namaTahapan: true, persentase: true, tanggal: true },
+        },
+      },
+    };
+  };
+}>;
+
+type KavlingOnlyListRow = PrismaTypes.KavlingGetPayload<{
+  include: {
+    spkItem: {
+      include: {
+        spk: {
+          include: { mandor: { select: { id: true; username: true } } };
+        };
+      };
+    };
+    progressProyek: {
+      include: {
+        mandor: { select: { id: true; username: true } },
+        tahapan: {
+          select: { id: true, namaTahapan: true, persentase: true, tanggal: true },
+        },
+      };
     };
   };
 }>;
@@ -57,9 +89,33 @@ type ProgressDbClient = PrismaClient | Prisma.TransactionClient;
 export class ProgressProyekRepository implements IProgressProyekRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  private buildLatestTahapanMap(
+    tahapan: {
+      id: number;
+      namaTahapan: string;
+      persentase: Prisma.Decimal | number;
+      tanggal: Date;
+    }[],
+  ): Record<string, number> {
+    const map: Record<string, number> = {};
+    const sorted = [...tahapan].sort((a, b) => {
+      const dateDiff = b.tanggal.getTime() - a.tanggal.getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return b.id - a.id;
+    });
+    for (const t of sorted) {
+      if (map[t.namaTahapan] === undefined) {
+        map[t.namaTahapan] = Number(t.persentase);
+      }
+    }
+    return map;
+  }
+
   private resolveProgressProyekSummary(
-    progressProyek: PenjualanListRow["progressProyek"],
-    spkItem: PenjualanListRow["kavling"]["spkItem"],
+    progressProyek: PenjualanListRow["progressProyek"] | KavlingOnlyListRow["progressProyek"],
+    spkItem:
+      | PenjualanListRow["kavling"]["spkItem"]
+      | KavlingOnlyListRow["spkItem"],
   ): ProgressProyekSummary | null {
     if (progressProyek) {
       const override = progressProyek.persentaseOverride;
@@ -72,6 +128,7 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
         persentaseIsOverride: override != null,
         mandorId,
         mandor,
+        tahapanLatest: this.buildLatestTahapanMap(progressProyek.tahapan ?? []),
       };
     }
 
@@ -83,6 +140,7 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       persentaseIsOverride: false,
       mandorId: spk.mandorId,
       mandor: spk.mandor,
+      tahapanLatest: {},
     };
   }
 
@@ -154,7 +212,12 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
           },
         },
         progressProyek: {
-          include: { mandor: { select: { id: true, username: true } } },
+          include: {
+            mandor: { select: { id: true, username: true } },
+            tahapan: {
+              select: { id: true, namaTahapan: true, persentase: true, tanggal: true },
+            },
+          },
         },
       },
     });
@@ -175,7 +238,12 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       include: {
         spkItem: penjualanKavlingWithSpkInclude.spkItem,
         progressProyek: {
-          include: { mandor: { select: { id: true, username: true } } },
+          include: {
+            mandor: { select: { id: true, username: true } },
+            tahapan: {
+              select: { id: true, namaTahapan: true, persentase: true, tanggal: true },
+            },
+          },
         },
       },
     });
@@ -656,7 +724,7 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
   ) {
     const current = await tx.progressProyek.findUnique({
       where: { id: progressId },
-      select: { persentaseOverride: true },
+      select: { persentaseOverride: true, spkId: true },
     });
     if (current?.persentaseOverride != null) return;
 
@@ -665,7 +733,15 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       orderBy: [{ tanggal: "desc" }, { id: "desc" }],
     });
 
-    const finalTotal = calculateTotalProgressFromTahapan(allTahapan);
+    let finalTotal: number;
+    if (current?.spkId) {
+      const itemCount = await tx.spkPekerjaanInfra.count({
+        where: { spkId: current.spkId },
+      });
+      finalTotal = calculateInfraProgressFromTahapan(allTahapan, itemCount);
+    } else {
+      finalTotal = calculateTotalProgressFromTahapan(allTahapan);
+    }
 
     await tx.progressProyek.update({
       where: { id: progressId },
@@ -767,6 +843,377 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       });
 
       return ProgressProyekMapper.toDomain(updated);
+    });
+  }
+
+  private mapInfraProgressSummary(
+    progressProyek: ProgressProyekWithRelations | null,
+    spkMandor: { mandorId: number; mandor: ProgressProyekEntity["mandor"] },
+    pekerjaanItemCount: number,
+  ): ProgressInfraListItemDTO["progressProyek"] {
+    if (progressProyek) {
+      const mapped = ProgressProyekMapper.toDomain(progressProyek, {
+        pekerjaanItemCount,
+        isInfra: true,
+      });
+      return {
+        persentase: mapped.persentase,
+        persentaseIsOverride: mapped.persentaseIsOverride,
+        mandorId: mapped.mandorId ?? spkMandor.mandorId,
+        mandor: mapped.mandor ?? spkMandor.mandor,
+      };
+    }
+
+    return {
+      persentase: 0,
+      persentaseIsOverride: false,
+      mandorId: spkMandor.mandorId,
+      mandor: spkMandor.mandor,
+    };
+  }
+
+  async findInfraProyekListPaginated(
+    page: number,
+    limit: number,
+    filters?: ProgressInfraListFilterDTO,
+  ): Promise<OffsetPaginatedData<ProgressInfraListItemDTO>> {
+    const where: PrismaTypes.SpkWhereInput = {
+      jenis: SpkJenis.INFRASTRUKTUR,
+    };
+
+    if (filters?.mandorUserId) {
+      where.mandorId = filters.mandorUserId;
+    }
+
+    const search = filters?.search?.trim();
+    if (search) {
+      where.OR = [
+        { noSpk: { contains: search } },
+        { judulPekerjaan: { contains: search } },
+        { zona: { nama: { contains: search } } },
+        { mandor: { username: { contains: search } } },
+      ];
+    }
+
+    const totalItems = await this.db.spk.count({ where });
+    const totalPages = Math.ceil(totalItems / limit) || 1;
+    const skip = (page - 1) * limit;
+
+    const rows = await this.db.spk.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: [{ jatuhTempo: "asc" }, { noSpk: "asc" }],
+      include: {
+        mandor: { select: { id: true, username: true } },
+        zona: { select: { nama: true, hgb: true } },
+        progressProyek: { include: ProgressProyekMapper.include },
+        pekerjaanInfraItems: {
+          include: { pekerjaanInfra: { select: { id: true, nama: true, kategori: true } } },
+          orderBy: { urutan: "asc" },
+        },
+      },
+    });
+
+    const items: ProgressInfraListItemDTO[] = rows.map((spk) => {
+      const latestByNama = this.buildLatestTahapanMap(
+        spk.progressProyek?.tahapan ?? [],
+      );
+      const pekerjaanItems = spk.pekerjaanInfraItems.map((item) => ({
+        id: item.id,
+        pekerjaanInfraId: item.pekerjaanInfraId,
+        nama: item.pekerjaanInfra.nama,
+        kategori: item.pekerjaanInfra.kategori,
+        urutan: item.urutan,
+        latestPersentase: latestByNama[item.pekerjaanInfra.nama] ?? null,
+      }));
+
+      return {
+        spkId: spk.id,
+        noSpk: spk.noSpk,
+        judulPekerjaan: spk.judulPekerjaan,
+        zonaNama: spk.zona?.nama ?? null,
+        zonaHgb: spk.zona?.hgb ?? null,
+        mandor: spk.mandor,
+        jatuhTempo: spk.jatuhTempo,
+        progressProyek: this.mapInfraProgressSummary(
+          spk.progressProyek,
+          { mandorId: spk.mandorId, mandor: spk.mandor },
+          pekerjaanItems.length,
+        ),
+        pekerjaanItems,
+      };
+    });
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    };
+  }
+
+  async findSpkMandorIdBySpkId(spkId: number): Promise<number | null> {
+    const spk = await this.db.spk.findUnique({
+      where: { id: spkId, jenis: SpkJenis.INFRASTRUKTUR },
+      select: { mandorId: true },
+    });
+    return spk?.mandorId ?? null;
+  }
+
+  async findInfraDetailBySpkId(
+    spkId: number,
+  ): Promise<ProgressInfraDetailDTO | null> {
+    const spk = await this.db.spk.findUnique({
+      where: { id: spkId, jenis: SpkJenis.INFRASTRUKTUR },
+      include: {
+        mandor: { select: { id: true, username: true } },
+        zona: { select: { nama: true, hgb: true } },
+        progressProyek: { include: ProgressProyekMapper.include },
+        pekerjaanInfraItems: {
+          include: { pekerjaanInfra: { select: { id: true, nama: true, kategori: true } } },
+          orderBy: { urutan: "asc" },
+        },
+      },
+    });
+
+    if (!spk) return null;
+
+    const pekerjaanItems = spk.pekerjaanInfraItems.map((item) => ({
+      id: item.id,
+      pekerjaanInfraId: item.pekerjaanInfraId,
+      nama: item.pekerjaanInfra.nama,
+      kategori: item.pekerjaanInfra.kategori,
+      urutan: item.urutan,
+    }));
+
+    let progressEntity: ProgressProyekEntity;
+    if (spk.progressProyek) {
+      progressEntity = ProgressProyekMapper.toDomain(spk.progressProyek, {
+        pekerjaanItemCount: pekerjaanItems.length,
+        isInfra: true,
+      });
+    } else {
+      progressEntity = {
+        id: 0,
+        penjualanId: null,
+        kavlingId: null,
+        spkId,
+        mandorId: spk.mandorId,
+        mandor: spk.mandor,
+        persentase: 0,
+        persentaseOverride: null,
+        persentaseIsOverride: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        tahapan: [],
+      };
+    }
+
+    return {
+      progress: progressEntity,
+      spk: {
+        id: spk.id,
+        noSpk: spk.noSpk,
+        judulPekerjaan: spk.judulPekerjaan,
+        jatuhTempo: spk.jatuhTempo,
+        zonaNama: spk.zona?.nama ?? null,
+        zonaHgb: spk.zona?.hgb ?? null,
+        mandorId: spk.mandorId,
+        mandor: spk.mandor,
+      },
+      pekerjaanItems,
+    };
+  }
+
+  async createBySpkId(
+    spkId: number,
+    mandorId?: number | null,
+  ): Promise<ProgressProyekEntity> {
+    const spk = await this.db.spk.findUnique({
+      where: { id: spkId, jenis: SpkJenis.INFRASTRUKTUR },
+      select: { mandorId: true },
+    });
+    if (!spk) {
+      throw new NotFoundError("SPK infrastruktur tidak ditemukan.");
+    }
+
+    const existing = await this.db.progressProyek.findUnique({
+      where: { spkId },
+      include: ProgressProyekMapper.include,
+    });
+    if (existing) {
+      throw new ConflictError("Progress proyek untuk SPK ini sudah ada.");
+    }
+
+    const itemCount = await this.db.spkPekerjaanInfra.count({
+      where: { spkId },
+    });
+
+    const result = await this.db.progressProyek.create({
+      data: {
+        spkId,
+        mandorId: mandorId ?? spk.mandorId,
+        persentase: 0,
+      },
+      include: ProgressProyekMapper.include,
+    });
+
+    return ProgressProyekMapper.toDomain(result, {
+      pekerjaanItemCount: itemCount,
+      isInfra: true,
+    });
+  }
+
+  async addTahapanLogBySpkId(
+    spkId: number,
+    logData: {
+      namaTahapan: string;
+      persentase: number;
+      deskripsi: string;
+      tanggal: Date;
+      foto: string[];
+      reportedById?: number | null;
+    },
+  ): Promise<ProgressProyekEntity> {
+    return await this.db.$transaction(async (tx) => {
+      let progress = await tx.progressProyek.findUnique({
+        where: { spkId },
+        include: ProgressProyekMapper.include,
+      });
+
+      if (!progress) {
+        const spk = await tx.spk.findUniqueOrThrow({
+          where: { id: spkId, jenis: SpkJenis.INFRASTRUKTUR },
+          select: { mandorId: true },
+        });
+        progress = await tx.progressProyek.create({
+          data: { spkId, mandorId: spk.mandorId },
+          include: ProgressProyekMapper.include,
+        });
+      }
+
+      await tx.tahapanProyek.create({
+        data: {
+          progressProyekId: progress.id,
+          namaTahapan: logData.namaTahapan,
+          persentase: new Prisma.Decimal(logData.persentase),
+          deskripsi: logData.deskripsi,
+          tanggal: logData.tanggal,
+          foto: logData.foto as Prisma.InputJsonValue,
+          reportedById: logData.reportedById ?? null,
+        },
+      });
+
+      await this.recalculatePersentase(tx, progress.id);
+
+      const itemCount = await tx.spkPekerjaanInfra.count({ where: { spkId } });
+      const updated = await tx.progressProyek.findUniqueOrThrow({
+        where: { id: progress.id },
+        include: ProgressProyekMapper.include,
+      });
+
+      return ProgressProyekMapper.toDomain(updated, {
+        pekerjaanItemCount: itemCount,
+        isInfra: true,
+      });
+    });
+  }
+
+  async setTotalPersentaseBySpkId(
+    spkId: number,
+    persentase: number,
+  ): Promise<ProgressProyekEntity> {
+    const normalized = Math.min(100, Math.max(0, persentase));
+    const decimal = new Prisma.Decimal(normalized.toFixed(2));
+
+    return await this.db.$transaction(async (tx) => {
+      const spk = await tx.spk.findUniqueOrThrow({
+        where: { id: spkId, jenis: SpkJenis.INFRASTRUKTUR },
+        select: { mandorId: true },
+      });
+
+      let progress = await tx.progressProyek.findUnique({
+        where: { spkId },
+        include: ProgressProyekMapper.include,
+      });
+
+      if (!progress) {
+        progress = await tx.progressProyek.create({
+          data: {
+            spkId,
+            mandorId: spk.mandorId,
+            persentase: decimal,
+            persentaseOverride: decimal,
+          },
+          include: ProgressProyekMapper.include,
+        });
+      } else {
+        progress = await tx.progressProyek.update({
+          where: { id: progress.id },
+          data: {
+            persentase: decimal,
+            persentaseOverride: decimal,
+          },
+          include: ProgressProyekMapper.include,
+        });
+      }
+
+      const itemCount = await tx.spkPekerjaanInfra.count({ where: { spkId } });
+      return ProgressProyekMapper.toDomain(progress, {
+        pekerjaanItemCount: itemCount,
+        isInfra: true,
+      });
+    });
+  }
+
+  async resetTotalPersentaseBySpkId(
+    spkId: number,
+  ): Promise<ProgressProyekEntity> {
+    return await this.db.$transaction(async (tx) => {
+      const spk = await tx.spk.findUniqueOrThrow({
+        where: { id: spkId, jenis: SpkJenis.INFRASTRUKTUR },
+        select: { mandorId: true },
+      });
+
+      let progress = await tx.progressProyek.findUnique({
+        where: { spkId },
+        include: ProgressProyekMapper.include,
+      });
+
+      if (!progress) {
+        progress = await tx.progressProyek.create({
+          data: {
+            spkId,
+            mandorId: spk.mandorId,
+            persentase: new Prisma.Decimal("0.00"),
+          },
+          include: ProgressProyekMapper.include,
+        });
+      } else {
+        await tx.progressProyek.update({
+          where: { id: progress.id },
+          data: { persentaseOverride: null },
+        });
+      }
+
+      await this.recalculatePersentase(tx, progress.id);
+
+      const itemCount = await tx.spkPekerjaanInfra.count({ where: { spkId } });
+      const updated = await tx.progressProyek.findUniqueOrThrow({
+        where: { id: progress.id },
+        include: ProgressProyekMapper.include,
+      });
+
+      return ProgressProyekMapper.toDomain(updated, {
+        pekerjaanItemCount: itemCount,
+        isInfra: true,
+      });
     });
   }
 }

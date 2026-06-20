@@ -75,3 +75,40 @@ export const resetTotalProgressByKavlingSchema = {
     kavlingId: z.string().regex(/^\d+$/, "ID Kavling harus berupa angka"),
   }),
 };
+
+export const getProgressInfraListSchema = {
+  query: offsetPaginationQuerySchema,
+};
+
+export const getProgressInfraBySpkSchema = {
+  params: z.object({
+    spkId: z.string().regex(/^\d+$/, "ID SPK harus berupa angka"),
+  }),
+};
+
+export const addTahapanLogBySpkSchema = {
+  params: z.object({
+    spkId: z.string().regex(/^\d+$/, "ID SPK harus berupa angka"),
+  }),
+  body: z.object({
+    namaTahapan: z.string().min(1),
+    persentase: z.coerce.number().min(0).max(100),
+    deskripsi: z.string().optional().nullable(),
+    tanggal: z.string().datetime().or(z.string().min(1)),
+  }),
+};
+
+export const setTotalProgressBySpkSchema = {
+  params: z.object({
+    spkId: z.string().regex(/^\d+$/, "ID SPK harus berupa angka"),
+  }),
+  body: z.object({
+    persentase: z.coerce.number().min(0).max(100),
+  }),
+};
+
+export const resetTotalProgressBySpkSchema = {
+  params: z.object({
+    spkId: z.string().regex(/^\d+$/, "ID SPK harus berupa angka"),
+  }),
+};

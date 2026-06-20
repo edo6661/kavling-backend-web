@@ -36,6 +36,41 @@ export const calculateTotalProgressFromTahapan = (
   return clampPercent(Number(rataRata.toFixed(2)));
 };
 
+/** Progress infra = rata-rata persentase terbaru per item pekerjaan / jumlah item SPK */
+export const calculateInfraProgressFromTahapan = (
+  tahapan: TahapanLike[],
+  pekerjaanItemCount: number,
+): number => {
+  if (pekerjaanItemCount <= 0) return 0;
+  const unique = getLatestTahapanPersentaseByName(tahapan);
+  const totalSum = Array.from(unique.values()).reduce((acc, val) => acc + val, 0);
+  const rataRata = totalSum / pekerjaanItemCount;
+  return clampPercent(Number(rataRata.toFixed(2)));
+};
+
+export const getEffectiveInfraTotalProgress = (input: {
+  persentase: number;
+  persentaseIsOverride: boolean;
+  tahapan: TahapanLike[];
+  pekerjaanItemCount: number;
+}): number => {
+  const stored = clampPercent(input.persentase);
+
+  if (
+    !input.persentaseIsOverride &&
+    stored === 0 &&
+    input.tahapan.length > 0 &&
+    input.pekerjaanItemCount > 0
+  ) {
+    return calculateInfraProgressFromTahapan(
+      input.tahapan,
+      input.pekerjaanItemCount,
+    );
+  }
+
+  return stored;
+};
+
 export const getEffectiveTotalProgress = (input: {
   persentase: number;
   persentaseIsOverride: boolean;

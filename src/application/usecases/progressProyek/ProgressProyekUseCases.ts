@@ -4,7 +4,7 @@ import type { CloudinaryService } from "../../../infrastructure/external/Cloudin
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import type { IProgressProyekRepository } from "../../../domain/repositories/IProgressProyekRepo.js";
-import type { ProgressProyekListFilterDTO } from "../../../domain/dtos/ProgressProyekDTO.js";
+import type { ProgressProyekListFilterDTO, ProgressInfraListFilterDTO } from "../../../domain/dtos/ProgressProyekDTO.js";
 import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
 import { Role } from "@prisma/client";
 import {
@@ -14,6 +14,15 @@ import {
   isMandorRole,
   type ProgressRequestContext,
 } from "./mandorAccess.js";
+
+/** Cloudinary folder segment — strip slashes/spaces agar path upload valid */
+function sanitizeProgressFolderSegment(name: string): string {
+  return name
+    .trim()
+    .replace(/[/\\]+/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_");
+}
 
 export class GetProgressProyekUseCase {
   constructor(private readonly repo: IProgressProyekRepository) {}
@@ -342,5 +351,132 @@ export class GetProgressProyekListPaginatedUseCase {
     filters?: ProgressProyekListFilterDTO,
   ) {
     return await this.repo.findProyekListPaginated(page, limit, filters);
+  }
+}
+
+export class GetProgressInfraListPaginatedUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    page: number,
+    limit: number,
+    filters?: ProgressInfraListFilterDTO,
+  ) {
+    return await this.repo.findInfraProyekListPaginated(page, limit, filters);
+  }
+}
+
+export class GetProgressInfraBySpkUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(spkId: number, ctx?: ProgressRequestContext) {
+    const detail = await this.repo.findInfraDetailBySpkId(spkId);
+    if (!detail) {
+      throw new AppError(StatusCodes.NOT_FOUND, "SPK infrastruktur tidak ditemukan");
+    }
+
+    if (isMandorRole(ctx?.role)) {
+      if (!ctx?.userId) {
+        throw new AppError(StatusCodes.UNAUTHORIZED, "User tidak valid");
+      }
+      const spkMandorId = await this.repo.findSpkMandorIdBySpkId(spkId);
+      assertUserIsProjectMandor(
+        ctx.userId,
+        detail.progress.id > 0 ? detail.progress : null,
+        spkMandorId,
+      );
+    }
+
+    if (detail.progress.id === 0) {
+      const created = await this.repo.createBySpkId(spkId);
+      return {
+        ...detail,
+        progress: created,
+      };
+    }
+
+    return detail;
+  }
+}
+
+export class CreateTahapanLogBySpkUseCase {
+  constructor(
+    private readonly repo: IProgressProyekRepository,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
+
+  async execute(
+    spkId: number,
+    namaTahapan: string,
+    persentase: number,
+    deskripsi: string,
+    tanggal: string,
+    files: Buffer[],
+    reportedById?: number | null,
+    ctx?: ProgressRequestContext,
+  ) {
+    const detail = await this.repo.findInfraDetailBySpkId(spkId);
+    const spkMandorId = await this.repo.findSpkMandorIdBySpkId(spkId);
+    assertMandorCanMutate(
+      detail && detail.progress.id > 0 ? detail.progress : null,
+      ctx,
+      spkMandorId,
+    );
+
+    const folderSegment = sanitizeProgressFolderSegment(namaTahapan);
+    const photoUrls = await Promise.all(
+      files.map((file) =>
+        this.cloudinary.uploadImage(
+          file,
+          `bumantara/progress/infra/${spkId}/${folderSegment}`,
+        ),
+      ),
+    );
+
+    return await this.repo.addTahapanLogBySpkId(spkId, {
+      namaTahapan,
+      persentase,
+      deskripsi,
+      tanggal: new Date(tanggal),
+      foto: photoUrls,
+      reportedById: reportedById ?? null,
+    });
+  }
+}
+
+export class SetTotalProgressBySpkUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    spkId: number,
+    persentase: number,
+    ctx?: ProgressRequestContext,
+  ): Promise<ProgressProyekEntity> {
+    if (isMandorRole(ctx?.role)) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor tidak boleh mengubah total progress secara manual",
+      );
+    }
+
+    return await this.repo.setTotalPersentaseBySpkId(spkId, persentase);
+  }
+}
+
+export class ResetTotalProgressBySpkUseCase {
+  constructor(private readonly repo: IProgressProyekRepository) {}
+
+  async execute(
+    spkId: number,
+    ctx?: ProgressRequestContext,
+  ): Promise<ProgressProyekEntity> {
+    if (isMandorRole(ctx?.role)) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Mandor tidak boleh mereset total progress",
+      );
+    }
+
+    return await this.repo.resetTotalPersentaseBySpkId(spkId);
   }
 }

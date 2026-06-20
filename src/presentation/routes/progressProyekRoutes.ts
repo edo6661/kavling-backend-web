@@ -15,6 +15,11 @@ import {
   uploadTahapanPhotoSchema,
   setTotalProgressByKavlingSchema,
   resetTotalProgressByKavlingSchema,
+  getProgressInfraListSchema,
+  getProgressInfraBySpkSchema,
+  addTahapanLogBySpkSchema,
+  setTotalProgressBySpkSchema,
+  resetTotalProgressBySpkSchema,
 } from "../../validations/progressProyekSchema.js";
 import type { ProgressProyekController } from "../controllers/progressProyekController.js";
 import { addTahapanLogSchema } from "../../validations/progressPenjualanSchema.js";
@@ -36,6 +41,42 @@ export const createProgressProyekRoutes = (
     requirePermission("PROGRESS_PROYEK", "read"),
     validate(getProgressProyekListSchema),
     controller.getProyekList,
+  );
+
+  router.get(
+    "/infra/proyek",
+    requirePermission("PROGRESS_PROYEK", "read"),
+    validate(getProgressInfraListSchema),
+    controller.getInfraProyekList,
+  );
+
+  router.get(
+    "/infra/:spkId",
+    requirePermission("PROGRESS_PROYEK", "read"),
+    validate(getProgressInfraBySpkSchema),
+    controller.getInfraBySpkId,
+  );
+
+  router.patch(
+    "/infra/:spkId/tahapan/log",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    upload.array("foto", 10),
+    validate(addTahapanLogBySpkSchema),
+    controller.addLogBySpk,
+  );
+
+  router.patch(
+    "/infra/:spkId/total",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    validate(setTotalProgressBySpkSchema),
+    controller.setTotalBySpkId,
+  );
+
+  router.post(
+    "/infra/:spkId/total/reset",
+    requirePermission("PROGRESS_PROYEK", "update"),
+    validate(resetTotalProgressBySpkSchema),
+    controller.resetTotalBySpkId,
   );
 
   router.get(

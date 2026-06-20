@@ -22,6 +22,8 @@ import { createRolePermissionRoutes } from "./rolePermissionRoutes.js";
 import { createPerusahaanAgentRoutes } from "./perusahaanAgentRoutes.js";
 import { createProgressProyekRoutes } from "./progressProyekRoutes.js";
 import { createSpkRoutes } from "./spkRoutes.js";
+import { createZonaRoutes } from "./zonaRoutes.js";
+import { createPekerjaanInfraRoutes } from "./pekerjaanInfraRoutes.js";
 import { createSpkPembayaranRoutes } from "./spkPembayaranRoutes.js";
 import { createTukangRoutes } from "./tukangRoutes.js";
 import { createNotarisPembayaranRoutes } from "./notarisPembayaranRoutes.js";
@@ -84,6 +86,8 @@ export const createMainRouter = (deps: typeof container): Router => {
     createProgressProyekRoutes(deps.progressProyekController),
   );
   router.use("/spk", createSpkRoutes(deps.spkController));
+  router.use("/zona", createZonaRoutes(deps.zonaController));
+  router.use("/pekerjaan-infra", createPekerjaanInfraRoutes(deps.pekerjaanInfraController));
   router.use("/spk-pembayaran", createSpkPembayaranRoutes(deps.spkPembayaranController));
   router.use("/tukang", createTukangRoutes(deps.tukangController));
   router.use(
