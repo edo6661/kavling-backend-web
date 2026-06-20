@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { ProgressProyekEntity } from "../../domain/entities/ProgressProyek.js";
+import { getEffectiveTotalProgress } from "../../utils/progressProyekCalc.js";
 
 export const progressProyekInclude = {
   mandor: { select: { id: true, username: true } },
@@ -31,10 +32,14 @@ export class ProgressProyekMapper {
         ? Number(prismaProgress.persentaseOverride)
         : null,
       persentaseIsOverride: prismaProgress.persentaseOverride != null,
-      persentase:
-        prismaProgress.persentaseOverride != null
-          ? Number(prismaProgress.persentaseOverride)
-          : Number(prismaProgress.persentase),
+      persentase: getEffectiveTotalProgress({
+        persentase:
+          prismaProgress.persentaseOverride != null
+            ? Number(prismaProgress.persentaseOverride)
+            : Number(prismaProgress.persentase),
+        persentaseIsOverride: prismaProgress.persentaseOverride != null,
+        tahapan: prismaProgress.tahapan,
+      }),
       createdAt: prismaProgress.createdAt,
       updatedAt: prismaProgress.updatedAt,
       tahapan: prismaProgress.tahapan.map((t) => ({

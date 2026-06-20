@@ -18,6 +18,7 @@ import type { IProgressProyekRepository } from "./IProgressProyekRepo.js";
 import type { OffsetPaginatedData } from "../../types/response.js";
 import { penjualanKavlingWithSpkInclude } from "./IPenjualanRepo.js";
 import { compareProgressProyekList } from "../../utils/kavlingSort.js";
+import { calculateTotalProgressFromTahapan } from "../../utils/progressProyekCalc.js";
 
 type ProgressProyekSummary = NonNullable<
   ProgressProyekListItemDTO["progressProyek"]
@@ -631,21 +632,7 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       orderBy: [{ tanggal: "desc" }, { id: "desc" }],
     });
 
-    const uniqueTahapan = new Map<string, number>();
-    allTahapan.forEach((t) => {
-      if (!uniqueTahapan.has(t.namaTahapan)) {
-        uniqueTahapan.set(t.namaTahapan, Number(t.persentase));
-      }
-    });
-
-    const totalSum = Array.from(uniqueTahapan.values()).reduce(
-      (acc, val) => acc + val,
-      0,
-    );
-
-    const TOTAL_TAHAPAN = 9;
-    const rataRataProgress = totalSum / TOTAL_TAHAPAN;
-    const finalTotal = Math.min(rataRataProgress, 100);
+    const finalTotal = calculateTotalProgressFromTahapan(allTahapan);
 
     await tx.progressProyek.update({
       where: { id: progressId },
