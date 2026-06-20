@@ -222,10 +222,13 @@ import {
   GetProgressPenjualanUseCase,
   UpdateProgressPenjualanUseCase,
   UploadProgressDocumentUseCase,
+  DeleteProgressDocumentUseCase,
 } from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
 import { ProgressPenjualanController } from "../../presentation/controllers/progressPenjualanController.js";
 import { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
 import { UploadKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingSertifikatTambahanDocumentUseCase.js";
+import { DeleteKavlingDocumentUseCase } from "../../application/usecases/kavling/DeleteKavlingDocumentUseCase.js";
+import { DeleteKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/DeleteKavlingSertifikatTambahanDocumentUseCase.js";
 import { TelegramBotService } from "../telegram/TelegramBotService.js";
 import { RolePermissionRepository } from "../../domain/repositories/rolePermissionRepo.js";
 import {
@@ -432,6 +435,15 @@ export const createContainer = (dbClient: PrismaClient) => {
       cloudinaryService,
       googleVisionService,
     );
+  const deleteKavlingDocumentUseCase = new DeleteKavlingDocumentUseCase(
+    kavlingRepo,
+    cloudinaryService,
+  );
+  const deleteKavlingSertifikatTambahanDocumentUseCase =
+    new DeleteKavlingSertifikatTambahanDocumentUseCase(
+      kavlingRepo,
+      cloudinaryService,
+    );
   const exportKavlingsUseCase = new ExportKavlingsUseCase(kavlingRepo);
   const exportKavlingPengeluaranUseCase = new ExportKavlingPengeluaranUseCase(
     kavlingRepo,
@@ -445,6 +457,8 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteKavlingUseCase,
     uploadKavlingDocumentUseCase,
     uploadKavlingSertifikatTambahanDocumentUseCase,
+    deleteKavlingDocumentUseCase,
+    deleteKavlingSertifikatTambahanDocumentUseCase,
     exportKavlingsUseCase,
     exportKavlingPengeluaranUseCase,
   );
@@ -758,11 +772,16 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressPenjualanRepo,
     cloudinaryService,
   );
+  const deleteProgressDocumentUseCase = new DeleteProgressDocumentUseCase(
+    progressPenjualanRepo,
+    cloudinaryService,
+  );
 
   const progressPenjualanController = new ProgressPenjualanController(
     getProgressPenjualanUseCase,
     updateProgressPenjualanUseCase,
     uploadProgressDocumentUseCase,
+    deleteProgressDocumentUseCase,
   );
   const telegramBotService = new TelegramBotService(
     dbClient,

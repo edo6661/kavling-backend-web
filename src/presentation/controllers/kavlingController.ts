@@ -21,6 +21,8 @@ import { getKavlingPaginatedSchema } from "../../validations/kavlingSchema.js";
 import type { KavlingFilterDTO } from "../../domain/dtos/KavlingDTO.js";
 import type { UploadKavlingDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingDocumentUseCase.js";
 import type { UploadKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/UploadKavlingSertifikatTambahanDocumentUseCase.js";
+import type { DeleteKavlingDocumentUseCase } from "../../application/usecases/kavling/DeleteKavlingDocumentUseCase.js";
+import type { DeleteKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/DeleteKavlingSertifikatTambahanDocumentUseCase.js";
 import type { ExportKavlingsUseCase } from "../../application/usecases/kavling/ExportKavlingsUseCase.js";
 import type { ExportKavlingPengeluaranUseCase } from "../../application/usecases/kavling/ExportKavlingPengeluaranUseCase.js";
 import { getKavlingExportSchema } from "../../validations/kavlingSchema.js";
@@ -34,6 +36,8 @@ export class KavlingController {
     private readonly deleteUseCase: DeleteKavlingUseCase,
     private readonly uploadDocumentUseCase: UploadKavlingDocumentUseCase,
     private readonly uploadSertifikatTambahanUseCase: UploadKavlingSertifikatTambahanDocumentUseCase,
+    private readonly deleteDocumentUseCase: DeleteKavlingDocumentUseCase,
+    private readonly deleteSertifikatTambahanUseCase: DeleteKavlingSertifikatTambahanDocumentUseCase,
     private readonly exportKavlingsUseCase: ExportKavlingsUseCase,
     private readonly exportKavlingPengeluaranUseCase: ExportKavlingPengeluaranUseCase,
   ) {}
@@ -183,6 +187,43 @@ export class KavlingController {
       res,
       StatusCodes.OK,
       `Dokumen sertifikat tanah ke-${urutan} (${docType}) berhasil diunggah`,
+      result,
+    );
+  };
+
+  deleteDocument = async (
+    req: TypedRequest<any, any, typeof uploadKavlingDocumentSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const docType = req.params.docType;
+
+    const result = await this.deleteDocumentUseCase.execute(id, docType);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Dokumen ${docType} berhasil dihapus`,
+      result,
+    );
+  };
+
+  deleteSertifikatTambahanDocument = async (
+    req: TypedRequest<any, any, typeof uploadKavlingSertifikatTambahanSchema.params>,
+    res: Response,
+  ): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    const urutan = parseInt(req.params.urutan, 10);
+    const docType = req.params.docType;
+
+    const result = await this.deleteSertifikatTambahanUseCase.execute(
+      id,
+      urutan,
+      docType,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Dokumen sertifikat tanah ke-${urutan} (${docType}) berhasil dihapus`,
       result,
     );
   };

@@ -4,6 +4,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
+import { sumBiayaBphtb } from "../progressPenjualan/progressPenjualanSertifikatUtils.js";
 
 type SyncClient = Prisma.TransactionClient | PrismaClient;
 
@@ -35,19 +36,55 @@ async function loadSyncContext(
     select: {
       id: true,
       detailKavlingPajak: { select: { biayaNotaris: true } },
-      progressPenjualan: { select: { biayaBphtb: true } },
+      progressPenjualan: {
+        select: {
+          biayaBphtb: true,
+          biayaPph: true,
+          nilaiAjb: true,
+          filePpjb: true,
+          fileAjb: true,
+          sertifikatTambahan: {
+            select: {
+              urutan: true,
+              biayaBphtb: true,
+              biayaPph: true,
+              nilaiAjb: true,
+              filePpjb: true,
+              fileAjb: true,
+            },
+          },
+        },
+      },
     },
   });
 
   if (!penjualan) return null;
 
+  const progress = penjualan.progressPenjualan;
+  const utamaSlot = progress
+    ? {
+        biayaBphtb: progress.biayaBphtb ? Number(progress.biayaBphtb) : null,
+        biayaPph: progress.biayaPph ? Number(progress.biayaPph) : null,
+        nilaiAjb: progress.nilaiAjb ? Number(progress.nilaiAjb) : null,
+        filePpjb: progress.filePpjb,
+        fileAjb: progress.fileAjb,
+      }
+    : null;
+  const tambahanSlots =
+    progress?.sertifikatTambahan.map((row) => ({
+      urutan: row.urutan,
+      biayaBphtb: row.biayaBphtb ? Number(row.biayaBphtb) : null,
+      biayaPph: row.biayaPph ? Number(row.biayaPph) : null,
+      nilaiAjb: row.nilaiAjb ? Number(row.nilaiAjb) : null,
+      filePpjb: row.filePpjb,
+      fileAjb: row.fileAjb,
+    })) ?? [];
+
   return {
     biayaNotaris: penjualan.detailKavlingPajak?.biayaNotaris
       ? Number(penjualan.detailKavlingPajak.biayaNotaris)
       : 0,
-    biayaBphtb: penjualan.progressPenjualan?.biayaBphtb
-      ? Number(penjualan.progressPenjualan.biayaBphtb)
-      : 0,
+    biayaBphtb: sumBiayaBphtb(utamaSlot, tambahanSlots),
   };
 }
 
@@ -104,6 +141,13 @@ export async function syncAllEligibleNotarisPembayaran(
         {
           progressPenjualan: {
             biayaBphtb: { gt: 0 },
+          },
+        },
+        {
+          progressPenjualan: {
+            sertifikatTambahan: {
+              some: { biayaBphtb: { gt: 0 } },
+            },
           },
         },
       ],

@@ -28,4 +28,10 @@ export interface IKavlingRepository {
     fileUrl: string,
     extra?: { nopd?: string | null },
   ): Promise<KavlingEntity>;
+  clearSertifikatTambahanDocument(
+    kavlingId: number,
+    urutan: number,
+    docType: "filePbg" | "fileSertifikatTanah" | "fileNopPbb",
+    extra?: { clearNopd?: boolean },
+  ): Promise<KavlingEntity>;
 }

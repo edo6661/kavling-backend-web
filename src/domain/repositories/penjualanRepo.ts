@@ -18,6 +18,7 @@ import {
   effectiveTagihanTujuan,
   isCicilanHargaJualTagihan,
 } from "../tagihan/tagihanTujuan.js";
+import { ProgressPenjualanMapper } from "../../infrastructure/mapper/ProgressPenjualanMapper.js";
 import {
   formatCustomerNikForDisplay,
   resolveCustomerNik,
@@ -50,7 +51,11 @@ const penjualanCompleteInclude = {
 type PenjualanListRow = Prisma.PenjualanGetPayload<{
   include: {
     customer: true;
-    progressPenjualan: true;
+    progressPenjualan: {
+      include: {
+        sertifikatTambahan: { orderBy: { urutan: "asc" } };
+      };
+    };
     kavling: {
       include: typeof penjualanKavlingWithSpkInclude;
     };
@@ -437,7 +442,11 @@ export class PenjualanRepository implements IPenjualanRepository {
 
     const listInclude = {
       customer: true,
-      progressPenjualan: true,
+      progressPenjualan: {
+        include: {
+          sertifikatTambahan: { orderBy: { urutan: "asc" as const } },
+        },
+      },
       kavling: { include: penjualanKavlingWithSpkInclude },
       agent: true,
       tagihan: true,
@@ -663,7 +672,9 @@ export class PenjualanRepository implements IPenjualanRepository {
         riwayatGantiKavling: item.riwayatGantiKavling || [],
         tagihan: item.tagihan || [],
         riwayatSpr: item.riwayatSpr || [],
-        progressPenjualan: item.progressPenjualan ?? null,
+        progressPenjualan: item.progressPenjualan
+          ? ProgressPenjualanMapper.toDomain(item.progressPenjualan)
+          : null,
         progressProyek: resolveProgressProyekSummary(item),
         createdBy: item.createdBy ?? "Admin",
         isPendingBatal,

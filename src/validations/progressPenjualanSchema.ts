@@ -22,6 +22,9 @@ export const updateProgressPenjualanSchema = {
     nomorAjb: emptyAsUndefined(z.string().optional()),
     tanggalAjb: emptyAsUndefined(z.string().optional()),
     fileAjb: emptyAsUndefined(z.string().optional()),
+    sertifikatUrutan: emptyAsUndefined(
+      z.coerce.number().int().min(1).max(5).optional(),
+    ),
 
     checklistBast: emptyAsUndefined(
       z
@@ -46,6 +49,9 @@ export const uploadProgressDocumentSchema = {
       "fileAjb",
       "fileBast",
     ]),
+  }),
+  query: z.object({
+    sertifikatUrutan: z.coerce.number().int().min(1).max(5).optional(),
   }),
 };
 

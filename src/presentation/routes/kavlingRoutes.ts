@@ -77,12 +77,26 @@ export const createKavlingRoutes = (controller: KavlingController): Router => {
     controller.uploadDocument,
   );
 
+  router.delete(
+    "/:id/upload/:docType",
+    requirePermission("KAVLING", "update"),
+    validate(uploadKavlingDocumentSchema),
+    controller.deleteDocument,
+  );
+
   router.patch(
     "/:id/upload-tambahan/:urutan/:docType",
     requirePermission("KAVLING", "update"),
     upload.single("file"),
     validate(uploadKavlingSertifikatTambahanSchema),
     controller.uploadSertifikatTambahanDocument,
+  );
+
+  router.delete(
+    "/:id/upload-tambahan/:urutan/:docType",
+    requirePermission("KAVLING", "update"),
+    validate(uploadKavlingSertifikatTambahanSchema),
+    controller.deleteSertifikatTambahanDocument,
   );
 
   return router;

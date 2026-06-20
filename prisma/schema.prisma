@@ -889,8 +889,29 @@ model ProgressPenjualan {
   nomorAjb            String?   @map("nomor_ajb") @db.VarChar(100)
   tanggalAjb          DateTime? @map("tanggal_ajb") @db.Date
   penjualan           Penjualan @relation(fields: [penjualanId], references: [id], onDelete: Cascade)
+  sertifikatTambahan  ProgressPenjualanSertifikatTambahan[]
 
   @@map("progress_penjualan")
+}
+
+model ProgressPenjualanSertifikatTambahan {
+  id                Int               @id @default(autoincrement())
+  penjualanId       Int               @map("penjualan_id")
+  urutan            Int
+  filePpjb          String?           @map("file_ppjb") @db.VarChar(255)
+  nilaiAjb          Decimal?          @map("nilai_ajb") @db.Decimal(15, 2)
+  biayaBphtb        Decimal?          @map("biaya_bphtb") @db.Decimal(15, 2)
+  biayaPph          Decimal?          @map("biaya_pph") @db.Decimal(15, 2)
+  fileAjb           String?           @map("file_ajb") @db.VarChar(255)
+  nomorAjb          String?           @map("nomor_ajb") @db.VarChar(100)
+  tanggalAjb        DateTime?         @map("tanggal_ajb") @db.Date
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  progressPenjualan ProgressPenjualan @relation(fields: [penjualanId], references: [penjualanId], onDelete: Cascade)
+
+  @@unique([penjualanId, urutan])
+  @@index([penjualanId], map: "progress_penjualan_sertifikat_tambahan_penjualan_id_fkey")
+  @@map("progress_penjualan_sertifikat_tambahan")
 }
 
 model RolePermission {

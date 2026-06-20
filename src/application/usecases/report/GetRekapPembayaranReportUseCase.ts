@@ -10,6 +10,11 @@ import {
   effectiveTagihanTujuan,
   isCicilanHargaJualTagihan,
 } from "../../../domain/tagihan/tagihanTujuan.js";
+import {
+  sumBiayaBphtb,
+  sumBiayaPph,
+  sumNilaiAjb,
+} from "../../../domain/progressPenjualan/progressPenjualanSertifikatUtils.js";
 
 const MATERIAL_JENIS: SpkPembayaranJenis[] = [
   "TERMIN_55",
@@ -207,6 +212,14 @@ export class GetRekapPembayaranReportUseCase {
             nilaiAjb: true,
             biayaBphtb: true,
             biayaPph: true,
+            sertifikatTambahan: {
+              select: {
+                urutan: true,
+                nilaiAjb: true,
+                biayaBphtb: true,
+                biayaPph: true,
+              },
+            },
           },
         },
         kodeBillingPph: {
@@ -280,15 +293,33 @@ export class GetRekapPembayaranReportUseCase {
         0,
       );
 
+      const progressUtama = row.progressPenjualan;
+      const progressTambahan =
+        progressUtama?.sertifikatTambahan.map((item) => ({
+          urutan: item.urutan,
+          nilaiAjb: item.nilaiAjb ? Number(item.nilaiAjb) : null,
+          biayaBphtb: item.biayaBphtb ? Number(item.biayaBphtb) : null,
+          biayaPph: item.biayaPph ? Number(item.biayaPph) : null,
+        })) ?? [];
+      const progressSlot = progressUtama
+        ? {
+            nilaiAjb: progressUtama.nilaiAjb
+              ? Number(progressUtama.nilaiAjb)
+              : null,
+            biayaBphtb: progressUtama.biayaBphtb
+              ? Number(progressUtama.biayaBphtb)
+              : null,
+            biayaPph: progressUtama.biayaPph
+              ? Number(progressUtama.biayaPph)
+              : null,
+          }
+        : null;
+
       const biayaNotarisUtama = row.detailKavlingPajak?.biayaNotaris
         ? Number(row.detailKavlingPajak.biayaNotaris)
         : 0;
-      const biayaBphtbUtama = row.progressPenjualan?.biayaBphtb
-        ? Number(row.progressPenjualan.biayaBphtb)
-        : 0;
-      const biayaPphUtama = row.progressPenjualan?.biayaPph
-        ? Number(row.progressPenjualan.biayaPph)
-        : 0;
+      const biayaBphtbUtama = sumBiayaBphtb(progressSlot, progressTambahan);
+      const biayaPphUtama = sumBiayaPph(progressSlot, progressTambahan);
 
       const notarisPaid = (jenis: "BIAYA_NOTARIS" | "BPHTB") =>
         row.notarisPembayaranList
@@ -349,9 +380,7 @@ export class GetRekapPembayaranReportUseCase {
         .filter((p) => p.status === "SUDAH_DIBAYAR")
         .map((p) => Number(p.nominal));
 
-      const nilaiAjb = row.progressPenjualan?.nilaiAjb
-        ? Number(row.progressPenjualan.nilaiAjb)
-        : 0;
+      const nilaiAjb = sumNilaiAjb(progressSlot, progressTambahan);
       const feeMarketingPct = row.agent?.feeMarketingPct
         ? Number(row.agent.feeMarketingPct)
         : 0;

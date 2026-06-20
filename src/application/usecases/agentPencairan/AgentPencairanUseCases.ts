@@ -14,6 +14,7 @@ import {
   hasAkadKreditComplete,
   hasPpjbComplete,
   hasSp3kComplete,
+  resolveNilaiAjbTotal,
   sumSudahDiajukan,
   type PencairanKomponen,
 } from "../../../domain/agent/agentPencairanCalc.js";
@@ -76,6 +77,9 @@ export class AjukanAgentPencairanUseCase {
             tagihan: {
               select: { tujuan: true, pembayaran: true, status: true },
             },
+            kavling: {
+              select: { jumlahSertifikatTanah: true },
+            },
             progressPenjualan: {
               select: {
                 nilaiAjb: true,
@@ -83,6 +87,14 @@ export class AjukanAgentPencairanUseCase {
                 fileAjb: true,
                 fileSp3k: true,
                 fileSuratPernyataanAkadKredit: true,
+                sertifikatTambahan: {
+                  select: {
+                    urutan: true,
+                    nilaiAjb: true,
+                    filePpjb: true,
+                    fileAjb: true,
+                  },
+                },
               },
             },
           },
@@ -94,9 +106,10 @@ export class AjukanAgentPencairanUseCase {
       throw new NotFoundError("Data fee agent tidak ditemukan");
     }
 
-    const nilaiAjb = feeAgent.penjualan.progressPenjualan?.nilaiAjb
-      ? Number(feeAgent.penjualan.progressPenjualan.nilaiAjb)
-      : 0;
+    const progress = feeAgent.penjualan.progressPenjualan;
+    const jumlahSertifikatTanah =
+      feeAgent.penjualan.kavling?.jumlahSertifikatTanah ?? 1;
+    const nilaiAjb = resolveNilaiAjbTotal(progress);
 
     const commercial = resolveAgentCommercialProfile(feeAgent.agent);
 
@@ -119,12 +132,10 @@ export class AjukanAgentPencairanUseCase {
       },
       nilaiAjb,
       tagihanList: feeAgent.penjualan.tagihan,
-      hasPpjb: hasPpjbComplete(feeAgent.penjualan.progressPenjualan),
-      hasSp3k: hasSp3kComplete(feeAgent.penjualan.progressPenjualan),
-      hasAjb: hasAjbComplete(feeAgent.penjualan.progressPenjualan),
-      hasAkadKredit: hasAkadKreditComplete(
-        feeAgent.penjualan.progressPenjualan,
-      ),
+      hasPpjb: hasPpjbComplete(progress, jumlahSertifikatTanah),
+      hasSp3k: hasSp3kComplete(progress),
+      hasAjb: hasAjbComplete(progress, jumlahSertifikatTanah),
+      hasAkadKredit: hasAkadKreditComplete(progress, jumlahSertifikatTanah),
     };
 
     const selected: PencairanKomponen[] = [];

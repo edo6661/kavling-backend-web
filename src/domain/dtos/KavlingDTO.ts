@@ -14,10 +14,10 @@ export interface CreateKavlingDTO {
   jenisKavling?: JenisKavling | undefined;
   status?: UnitStatus | undefined;
   rekeningTujuanId?: number | undefined;
-  filePbg?: string | undefined;
-  fileSertifikatTanah?: string | undefined;
-  fileNopPbb?: string | undefined;
-  nopd?: string | undefined;
+  filePbg?: string | null | undefined;
+  fileSertifikatTanah?: string | null | undefined;
+  fileNopPbb?: string | null | undefined;
+  nopd?: string | null | undefined;
   jumlahSertifikatTanah?: number | undefined;
 }
 
@@ -32,10 +32,10 @@ export interface UpdateKavlingDTO {
   jenisKavling?: JenisKavling | undefined;
   status?: UnitStatus | undefined;
   rekeningTujuanId?: number | undefined;
-  filePbg?: string | undefined;
-  fileSertifikatTanah?: string | undefined;
-  fileNopPbb?: string | undefined;
-  nopd?: string | undefined;
+  filePbg?: string | null | undefined;
+  fileSertifikatTanah?: string | null | undefined;
+  fileNopPbb?: string | null | undefined;
+  nopd?: string | null | undefined;
   jumlahSertifikatTanah?: number | undefined;
 }
 

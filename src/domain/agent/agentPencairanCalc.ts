@@ -1,5 +1,11 @@
 import { effectiveTagihanTujuan } from "../tagihan/tagihanTujuan.js";
 import { extractClosingDpp } from "./agentPkpTax.js";
+import {
+  isAllProgressFileAjbComplete,
+  isAllProgressFilePpjbComplete,
+  sumNilaiAjb,
+  type ProgressSertifikatTambahanSlot,
+} from "../progressPenjualan/progressPenjualanSertifikatUtils.js";
 
 export type AgentPencairanTahap = "PPJB" | "AJB";
 export type AgentPencairanStatus = "MENUNGGU_PEMBAYARAN" | "SUDAH_DIBAYAR";
@@ -9,10 +15,49 @@ export type PencairanKomponen = "closing" | "marketing";
 export const KOMISI_CASH_PPJB_RATIO = 0.5;
 
 export interface ProgressPenjualanRef {
+  nilaiAjb?: number | null;
   filePpjb?: string | null;
   fileAjb?: string | null;
   fileSp3k?: string | null;
   fileSuratPernyataanAkadKredit?: string | null;
+  sertifikatTambahan?: ProgressSertifikatTambahanSlot[];
+  totals?: { nilaiAjb: number };
+}
+
+export function resolveNilaiAjbTotal(
+  progress: ProgressPenjualanRef | null | undefined,
+): number {
+  if (!progress) return 0;
+  if (progress.totals?.nilaiAjb != null) {
+    return Number(progress.totals.nilaiAjb);
+  }
+  const utama = {
+    nilaiAjb: progress.nilaiAjb ? Number(progress.nilaiAjb) : null,
+  };
+  const tambahan =
+    progress.sertifikatTambahan?.map((row) => ({
+      urutan: row.urutan,
+      nilaiAjb: row.nilaiAjb ? Number(row.nilaiAjb) : null,
+    })) ?? [];
+  return sumNilaiAjb(utama, tambahan);
+}
+
+function mapProgressSlots(progress: ProgressPenjualanRef | null | undefined) {
+  const utama = progress
+    ? {
+        nilaiAjb: progress.nilaiAjb ? Number(progress.nilaiAjb) : null,
+        filePpjb: progress.filePpjb,
+        fileAjb: progress.fileAjb,
+      }
+    : null;
+  const tambahan =
+    progress?.sertifikatTambahan?.map((row) => ({
+      urutan: row.urutan,
+      nilaiAjb: row.nilaiAjb ? Number(row.nilaiAjb) : null,
+      filePpjb: row.filePpjb,
+      fileAjb: row.fileAjb,
+    })) ?? [];
+  return { utama, tambahan };
 }
 
 export interface AgentPencairanCalcContext {
@@ -111,8 +156,10 @@ export function isPenjualanBatal(
 
 export function hasPpjbComplete(
   progress: ProgressPenjualanRef | null | undefined,
+  jumlahSertifikatTanah = 1,
 ): boolean {
-  return !!progress?.filePpjb;
+  const { utama, tambahan } = mapProgressSlots(progress);
+  return isAllProgressFilePpjbComplete(jumlahSertifikatTanah, utama, tambahan);
 }
 
 export function hasSp3kComplete(
@@ -123,18 +170,21 @@ export function hasSp3kComplete(
 
 export function hasAjbComplete(
   progress: ProgressPenjualanRef | null | undefined,
+  jumlahSertifikatTanah = 1,
 ): boolean {
-  return !!progress?.fileAjb;
+  const { utama, tambahan } = mapProgressSlots(progress);
+  return isAllProgressFileAjbComplete(jumlahSertifikatTanah, utama, tambahan);
 }
 
-/** Akad kredit: bukti PPJB atau AJB (atau surat pernyataan akad kredit) */
+/** Akad kredit: surat kesiapan, atau semua tanah sudah PPJB / AJB */
 export function hasAkadKreditComplete(
   progress: ProgressPenjualanRef | null | undefined,
+  jumlahSertifikatTanah = 1,
 ): boolean {
-  return !!(
-    progress?.filePpjb ||
-    progress?.fileAjb ||
-    progress?.fileSuratPernyataanAkadKredit
+  if (progress?.fileSuratPernyataanAkadKredit) return true;
+  return (
+    hasPpjbComplete(progress, jumlahSertifikatTanah) ||
+    hasAjbComplete(progress, jumlahSertifikatTanah)
   );
 }
 

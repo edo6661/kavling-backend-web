@@ -374,4 +374,39 @@ export class KavlingRepository implements IKavlingRepository {
     if (!updated) throw new NotFoundError("Kavling tidak ditemukan");
     return updated;
   }
+
+  async clearSertifikatTambahanDocument(
+    kavlingId: number,
+    urutan: number,
+    docType: "filePbg" | "fileSertifikatTanah" | "fileNopPbb",
+    extra?: { clearNopd?: boolean },
+  ): Promise<KavlingEntity> {
+    const existing = await this.findById(kavlingId);
+    if (!existing) throw new NotFoundError("Kavling tidak ditemukan");
+    if (urutan < 2 || urutan > existing.jumlahSertifikatTanah) {
+      throw new ConflictError(
+        `Urutan sertifikat ${urutan} tidak valid untuk kavling ini (jumlah sertifikat: ${existing.jumlahSertifikatTanah}).`,
+      );
+    }
+
+    await this.db.kavlingSertifikatTanahTambahan.upsert({
+      where: {
+        kavlingId_urutan: { kavlingId, urutan },
+      },
+      create: {
+        kavlingId,
+        urutan,
+        [docType]: null,
+        ...(extra?.clearNopd ? { nopd: null } : {}),
+      },
+      update: {
+        [docType]: null,
+        ...(extra?.clearNopd ? { nopd: null } : {}),
+      },
+    });
+
+    const updated = await this.findById(kavlingId);
+    if (!updated) throw new NotFoundError("Kavling tidak ditemukan");
+    return updated;
+  }
 }

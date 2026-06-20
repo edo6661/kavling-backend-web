@@ -40,5 +40,12 @@ export const createProgressPenjualanRoutes = (
     controller.uploadDocument,
   );
 
+  router.delete(
+    "/:id/upload/:docType",
+    requirePermission("PROGRESS_PENJUALAN", "update"),
+    validate(uploadProgressDocumentSchema),
+    controller.deleteDocument,
+  );
+
   return router;
 };

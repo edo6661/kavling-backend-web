@@ -43,6 +43,7 @@ function buildFeeAgent(agentType: "PRIBADI" | "PERUSAHAAN") {
       status: "AKTIF",
       caraPembayaran: "CASH_KERAS",
       hargaJual: 500_000_000,
+      kavling: { jumlahSertifikatTanah: 1 },
       tagihan: [
         { tujuan: "BOOKING_FEE", pembayaran: "CASH", status: "LUNAS" },
       ],
@@ -52,6 +53,7 @@ function buildFeeAgent(agentType: "PRIBADI" | "PERUSAHAAN") {
         fileAjb: null,
         fileSp3k: null,
         fileSuratPernyataanAkadKredit: null,
+        sertifikatTambahan: [],
       },
     },
   };

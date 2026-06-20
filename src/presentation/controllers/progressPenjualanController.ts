@@ -7,6 +7,7 @@ import type {
   GetProgressPenjualanUseCase,
   UpdateProgressPenjualanUseCase,
   UploadProgressDocumentUseCase,
+  DeleteProgressDocumentUseCase,
 } from "../../application/usecases/progressPenjualan/ProgressPenjualanUseCases.js";
 
 import type {
@@ -20,6 +21,7 @@ export class ProgressPenjualanController {
     private readonly getUseCase: GetProgressPenjualanUseCase,
     private readonly updateUseCase: UpdateProgressPenjualanUseCase,
     private readonly uploadUseCase: UploadProgressDocumentUseCase,
+    private readonly deleteDocumentUseCase: DeleteProgressDocumentUseCase,
   ) {}
 
   getByPenjualanId = async (
@@ -55,11 +57,16 @@ export class ProgressPenjualanController {
   };
 
   uploadDocument = async (
-    req: TypedRequest<any, any, typeof uploadProgressDocumentSchema.params>,
+    req: TypedRequest<
+      any,
+      typeof uploadProgressDocumentSchema.query,
+      typeof uploadProgressDocumentSchema.params
+    >,
     res: Response,
   ): Promise<void> => {
     const penjualanId = parseInt(req.params.id, 10);
     const docType = req.params.docType;
+    const sertifikatUrutan = req.query.sertifikatUrutan ?? 1;
 
     if (!req.file?.buffer) {
       sendResponse(res, StatusCodes.BAD_REQUEST, "File dokumen wajib diunggah");
@@ -70,11 +77,37 @@ export class ProgressPenjualanController {
       penjualanId,
       req.file.buffer,
       docType,
+      sertifikatUrutan,
     );
     sendResponse(
       res,
       StatusCodes.OK,
       `Dokumen ${docType} berhasil diunggah`,
+      result,
+    );
+  };
+
+  deleteDocument = async (
+    req: TypedRequest<
+      any,
+      typeof uploadProgressDocumentSchema.query,
+      typeof uploadProgressDocumentSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const penjualanId = parseInt(req.params.id, 10);
+    const docType = req.params.docType;
+    const sertifikatUrutan = req.query.sertifikatUrutan ?? 1;
+
+    const result = await this.deleteDocumentUseCase.execute(
+      penjualanId,
+      docType,
+      sertifikatUrutan,
+    );
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      `Dokumen ${docType} berhasil dihapus`,
       result,
     );
   };

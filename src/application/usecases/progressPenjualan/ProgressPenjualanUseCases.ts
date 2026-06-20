@@ -34,6 +34,8 @@ export class UpdateProgressPenjualanUseCase {
   }
 }
 
+const MULTI_SERTIFIKAT_DOC_TYPES = new Set(["filePpjb", "fileAjb"]);
+
 export class UploadProgressDocumentUseCase {
   constructor(
     private readonly repo: IProgressPenjualanRepository,
@@ -50,6 +52,7 @@ export class UploadProgressDocumentUseCase {
       | "filePpjb"
       | "fileAjb"
       | "fileBast",
+    sertifikatUrutan = 1,
   ): Promise<ProgressPenjualanResponseDTO> {
     let existing = await this.repo.findByPenjualanId(penjualanId);
     existing ??= await this.repo.create({ penjualanId });
@@ -61,8 +64,39 @@ export class UploadProgressDocumentUseCase {
       );
     }
 
+    if (sertifikatUrutan >= 2) {
+      if (!MULTI_SERTIFIKAT_DOC_TYPES.has(docType)) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          `Dokumen ${docType} tidak mendukung sertifikat tambahan.`,
+        );
+      }
+
+      const multiDocType = docType as "filePpjb" | "fileAjb";
+      const oldFileUrl = await this.repo.findSertifikatTambahanFileUrl(
+        penjualanId,
+        sertifikatUrutan,
+        multiDocType,
+      );
+      if (oldFileUrl) {
+        await this.cloudinaryService.deleteImageByUrl(oldFileUrl);
+      }
+
+      const fileUrl = await this.cloudinaryService.uploadFile(
+        fileBuffer,
+        `bumantara/progress_penjualan/tambahan/${docType}`,
+      );
+
+      return await this.repo.uploadSertifikatTambahanDocument(
+        penjualanId,
+        sertifikatUrutan,
+        multiDocType,
+        fileUrl,
+      );
+    }
+
     if (existing[docType]) {
-      await this.cloudinaryService.deleteImageByUrl(existing[docType]);
+      await this.cloudinaryService.deleteImageByUrl(existing[docType]!);
     }
 
     const fileUrl = await this.cloudinaryService.uploadFile(
@@ -72,5 +106,74 @@ export class UploadProgressDocumentUseCase {
 
     const updateData: UpdateProgressPenjualanDTO = { [docType]: fileUrl };
     return await this.repo.update(penjualanId, updateData);
+  }
+}
+
+type ProgressDocumentType =
+  | "fileSp3k"
+  | "fileSuratPernyataanAkadKredit"
+  | "fileSalinanAjb"
+  | "filePpjb"
+  | "fileAjb"
+  | "fileBast";
+
+export class DeleteProgressDocumentUseCase {
+  constructor(
+    private readonly repo: IProgressPenjualanRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    penjualanId: number,
+    docType: ProgressDocumentType,
+    sertifikatUrutan = 1,
+  ): Promise<ProgressPenjualanResponseDTO> {
+    const existing = await this.repo.findByPenjualanId(penjualanId);
+    if (!existing) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Progress Penjualan tidak ditemukan.",
+      );
+    }
+
+    if (sertifikatUrutan >= 2) {
+      if (!MULTI_SERTIFIKAT_DOC_TYPES.has(docType)) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          `Dokumen ${docType} tidak mendukung sertifikat tambahan.`,
+        );
+      }
+
+      const multiDocType = docType as "filePpjb" | "fileAjb";
+      const oldFileUrl = await this.repo.findSertifikatTambahanFileUrl(
+        penjualanId,
+        sertifikatUrutan,
+        multiDocType,
+      );
+      if (!oldFileUrl) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Dokumen tidak ditemukan atau sudah kosong.",
+        );
+      }
+
+      await this.cloudinaryService.deleteImageByUrl(oldFileUrl);
+      return await this.repo.updateSertifikatTambahan(
+        penjualanId,
+        sertifikatUrutan,
+        { [multiDocType]: null },
+      );
+    }
+
+    const oldFileUrl = existing[docType];
+    if (!oldFileUrl) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Dokumen tidak ditemukan atau sudah kosong.",
+      );
+    }
+
+    await this.cloudinaryService.deleteImageByUrl(oldFileUrl);
+    return await this.repo.update(penjualanId, { [docType]: null });
   }
 }
