@@ -11,6 +11,7 @@ import type {
 import type { ProgressProyekEntity } from "../entities/ProgressProyek.js";
 import {
   ProgressProyekMapper,
+  type ProgressProyekWithRelations,
 } from "../../infrastructure/mapper/ProgressProyekMapper.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
@@ -556,17 +557,26 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     },
   ): Promise<ProgressProyekEntity> {
     return await this.db.$transaction(async (tx) => {
-      let progress = await tx.progressProyek.findUnique({
-        where: { kavlingId },
-      });
+      let progress = await this.findProgressRowForKavling(tx, kavlingId);
 
       if (!progress) {
         const spkMandor = await this.getSpkMandorForKavling(kavlingId);
+        const penjualan = await tx.penjualan.findFirst({
+          where: { kavlingId, status: { not: "BATAL" } },
+          orderBy: { id: "desc" },
+          select: { id: true },
+        });
+
         progress = await tx.progressProyek.create({
-          data: {
-            kavlingId,
-            mandorId: spkMandor?.mandorId ?? null,
-          },
+          data: penjualan
+            ? {
+                penjualanId: penjualan.id,
+                mandorId: spkMandor?.mandorId ?? null,
+              }
+            : {
+                kavlingId,
+                mandorId: spkMandor?.mandorId ?? null,
+              },
           include: ProgressProyekMapper.include,
         });
       }
@@ -594,6 +604,23 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
     });
   }
 
+  private pickPreferredProgressRow(
+    byKavling: ProgressProyekWithRelations,
+    byPenjualan: ProgressProyekWithRelations,
+  ) {
+    const kavlingTahapanCount = byKavling.tahapan.length;
+    const penjualanTahapanCount = byPenjualan.tahapan.length;
+
+    if (penjualanTahapanCount > 0 && kavlingTahapanCount === 0) {
+      return byPenjualan;
+    }
+    if (kavlingTahapanCount > 0 && penjualanTahapanCount === 0) {
+      return byKavling;
+    }
+
+    return byPenjualan;
+  }
+
   private async findProgressRowForKavling(
     db: ProgressDbClient,
     kavlingId: number,
@@ -602,19 +629,25 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       where: { kavlingId },
       include: ProgressProyekMapper.include,
     });
-    if (byKavling) return byKavling;
 
     const penjualan = await db.penjualan.findFirst({
       where: { kavlingId, status: { not: "BATAL" } },
       orderBy: { id: "desc" },
       select: { id: true },
     });
-    if (!penjualan) return null;
 
-    return db.progressProyek.findUnique({
-      where: { penjualanId: penjualan.id },
-      include: ProgressProyekMapper.include,
-    });
+    const byPenjualan = penjualan
+      ? await db.progressProyek.findUnique({
+          where: { penjualanId: penjualan.id },
+          include: ProgressProyekMapper.include,
+        })
+      : null;
+
+    if (!byKavling && !byPenjualan) return null;
+    if (!byKavling) return byPenjualan;
+    if (!byPenjualan) return byKavling;
+
+    return this.pickPreferredProgressRow(byKavling, byPenjualan);
   }
 
   private async recalculatePersentase(
@@ -653,13 +686,26 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       let progress = await this.findProgressRowForKavling(tx, kavlingId);
 
       if (!progress) {
+        const penjualan = await tx.penjualan.findFirst({
+          where: { kavlingId, status: { not: "BATAL" } },
+          orderBy: { id: "desc" },
+          select: { id: true },
+        });
+
         progress = await tx.progressProyek.create({
-          data: {
-            kavlingId,
-            mandorId: spkMandor?.mandorId ?? null,
-            persentase: decimal,
-            persentaseOverride: decimal,
-          },
+          data: penjualan
+            ? {
+                penjualanId: penjualan.id,
+                mandorId: spkMandor?.mandorId ?? null,
+                persentase: decimal,
+                persentaseOverride: decimal,
+              }
+            : {
+                kavlingId,
+                mandorId: spkMandor?.mandorId ?? null,
+                persentase: decimal,
+                persentaseOverride: decimal,
+              },
           include: ProgressProyekMapper.include,
         });
       } else {
@@ -686,12 +732,24 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       let progress = await this.findProgressRowForKavling(tx, kavlingId);
 
       if (!progress) {
+        const penjualan = await tx.penjualan.findFirst({
+          where: { kavlingId, status: { not: "BATAL" } },
+          orderBy: { id: "desc" },
+          select: { id: true },
+        });
+
         progress = await tx.progressProyek.create({
-          data: {
-            kavlingId,
-            mandorId: spkMandor?.mandorId ?? null,
-            persentase: new Prisma.Decimal("0.00"),
-          },
+          data: penjualan
+            ? {
+                penjualanId: penjualan.id,
+                mandorId: spkMandor?.mandorId ?? null,
+                persentase: new Prisma.Decimal("0.00"),
+              }
+            : {
+                kavlingId,
+                mandorId: spkMandor?.mandorId ?? null,
+                persentase: new Prisma.Decimal("0.00"),
+              },
           include: ProgressProyekMapper.include,
         });
       } else {
