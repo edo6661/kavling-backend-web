@@ -228,8 +228,21 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
         )
       : mergedRows;
 
-    const allItems = filteredRows.map((row) => row.item).sort((a, b) =>
-      compareProgressProyekList(
+    const allItems = filteredRows.map((row) => row.item).sort((a, b) => {
+      const sortField = filters?.orderBy?.field;
+      const sortDirection = filters?.orderBy?.direction ?? "desc";
+
+      if (sortField === "progress") {
+        const progressA = a.progressProyek?.persentase ?? 0;
+        const progressB = b.progressProyek?.persentase ?? 0;
+        if (progressA !== progressB) {
+          return sortDirection === "desc"
+            ? progressB - progressA
+            : progressA - progressB;
+        }
+      }
+
+      return compareProgressProyekList(
         {
           hasMandor: !!a.progressProyek?.mandorId,
           blok: a.blok,
@@ -240,8 +253,8 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
           blok: b.blok,
           nomorUnit: b.nomorUnit,
         },
-      ),
-    );
+      );
+    });
 
     const totalItems = allItems.length;
     const totalPages = Math.ceil(totalItems / limit) || 1;

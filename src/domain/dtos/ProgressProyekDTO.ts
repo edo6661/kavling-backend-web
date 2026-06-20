@@ -42,6 +42,10 @@ export interface ProgressProyekResponseDTO {
 export interface ProgressProyekListFilterDTO {
   mandorUserId?: number;
   search?: string;
+  orderBy?: {
+    field: string;
+    direction: "asc" | "desc";
+  };
 }
 
 export interface ProgressProyekListItemDTO {

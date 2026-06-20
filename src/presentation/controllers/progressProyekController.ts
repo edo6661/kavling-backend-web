@@ -58,7 +58,7 @@ export class ProgressProyekController {
   };
 
   getProyekList = async (req: Request, res: Response): Promise<void> => {
-    const { page, limit, search } =
+    const { page, limit, search, orderBy } =
       getProgressProyekListSchema.query.parse(req.query);
 
     const filters: ProgressProyekListFilterDTO = {};
@@ -67,6 +67,9 @@ export class ProgressProyekController {
     }
     if (search) {
       filters.search = search;
+    }
+    if (orderBy) {
+      filters.orderBy = orderBy;
     }
 
     const result = await this.getListUseCase.execute(page, limit, filters);
