@@ -588,7 +588,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const uploadBuktiPenjualanUseCase = new UploadBuktiPenjualanUseCase(
     dbClient,
     cloudinaryService,
-    generateSprPdfUseCase,
+    notificationService,
   );
   const saveSignatureUseCase = new SaveSignatureUseCase(
     dbClient,
@@ -629,8 +629,6 @@ export const createContainer = (dbClient: PrismaClient) => {
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
     tagihanRepo,
     cloudinaryService,
-    penjualanRepo,
-    generateSprPdfUseCase,
     notificationService,
   );
   const uploadBuktiRefundUseCase = new UploadBuktiRefundUseCase(

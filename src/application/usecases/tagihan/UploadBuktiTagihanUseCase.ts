@@ -5,9 +5,6 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { collectTagihanFileBuktiUrls } from "../../../utils/tagihanBukti.js";
-
-import type { IPenjualanRepository } from "../../../domain/repositories/IPenjualanRepo.js";
-import type { GenerateSprPdfUseCase } from "../penjualan/GenerateSprPdfUseCase.js";
 import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
 import { Role } from "@prisma/client";
 
@@ -15,11 +12,8 @@ export class UploadBuktiTagihanUseCase {
   constructor(
     private readonly repo: ITagihanRepository,
     private readonly cloudinaryService: CloudinaryService,
-    private readonly penjualanRepo: IPenjualanRepository,
-    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
     private readonly notificationService?: NotificationService,
   ) {}
-
   async execute(
     identifier: number | string,
     fileBuffers: Buffer | Buffer[],
@@ -82,33 +76,20 @@ export class UploadBuktiTagihanUseCase {
 
     const updatedTagihan = await this.repo.update(existing.id, updatePayload);
 
-    if (!isCustomer && existing.pembayaran.toLowerCase().includes("booking")) {
+    if (
+      updatePayload.status === "MENUNGGU_KONFIRMASI" &&
+      this.notificationService
+    ) {
       try {
-        const pdfBuffer = await this.generateSprPdfUseCase.execute(
-          existing.penjualanId,
-        );
-
-        const pdfUrl = await this.cloudinaryService.uploadFile(
-          pdfBuffer,
-          "bumantara/spr",
-        );
-
-        await this.penjualanRepo.update(existing.penjualanId, {
-          fileSpr: pdfUrl,
-        });
-      } catch (error) {
-        console.error("Gagal auto-generate SPR:", error);
-      }
-    }
-
-    if (isCustomer && this.notificationService) {
-      try {
+        const actorLabel = isCustomer
+          ? `Customer ${existing.namaCustomer}`
+          : "Staff";
         await this.notificationService.notifyRoles(
           [Role.ADMIN, Role.SUPERADMIN, Role.FINANCE],
           {
             type: "UPLOAD_BUKTI",
             title: "Bukti Pembayaran Baru",
-            message: `Customer ${existing.namaCustomer} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
+            message: `${actorLabel} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
             data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
             linkPath: "/finance/approve-pembayaran",
           },

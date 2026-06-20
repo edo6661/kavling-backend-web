@@ -1,16 +1,19 @@
+import { Role } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
-import type { GenerateSprPdfUseCase } from "./GenerateSprPdfUseCase.js";
+import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 import { effectiveTagihanTujuan } from "../../../domain/tagihan/tagihanTujuan.js";
+
 export class UploadBuktiPenjualanUseCase {
   constructor(
     private readonly db: PrismaClient,
     private readonly cloudinaryService: CloudinaryService,
-    private readonly generateSprPdfUseCase: GenerateSprPdfUseCase,
+    private readonly notificationService?: NotificationService,
   ) {}
+
   async execute(id: string, type: "booking" | "dp", fileBuffer: Buffer) {
     if (!fileBuffer) {
       throw new AppError(
@@ -45,7 +48,6 @@ export class UploadBuktiPenjualanUseCase {
 
     if (type === "booking") {
       updateData.fileBuktiBooking = imageUrl;
-      updateData.status = "PROSES";
     }
 
     if (type === "dp") {
@@ -77,14 +79,55 @@ export class UploadBuktiPenjualanUseCase {
         tagihanTerkait.fileBukti,
       );
       const mergedList = [...currentList, imageUrl];
+      const tagihanUpdate: {
+        fileBukti: string;
+        fileBuktiList: string[];
+        status?: "MENUNGGU_KONFIRMASI" | "LUNAS";
+      } = {
+        fileBukti: mergedList[0] ?? imageUrl,
+        fileBuktiList: mergedList,
+      };
+
+      if (type === "booking") {
+        if (
+          tagihanTerkait.status === "BELUM_BAYAR" ||
+          tagihanTerkait.status === "MENUNGGU_KONFIRMASI"
+        ) {
+          tagihanUpdate.status = "MENUNGGU_KONFIRMASI";
+        }
+      } else {
+        tagihanUpdate.status = "LUNAS";
+      }
+
       await this.db.tagihan.update({
         where: { id: tagihanTerkait.id },
-        data: {
-          status: "LUNAS",
-          fileBukti: mergedList[0] ?? imageUrl,
-          fileBuktiList: mergedList,
-        },
+        data: tagihanUpdate,
       });
+
+      if (
+        type === "booking" &&
+        tagihanUpdate.status === "MENUNGGU_KONFIRMASI" &&
+        this.notificationService
+      ) {
+        try {
+          await this.notificationService.notifyRoles(
+            [Role.ADMIN, Role.SUPERADMIN, Role.FINANCE],
+            {
+              type: "UPLOAD_BUKTI",
+              title: "Bukti Booking Fee Baru",
+              message: `Bukti transfer booking fee transaksi ${penjualan.noTransaksi} menunggu konfirmasi.`,
+              data: {
+                tagihanId: tagihanTerkait.id,
+                noTagihan: tagihanTerkait.noTagihan,
+                penjualanId: penjualan.noTransaksi,
+              },
+              linkPath: "/finance/approve-pembayaran",
+            },
+          );
+        } catch (error) {
+          console.error("Gagal mengirim notifikasi upload bukti booking:", error);
+        }
+      }
     }
     return updatedPenjualan;
   }

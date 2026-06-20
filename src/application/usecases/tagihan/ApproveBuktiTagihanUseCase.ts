@@ -17,6 +17,8 @@ export class ApproveBuktiTagihanUseCase {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("Tagihan tidak ditemukan");
 
+    const isBookingFee = existing.pembayaran.toLowerCase().includes("booking");
+
     if (!isApproved) {
       const urlsToDelete = collectTagihanFileBuktiUrls(
         existing.fileBukti,
@@ -25,18 +27,32 @@ export class ApproveBuktiTagihanUseCase {
       for (const url of urlsToDelete) {
         await this.cloudinaryService.deleteImageByUrl(url).catch(console.error);
       }
-      return await this.repo.update(id, {
+
+      const updatedTagihan = await this.repo.update(id, {
         status: "BELUM_BAYAR",
         fileBukti: null,
         fileBuktiList: null,
       });
+
+      if (isBookingFee) {
+        await this.penjualanRepo.update(existing.penjualanId, {
+          fileBuktiBooking: null,
+          status: "BOOKED",
+        });
+      }
+
+      return updatedTagihan;
     }
 
     const updatedTagihan = await this.repo.update(id, {
       status: "LUNAS",
     });
 
-    if (existing.pembayaran.toLowerCase().includes("booking")) {
+    if (isBookingFee) {
+      await this.penjualanRepo.update(existing.penjualanId, {
+        status: "PROSES",
+      });
+
       try {
         const pdfBuffer = await this.generateSprPdfUseCase.execute(
           existing.penjualanId,
