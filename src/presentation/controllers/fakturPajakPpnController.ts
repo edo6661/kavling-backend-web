@@ -83,8 +83,8 @@ export class FakturPajakPpnController {
     >,
     res: Response,
   ): Promise<void> => {
-    const penjualanId = parseInt(req.params.penjualanId, 10);
-    const sertifikatUrutan = req.query.sertifikatUrutan ?? 1;
+    const penjualanId = Number(req.params.penjualanId);
+    const sertifikatUrutan = Number(req.query.sertifikatUrutan ?? 1);
     await this.deleteUseCase.execute(penjualanId, sertifikatUrutan);
     sendResponse(res, StatusCodes.OK, "Faktur pajak PPN berhasil dihapus", null);
   };

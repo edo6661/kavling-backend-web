@@ -62,9 +62,12 @@ export class FakturPajakPpnRepository {
     penjualanId: number,
     sertifikatUrutan = 1,
   ): Promise<FakturPajakPpnResponseDTO | null> {
-    const result = await this.db.fakturPajakPpn.findUnique({
+    const normalizedPenjualanId = Number(penjualanId);
+    const normalizedUrutan = Number(sertifikatUrutan) || 1;
+    const result = await this.db.fakturPajakPpn.findFirst({
       where: {
-        penjualanId_sertifikatUrutan: { penjualanId, sertifikatUrutan },
+        penjualanId: normalizedPenjualanId,
+        sertifikatUrutan: normalizedUrutan,
       },
       include: includeRelations,
     });
@@ -96,6 +99,7 @@ export class FakturPajakPpnRepository {
   }
 
   async deleteById(id: number): Promise<void> {
-    await this.db.fakturPajakPpn.delete({ where: { id } });
+    const normalizedId = Number(id);
+    await this.db.fakturPajakPpn.delete({ where: { id: normalizedId } });
   }
 }

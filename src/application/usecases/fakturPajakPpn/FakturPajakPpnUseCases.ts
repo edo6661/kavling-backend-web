@@ -110,9 +110,19 @@ export class DeleteFakturPajakPpnUseCase {
     penjualanId: number,
     sertifikatUrutan = 1,
   ): Promise<void> {
+    const normalizedPenjualanId = Number(penjualanId);
+    const normalizedUrutan = Number(sertifikatUrutan) || 1;
+
+    if (!Number.isInteger(normalizedPenjualanId) || normalizedPenjualanId <= 0) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "ID penjualan tidak valid.");
+    }
+    if (!Number.isInteger(normalizedUrutan) || normalizedUrutan < 1) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Urutan sertifikat tidak valid.");
+    }
+
     const existing = await this.repo.findByPenjualanId(
-      penjualanId,
-      sertifikatUrutan,
+      normalizedPenjualanId,
+      normalizedUrutan,
     );
     if (!existing) {
       throw new AppError(
