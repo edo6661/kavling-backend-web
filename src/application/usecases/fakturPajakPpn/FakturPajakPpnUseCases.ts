@@ -99,3 +99,29 @@ export class GetAllFakturPajakPpnByPenjualanUseCase {
     return await this.repo.findAllByPenjualanId(penjualanId);
   }
 }
+
+export class DeleteFakturPajakPpnUseCase {
+  constructor(
+    private readonly repo: FakturPajakPpnRepository,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async execute(
+    penjualanId: number,
+    sertifikatUrutan = 1,
+  ): Promise<void> {
+    const existing = await this.repo.findByPenjualanId(
+      penjualanId,
+      sertifikatUrutan,
+    );
+    if (!existing) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        "Faktur pajak PPN tidak ditemukan atau sudah dihapus.",
+      );
+    }
+
+    await this.cloudinaryService.deleteImageByUrl(existing.fileFaktur);
+    await this.repo.deleteById(existing.id);
+  }
+}

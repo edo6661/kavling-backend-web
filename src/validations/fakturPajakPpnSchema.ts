@@ -14,3 +14,12 @@ export const fakturPajakPpnPenjualanParamsSchema = {
     penjualanId: z.coerce.number().int().positive(),
   }),
 };
+
+export const deleteFakturPajakPpnSchema = {
+  params: z.object({
+    penjualanId: z.coerce.number().int().positive(),
+  }),
+  query: z.object({
+    sertifikatUrutan: z.coerce.number().int().min(1).max(5).optional(),
+  }),
+};

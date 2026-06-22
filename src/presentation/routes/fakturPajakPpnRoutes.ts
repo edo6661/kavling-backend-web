@@ -8,6 +8,7 @@ import { upload } from "../../middlewares/upload.js";
 import {
   uploadFakturPajakPpnSchema,
   fakturPajakPpnPenjualanParamsSchema,
+  deleteFakturPajakPpnSchema,
 } from "../../validations/fakturPajakPpnSchema.js";
 import type { FakturPajakPpnController } from "../controllers/fakturPajakPpnController.js";
 
@@ -38,6 +39,13 @@ export const createFakturPajakPpnRoutes = (
     requirePermission("PROGRESS_PENJUALAN", "read"),
     validate(fakturPajakPpnPenjualanParamsSchema),
     controller.getByPenjualan,
+  );
+
+  router.delete(
+    "/penjualan/:penjualanId",
+    requirePermission("PROGRESS_PENJUALAN", "update"),
+    validate(deleteFakturPajakPpnSchema),
+    controller.deleteByPenjualan,
   );
 
   return router;

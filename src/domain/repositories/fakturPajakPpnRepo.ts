@@ -94,4 +94,8 @@ export class FakturPajakPpnRepository {
     });
     return toDomain(result);
   }
+
+  async deleteById(id: number): Promise<void> {
+    await this.db.fakturPajakPpn.delete({ where: { id } });
+  }
 }

@@ -6,8 +6,12 @@ import type {
   UploadFakturPajakPpnUseCase,
   GetFakturPajakPpnByPenjualanUseCase,
   GetAllFakturPajakPpnByPenjualanUseCase,
+  DeleteFakturPajakPpnUseCase,
 } from "../../application/usecases/fakturPajakPpn/FakturPajakPpnUseCases.js";
-import type { uploadFakturPajakPpnSchema } from "../../validations/fakturPajakPpnSchema.js";
+import type {
+  uploadFakturPajakPpnSchema,
+  deleteFakturPajakPpnSchema,
+} from "../../validations/fakturPajakPpnSchema.js";
 import { AppError } from "../../domain/errors/AppError.js";
 import { omitUndefined } from "../../utils/object.js";
 
@@ -16,6 +20,7 @@ export class FakturPajakPpnController {
     private readonly uploadUseCase: UploadFakturPajakPpnUseCase,
     private readonly getByPenjualanUseCase: GetFakturPajakPpnByPenjualanUseCase,
     private readonly getAllByPenjualanUseCase: GetAllFakturPajakPpnByPenjualanUseCase,
+    private readonly deleteUseCase: DeleteFakturPajakPpnUseCase,
   ) {}
 
   upload = async (
@@ -68,5 +73,19 @@ export class FakturPajakPpnController {
       "Daftar faktur pajak PPN berhasil diambil",
       result,
     );
+  };
+
+  deleteByPenjualan = async (
+    req: TypedRequest<
+      any,
+      typeof deleteFakturPajakPpnSchema.query,
+      typeof deleteFakturPajakPpnSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const penjualanId = parseInt(req.params.penjualanId, 10);
+    const sertifikatUrutan = req.query.sertifikatUrutan ?? 1;
+    await this.deleteUseCase.execute(penjualanId, sertifikatUrutan);
+    sendResponse(res, StatusCodes.OK, "Faktur pajak PPN berhasil dihapus", null);
   };
 }

@@ -283,6 +283,7 @@ import {
   UploadFakturPajakPpnUseCase,
   GetFakturPajakPpnByPenjualanUseCase,
   GetAllFakturPajakPpnByPenjualanUseCase,
+  DeleteFakturPajakPpnUseCase,
 } from "../../application/usecases/fakturPajakPpn/FakturPajakPpnUseCases.js";
 import { FakturPajakPpnController } from "../../presentation/controllers/fakturPajakPpnController.js";
 import { SocketService } from "../websocket/SocketService.js";
@@ -764,10 +765,15 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const getAllFakturPajakPpnByPenjualanUseCase =
     new GetAllFakturPajakPpnByPenjualanUseCase(fakturPajakPpnRepo);
+  const deleteFakturPajakPpnUseCase = new DeleteFakturPajakPpnUseCase(
+    fakturPajakPpnRepo,
+    cloudinaryService,
+  );
   const fakturPajakPpnController = new FakturPajakPpnController(
     uploadFakturPajakPpnUseCase,
     getFakturPajakPpnByPenjualanUseCase,
     getAllFakturPajakPpnByPenjualanUseCase,
+    deleteFakturPajakPpnUseCase,
   );
 
   const feeAgentRepo = new FeeAgentRepository(dbClient);
