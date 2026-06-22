@@ -31,6 +31,7 @@ import { createBankKprPembayaranRoutes } from "./bankKprPembayaranRoutes.js";
 import { createAgentPencairanRoutes } from "./agentPencairanRoutes.js";
 import { createKodeBillingPphRoutes } from "./kodeBillingPphRoutes.js";
 import { createSuketPphRoutes } from "./suketPphRoutes.js";
+import { createFakturPajakPpnRoutes } from "./fakturPajakPpnRoutes.js";
 import { createNotificationRoutes } from "./notificationRoutes.js";
 import { createReportRoutes } from "./reportRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
@@ -66,6 +67,10 @@ export const createMainRouter = (deps: typeof container): Router => {
     createKodeBillingPphRoutes(deps.kodeBillingPphController),
   );
   router.use("/suket-pph", createSuketPphRoutes(deps.suketPphController));
+  router.use(
+    "/faktur-pajak-ppn",
+    createFakturPajakPpnRoutes(deps.fakturPajakPpnController),
+  );
   router.use("/penjualan", createPenjualanRoutes(deps.penjualanController));
   router.use(
     "/progress-penjualan",

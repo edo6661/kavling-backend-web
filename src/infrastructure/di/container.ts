@@ -278,6 +278,13 @@ import {
   GetAllSuketPphByPenjualanUseCase,
 } from "../../application/usecases/suketPph/SuketPphUseCases.js";
 import { SuketPphController } from "../../presentation/controllers/suketPphController.js";
+import { FakturPajakPpnRepository } from "../../domain/repositories/fakturPajakPpnRepo.js";
+import {
+  UploadFakturPajakPpnUseCase,
+  GetFakturPajakPpnByPenjualanUseCase,
+  GetAllFakturPajakPpnByPenjualanUseCase,
+} from "../../application/usecases/fakturPajakPpn/FakturPajakPpnUseCases.js";
+import { FakturPajakPpnController } from "../../presentation/controllers/fakturPajakPpnController.js";
 import { SocketService } from "../websocket/SocketService.js";
 import { NotificationRepository } from "../../domain/repositories/notificationRepo.js";
 import { NotificationService } from "../notifications/NotificationService.js";
@@ -746,6 +753,23 @@ export const createContainer = (dbClient: PrismaClient) => {
     getAllSuketPphByPenjualanUseCase,
   );
 
+  const fakturPajakPpnRepo = new FakturPajakPpnRepository(dbClient);
+  const uploadFakturPajakPpnUseCase = new UploadFakturPajakPpnUseCase(
+    fakturPajakPpnRepo,
+    dbClient,
+    cloudinaryService,
+  );
+  const getFakturPajakPpnByPenjualanUseCase = new GetFakturPajakPpnByPenjualanUseCase(
+    fakturPajakPpnRepo,
+  );
+  const getAllFakturPajakPpnByPenjualanUseCase =
+    new GetAllFakturPajakPpnByPenjualanUseCase(fakturPajakPpnRepo);
+  const fakturPajakPpnController = new FakturPajakPpnController(
+    uploadFakturPajakPpnUseCase,
+    getFakturPajakPpnByPenjualanUseCase,
+    getAllFakturPajakPpnByPenjualanUseCase,
+  );
+
   const feeAgentRepo = new FeeAgentRepository(dbClient);
   const getFeeAgentsPaginatedUseCase = new GetFeeAgentsPaginatedUseCase(
     feeAgentRepo,
@@ -1103,6 +1127,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     tagihanController,
     kodeBillingPphController,
     suketPphController,
+    fakturPajakPpnController,
     penjualanController,
     feeAgentController,
     verifyController,
