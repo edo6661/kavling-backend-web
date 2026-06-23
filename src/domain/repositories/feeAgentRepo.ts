@@ -23,6 +23,28 @@ const includeRelations = {
   },
 } satisfies Prisma.FeeAgentInclude;
 
+/** Penjualan yang boleh punya baris fee_agent (termasuk BATAL + booking fee lunas). */
+const penjualanEligibleForFeeAgentWhere = {
+  agentId: { not: null },
+  OR: [
+    { status: { not: "BATAL" } },
+    {
+      status: "BATAL",
+      OR: [
+        { bookingFeeLunasBatal: true },
+        {
+          tagihan: {
+            some: {
+              tujuan: "BOOKING_FEE",
+              status: "LUNAS",
+            },
+          },
+        },
+      ],
+    },
+  ],
+} satisfies Prisma.PenjualanWhereInput;
+
 export class FeeAgentRepository implements IFeeAgentRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -116,13 +138,7 @@ export class FeeAgentRepository implements IFeeAgentRepository {
     cursor?: number,
     filters?: FeeAgentFilterDTO,
   ): Promise<CursorPaginatedData<FeeAgentResponseDTO>> {
-    const where: Prisma.FeeAgentWhereInput = {
-      penjualan: {
-        status: {
-          not: "BATAL",
-        },
-      },
-    };
+    const where: Prisma.FeeAgentWhereInput = {};
 
     if (filters?.agentId) where.agentId = filters.agentId;
     if (filters?.penjualanId) where.penjualanId = filters.penjualanId;
@@ -161,8 +177,7 @@ export class FeeAgentRepository implements IFeeAgentRepository {
   async backfillMissing(): Promise<{ created: number }> {
     const missing = await this.db.penjualan.findMany({
       where: {
-        agentId: { not: null },
-        status: { not: "BATAL" },
+        ...penjualanEligibleForFeeAgentWhere,
         feeAgent: null,
       },
       select: { id: true, agentId: true },

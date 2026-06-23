@@ -15,8 +15,24 @@ async function main() {
   const missing = await prisma.penjualan.findMany({
     where: {
       agentId: { not: null },
-      status: { not: "BATAL" },
       feeAgent: null,
+      OR: [
+        { status: { not: "BATAL" } },
+        {
+          status: "BATAL",
+          OR: [
+            { bookingFeeLunasBatal: true },
+            {
+              tagihan: {
+                some: {
+                  tujuan: "BOOKING_FEE",
+                  status: "LUNAS",
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
     select: {
       id: true,
