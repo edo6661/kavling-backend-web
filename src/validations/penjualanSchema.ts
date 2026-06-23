@@ -172,3 +172,15 @@ export const approveSchema = {
     }),
   }),
 };
+
+export const updateBatalPenjualanSchema = {
+  params: z.object({
+    id: z.string().min(1, "No Transaksi wajib diisi"),
+  }),
+  body: z
+    .object({
+      agent: emptyAsUndefined(z.string().optional()),
+      bookingFeeLunasBatal: z.boolean().optional(),
+    })
+    .partial(),
+};

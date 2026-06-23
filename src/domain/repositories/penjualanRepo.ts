@@ -655,6 +655,7 @@ export class PenjualanRepository implements IPenjualanRepository {
         status: currentStatus,
         agent: item.agent?.nama ?? "",
         alasanBatal: item.alasanBatal ?? null,
+        bookingFeeLunasBatal: item.bookingFeeLunasBatal ?? false,
         fileBuktiBooking: item.fileBuktiBooking ?? bfTagihan?.fileBukti ?? "",
         fileBuktiDp: item.fileBuktiDp ?? dpTagihan?.fileBukti ?? "",
         fileSpr: item.fileSpr ?? null,

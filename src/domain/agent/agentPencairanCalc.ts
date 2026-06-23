@@ -62,6 +62,7 @@ function mapProgressSlots(progress: ProgressPenjualanRef | null | undefined) {
 
 export interface AgentPencairanCalcContext {
   penjualanStatus?: string | null;
+  bookingFeeLunasBatal?: boolean;
   caraPembayaran: string | null;
   hargaJual: number;
   agent: {
@@ -190,7 +191,9 @@ export function hasAkadKreditComplete(
 
 export function isBookingFeePaid(
   tagihanList: AgentPencairanCalcContext["tagihanList"],
+  bookingFeeLunasBatal = false,
 ): boolean {
+  if (bookingFeeLunasBatal) return true;
   return tagihanList.some(
     (t) =>
       effectiveTagihanTujuan(t as Parameters<typeof effectiveTagihanTujuan>[0]) ===
@@ -230,7 +233,10 @@ export function getFullMarketingFee(ctx: AgentPencairanCalcContext): number {
 }
 
 export function getTotalFeeReferensi(ctx: AgentPencairanCalcContext): number {
-  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const bookingPaid = isBookingFeePaid(
+    ctx.tagihanList,
+    ctx.bookingFeeLunasBatal,
+  );
   const isBatal = isPenjualanBatal(ctx.penjualanStatus);
 
   const closingFull = getClosingFeeAmount(
@@ -296,7 +302,10 @@ function getClosingEligibility(
 ): PencairanKomponenInfo {
   const isCash = isCashPayment(ctx.caraPembayaran);
   const isBatal = isPenjualanBatal(ctx.penjualanStatus);
-  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const bookingPaid = isBookingFeePaid(
+    ctx.tagihanList,
+    ctx.bookingFeeLunasBatal,
+  );
   const nominalSisa = Math.max(0, closingFull - sudah.closingNominal);
 
   if (nominalSisa <= 0) {
@@ -339,7 +348,10 @@ function getMarketingEligibility(
   const isCash = isCashPayment(ctx.caraPembayaran);
   const isBatal = isPenjualanBatal(ctx.penjualanStatus);
   const nilaiAjb = Number(ctx.nilaiAjb) || 0;
-  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const bookingPaid = isBookingFeePaid(
+    ctx.tagihanList,
+    ctx.bookingFeeLunasBatal,
+  );
   const fullMarketing = getFullMarketingFee(ctx);
 
   if (isBatal) {
@@ -517,7 +529,10 @@ export function getPencairanPreview(
   ctx: AgentPencairanCalcContext,
   sudah: PencairanSudahDiajukan,
 ): PencairanPreviewResult {
-  const bookingPaid = isBookingFeePaid(ctx.tagihanList);
+  const bookingPaid = isBookingFeePaid(
+    ctx.tagihanList,
+    ctx.bookingFeeLunasBatal,
+  );
   const closingFull = getClosingFeeAmount(
     bookingPaid,
     ctx.feeAgent?.closingNominal,

@@ -115,6 +115,7 @@ export class AjukanAgentPencairanUseCase {
 
     const calcCtx = {
       penjualanStatus: feeAgent.penjualan.status,
+      bookingFeeLunasBatal: feeAgent.penjualan.bookingFeeLunasBatal,
       caraPembayaran: feeAgent.penjualan.caraPembayaran,
       hargaJual: feeAgent.penjualan.hargaJual
         ? Number(feeAgent.penjualan.hargaJual)

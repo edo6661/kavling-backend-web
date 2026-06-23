@@ -306,6 +306,7 @@ model Penjualan {
   rekeningTujuanId    Int?                  @map("rekening_tujuan_id")
   status              PenjualanStatus       @default(BOOKED)
   alasanBatal         String?               @map("alasan_batal") @db.Text
+  bookingFeeLunasBatal Boolean              @default(false) @map("booking_fee_lunas_batal")
   fileSpr             String?               @map("file_spr") @db.VarChar(255)
   createdAt           DateTime              @default(now()) @map("created_at")
   updatedAt           DateTime              @updatedAt @map("updated_at")

@@ -9,6 +9,7 @@ import type { CancelPenjualanUseCase } from "../../application/usecases/penjuala
 import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/penjualan/UploadBuktiPenjualanUseCase.js";
 import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
 import type { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
+import type { UpdateBatalPenjualanUseCase } from "../../application/usecases/penjualan/UpdateBatalPenjualanUseCase.js";
 import type { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
 import type { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
 import type { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
@@ -20,6 +21,7 @@ import type {
   createPenjualanSchema,
   gantiKavlingSchema,
   updatePenjualanSchema,
+  updateBatalPenjualanSchema,
   uploadBuktiPenjualanSchema,
   uploadSignatureSchema,
   approveSchema,
@@ -46,6 +48,7 @@ export class PenjualanController {
     private readonly uploadBuktiUseCase: UploadBuktiPenjualanUseCase,
     private readonly saveSignatureUseCase: SaveSignatureUseCase,
     private readonly updateUseCase: UpdatePenjualanUseCase,
+    private readonly updateBatalUseCase: UpdateBatalPenjualanUseCase,
     private readonly gantiKavlingUseCase: GantiKavlingUseCase,
     private readonly approveBatalUseCase: ApproveBatalUseCase,
     private readonly approveGantiKavlingUseCase: ApproveGantiKavlingUseCase,
@@ -218,6 +221,25 @@ export class PenjualanController {
       res,
       StatusCodes.OK,
       "Data penjualan berhasil diperbarui dan direkam.",
+      result,
+    );
+  };
+  updateBatal = async (
+    req: TypedRequest<
+      typeof updateBatalPenjualanSchema.body,
+      any,
+      typeof updateBatalPenjualanSchema.params
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+
+    const result = await this.updateBatalUseCase.execute(id, req.body);
+
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Data penjualan batal berhasil diperbarui.",
       result,
     );
   };

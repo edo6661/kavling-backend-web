@@ -228,6 +228,7 @@ import { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveS
 import { VerifyDocumentUseCase } from "../../application/usecases/verify/VerifyDocumentUseCase.js";
 import { VerifyController } from "../../presentation/controllers/verifyController.js";
 import { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
+import { UpdateBatalPenjualanUseCase } from "../../application/usecases/penjualan/UpdateBatalPenjualanUseCase.js";
 import { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
 import { UploadBuktiRefundUseCase } from "../../application/usecases/tagihan/UploadBuktiRefundUseCase.js";
 import { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
@@ -625,6 +626,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
     generateSprPdfUseCase,
   );
+  const updateBatalPenjualanUseCase = new UpdateBatalPenjualanUseCase(dbClient);
   const getPenjualanPaginatedUseCase = new GetPenjualanPaginatedUseCase(
     penjualanRepo,
   );
@@ -662,6 +664,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     uploadBuktiPenjualanUseCase,
     saveSignatureUseCase,
     updatePenjualanUseCase,
+    updateBatalPenjualanUseCase,
     gantiKavlingUseCase,
     approveBatalUseCase,
     approveGantiKavlingUseCase,

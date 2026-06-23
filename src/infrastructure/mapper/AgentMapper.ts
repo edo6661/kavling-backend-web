@@ -13,6 +13,7 @@ export type AgentWithRelations = Prisma.AgentGetPayload<{
         tanggal: true;
         hargaJual: true;
         status: true;
+        bookingFeeLunasBatal: true;
         customer: { select: { nama: true } };
         kavling: {
           select: {
@@ -96,7 +97,9 @@ export class AgentMapper {
 
       penjualan: prismaAgent.penjualan
         ? prismaAgent.penjualan
-            .filter((p) => p.status !== "BATAL")
+            .filter(
+              (p) => p.status !== "BATAL" || p.bookingFeeLunasBatal,
+            )
             .map((p) => ({
               id: p.id,
               noTransaksi: p.noTransaksi,

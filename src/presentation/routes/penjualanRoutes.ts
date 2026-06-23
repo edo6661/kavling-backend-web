@@ -10,6 +10,7 @@ import {
   gantiKavlingSchema,
   getPenjualanPaginatedSchema,
   updatePenjualanSchema,
+  updateBatalPenjualanSchema,
   uploadSignatureSchema,
   approveSchema,
 } from "../../validations/penjualanSchema.js";
@@ -77,6 +78,12 @@ export const createPenjualanRoutes = (
     requirePermission("PENJUALAN", "update"),
     validate(uploadSignatureSchema),
     controller.uploadSignature,
+  );
+  router.patch(
+    "/:id/batal",
+    requirePermission("BATAL_TRANSAKSI", "update"),
+    validate(updateBatalPenjualanSchema),
+    controller.updateBatal,
   );
   router.patch(
     "/:id",
