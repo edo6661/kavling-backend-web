@@ -107,6 +107,7 @@ export class AgentMapper {
               tanggal: p.tanggal,
               hargaJual: Number(p.hargaJual),
               status: p.status,
+              bookingFeeLunasBatal: p.bookingFeeLunasBatal ?? false,
               customer: p.customer ? { nama: p.customer.nama } : null,
               kavling: p.kavling
                 ? {

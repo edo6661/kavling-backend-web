@@ -17,6 +17,8 @@ export interface PenjualanAgentEntity {
   tanggal: Date;
   hargaJual: number;
   status: string;
+  /** Penjualan BATAL di relasi agent hanya disertakan jika booking fee sudah lunas */
+  bookingFeeLunasBatal?: boolean;
   customer: { nama: string } | null;
   kavling: {
     blok: string;
