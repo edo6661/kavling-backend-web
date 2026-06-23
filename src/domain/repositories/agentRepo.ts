@@ -88,6 +88,7 @@ export class AgentRepository implements IAgentRepository {
             tanggal: true,
             hargaJual: true,
             status: true,
+            bookingFeeLunasBatal: true,
             customer: { select: { nama: true } },
             kavling: {
               select: {
@@ -118,6 +119,7 @@ export class AgentRepository implements IAgentRepository {
             tanggal: true,
             hargaJual: true,
             status: true,
+            bookingFeeLunasBatal: true,
             customer: { select: { nama: true } },
             kavling: {
               select: {
@@ -263,6 +265,7 @@ export class AgentRepository implements IAgentRepository {
               tanggal: true,
               hargaJual: true,
               status: true,
+              bookingFeeLunasBatal: true,
               customer: { select: { nama: true } },
               kavling: {
                 select: {
@@ -299,6 +302,7 @@ export class AgentRepository implements IAgentRepository {
         tanggal: true,
         hargaJual: true,
         status: true,
+        bookingFeeLunasBatal: true,
         customer: { select: { nama: true } },
         kavling: {
           select: {
