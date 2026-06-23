@@ -43,6 +43,7 @@ export interface AgentEntity {
   feeClosingNominal: number | null;
   potonganPph: number | null;
   isPkp: boolean;
+  isInHouse: boolean;
 
   fileKtp: string | null;
   fileNpwp: string | null;

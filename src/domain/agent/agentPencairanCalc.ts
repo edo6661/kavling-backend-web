@@ -14,6 +14,9 @@ export type PencairanKomponen = "closing" | "marketing";
 /** Komisi cash: 50% di tahap PPJB, 50% di tahap AJB */
 export const KOMISI_CASH_PPJB_RATIO = 0.5;
 
+/** Agent in-house: tanpa closing fee, komisi tetap 0,5% dari nilai AJB */
+export const IN_HOUSE_FEE_MARKETING_PCT = 0.5;
+
 export interface ProgressPenjualanRef {
   nilaiAjb?: number | null;
   filePpjb?: string | null;
@@ -70,6 +73,7 @@ export interface AgentPencairanCalcContext {
     feeClosingNominal: number | null;
     potonganPph: number | null;
     isPkp?: boolean;
+    isInHouse?: boolean;
   };
   feeAgent?: {
     closingNominal: number | null;
@@ -213,13 +217,21 @@ export function calcFullMarketingFee(
   return base > 0 && feeMarketingPct > 0 ? base * (feeMarketingPct / 100) : 0;
 }
 
+export function getEffectiveMarketingPct(
+  agent: AgentPencairanCalcContext["agent"],
+): number {
+  if (agent.isInHouse) return IN_HOUSE_FEE_MARKETING_PCT;
+  return Number(agent.feeMarketingPct) || 0;
+}
+
 export function getClosingFeeAmount(
   bookingPaid: boolean,
   feeAgentClosing: number | null | undefined,
   agentClosing: number | null | undefined,
   isPkp = false,
+  isInHouse = false,
 ): number {
-  if (!bookingPaid) return 0;
+  if (isInHouse || !bookingPaid) return 0;
   const gross = Number(feeAgentClosing) || Number(agentClosing) || 0;
   return extractClosingDpp(gross, isPkp);
 }
@@ -228,7 +240,7 @@ export function getClosingFeeAmount(
 export function getFullMarketingFee(ctx: AgentPencairanCalcContext): number {
   if (isPenjualanBatal(ctx.penjualanStatus)) return 0;
   const nilaiAjb = Number(ctx.nilaiAjb) || 0;
-  const pct = Number(ctx.agent.feeMarketingPct) || 0;
+  const pct = getEffectiveMarketingPct(ctx.agent);
   return calcFullMarketingFee(getMarketingBase(nilaiAjb), pct);
 }
 
@@ -244,6 +256,7 @@ export function getTotalFeeReferensi(ctx: AgentPencairanCalcContext): number {
     ctx.feeAgent?.closingNominal,
     ctx.agent.feeClosingNominal,
     ctx.agent.isPkp,
+    ctx.agent.isInHouse,
   );
 
   if (isBatal) return closingFull;
@@ -300,6 +313,16 @@ function getClosingEligibility(
   closingFull: number,
   sudah: PencairanSudahDiajukan,
 ): PencairanKomponenInfo {
+  if (ctx.agent.isInHouse) {
+    return {
+      key: "closing",
+      nominalPenuh: 0,
+      nominalSisa: 0,
+      eligible: false,
+      alasan: "Agent in-house — tidak ada closing fee",
+    };
+  }
+
   const isCash = isCashPayment(ctx.caraPembayaran);
   const isBatal = isPenjualanBatal(ctx.penjualanStatus);
   const bookingPaid = isBookingFeePaid(
@@ -396,6 +419,48 @@ function getMarketingEligibility(
       nominalSisa: 0,
       eligible: false,
       alasan: "Booking fee belum lunas",
+    };
+  }
+
+  if (ctx.agent.isInHouse) {
+    const nominalSisa = Math.max(0, fullMarketing - sudah.marketingNominal);
+
+    if (nominalSisa <= 0) {
+      return {
+        key: "marketing",
+        nominalPenuh: fullMarketing,
+        nominalSisa: 0,
+        eligible: false,
+        alasan: "Komisi in-house sudah diajukan",
+      };
+    }
+
+    if (!ctx.hasAjb) {
+      return {
+        key: "marketing",
+        nominalPenuh: fullMarketing,
+        nominalSisa,
+        eligible: false,
+        alasan: "Belum AJB",
+      };
+    }
+
+    if (nilaiAjb <= 0) {
+      return {
+        key: "marketing",
+        nominalPenuh: fullMarketing,
+        nominalSisa,
+        eligible: false,
+        alasan: "Isi nilai AJB di menu Progress Penjualan",
+      };
+    }
+
+    return {
+      key: "marketing",
+      nominalPenuh: fullMarketing,
+      nominalSisa,
+      eligible: true,
+      alasan: "Agent in-house — komisi 0,5% dari nilai AJB",
     };
   }
 
@@ -538,6 +603,7 @@ export function getPencairanPreview(
     ctx.feeAgent?.closingNominal,
     ctx.agent.feeClosingNominal,
     ctx.agent.isPkp,
+    ctx.agent.isInHouse,
   );
   const potonganPphPct = Number(ctx.agent.potonganPph) || 0;
   const totalFeeReferensi = getTotalFeeReferensi(ctx);
@@ -568,6 +634,14 @@ function calcMarketingSubmitAmount(
 ): { amount: number; ppjbPortion: number; ajbPortion: number } {
   const info = getMarketingEligibility(ctx, sudah);
   if (!info.eligible) return { amount: 0, ppjbPortion: 0, ajbPortion: 0 };
+
+  if (ctx.agent.isInHouse) {
+    return {
+      amount: info.nominalSisa,
+      ppjbPortion: 0,
+      ajbPortion: info.nominalSisa,
+    };
+  }
 
   if (isCashPayment(ctx.caraPembayaran)) {
     const buckets = getCashMarketingBuckets(ctx, sudah);

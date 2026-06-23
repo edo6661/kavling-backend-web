@@ -228,6 +228,7 @@ model Agent {
   fileSuratPernyataan    String?          @map("file_surat_pernyataan") @db.VarChar(255)
   defaultSuratPernyataan String?          @map("default_surat_pernyataan") @db.VarChar(255)
   feeClosingNominal      Decimal?         @map("fee_closing_nominal") @db.Decimal(15, 2)
+  isInHouse              Boolean          @default(false) @map("is_in_house")
   perusahaanAgent        PerusahaanAgent? @relation(fields: [perusahaanAgentId], references: [id])
   user                   User?            @relation(fields: [userId], references: [id])
   fees                   FeeAgent[]

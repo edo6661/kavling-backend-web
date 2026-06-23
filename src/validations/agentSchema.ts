@@ -29,6 +29,7 @@ export const createAgentSchema = {
     potonganPph: emptyAsUndefined(
       z.coerce.number().min(0).max(100, "Persentase maksimal 100").optional(),
     ),
+    isInHouse: emptyAsUndefined(z.coerce.boolean().optional()),
     pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),
 };
@@ -53,6 +54,7 @@ export const updateAgentSchema = {
     ),
     feeClosingNominal: emptyAsUndefined(z.coerce.number().min(0).optional()), // <-- Ganti menjadi ini (tanpa max 100) // <-- TAMBAHKAN INI
     potonganPph: emptyAsUndefined(z.coerce.number().min(0).max(100).optional()),
+    isInHouse: emptyAsUndefined(z.coerce.boolean().optional()),
     pics: emptyAsUndefined(z.array(picSchema).optional()),
   }),
 };

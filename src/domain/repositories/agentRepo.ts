@@ -15,6 +15,19 @@ import { AppError } from "../errors/AppError.js";
 import { AgentMapper } from "../../infrastructure/mapper/AgentMapper.js";
 import { isAgentPerusahaan } from "../agent/agentCommercialProfile.js";
 
+export const IN_HOUSE_FEE_MARKETING_PCT = 0.5;
+
+function applyInHouseCommercialDefaults(
+  data: Pick<CreateAgentDTO, "isInHouse" | "feeMarketingPct" | "feeClosingNominal">,
+) {
+  if (!data.isInHouse) return data;
+  return {
+    ...data,
+    feeMarketingPct: IN_HOUSE_FEE_MARKETING_PCT,
+    feeClosingNominal: 0,
+  };
+}
+
 export class AgentRepository implements IAgentRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -57,10 +70,16 @@ export class AgentRepository implements IAgentRepository {
       data.perusahaanAgentId != null;
 
     if (!isPerusahaan) {
-      if (data.feeMarketingPct !== undefined)
-        createData.feeMarketingPct = data.feeMarketingPct;
-      if (data.feeClosingNominal !== undefined)
-        createData.feeClosingNominal = data.feeClosingNominal;
+      const commercial = applyInHouseCommercialDefaults({
+        isInHouse: data.isInHouse,
+        feeMarketingPct: data.feeMarketingPct,
+        feeClosingNominal: data.feeClosingNominal,
+      });
+      if (data.isInHouse !== undefined) createData.isInHouse = data.isInHouse;
+      if (commercial.feeMarketingPct !== undefined)
+        createData.feeMarketingPct = commercial.feeMarketingPct;
+      if (commercial.feeClosingNominal !== undefined)
+        createData.feeClosingNominal = commercial.feeClosingNominal;
       if (data.potonganPph !== undefined)
         createData.potonganPph = data.potonganPph;
     }
@@ -217,10 +236,16 @@ export class AgentRepository implements IAgentRepository {
         updateData.noRekening = data.noRekening ?? null;
       if (data.atasNamaRekening !== undefined)
         updateData.atasNamaRekening = data.atasNamaRekening ?? null;
-      if (data.feeMarketingPct !== undefined)
-        updateData.feeMarketingPct = data.feeMarketingPct ?? null;
-      if (data.feeClosingNominal !== undefined)
-        updateData.feeClosingNominal = data.feeClosingNominal ?? null;
+      const commercial = applyInHouseCommercialDefaults({
+        isInHouse: data.isInHouse,
+        feeMarketingPct: data.feeMarketingPct,
+        feeClosingNominal: data.feeClosingNominal,
+      });
+      if (data.isInHouse !== undefined) updateData.isInHouse = data.isInHouse;
+      if (commercial.feeMarketingPct !== undefined)
+        updateData.feeMarketingPct = commercial.feeMarketingPct ?? null;
+      if (commercial.feeClosingNominal !== undefined)
+        updateData.feeClosingNominal = commercial.feeClosingNominal ?? null;
       if (data.potonganPph !== undefined)
         updateData.potonganPph = data.potonganPph ?? null;
     }

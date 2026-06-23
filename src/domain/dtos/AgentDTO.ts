@@ -28,6 +28,7 @@ export interface CreateAgentDTO {
   feeMarketingPct?: number | undefined;
   feeClosingNominal?: number | null | undefined;
   potonganPph?: number | undefined;
+  isInHouse?: boolean | undefined;
   pics?: PicAgentDTO[] | undefined;
 }
 
@@ -50,6 +51,7 @@ export interface UpdateAgentDTO {
   feeMarketingPct?: number | undefined;
   feeClosingNominal?: number | null | undefined;
   potonganPph?: number | undefined;
+  isInHouse?: boolean | undefined;
   fileKtp?: string | undefined;
   fileNpwp?: string | undefined;
   kwitansiBookingFee?: string | undefined;

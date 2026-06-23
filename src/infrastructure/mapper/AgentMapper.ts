@@ -49,6 +49,7 @@ export class AgentMapper {
       feeClosingNominal: commercial.feeClosingNominal,
       potonganPph: commercial.potonganPph,
       isPkp: commercial.isPkp,
+      isInHouse: prismaAgent.isInHouse ?? false,
       fileKtp: prismaAgent.fileKtp ?? null,
       fileNpwp: prismaAgent.fileNpwp ?? null,
       kwitansiBookingFee: prismaAgent.kwitansiBookingFee ?? null,

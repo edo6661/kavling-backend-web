@@ -125,6 +125,7 @@ export class AjukanAgentPencairanUseCase {
         feeClosingNominal: commercial.feeClosingNominal,
         potonganPph: commercial.potonganPph,
         isPkp: commercial.isPkp,
+        isInHouse: feeAgent.agent.isInHouse ?? false,
       },
       feeAgent: {
         closingNominal: feeAgent.closingNominal
