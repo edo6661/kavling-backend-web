@@ -7,6 +7,7 @@ import type {
   RemoveBuktiSpkPembayaranDTO,
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
+  SpkPembayaranKasbonBarisInput,
   UpdateSpkKasbonDTO,
   UpdateSpkUpahDTO,
 } from "../../../domain/dtos/SpkPembayaranDTO.js";
@@ -33,6 +34,9 @@ import {
 } from "../../notifications/spkNotificationHelpers.js";
 import { Role, SpkPembayaranStatus } from "@prisma/client";
 import type { SpkEntity } from "../../../domain/entities/Spk.js";
+
+const withOptionalMandorRekeningId = (mandorRekeningId?: number) =>
+  mandorRekeningId !== undefined ? { mandorRekeningId } : {};
 
 async function notifySpkPengajuanBaru(
   notificationService: NotificationService | undefined,
@@ -286,6 +290,7 @@ export class CreateSpkPembayaranRequestUseCase {
               spkId: data.spkId,
               jenis: "KASBON",
               diajukanOlehId: userId,
+              ...withOptionalMandorRekeningId(data.mandorRekeningId),
               ...(data.kasbonBaris?.length
                 ? { kasbonBaris: data.kasbonBaris }
                 : {
@@ -303,11 +308,13 @@ export class CreateSpkPembayaranRequestUseCase {
                 baris: data.baris,
                 nominal: data.nominal,
                 diajukanOlehId: userId,
+                ...withOptionalMandorRekeningId(data.mandorRekeningId),
               }
             : {
                 spkId: data.spkId,
                 jenis: data.jenis,
                 diajukanOlehId: userId,
+                ...withOptionalMandorRekeningId(data.mandorRekeningId),
               },
       );
       await notifySpkPengajuanBaru(this.notificationService, spk, created);
@@ -344,6 +351,18 @@ export class CreateSpkPembayaranRequestUseCase {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           "Data kasbon tidak valid.",
+        );
+      }
+      if (msg === "MANDOR_REKENING_REQUIRED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Pilih rekening tujuan transfer mandor.",
+        );
+      }
+      if (msg === "MANDOR_REKENING_INVALID") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Rekening tujuan transfer tidak valid.",
         );
       }
       throw err;
@@ -388,7 +407,7 @@ export class SaveSpkKasbonDraftUseCase {
 
   async execute(
     spkId: number,
-    kasbonBaris: NonNullable<CreateSpkPembayaranDTO["kasbonBaris"]>,
+    kasbonBaris: SpkPembayaranKasbonBarisInput[],
     userId: number,
     userRole: string,
   ): Promise<SpkPembayaranEntity> {
@@ -431,7 +450,12 @@ export class SubmitSpkKasbonDraftUseCase {
     private readonly notificationService?: NotificationService,
   ) {}
 
-  async execute(spkId: number, userId: number, userRole: string): Promise<SpkPembayaranEntity> {
+  async execute(
+    spkId: number,
+    userId: number,
+    userRole: string,
+    mandorRekeningId?: number,
+  ): Promise<SpkPembayaranEntity> {
     const spk = await this.spkRepo.findById(spkId);
     if (!spk) throw new NotFoundError("SPK tidak ditemukan");
 
@@ -443,7 +467,11 @@ export class SubmitSpkKasbonDraftUseCase {
     }
 
     try {
-      const submitted = await this.pembayaranRepo.submitKasbonDraft(spkId, userId);
+      const submitted = await this.pembayaranRepo.submitKasbonDraft(
+        spkId,
+        userId,
+        mandorRekeningId,
+      );
       await notifySpkPengajuanBaru(this.notificationService, spk, submitted);
       return submitted;
     } catch (err) {
@@ -468,6 +496,18 @@ export class SubmitSpkKasbonDraftUseCase {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           "Total kasbon & upah melebihi plafon termin.",
+        );
+      }
+      if (msg === "MANDOR_REKENING_REQUIRED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Pilih rekening tujuan transfer mandor.",
+        );
+      }
+      if (msg === "MANDOR_REKENING_INVALID") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Rekening tujuan transfer tidak valid.",
         );
       }
       throw err;

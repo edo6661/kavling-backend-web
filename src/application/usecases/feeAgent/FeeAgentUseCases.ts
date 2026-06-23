@@ -22,6 +22,14 @@ export class UpdateFeeAgentUseCase {
   }
 }
 
+export class BackfillFeeAgentUseCase {
+  constructor(private readonly repo: IFeeAgentRepository) {}
+
+  async execute() {
+    return await this.repo.backfillMissing();
+  }
+}
+
 export class UploadBuktiFeeUseCase {
   constructor(
     private readonly repo: IFeeAgentRepository,

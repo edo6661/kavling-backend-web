@@ -3,6 +3,7 @@ import type {
   CreateSpkPembayaranDTO,
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
+  SpkPembayaranKasbonBarisInput,
   UpdateSpkKasbonDTO,
   UpdateSpkUpahDTO,
 } from "../dtos/SpkPembayaranDTO.js";
@@ -17,9 +18,13 @@ export interface ISpkPembayaranRepository {
   upsertKasbonDraft(
     spkId: number,
     diajukanOlehId: number,
-    kasbonBaris: NonNullable<CreateSpkPembayaranDTO["kasbonBaris"]>,
+    kasbonBaris: SpkPembayaranKasbonBarisInput[],
   ): Promise<SpkPembayaranEntity>;
-  submitKasbonDraft(spkId: number, diajukanOlehId: number): Promise<SpkPembayaranEntity>;
+  submitKasbonDraft(
+    spkId: number,
+    diajukanOlehId: number,
+    mandorRekeningId?: number,
+  ): Promise<SpkPembayaranEntity>;
   markAsPaid(data: BayarSpkPembayaranDTO): Promise<SpkPembayaranEntity>;
   findPaginated(
     page: number,

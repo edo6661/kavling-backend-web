@@ -4,6 +4,7 @@ import { hashPassword } from "../../../utils/hashing.js";
 import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import { ConflictError } from "../../../domain/errors/ConflictError.js";
 import type { MandorProfileDTO, UpdateUserDTO } from "../../../domain/dtos/UserDTO.js";
+import type { MandorRekeningInput } from "../../../domain/mandor/mandorRekening.js";
 import { Role } from "@prisma/client";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
@@ -13,6 +14,7 @@ export interface UpdateSelfDTO {
   email?: string;
   password?: string;
   mandor?: MandorProfileDTO;
+  mandorRekeningList?: MandorRekeningInput[];
 }
 
 export class UpdateCustomerSelfUseCase {
@@ -51,6 +53,16 @@ export class UpdateCustomerSelfUseCase {
         );
       }
       updateData.mandor = data.mandor;
+    }
+
+    if (data.mandorRekeningList?.length) {
+      if (user.role !== Role.MANDOR) {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Data rekening mandor hanya untuk akun role MANDOR.",
+        );
+      }
+      updateData.mandorRekeningList = data.mandorRekeningList;
     }
 
     const updatedUser = await this.userRepo.update(userId, updateData);

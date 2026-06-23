@@ -18,6 +18,9 @@ export interface IUserRepository {
   findById(id: number): Promise<UserEntity | null>;
   findAll(): Promise<UserEntity[]>;
   findByRole(role: Role): Promise<MandorListItem[]>;
+  findMandorRekeningByUserId(userId: number): Promise<
+    import("../mandor/mandorRekening.js").MandorRekeningSnapshot[] | null
+  >;
   update(id: number, data: UpdateUserDTO): Promise<UserEntity>;
   delete(id: number): Promise<void>;
   findWithCursorPagination(

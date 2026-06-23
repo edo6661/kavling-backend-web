@@ -41,6 +41,15 @@ export const registerAgentSchema = {
   }),
 };
 
+const selfMandorRekeningSchema = z.object({
+  id: z.coerce.number().int().positive().optional(),
+  label: emptyAsUndefined(z.string().max(100).optional()),
+  namaBank: z.string().min(2, "Nama bank minimal 2 karakter"),
+  noRekening: z.string().min(5, "Nomor rekening minimal 5 karakter"),
+  atasNamaRekening: z.string().min(3, "Atas nama rekening minimal 3 karakter"),
+  isDefault: z.boolean().optional(),
+});
+
 const selfMandorProfileSchema = z.object({
   namaBank: z.string().min(2, "Nama bank minimal 2 karakter"),
   noRekening: z.string().min(5, "Nomor rekening minimal 5 karakter"),
@@ -60,9 +69,17 @@ export const updateSelfSchema = {
         z.string().min(6, "Password minimal 6 karakter").optional(),
       ),
       mandor: emptyAsUndefined(selfMandorProfileSchema.optional()),
+      mandorRekeningList: emptyAsUndefined(
+        z.array(selfMandorRekeningSchema).min(1).optional(),
+      ),
     })
     .refine(
-      (data) => data.username ?? data.email ?? data.password ?? data.mandor,
+      (data) =>
+        data.username ??
+        data.email ??
+        data.password ??
+        data.mandor ??
+        data.mandorRekeningList,
       {
         message:
           "Minimal salah satu data (username, email, password, atau rekening mandor) harus diisi",

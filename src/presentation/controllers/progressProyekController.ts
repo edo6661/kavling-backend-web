@@ -13,6 +13,7 @@ import type {
   GetProgressProyekListPaginatedUseCase,
   GetProgressProyekUseCase,
   ListMandorsUseCase,
+  GetMandorRekeningUseCase,
   UpdateProgressProyekUseCase,
   UploadTahapanPhotoByKavlingUseCase,
   UploadTahapanPhotoUseCase,
@@ -56,6 +57,7 @@ export class ProgressProyekController {
     private readonly createTahapanLogByKavlingUseCase: CreateTahapanLogByKavlingUseCase,
     private readonly createTahapanLogBySpkUseCase: CreateTahapanLogBySpkUseCase,
     private readonly listMandorsUseCase: ListMandorsUseCase,
+    private readonly getMandorRekeningUseCase: GetMandorRekeningUseCase,
     private readonly setTotalByKavlingUseCase: SetTotalProgressByKavlingUseCase,
     private readonly resetTotalByKavlingUseCase: ResetTotalProgressByKavlingUseCase,
     private readonly setTotalBySpkUseCase: SetTotalProgressBySpkUseCase,
@@ -72,6 +74,12 @@ export class ProgressProyekController {
   listMandors = async (_req: Request, res: Response): Promise<void> => {
     const result = await this.listMandorsUseCase.execute();
     sendResponse(res, StatusCodes.OK, "Daftar mandor berhasil diambil", result);
+  };
+
+  getMandorRekening = async (req: Request, res: Response): Promise<void> => {
+    const userId = Number(req.params.userId);
+    const result = await this.getMandorRekeningUseCase.execute(userId);
+    sendResponse(res, StatusCodes.OK, "Daftar rekening mandor berhasil diambil", result);
   };
 
   getProyekList = async (req: Request, res: Response): Promise<void> => {

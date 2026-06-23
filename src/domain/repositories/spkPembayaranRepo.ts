@@ -118,6 +118,49 @@ function toCalcRows(
 export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  private async resolveMandorRekeningId(
+    tx: Prisma.TransactionClient,
+    spkId: number,
+    mandorRekeningId?: number,
+  ): Promise<number | undefined> {
+    const spk = await tx.spk.findUnique({
+      where: { id: spkId },
+      select: { mandorId: true },
+    });
+    if (!spk) throw new Error("SPK_NOT_FOUND");
+
+    const mandor = await tx.mandor.findUnique({
+      where: { userId: spk.mandorId },
+      include: {
+        rekeningList: {
+          orderBy: [{ isDefault: "desc" }, { id: "asc" }],
+        },
+      },
+    });
+    if (!mandor?.rekeningList.length) return mandorRekeningId;
+
+    if (mandor.rekeningList.length === 1) {
+      return mandorRekeningId ?? mandor.rekeningList[0]!.id;
+    }
+
+    if (!mandorRekeningId) {
+      const defaultRek =
+        mandor.rekeningList.find((item) => item.isDefault) ??
+        mandor.rekeningList[0]!;
+      return defaultRek.id;
+    }
+
+    const selected = mandor.rekeningList.find((item) => item.id === mandorRekeningId);
+    if (!selected) throw new Error("MANDOR_REKENING_INVALID");
+    return selected.id;
+  }
+
+  private mandorRekeningConnect(mandorRekeningId?: number) {
+    return mandorRekeningId
+      ? { mandorRekening: { connect: { id: mandorRekeningId } } }
+      : {};
+  }
+
   private async resolveUpahBaris(
     tx: Prisma.TransactionClient,
     baris: SpkPembayaranUpahBarisInput[],
@@ -363,7 +406,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   async upsertKasbonDraft(
     spkId: number,
     diajukanOlehId: number,
-    kasbonBaris: NonNullable<CreateSpkPembayaranDTO["kasbonBaris"]>,
+    kasbonBaris: SpkPembayaranKasbonBarisInput[],
   ): Promise<SpkPembayaranEntity> {
     return await this.db.$transaction(async (tx) => {
       if (!kasbonBaris.length) throw new Error("KASBON_BARIS_EMPTY");
@@ -466,7 +509,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     });
   }
 
-  async submitKasbonDraft(spkId: number, diajukanOlehId: number): Promise<SpkPembayaranEntity> {
+  async submitKasbonDraft(
+    spkId: number,
+    diajukanOlehId: number,
+    mandorRekeningId?: number,
+  ): Promise<SpkPembayaranEntity> {
     return await this.db.$transaction(async (tx) => {
       const draft = await tx.spkPembayaran.findFirst({
         where: {
@@ -529,6 +576,12 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       );
       if (!capCheck.allowed) throw new Error("KASBON_OVER_CAP");
 
+      const resolvedRekeningId = await this.resolveMandorRekeningId(
+        tx,
+        spkId,
+        mandorRekeningId,
+      );
+
       // Buat pengajuan baru — jangan ubah status draft in-place agar pengajuan
       // sebelumnya (MENUNGGU/SUDAH_DIBAYAR) tidak tertimpa saat ajukan kasbon lagi.
       const submitted = await tx.spkPembayaran.create({
@@ -541,6 +594,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           keterangan: draft.keterangan,
           tanggalPo: draft.tanggalPo,
           diajukanOleh: { connect: { id: diajukanOlehId } },
+          ...this.mandorRekeningConnect(resolvedRekeningId),
           kasbonBaris: {
             create: draft.kasbonBaris.map((b) => ({
               namaSupplier: b.namaSupplier,
@@ -584,6 +638,12 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const calcRows = toCalcRows(existingRows);
       const nilaiKontrak = Number(spk.nilaiKontrak);
+      const resolvedRekeningId = await this.resolveMandorRekeningId(
+        tx,
+        data.spkId,
+        data.mandorRekeningId,
+      );
+      const rekeningConnect = this.mandorRekeningConnect(resolvedRekeningId);
 
       let createData: Prisma.SpkPembayaranCreateInput;
 
@@ -697,6 +757,8 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           diajukanOleh: { connect: { id: data.diajukanOlehId } },
         };
       }
+
+      createData = { ...createData, ...rekeningConnect };
 
       const result = await tx.spkPembayaran.create({
         data: createData,

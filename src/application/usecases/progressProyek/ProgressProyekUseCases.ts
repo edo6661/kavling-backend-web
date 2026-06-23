@@ -7,6 +7,7 @@ import type { IProgressProyekRepository } from "../../../domain/repositories/IPr
 import type { ProgressProyekListFilterDTO, ProgressInfraListFilterDTO } from "../../../domain/dtos/ProgressProyekDTO.js";
 import type { IUserRepository } from "../../../domain/repositories/IUserRepo.js";
 import { Role } from "@prisma/client";
+import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import {
   assertAssignedMandor,
   assertMandorCanMutate,
@@ -339,6 +340,18 @@ export class ListMandorsUseCase {
 
   async execute() {
     return await this.userRepo.findByRole(Role.MANDOR);
+  }
+}
+
+export class GetMandorRekeningUseCase {
+  constructor(private readonly userRepo: IUserRepository) {}
+
+  async execute(userId: number) {
+    const list = await this.userRepo.findMandorRekeningByUserId(userId);
+    if (!list) {
+      throw new NotFoundError("Profil mandor tidak ditemukan");
+    }
+    return list;
   }
 }
 

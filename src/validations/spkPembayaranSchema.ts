@@ -21,6 +21,8 @@ const kasbonBarisSchema = z.object({
   fotoBon: z.string().trim().url().max(500).optional().nullable(),
 });
 
+const mandorRekeningIdSchema = z.coerce.number().int().positive().optional();
+
 export const createSpkPembayaranSchema = {
   params: z.object({
     spkId: z.coerce.number().int().positive(),
@@ -28,6 +30,7 @@ export const createSpkPembayaranSchema = {
   body: z
     .object({
       jenis: z.enum(["TERMIN_55", "TERMIN_100", "RETENSI", "KASBON", "UPAH"]),
+      mandorRekeningId: mandorRekeningIdSchema,
       keterangan: z.string().trim().min(1).max(500).optional(),
       nominal: z.coerce.number().positive().optional(),
       tanggalPo: z.coerce.date().optional(),
@@ -137,6 +140,9 @@ export const saveSpkKasbonDraftSchema = {
 export const submitSpkKasbonDraftSchema = {
   params: z.object({
     spkId: z.coerce.number().int().positive(),
+  }),
+  body: z.object({
+    mandorRekeningId: mandorRekeningIdSchema,
   }),
 };
 

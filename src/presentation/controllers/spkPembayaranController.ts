@@ -31,6 +31,9 @@ import type {
 } from "../../domain/dtos/SpkPembayaranDTO.js";
 import { routeParam } from "../../utils/object.js";
 
+const withOptionalMandorRekeningId = (mandorRekeningId?: number) =>
+  mandorRekeningId !== undefined ? { mandorRekeningId } : {};
+
 export class SpkPembayaranController {
   constructor(
     private readonly createRequestUseCase: CreateSpkPembayaranRequestUseCase,
@@ -75,12 +78,16 @@ export class SpkPembayaranController {
     const spkId = Number(req.params.spkId);
     const userId = req.user!.userId;
 
+    const mandorRekeningId = req.body.mandorRekeningId;
+    const rekeningFields = withOptionalMandorRekeningId(mandorRekeningId);
+
     const payload: CreateSpkPembayaranDTO =
       req.body.jenis === "KASBON"
         ? {
             spkId,
             jenis: "KASBON",
             diajukanOlehId: userId,
+            ...rekeningFields,
             ...(req.body.kasbonBaris?.length
               ? {
                   kasbonBaris: req.body.kasbonBaris.map((b) => ({
@@ -106,11 +113,13 @@ export class SpkPembayaranController {
               baris: req.body.baris ?? [],
               nominal: req.body.upahNominal ?? 0,
               diajukanOlehId: userId,
+              ...rekeningFields,
             }
           : {
               spkId,
               jenis: req.body.jenis,
               diajukanOlehId: userId,
+              ...rekeningFields,
             };
 
     const result = await this.createRequestUseCase.execute(
@@ -157,7 +166,13 @@ export class SpkPembayaranController {
   submitKasbonDraft = async (req: Request, res: Response): Promise<void> => {
     const spkId = parseInt(routeParam(req.params.spkId), 10);
     const userId = req.user!.userId;
-    const result = await this.submitKasbonDraftUseCase.execute(spkId, userId, req.user!.role);
+    const mandorRekeningId = req.body.mandorRekeningId as number | undefined;
+    const result = await this.submitKasbonDraftUseCase.execute(
+      spkId,
+      userId,
+      req.user!.role,
+      mandorRekeningId,
+    );
     sendResponse(res, StatusCodes.OK, "Draft kasbon berhasil diajukan ke pengawas", result);
   };
 

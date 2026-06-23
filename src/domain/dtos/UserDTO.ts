@@ -1,10 +1,14 @@
 import type { BaseFilterDTO } from "./BaseFilterDTO.js";
 import type { Role } from "@prisma/client";
-
+import type {
+  MandorRekeningInput,
+  MandorRekeningSnapshot,
+} from "../mandor/mandorRekening.js";
 export interface MandorProfileDTO {
   namaBank: string;
   noRekening: string;
   atasNamaRekening: string;
+  rekeningList?: MandorRekeningSnapshot[];
 }
 
 export interface RegisterUserDTO {
@@ -60,6 +64,7 @@ export interface UpdateUserDTO {
   password?: string | undefined;
   role?: Role | undefined;
   mandor?: MandorProfileDTO | undefined;
+  mandorRekeningList?: MandorRekeningInput[] | undefined;
 }
 
 export interface UserFilterDTO extends BaseFilterDTO {

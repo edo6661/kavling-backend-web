@@ -157,4 +157,29 @@ export class FeeAgentRepository implements IFeeAgentRepository {
       },
     };
   }
+
+  async backfillMissing(): Promise<{ created: number }> {
+    const missing = await this.db.penjualan.findMany({
+      where: {
+        agentId: { not: null },
+        status: { not: "BATAL" },
+        feeAgent: null,
+      },
+      select: { id: true, agentId: true },
+    });
+
+    if (missing.length === 0) {
+      return { created: 0 };
+    }
+
+    const result = await this.db.feeAgent.createMany({
+      data: missing.map((p) => ({
+        agentId: p.agentId!,
+        penjualanId: p.id,
+      })),
+      skipDuplicates: true,
+    });
+
+    return { created: result.count };
+  }
 }

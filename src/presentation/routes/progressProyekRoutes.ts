@@ -37,6 +37,12 @@ export const createProgressProyekRoutes = (
   );
 
   router.get(
+    "/mandors/:userId/rekening",
+    requirePermission("SPK", "read"),
+    controller.getMandorRekening,
+  );
+
+  router.get(
     "/proyek",
     requirePermission("PROGRESS_PROYEK", "read"),
     validate(getProgressProyekListSchema),

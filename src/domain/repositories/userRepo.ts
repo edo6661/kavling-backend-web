@@ -7,6 +7,7 @@ import type {
   UpdateUserDTO,
   UserFilterDTO,
 } from "../dtos/UserDTO";
+import type { MandorRekeningInput } from "../mandor/mandorRekening.js";
 import { UserMapper } from "../../infrastructure/mapper/UserMapper";
 import { ConflictError } from "../errors/ConflictError";
 import { NotFoundError } from "../errors/NotFoundError.js";
@@ -14,6 +15,153 @@ import type { CursorPaginatedData } from "../../types/response.js";
 
 export class UserRepository implements IUserRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  private readonly userInclude = UserMapper.include;
+
+  private async syncDefaultMandorRekening(
+    tx: Prisma.TransactionClient,
+    mandorId: number,
+    data: {
+      namaBank: string;
+      noRekening: string;
+      atasNamaRekening: string;
+    },
+  ) {
+    const existingDefault = await tx.mandorRekening.findFirst({
+      where: { mandorId, isDefault: true },
+      orderBy: { id: "asc" },
+    });
+
+    if (existingDefault) {
+      await tx.mandorRekening.update({
+        where: { id: existingDefault.id },
+        data: {
+          namaBank: data.namaBank,
+          noRekening: data.noRekening,
+          atasNamaRekening: data.atasNamaRekening,
+        },
+      });
+      return;
+    }
+
+    const anyRekening = await tx.mandorRekening.findFirst({
+      where: { mandorId },
+      orderBy: { id: "asc" },
+    });
+
+    if (anyRekening) {
+      await tx.mandorRekening.update({
+        where: { id: anyRekening.id },
+        data: {
+          isDefault: true,
+          namaBank: data.namaBank,
+          noRekening: data.noRekening,
+          atasNamaRekening: data.atasNamaRekening,
+        },
+      });
+      return;
+    }
+
+    await tx.mandorRekening.create({
+      data: {
+        mandorId,
+        label: "Utama",
+        namaBank: data.namaBank,
+        noRekening: data.noRekening,
+        atasNamaRekening: data.atasNamaRekening,
+        isDefault: true,
+      },
+    });
+  }
+
+  private async syncMandorRekeningList(
+    tx: Prisma.TransactionClient,
+    mandorId: number,
+    rekeningList: MandorRekeningInput[],
+  ) {
+    if (!rekeningList.length) {
+      throw new Error("MANDOR_REKENING_EMPTY");
+    }
+
+    const normalized = rekeningList.map((item, index) => ({
+      id: item.id,
+      label: item.label?.trim() || (index === 0 ? "Utama" : `Rekening ${index + 1}`),
+      namaBank: item.namaBank.trim(),
+      noRekening: item.noRekening.trim(),
+      atasNamaRekening: item.atasNamaRekening.trim(),
+      isDefault: item.isDefault ?? false,
+    }));
+
+    const defaultCount = normalized.filter((item) => item.isDefault).length;
+    if (defaultCount === 0) {
+      normalized[0]!.isDefault = true;
+    } else if (defaultCount > 1) {
+      let foundDefault = false;
+      for (const item of normalized) {
+        if (item.isDefault && !foundDefault) {
+          foundDefault = true;
+          continue;
+        }
+        item.isDefault = false;
+      }
+    }
+
+    const defaultRekening =
+      normalized.find((item) => item.isDefault) ?? normalized[0]!;
+
+    await tx.mandor.update({
+      where: { id: mandorId },
+      data: {
+        namaBank: defaultRekening.namaBank,
+        noRekening: defaultRekening.noRekening,
+        atasNamaRekening: defaultRekening.atasNamaRekening,
+      },
+    });
+
+    const existing = await tx.mandorRekening.findMany({
+      where: { mandorId },
+      select: { id: true },
+    });
+    const keepIds = new Set(
+      normalized.map((item) => item.id).filter((id): id is number => !!id),
+    );
+    const deleteIds = existing
+      .map((item) => item.id)
+      .filter((id) => !keepIds.has(id));
+
+    if (deleteIds.length) {
+      await tx.mandorRekening.deleteMany({
+        where: { id: { in: deleteIds }, mandorId },
+      });
+    }
+
+    for (const item of normalized) {
+      if (item.id) {
+        await tx.mandorRekening.update({
+          where: { id: item.id, mandorId },
+          data: {
+            label: item.label,
+            namaBank: item.namaBank,
+            noRekening: item.noRekening,
+            atasNamaRekening: item.atasNamaRekening,
+            isDefault: item.isDefault,
+          },
+        });
+      } else {
+        await tx.mandorRekening.create({
+          data: {
+            mandorId,
+            label: item.label,
+            namaBank: item.namaBank,
+            noRekening: item.noRekening,
+            atasNamaRekening: item.atasNamaRekening,
+            isDefault: item.isDefault,
+          },
+        });
+      }
+    }
+  }
+
   async findWithCursorPagination(
     limit: number,
     cursor?: number,
@@ -55,7 +203,7 @@ export class UserRepository implements IUserRepository {
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: orderByClause,
-      include: { mandorProfile: true },
+      include: this.userInclude,
     });
 
     let hasNextPage = false;
@@ -74,26 +222,39 @@ export class UserRepository implements IUserRepository {
 
   async create(data: RegisterUserDTO): Promise<UserEntity> {
     try {
-      const createData: Prisma.UserCreateInput = {
-        username: data.username,
-        email: data.email,
-        password: data.password ?? "",
-        role: data.role,
-      };
-      if (data.mandor) {
-        createData.mandorProfile = {
-          create: {
-            namaBank: data.mandor.namaBank,
-            noRekening: data.mandor.noRekening,
-            atasNamaRekening: data.mandor.atasNamaRekening,
-          },
+      const result = await this.db.$transaction(async (tx) => {
+        const createData: Prisma.UserCreateInput = {
+          username: data.username,
+          email: data.email,
+          password: data.password ?? "",
+          role: data.role,
         };
-      }
 
-      const result = await this.db.user.create({
-        data: createData,
-        include: { mandorProfile: true },
+        if (data.mandor) {
+          createData.mandorProfile = {
+            create: {
+              namaBank: data.mandor.namaBank,
+              noRekening: data.mandor.noRekening,
+              atasNamaRekening: data.mandor.atasNamaRekening,
+              rekeningList: {
+                create: {
+                  label: "Utama",
+                  namaBank: data.mandor.namaBank,
+                  noRekening: data.mandor.noRekening,
+                  atasNamaRekening: data.mandor.atasNamaRekening,
+                  isDefault: true,
+                },
+              },
+            },
+          };
+        }
+
+        return tx.user.create({
+          data: createData,
+          include: this.userInclude,
+        });
       });
+
       return UserMapper.toDomain(result);
     } catch (error) {
       if (
@@ -108,48 +269,82 @@ export class UserRepository implements IUserRepository {
 
   async update(id: number, data: UpdateUserDTO): Promise<UserEntity> {
     try {
-      const existing = await this.db.user.findUnique({ where: { id } });
-      if (!existing) throw new NotFoundError("User tidak ditemukan");
+      const result = await this.db.$transaction(async (tx) => {
+        const existing = await tx.user.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundError("User tidak ditemukan");
 
-      const updateData: Prisma.UserUpdateInput = {};
+        const updateData: Prisma.UserUpdateInput = {};
 
-      if (data.username !== undefined) updateData.username = data.username;
-      if (data.email !== undefined) updateData.email = data.email;
-      if (data.password !== undefined) updateData.password = data.password;
-      if (data.role !== undefined) updateData.role = data.role;
-      if (data.mandor !== undefined) {
-        updateData.mandorProfile = {
-          upsert: {
-            create: {
-              namaBank: data.mandor.namaBank,
-              noRekening: data.mandor.noRekening,
-              atasNamaRekening: data.mandor.atasNamaRekening,
+        if (data.username !== undefined) updateData.username = data.username;
+        if (data.email !== undefined) updateData.email = data.email;
+        if (data.password !== undefined) updateData.password = data.password;
+        if (data.role !== undefined) updateData.role = data.role;
+
+        if (data.mandor !== undefined) {
+          updateData.mandorProfile = {
+            upsert: {
+              create: {
+                namaBank: data.mandor.namaBank,
+                noRekening: data.mandor.noRekening,
+                atasNamaRekening: data.mandor.atasNamaRekening,
+              },
+              update: {
+                namaBank: data.mandor.namaBank,
+                noRekening: data.mandor.noRekening,
+                atasNamaRekening: data.mandor.atasNamaRekening,
+              },
             },
-            update: {
-              namaBank: data.mandor.namaBank,
-              noRekening: data.mandor.noRekening,
-              atasNamaRekening: data.mandor.atasNamaRekening,
-            },
-          },
-        };
-      }
-
-      const result = await this.db.user.update({
-        where: { id },
-        data: updateData,
-        include: { mandorProfile: true },
-      });
-
-      if (data.role !== undefined && data.role !== Role.MANDOR) {
-        await this.db.mandor.deleteMany({ where: { userId: id } });
-        const refreshed = await this.db.user.findUnique({
-          where: { id },
-          include: { mandorProfile: true },
-        });
-        if (refreshed) {
-          return UserMapper.toDomain(refreshed);
+          };
         }
-      }
+
+        const updated = await tx.user.update({
+          where: { id },
+          data: updateData,
+          include: this.userInclude,
+        });
+
+        if (data.mandor && updated.mandorProfile) {
+          await this.syncDefaultMandorRekening(
+            tx,
+            updated.mandorProfile.id,
+            data.mandor,
+          );
+        }
+
+        if (data.mandorRekeningList?.length) {
+          const defaultRek =
+            data.mandorRekeningList.find((item) => item.isDefault) ??
+            data.mandorRekeningList[0]!;
+          let mandorProfileId = updated.mandorProfile?.id;
+          if (!mandorProfileId) {
+            const createdMandor = await tx.mandor.create({
+              data: {
+                userId: id,
+                namaBank: defaultRek.namaBank.trim(),
+                noRekening: defaultRek.noRekening.trim(),
+                atasNamaRekening: defaultRek.atasNamaRekening.trim(),
+              },
+            });
+            mandorProfileId = createdMandor.id;
+          }
+          await this.syncMandorRekeningList(
+            tx,
+            mandorProfileId,
+            data.mandorRekeningList,
+          );
+        }
+
+        if (data.role !== undefined && data.role !== Role.MANDOR) {
+          await tx.mandor.deleteMany({ where: { userId: id } });
+        }
+
+        const refreshed = await tx.user.findUnique({
+          where: { id },
+          include: this.userInclude,
+        });
+        if (!refreshed) throw new NotFoundError("User tidak ditemukan");
+        return refreshed;
+      });
 
       return UserMapper.toDomain(result);
     } catch (error) {
@@ -166,7 +361,7 @@ export class UserRepository implements IUserRepository {
   async findByEmail(email: string): Promise<UserEntity | null> {
     const result = await this.db.user.findUnique({
       where: { email },
-      include: { mandorProfile: true },
+      include: this.userInclude,
     });
     if (!result) return null;
     return UserMapper.toDomain(result);
@@ -175,7 +370,7 @@ export class UserRepository implements IUserRepository {
   async findById(id: number): Promise<UserEntity | null> {
     const result = await this.db.user.findUnique({
       where: { id },
-      include: { mandorProfile: true },
+      include: this.userInclude,
     });
     if (!result) return null;
     return UserMapper.toDomain(result);
@@ -184,7 +379,7 @@ export class UserRepository implements IUserRepository {
   async findAll(): Promise<UserEntity[]> {
     const results = await this.db.user.findMany({
       orderBy: { createdAt: "desc" },
-      include: { mandorProfile: true },
+      include: this.userInclude,
     });
     return results.map((u) => UserMapper.toDomain(u));
   }
@@ -195,6 +390,26 @@ export class UserRepository implements IUserRepository {
       select: { id: true, username: true },
       orderBy: { username: "asc" },
     });
+  }
+
+  async findMandorRekeningByUserId(userId: number) {
+    const mandor = await this.db.mandor.findUnique({
+      where: { userId },
+      include: {
+        rekeningList: {
+          orderBy: [{ isDefault: "desc" }, { id: "asc" }],
+        },
+      },
+    });
+    if (!mandor) return null;
+    return mandor.rekeningList.map((item) => ({
+      id: item.id,
+      label: item.label,
+      namaBank: item.namaBank,
+      noRekening: item.noRekening,
+      atasNamaRekening: item.atasNamaRekening,
+      isDefault: item.isDefault,
+    }));
   }
 
   async delete(id: number): Promise<void> {

@@ -23,11 +23,13 @@ export type CreateSpkPembayaranDTO =
       spkId: number;
       jenis: SpkTerminPembayaranJenis;
       diajukanOlehId: number;
+      mandorRekeningId?: number;
     }
   | {
       spkId: number;
       jenis: "KASBON";
       diajukanOlehId: number;
+      mandorRekeningId?: number;
       /** Pengajuan multi-kasbon (satu pembayaran, beberapa bukti) */
       kasbonBaris?: SpkPembayaranKasbonBarisInput[];
       /** Kasbon tunggal — data production lama */
@@ -44,6 +46,7 @@ export type CreateSpkPembayaranDTO =
       /** Total upah tukang (bukan per baris) */
       nominal: number;
       diajukanOlehId: number;
+      mandorRekeningId?: number;
     };
 
 export interface BayarSpkPembayaranDTO {

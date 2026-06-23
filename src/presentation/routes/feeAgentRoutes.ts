@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   authenticate,
   requirePermission,
+  requireRole,
 } from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
@@ -23,6 +24,12 @@ export const createFeeAgentRoutes = (
     requirePermission("FEE_AGENT", "read"),
     validate(getFeeAgentsPaginatedSchema),
     controller.getPaginated,
+  );
+
+  router.post(
+    "/backfill",
+    requireRole(["SUPERADMIN"]),
+    controller.backfill,
   );
 
   router.patch(

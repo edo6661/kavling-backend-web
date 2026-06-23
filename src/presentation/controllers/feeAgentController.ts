@@ -4,6 +4,7 @@ import { sendResponse } from "../../utils/response.js";
 import type { TypedRequest } from "../../types/request.js";
 
 import type {
+  BackfillFeeAgentUseCase,
   GetFeeAgentsPaginatedUseCase,
   UpdateFeeAgentUseCase,
   UploadBuktiFeeUseCase,
@@ -17,6 +18,7 @@ export class FeeAgentController {
     private readonly getPaginatedUseCase: GetFeeAgentsPaginatedUseCase,
     private readonly updateUseCase: UpdateFeeAgentUseCase,
     private readonly uploadBuktiUseCase: UploadBuktiFeeUseCase,
+    private readonly backfillUseCase: BackfillFeeAgentUseCase,
   ) {}
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
@@ -54,6 +56,15 @@ export class FeeAgentController {
       "Data fee agent berhasil diperbarui",
       result,
     );
+  };
+
+  backfill = async (_req: Request, res: Response): Promise<void> => {
+    const result = await this.backfillUseCase.execute();
+    const message =
+      result.created > 0
+        ? `${result.created} data fee agent berhasil dibuat`
+        : "Tidak ada penjualan yang perlu di-backfill";
+    sendResponse(res, StatusCodes.OK, message, result);
   };
 
   uploadBukti = async (

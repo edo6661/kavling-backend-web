@@ -80,6 +80,7 @@ import {
   GetProgressProyekUseCase,
   GetProgressProyekListPaginatedUseCase,
   ListMandorsUseCase,
+  GetMandorRekeningUseCase,
   ResetTotalProgressByKavlingUseCase,
   ResetTotalProgressBySpkUseCase,
   SetTotalProgressByKavlingUseCase,
@@ -218,6 +219,7 @@ import { FeeAgentRepository } from "../../domain/repositories/feeAgentRepo.js";
 import {
   GetFeeAgentsPaginatedUseCase,
   UpdateFeeAgentUseCase,
+  BackfillFeeAgentUseCase,
   UploadBuktiFeeUseCase,
 } from "../../application/usecases/feeAgent/FeeAgentUseCases.js";
 import { FeeAgentController } from "../../presentation/controllers/feeAgentController.js";
@@ -784,6 +786,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     feeAgentRepo,
   );
   const updateFeeAgentUseCase = new UpdateFeeAgentUseCase(feeAgentRepo);
+  const backfillFeeAgentUseCase = new BackfillFeeAgentUseCase(feeAgentRepo);
   const uploadBuktiFeeUseCase = new UploadBuktiFeeUseCase(
     feeAgentRepo,
     cloudinaryService,
@@ -793,6 +796,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     getFeeAgentsPaginatedUseCase,
     updateFeeAgentUseCase,
     uploadBuktiFeeUseCase,
+    backfillFeeAgentUseCase,
   );
   const verifyDocumentUseCase = new VerifyDocumentUseCase(dbClient);
   const verifyController = new VerifyController(verifyDocumentUseCase);
@@ -910,6 +914,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
   );
   const listMandorsUseCase = new ListMandorsUseCase(userRepo);
+  const getMandorRekeningUseCase = new GetMandorRekeningUseCase(userRepo);
   const setTotalProgressByKavlingUseCase = new SetTotalProgressByKavlingUseCase(
     progressProyekRepo,
   );
@@ -934,6 +939,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     createTahapanLogByKavlingUseCase,
     createTahapanLogBySpkUseCase,
     listMandorsUseCase,
+    getMandorRekeningUseCase,
     setTotalProgressByKavlingUseCase,
     resetTotalProgressByKavlingUseCase,
     setTotalProgressBySpkUseCase,

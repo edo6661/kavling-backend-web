@@ -6,6 +6,16 @@ export const spkPembayaranInclude = {
   diajukanOleh: { select: { id: true, username: true } },
   disetujuiOleh: { select: { id: true, username: true } },
   dibayarOleh: { select: { id: true, username: true } },
+  mandorRekening: {
+    select: {
+      id: true,
+      label: true,
+      namaBank: true,
+      noRekening: true,
+      atasNamaRekening: true,
+      isDefault: true,
+    },
+  },
   upahBaris: {
     orderBy: { id: "asc" as const },
     select: {
@@ -82,6 +92,17 @@ export class SpkPembayaranMapper {
       row.buktiPembayaranList,
       row.buktiPembayaran,
     );
+    const mandorRekening = row.mandorRekening
+      ? {
+          id: row.mandorRekening.id,
+          label: row.mandorRekening.label,
+          namaBank: row.mandorRekening.namaBank,
+          noRekening: row.mandorRekening.noRekening,
+          atasNamaRekening: row.mandorRekening.atasNamaRekening,
+          isDefault: row.mandorRekening.isDefault,
+        }
+      : null;
+
     const entity: SpkPembayaranEntity = {
       id: row.id,
       spkId: row.spkId,
@@ -119,6 +140,8 @@ export class SpkPembayaranMapper {
       disetujuiOlehId: row.disetujuiOlehId,
       tanggalDisetujui: row.tanggalDisetujui,
       dibayarOlehId: row.dibayarOlehId,
+      mandorRekeningId: row.mandorRekeningId,
+      mandorRekening,
       diajukanOleh: row.diajukanOleh,
       disetujuiOleh: row.disetujuiOleh,
       dibayarOleh: row.dibayarOleh,
@@ -127,6 +150,8 @@ export class SpkPembayaranMapper {
     };
 
     if (row.spk) {
+      const profileBank = row.spk.mandor.mandorProfile;
+      const transferBank = mandorRekening ?? profileBank;
       entity.spk = {
         id: row.spk.id,
         noSpk: row.spk.noSpk,
@@ -143,10 +168,9 @@ export class SpkPembayaranMapper {
         mandor: {
           id: row.spk.mandor.id,
           username: row.spk.mandor.username,
-          namaBank: row.spk.mandor.mandorProfile?.namaBank ?? "",
-          noRekening: row.spk.mandor.mandorProfile?.noRekening ?? "",
-          atasNamaRekening:
-            row.spk.mandor.mandorProfile?.atasNamaRekening ?? "",
+          namaBank: transferBank?.namaBank ?? "",
+          noRekening: transferBank?.noRekening ?? "",
+          atasNamaRekening: transferBank?.atasNamaRekening ?? "",
         },
       };
     }

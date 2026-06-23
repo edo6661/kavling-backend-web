@@ -1,9 +1,12 @@
 import type { Role } from "@prisma/client";
 
+import type { MandorRekeningSnapshot } from "../mandor/mandorRekening.js";
+
 export interface MandorProfileEntity {
   namaBank: string;
   noRekening: string;
   atasNamaRekening: string;
+  rekeningList?: MandorRekeningSnapshot[];
 }
 
 export interface UserEntity {

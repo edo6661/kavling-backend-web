@@ -50,6 +50,15 @@ export interface SpkPembayaranEntity {
   dibayarOleh: { id: number; username: string } | null;
   createdAt: Date;
   updatedAt: Date;
+  mandorRekeningId?: number | null;
+  mandorRekening?: {
+    id: number;
+    label: string | null;
+    namaBank: string;
+    noRekening: string;
+    atasNamaRekening: string;
+    isDefault: boolean;
+  } | null;
   spk?: {
     id: number;
     noSpk: string;
