@@ -60,9 +60,18 @@ export class FeeAgentController {
 
   backfill = async (_req: Request, res: Response): Promise<void> => {
     const result = await this.backfillUseCase.execute();
+    const parts: string[] = [];
+    if (result.created > 0) {
+      parts.push(`${result.created} baris fee agent baru dibuat`);
+    }
+    if (result.synced > 0) {
+      parts.push(
+        `${result.synced} baris fee agent disinkronkan dengan fee closing master`,
+      );
+    }
     const message =
-      result.created > 0
-        ? `${result.created} data fee agent berhasil dibuat`
+      parts.length > 0
+        ? parts.join("; ")
         : "Tidak ada penjualan yang perlu di-backfill";
     sendResponse(res, StatusCodes.OK, message, result);
   };

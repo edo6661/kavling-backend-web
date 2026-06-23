@@ -4,6 +4,7 @@ import type { CursorPaginatedData } from "../../types/response.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { FeeAgentMapper } from "../../infrastructure/mapper/FeeAgentMapper.js";
+import { resolveAgentCommercialProfile } from "../agent/agentCommercialProfile.js";
 import type {
   CreateFeeAgentDTO,
   UpdateFeeAgentDTO,
@@ -174,27 +175,70 @@ export class FeeAgentRepository implements IFeeAgentRepository {
     };
   }
 
-  async backfillMissing(): Promise<{ created: number }> {
+  async backfillMissing(): Promise<{ created: number; synced: number }> {
     const missing = await this.db.penjualan.findMany({
       where: {
         ...penjualanEligibleForFeeAgentWhere,
         feeAgent: null,
       },
-      select: { id: true, agentId: true },
+      select: {
+        id: true,
+        agentId: true,
+        agent: {
+          include: { perusahaanAgent: true },
+        },
+      },
     });
 
-    if (missing.length === 0) {
-      return { created: 0 };
+    let created = 0;
+    if (missing.length > 0) {
+      const result = await this.db.feeAgent.createMany({
+        data: missing.map((p) => {
+          const commercial = resolveAgentCommercialProfile(p.agent!);
+          return {
+            agentId: p.agentId!,
+            penjualanId: p.id,
+            ...(commercial.feeClosingNominal != null &&
+            commercial.feeClosingNominal > 0
+              ? { closingNominal: commercial.feeClosingNominal }
+              : {}),
+          };
+        }),
+        skipDuplicates: true,
+      });
+      created = result.count;
     }
 
-    const result = await this.db.feeAgent.createMany({
-      data: missing.map((p) => ({
-        agentId: p.agentId!,
-        penjualanId: p.id,
-      })),
-      skipDuplicates: true,
+    const synced = await this.syncCommercialClosingSnapshots();
+
+    return { created, synced };
+  }
+
+  /** Salin fee closing dari master agent/perusahaan ke fee_agent yang masih null */
+  private async syncCommercialClosingSnapshots(): Promise<number> {
+    const rows = await this.db.feeAgent.findMany({
+      where: { closingNominal: null },
+      select: {
+        id: true,
+        agent: { include: { perusahaanAgent: true } },
+      },
     });
 
-    return { created: result.count };
+    let synced = 0;
+    for (const row of rows) {
+      const commercial = resolveAgentCommercialProfile(row.agent);
+      if (
+        commercial.feeClosingNominal == null ||
+        commercial.feeClosingNominal <= 0
+      ) {
+        continue;
+      }
+      await this.db.feeAgent.update({
+        where: { id: row.id },
+        data: { closingNominal: commercial.feeClosingNominal },
+      });
+      synced += 1;
+    }
+    return synced;
   }
 }

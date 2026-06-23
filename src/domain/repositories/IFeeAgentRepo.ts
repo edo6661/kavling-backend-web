@@ -16,5 +16,5 @@ export interface IFeeAgentRepository {
     cursor?: number,
     filters?: FeeAgentFilterDTO,
   ): Promise<CursorPaginatedData<FeeAgentResponseDTO>>;
-  backfillMissing(): Promise<{ created: number }>;
+  backfillMissing(): Promise<{ created: number; synced: number }>;
 }
