@@ -1,13 +1,21 @@
 import type { SpkPembayaranStatus } from "@prisma/client";
 
-export type SpkTerminPembayaranJenis = "TERMIN_55" | "TERMIN_100" | "RETENSI";
+export type SpkTerminPembayaranJenis =
+  | "TERMIN_55"
+  | "TERMIN_100"
+  | "TERMIN_INFRA_20_1"
+  | "TERMIN_INFRA_20_2"
+  | "TERMIN_INFRA_20_3"
+  | "TERMIN_INFRA_20_4"
+  | "TERMIN_INFRA_15"
+  | "RETENSI";
 
 export interface SpkPembayaranUpahBarisInput {
-  tukangId?: number | null;
+  tukangId?: number | null | undefined;
   nik: string;
   nama: string;
   /** Opsional; jika total upah di level pembayaran, baris disimpan dengan nominal 0 */
-  nominal?: number;
+  nominal?: number | undefined;
 }
 
 export interface SpkPembayaranKasbonBarisInput {

@@ -59,13 +59,7 @@ function pembayaranInDateRange(
 }
 
 function emptyByJenis(): BiayaProyekByJenisDTO {
-  return {
-    TERMIN_55: 0,
-    TERMIN_100: 0,
-    RETENSI: 0,
-    KASBON: 0,
-    UPAH: 0,
-  };
+  return {};
 }
 
 export class GetBiayaProyekReportUseCase {
@@ -190,7 +184,7 @@ export class GetBiayaProyekReportUseCase {
           totalSudahDibayar += nominal;
         }
 
-        byJenis[p.jenis] += nominal;
+        byJenis[p.jenis] = (byJenis[p.jenis] ?? 0) + nominal;
 
         if (p.jenis === "KASBON") {
           const kasbonTotal =

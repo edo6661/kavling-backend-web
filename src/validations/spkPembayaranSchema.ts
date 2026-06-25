@@ -1,6 +1,15 @@
 import { z } from "zod";
 
-const terminJenis = z.enum(["TERMIN_55", "TERMIN_100", "RETENSI"]);
+const terminJenis = z.enum([
+  "TERMIN_55",
+  "TERMIN_100",
+  "TERMIN_INFRA_20_1",
+  "TERMIN_INFRA_20_2",
+  "TERMIN_INFRA_20_3",
+  "TERMIN_INFRA_20_4",
+  "TERMIN_INFRA_15",
+  "RETENSI",
+]);
 
 const upahBarisSchema = z.object({
   tukangId: z.coerce.number().int().positive().optional().nullable(),
@@ -29,7 +38,18 @@ export const createSpkPembayaranSchema = {
   }),
   body: z
     .object({
-      jenis: z.enum(["TERMIN_55", "TERMIN_100", "RETENSI", "KASBON", "UPAH"]),
+      jenis: z.enum([
+        "TERMIN_55",
+        "TERMIN_100",
+        "TERMIN_INFRA_20_1",
+        "TERMIN_INFRA_20_2",
+        "TERMIN_INFRA_20_3",
+        "TERMIN_INFRA_20_4",
+        "TERMIN_INFRA_15",
+        "RETENSI",
+        "KASBON",
+        "UPAH",
+      ]),
       mandorRekeningId: mandorRekeningIdSchema,
       keterangan: z.string().trim().min(1).max(500).optional(),
       nominal: z.coerce.number().positive().optional(),

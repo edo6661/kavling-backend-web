@@ -14,8 +14,8 @@ export interface CreateSpkDTO {
   jatuhTempo?: Date | null | undefined;
   fileSpk?: string | null | undefined;
   mandorId: number;
-  kavlingIds?: number[];
-  pekerjaanInfraIds?: number[];
+  kavlingIds?: number[] | undefined;
+  pekerjaanInfraIds?: number[] | undefined;
 }
 
 export interface UpdateSpkDTO {

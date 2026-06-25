@@ -89,12 +89,15 @@ async function notifySpkDibayar(
 const toPengurangRows = (list: SpkPembayaranEntity[]): SpkPengurangTerminRow[] =>
   list
     .filter((p) => p.status !== SpkPembayaranStatus.DRAFT)
-    .map((p) => ({
-      id: p.id,
-      jenis: p.jenis,
-      nominal: p.nominal,
-      mengurangiTermin: p.mengurangiTermin,
-    }));
+    .map((p) => {
+      const row: SpkPengurangTerminRow = {
+        jenis: p.jenis,
+        nominal: p.nominal,
+        mengurangiTermin: p.mengurangiTermin ?? null,
+      };
+      row.id = p.id;
+      return row;
+    });
 
 async function loadPenguranganForMutation(
   pembayaranRepo: SpkPembayaranRepository,
@@ -185,6 +188,7 @@ export class CreateSpkPembayaranRequestUseCase {
 
     const existing = await this.pembayaranRepo.findBySpkId(data.spkId);
     const nilaiKontrak = Number(spk.nilaiKontrak);
+    const spkJenis = spk.jenis;
     const statusRows = existing.map((p) => ({
       id: p.id,
       jenis: p.jenis,
@@ -193,10 +197,13 @@ export class CreateSpkPembayaranRequestUseCase {
       mengurangiTermin: p.mengurangiTermin,
     }));
     const pengurangRows = toPengurangRows(existing);
-    const terminStatus = getTerminPaymentStatus(toSpkPembayaranCalcRows(statusRows));
+    const terminStatus = getTerminPaymentStatus(
+      toSpkPembayaranCalcRows(statusRows),
+      spkJenis,
+    );
 
     if (data.jenis === "KASBON") {
-      const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak);
+      const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak, spkJenis);
       if (!kasbonCheck.allowed) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
@@ -225,12 +232,13 @@ export class CreateSpkPembayaranRequestUseCase {
         additionalNominal,
         undefined,
         terminStatus,
+        spkJenis,
       );
       if (!capCheck.allowed) {
         throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
       }
     } else if (data.jenis === "UPAH") {
-      const upahCheck = canRequestKasbon(statusRows, nilaiKontrak);
+      const upahCheck = canRequestKasbon(statusRows, nilaiKontrak, spkJenis);
       if (!upahCheck.allowed) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
@@ -264,6 +272,7 @@ export class CreateSpkPembayaranRequestUseCase {
         additionalNominal,
         undefined,
         terminStatus,
+        spkJenis,
       );
       if (!capCheck.allowed) {
         throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -273,6 +282,7 @@ export class CreateSpkPembayaranRequestUseCase {
         data.jenis,
         { nilaiKontrak, progress: spk.progress },
         statusRows,
+        spkJenis,
       );
 
       if (!check.allowed) {
@@ -637,6 +647,7 @@ export class UpdateSpkKasbonUseCase {
             keterangan: p.keterangan,
           })),
         ),
+        { spkJenis: spk.jenis },
       );
 
     if (!mengurangiTermin) {
@@ -671,6 +682,7 @@ export class UpdateSpkKasbonUseCase {
           mengurangiTermin: p.mengurangiTermin,
         })),
       ),
+      spk.jenis,
     );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
@@ -679,6 +691,7 @@ export class UpdateSpkKasbonUseCase {
       additionalNominal,
       data.id,
       terminStatusKasbon,
+      spk.jenis,
     );
     if (!capCheck.allowed) {
       throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -777,6 +790,7 @@ export class UpdateSpkUpahUseCase {
             keterangan: p.keterangan,
           })),
         ),
+        { spkJenis: spk.jenis },
       );
 
     if (!mengurangiTerminUpah) {
@@ -800,6 +814,7 @@ export class UpdateSpkUpahUseCase {
           mengurangiTermin: p.mengurangiTermin,
         })),
       ),
+      spk.jenis,
     );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
@@ -808,6 +823,7 @@ export class UpdateSpkUpahUseCase {
       data.nominal,
       data.id,
       terminStatusUpah,
+      spk.jenis,
     );
     if (!capCheck.allowed) {
       throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);

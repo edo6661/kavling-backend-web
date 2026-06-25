@@ -28,11 +28,30 @@ import { getSpkPembayaranPaginatedSchema } from "../../validations/spkPembayaran
 import type {
   CreateSpkPembayaranDTO,
   SpkPembayaranFilterDTO,
+  SpkPembayaranUpahBarisInput,
 } from "../../domain/dtos/SpkPembayaranDTO.js";
 import { routeParam } from "../../utils/object.js";
 
 const withOptionalMandorRekeningId = (mandorRekeningId?: number) =>
   mandorRekeningId !== undefined ? { mandorRekeningId } : {};
+
+const mapUpahBarisInput = (
+  baris: {
+    nik: string;
+    nama: string;
+    tukangId?: number | null | undefined;
+    nominal?: number | undefined;
+  }[],
+): SpkPembayaranUpahBarisInput[] =>
+  baris.map((b) => {
+    const row: SpkPembayaranUpahBarisInput = {
+      nik: b.nik,
+      nama: b.nama,
+    };
+    if (b.tukangId !== undefined) row.tukangId = b.tukangId;
+    if (b.nominal !== undefined) row.nominal = b.nominal;
+    return row;
+  });
 
 export class SpkPembayaranController {
   constructor(
@@ -110,7 +129,7 @@ export class SpkPembayaranController {
               jenis: "UPAH",
               tanggalDari: req.body.tanggalDari ?? new Date(),
               tanggalSampai: req.body.tanggalSampai ?? new Date(),
-              baris: req.body.baris ?? [],
+              baris: mapUpahBarisInput(req.body.baris ?? []),
               nominal: req.body.upahNominal ?? 0,
               diajukanOlehId: userId,
               ...rekeningFields,
@@ -293,7 +312,7 @@ export class SpkPembayaranController {
         id,
         tanggalDari: req.body.tanggalDari,
         tanggalSampai: req.body.tanggalSampai,
-        baris: req.body.baris,
+        baris: mapUpahBarisInput(req.body.baris ?? []),
         nominal: req.body.upahNominal,
       },
       req.user!.userId,

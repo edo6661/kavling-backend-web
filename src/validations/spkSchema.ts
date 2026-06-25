@@ -47,9 +47,9 @@ const spkBodyBase = z.object({
 const validateSpkByJenis = (
   data: {
     jenis?: "RUMAH" | "INFRASTRUKTUR";
-    kavlingIds?: number[];
-    zonaId?: number;
-    pekerjaanInfraIds?: number[];
+    kavlingIds?: number[] | undefined;
+    zonaId?: number | undefined;
+    pekerjaanInfraIds?: number[] | undefined;
   },
   ctx: z.RefinementCtx,
   mode: "create" | "update",

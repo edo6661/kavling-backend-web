@@ -75,13 +75,7 @@ export interface BiayaProyekTukangRowDTO {
   totalNominal: number;
 }
 
-export interface BiayaProyekByJenisDTO {
-  TERMIN_55: number;
-  TERMIN_100: number;
-  RETENSI: number;
-  KASBON: number;
-  UPAH: number;
-}
+export type BiayaProyekByJenisDTO = Partial<Record<SpkPembayaranJenis, number>>;
 
 export interface BiayaProyekReportSummaryDTO {
   jumlahSpk: number;

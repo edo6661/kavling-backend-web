@@ -777,16 +777,26 @@ model SpkPembayaranKasbonBaris {
 }
 
 enum SpkPembayaranJenis {
-  TERMIN_55  @map("termin_55")
-  TERMIN_100 @map("termin_100")
-  RETENSI    @map("retensi")
-  KASBON     @map("kasbon")
-  UPAH       @map("upah")
+  TERMIN_55         @map("termin_55")
+  TERMIN_100        @map("termin_100")
+  TERMIN_INFRA_20_1 @map("termin_infra_20_1")
+  TERMIN_INFRA_20_2 @map("termin_infra_20_2")
+  TERMIN_INFRA_20_3 @map("termin_infra_20_3")
+  TERMIN_INFRA_20_4 @map("termin_infra_20_4")
+  TERMIN_INFRA_15   @map("termin_infra_15")
+  RETENSI           @map("retensi")
+  KASBON            @map("kasbon")
+  UPAH              @map("upah")
 }
 
 enum SpkKasbonTargetTermin {
-  TERMIN_55  @map("termin_55")
-  TERMIN_100 @map("termin_100")
+  TERMIN_55         @map("termin_55")
+  TERMIN_100        @map("termin_100")
+  TERMIN_INFRA_20_1 @map("termin_infra_20_1")
+  TERMIN_INFRA_20_2 @map("termin_infra_20_2")
+  TERMIN_INFRA_20_3 @map("termin_infra_20_3")
+  TERMIN_INFRA_20_4 @map("termin_infra_20_4")
+  TERMIN_INFRA_15   @map("termin_infra_15")
 }
 
 enum SpkPembayaranStatus {
