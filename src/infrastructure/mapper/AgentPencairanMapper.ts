@@ -33,6 +33,9 @@ export const agentPencairanInclude = {
           blok: true,
           nomorUnit: true,
           perumahan: { select: { nama: true } },
+          rekeningTujuan: {
+            select: { id: true, namaBank: true, noRekening: true, atasNama: true },
+          },
         },
       },
     },
