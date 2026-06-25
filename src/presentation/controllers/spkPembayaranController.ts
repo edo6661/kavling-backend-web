@@ -211,12 +211,16 @@ export class SpkPembayaranController {
   };
 
   getPaginated = async (req: Request, res: Response): Promise<void> => {
-    const { page, limit, status, search } =
+    const { page, limit, status, jenis, search, bankRekeningPtId, bulan, tahun } =
       getSpkPembayaranPaginatedSchema.query.parse(req.query);
 
     const filters: SpkPembayaranFilterDTO = {};
     if (status && status !== "ALL") filters.status = status;
+    if (jenis) filters.jenis = jenis;
     if (search) filters.search = search;
+    if (bankRekeningPtId) filters.bankRekeningPtId = bankRekeningPtId;
+    if (bulan) filters.bulan = bulan;
+    if (tahun) filters.tahun = tahun;
 
     const result = await this.getPaginatedUseCase.execute(page, limit, filters);
     sendResponse(res, StatusCodes.OK, "Daftar pembayaran SPK berhasil diambil", result);

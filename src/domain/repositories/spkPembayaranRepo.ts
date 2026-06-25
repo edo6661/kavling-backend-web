@@ -968,13 +968,47 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
             },
     };
     if (filters?.spkId) where.spkId = filters.spkId;
+    if (filters?.jenis) where.jenis = filters.jenis;
+    if (filters?.bankRekeningPtId) {
+      where.spk = { bankRekeningPtId: filters.bankRekeningPtId };
+    }
+
+    const andConditions: Prisma.SpkPembayaranWhereInput[] = [];
+
     if (filters?.search) {
-      where.OR = [
-        { spk: { noSpk: { contains: filters.search } } },
-        { spk: { judulPekerjaan: { contains: filters.search } } },
-        { spk: { mandor: { username: { contains: filters.search } } } },
-        { keterangan: { contains: filters.search } },
-      ];
+      andConditions.push({
+        OR: [
+          { spk: { noSpk: { contains: filters.search } } },
+          { spk: { judulPekerjaan: { contains: filters.search } } },
+          { spk: { mandor: { username: { contains: filters.search } } } },
+          { keterangan: { contains: filters.search } },
+        ],
+      });
+    }
+
+    if (filters?.bulan && filters?.tahun) {
+      const periodStart = new Date(filters.tahun, filters.bulan - 1, 1);
+      const periodEnd = new Date(filters.tahun, filters.bulan, 0, 23, 59, 59, 999);
+      andConditions.push({
+        OR: [
+          {
+            AND: [
+              { tanggalDari: { lte: periodEnd } },
+              { tanggalSampai: { gte: periodStart } },
+            ],
+          },
+          {
+            AND: [
+              { tanggalDari: null },
+              { createdAt: { gte: periodStart, lte: periodEnd } },
+            ],
+          },
+        ],
+      });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     const skip = (page - 1) * limit;

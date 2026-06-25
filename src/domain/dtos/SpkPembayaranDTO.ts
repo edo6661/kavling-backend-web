@@ -1,4 +1,4 @@
-import type { SpkPembayaranStatus } from "@prisma/client";
+import type { SpkPembayaranJenis, SpkPembayaranStatus } from "@prisma/client";
 
 export type SpkTerminPembayaranJenis =
   | "TERMIN_55"
@@ -77,8 +77,12 @@ export interface RemoveBuktiSpkPembayaranDTO {
 
 export interface SpkPembayaranFilterDTO {
   status?: SpkPembayaranStatus;
+  jenis?: SpkPembayaranJenis;
   spkId?: number;
   search?: string;
+  bankRekeningPtId?: number;
+  bulan?: number;
+  tahun?: number;
 }
 
 export interface SetBsiCmsDilaporkanDTO {

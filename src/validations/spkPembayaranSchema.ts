@@ -171,7 +171,11 @@ export const getSpkPembayaranPaginatedSchema = {
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(600).default(20),
     status: z.enum(["MENUNGGU_PEMBAYARAN", "MENUNGGU_PERSETUJUAN", "SUDAH_DIBAYAR", "ALL"]).optional(),
+    jenis: z.enum(["UPAH", "KASBON"]).optional(),
     search: z.string().optional(),
+    bankRekeningPtId: z.coerce.number().int().positive().optional(),
+    bulan: z.coerce.number().int().min(1).max(12).optional(),
+    tahun: z.coerce.number().int().min(2000).max(2100).optional(),
   }),
 };
 
