@@ -400,7 +400,13 @@ function getMarketingEligibility(
             "Upload Dokumen PPJB atau AJB";
         } else if (nilaiAjb <= 0) {
           alasan = "Isi nilai AJB di menu Progress Penjualan";
+        } else if (nilaiAjb > 0) {
+          alasan = ctx.agent.isInHouse
+            ? "Komisi in-house belum tersedia"
+            : "Fee marketing belum diatur di data agent";
         }
+      } else if (isCash && nilaiAjb > 0) {
+        alasan = "Fee marketing belum diatur di data agent";
       }
     }
     return {
