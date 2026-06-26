@@ -256,6 +256,7 @@ import { UploadKavlingSertifikatTambahanDocumentUseCase } from "../../applicatio
 import { DeleteKavlingDocumentUseCase } from "../../application/usecases/kavling/DeleteKavlingDocumentUseCase.js";
 import { DeleteKavlingSertifikatTambahanDocumentUseCase } from "../../application/usecases/kavling/DeleteKavlingSertifikatTambahanDocumentUseCase.js";
 import { TelegramBotService } from "../telegram/TelegramBotService.js";
+import { TelegramNotifyService } from "../telegram/TelegramNotifyService.js";
 import { RolePermissionRepository } from "../../domain/repositories/rolePermissionRepo.js";
 import {
   UpsertRolePermissionUseCase,
@@ -319,10 +320,12 @@ export const createContainer = (dbClient: PrismaClient) => {
   const notificationRepo = new NotificationRepository(dbClient);
 
   const userRepo = new UserRepository(dbClient);
+  const telegramNotifyService = new TelegramNotifyService();
   const notificationService = new NotificationService(
     notificationRepo,
     userRepo,
     socketService,
+    telegramNotifyService,
   );
   const getNotificationsUseCase = new GetNotificationsUseCase(notificationRepo);
   const getUnreadNotificationCountUseCase = new GetUnreadNotificationCountUseCase(

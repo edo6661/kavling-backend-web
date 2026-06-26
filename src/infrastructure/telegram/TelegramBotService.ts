@@ -36,6 +36,37 @@ export class TelegramBotService {
   }
 
   private setupBot() {
+    const sendChatIdHelp = async (ctx: Context) => {
+      const chatId = ctx.chat?.id;
+      const username = ctx.from?.username;
+
+      const lines = [
+        "Halo! Bot Kavling Bumantara siap.",
+        "",
+        chatId ? `Chat ID Anda: ${chatId}` : "Chat ID tidak terbaca.",
+        username ? `Username: @${username}` : "",
+        "",
+        "Salin Chat ID di atas ke .env backend:",
+        "TELEGRAM_NOTIFY_CHAT_IDS=<chat_id>",
+        "",
+        "Lalu restart server backend.",
+      ];
+
+      await ctx.reply(lines.filter(Boolean).join("\n"));
+    };
+
+    this.bot.command("start", (ctx) => {
+      sendChatIdHelp(ctx).catch((err: unknown) => {
+        console.error("Gagal membalas /start:", err);
+      });
+    });
+
+    this.bot.command("chatid", (ctx) => {
+      sendChatIdHelp(ctx).catch((err: unknown) => {
+        console.error("Gagal membalas /chatid:", err);
+      });
+    });
+
     this.bot.on("document", (ctx) => {
       const caption =
         ctx.message && "caption" in ctx.message

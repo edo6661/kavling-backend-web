@@ -4,6 +4,7 @@ import type { NotificationEntity } from "../../domain/entities/Notification.js";
 import type { INotificationRepository } from "../../domain/repositories/INotificationRepo.js";
 import type { UserRepository } from "../../domain/repositories/userRepo.js";
 import type { SocketService } from "../websocket/SocketService.js";
+import type { TelegramNotifyService } from "../telegram/TelegramNotifyService.js";
 
 export interface NotificationPayload {
   type: CreateNotificationDTO["type"];
@@ -18,6 +19,7 @@ export class NotificationService {
     private readonly notificationRepo: INotificationRepository,
     private readonly userRepo: UserRepository,
     private readonly socketService: SocketService,
+    private readonly telegramNotifyService?: TelegramNotifyService,
   ) {}
 
   async notifyUser(
@@ -60,6 +62,20 @@ export class NotificationService {
       const users = await this.userRepo.findByRole(role);
       userIds.push(...users.map((u) => u.id));
     }
-    return await this.notifyUsers(userIds, payload);
+    const notifications = await this.notifyUsers(userIds, payload);
+
+    if (payload.type === "UPLOAD_BUKTI" && this.telegramNotifyService) {
+      try {
+        await this.telegramNotifyService.sendApprovalAlert(
+          payload.title,
+          payload.message,
+          payload.linkPath,
+        );
+      } catch (error) {
+        console.error("Gagal mengirim notifikasi Telegram:", error);
+      }
+    }
+
+    return notifications;
   }
 }

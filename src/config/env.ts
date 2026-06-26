@@ -26,6 +26,8 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
   TELEGRAM_BOT_TOKEN: z.string().min(5).default("supersecretbotkey"),
+  /** Chat ID penerima notifikasi approval (pisahkan koma). User harus /start bot dulu. */
+  TELEGRAM_NOTIFY_CHAT_IDS: z.string().optional(),
   SMTP_EMAIL: z.string().email().optional(),
   SMTP_PASSWORD: z.string().optional(),
 });
