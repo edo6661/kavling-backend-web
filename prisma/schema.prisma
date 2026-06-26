@@ -718,6 +718,10 @@ model SpkPembayaran {
   status          SpkPembayaranStatus @default(MENUNGGU_PEMBAYARAN)
   buktiPembayaran String?             @map("bukti_pembayaran") @db.VarChar(500)
   buktiPembayaranList Json?           @map("bukti_pembayaran_list")
+  dokumenInvoice      String?         @map("dokumen_invoice") @db.VarChar(500)
+  dokumenMaterial     String?         @map("dokumen_material") @db.VarChar(500)
+  dokumenBeritaAcara  String?         @map("dokumen_berita_acara") @db.VarChar(500)
+  dokumenProgressSpk  String?         @map("dokumen_progress_spk") @db.VarChar(500)
   tanggalPembayaran DateTime?         @map("tanggal_pembayaran") @db.Date
   bsiCmsDilaporkan  Boolean           @default(false) @map("bsi_cms_dilaporkan")
   bsiCmsDilaporkanAt DateTime?        @map("bsi_cms_dilaporkan_at")

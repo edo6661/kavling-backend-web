@@ -233,6 +233,7 @@ export class CreateSpkPembayaranRequestUseCase {
         undefined,
         terminStatus,
         spkJenis,
+        spk.progress,
       );
       if (!capCheck.allowed) {
         throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -273,6 +274,7 @@ export class CreateSpkPembayaranRequestUseCase {
         undefined,
         terminStatus,
         spkJenis,
+        spk.progress,
       );
       if (!capCheck.allowed) {
         throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -464,7 +466,11 @@ export class SubmitSpkKasbonDraftUseCase {
     spkId: number,
     userId: number,
     userRole: string,
-    mandorRekeningId?: number,
+    options: {
+      mandorRekeningId?: number;
+      dokumenInvoice: string;
+      dokumenMaterial: string;
+    },
   ): Promise<SpkPembayaranEntity> {
     const spk = await this.spkRepo.findById(spkId);
     if (!spk) throw new NotFoundError("SPK tidak ditemukan");
@@ -480,7 +486,12 @@ export class SubmitSpkKasbonDraftUseCase {
       const submitted = await this.pembayaranRepo.submitKasbonDraft(
         spkId,
         userId,
-        mandorRekeningId,
+        options.mandorRekeningId,
+        {
+          dokumenInvoice: options.dokumenInvoice,
+          dokumenMaterial: options.dokumenMaterial,
+        },
+        spk.progress,
       );
       await notifySpkPengajuanBaru(this.notificationService, spk, submitted);
       return submitted;
@@ -506,6 +517,12 @@ export class SubmitSpkKasbonDraftUseCase {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
           "Total kasbon & upah melebihi plafon termin.",
+        );
+      }
+      if (msg === "KASBON_DOKUMEN_REQUIRED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Dokumen invoice dan material wajib diunggah.",
         );
       }
       if (msg === "MANDOR_REKENING_REQUIRED") {
@@ -692,6 +709,7 @@ export class UpdateSpkKasbonUseCase {
       data.id,
       terminStatusKasbon,
       spk.jenis,
+      spk.progress,
     );
     if (!capCheck.allowed) {
       throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -824,6 +842,7 @@ export class UpdateSpkUpahUseCase {
       data.id,
       terminStatusUpah,
       spk.jenis,
+      spk.progress,
     );
     if (!capCheck.allowed) {
       throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
@@ -990,6 +1009,21 @@ export class RemoveBuktiSpkPembayaranUseCase {
       }
       throw err;
     }
+  }
+}
+
+export class UploadSpkPengajuanDokumenUseCase {
+  constructor(private readonly cloudinary: CloudinaryService) {}
+
+  async execute(fileBuffer: Buffer): Promise<{ dokumenUrl: string }> {
+    if (!fileBuffer?.length) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "Dokumen pengajuan wajib diunggah.");
+    }
+    const dokumenUrl = await this.cloudinary.uploadFile(
+      fileBuffer,
+      "bumantara/spk-pengajuan-dokumen",
+    );
+    return { dokumenUrl };
   }
 }
 

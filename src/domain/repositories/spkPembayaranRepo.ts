@@ -31,8 +31,31 @@ import {
   getSpkTerminJenisForRecalc,
   getTerminPaymentStatus,
   isKasbonTargetTermin,
+  validatePengurangTerminNominal,
   type SpkPembayaranCalcRow,
 } from "../spk/spkPembayaranCalc.js";
+import type { SpkPembayaranDokumenInput } from "../dtos/SpkPembayaranDTO.js";
+
+function mapDokumenCreateFields(data: SpkPembayaranDokumenInput) {
+  return {
+    dokumenInvoice: data.dokumenInvoice ?? null,
+    dokumenMaterial: data.dokumenMaterial ?? null,
+    dokumenBeritaAcara: data.dokumenBeritaAcara ?? null,
+    dokumenProgressSpk: data.dokumenProgressSpk ?? null,
+  };
+}
+
+function mapRequiredKasbonDokumen(dokumen: {
+  dokumenInvoice: string;
+  dokumenMaterial: string;
+}) {
+  return {
+    dokumenInvoice: dokumen.dokumenInvoice,
+    dokumenMaterial: dokumen.dokumenMaterial,
+    dokumenBeritaAcara: null,
+    dokumenProgressSpk: null,
+  };
+}
 
 function toCalcStatus(
   status: SpkPembayaranStatus,
@@ -430,7 +453,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const spk = await tx.spk.findUnique({
         where: { id: spkId },
-        select: { id: true, nilaiKontrak: true, jenis: true },
+        select: { id: true, nilaiKontrak: true, jenis: true, progressOverride: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
@@ -532,6 +555,8 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     spkId: number,
     diajukanOlehId: number,
     mandorRekeningId?: number,
+    dokumen?: { dokumenInvoice: string; dokumenMaterial: string },
+    spkProgress?: number,
   ): Promise<SpkPembayaranEntity> {
     return await this.db.$transaction(async (tx) => {
       const draft = await tx.spkPembayaran.findFirst({
@@ -546,10 +571,13 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       });
       if (!draft) throw new Error("KASBON_DRAFT_NOT_FOUND");
       if (!draft.kasbonBaris.length) throw new Error("KASBON_BARIS_EMPTY");
+      if (!dokumen?.dokumenInvoice || !dokumen.dokumenMaterial) {
+        throw new Error("KASBON_DOKUMEN_REQUIRED");
+      }
 
       const spk = await tx.spk.findUnique({
         where: { id: spkId },
-        select: { id: true, nilaiKontrak: true, jenis: true },
+        select: { id: true, nilaiKontrak: true, jenis: true, progressOverride: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
@@ -585,15 +613,15 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           mengurangiTermin: p.mengurangiTermin,
         }));
 
-      const capCheck = getPengurangTerminCapacity(
+      const capCheck = validatePengurangTerminNominal(
         Number(spk.nilaiKontrak),
         capRows,
         target,
-        {
-          additionalNominal: totalNominal,
-          terminStatus: getTerminPaymentStatus(calcRows, spk.jenis as SpkJenis),
-          spkJenis: spk.jenis as SpkJenis,
-        },
+        totalNominal,
+        undefined,
+        getTerminPaymentStatus(calcRows, spk.jenis as SpkJenis),
+        spk.jenis as SpkJenis,
+        spkProgress,
       );
       if (!capCheck.allowed) throw new Error("KASBON_OVER_CAP");
 
@@ -616,6 +644,10 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           tanggalPo: draft.tanggalPo,
           diajukanOleh: { connect: { id: diajukanOlehId } },
           ...this.mandorRekeningConnect(resolvedRekeningId),
+          ...mapRequiredKasbonDokumen({
+            dokumenInvoice: dokumen!.dokumenInvoice,
+            dokumenMaterial: dokumen!.dokumenMaterial,
+          }),
           kasbonBaris: {
             create: draft.kasbonBaris.map((b) => ({
               namaSupplier: b.namaSupplier,
@@ -783,7 +815,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         };
       }
 
-      createData = { ...createData, ...rekeningConnect };
+      createData = { ...createData, ...rekeningConnect, ...mapDokumenCreateFields(data) };
 
       const result = await tx.spkPembayaran.create({
         data: createData,

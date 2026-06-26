@@ -32,6 +32,86 @@ const kasbonBarisSchema = z.object({
 
 const mandorRekeningIdSchema = z.coerce.number().int().positive().optional();
 
+const dokumenUrlSchema = z.string().trim().url().max(500);
+
+const spkPembayaranDokumenSchema = z.object({
+  dokumenInvoice: dokumenUrlSchema.optional(),
+  dokumenMaterial: dokumenUrlSchema.optional(),
+  dokumenBeritaAcara: dokumenUrlSchema.optional(),
+  dokumenProgressSpk: dokumenUrlSchema.optional(),
+});
+
+const assertDokumenPengajuan = (
+  data: {
+    jenis: string;
+    kasbonBaris?: unknown[] | undefined;
+    dokumenInvoice?: string | undefined;
+    dokumenMaterial?: string | undefined;
+    dokumenBeritaAcara?: string | undefined;
+    dokumenProgressSpk?: string | undefined;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (data.jenis === "KASBON") {
+    if (!data.dokumenInvoice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Dokumen invoice (PDF) wajib diunggah",
+        path: ["dokumenInvoice"],
+      });
+    }
+    if (!data.dokumenMaterial) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Dokumen material (PDF) wajib diunggah untuk pengajuan material",
+        path: ["dokumenMaterial"],
+      });
+    }
+    return;
+  }
+  if (data.jenis === "UPAH") {
+    if (!data.dokumenInvoice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Dokumen invoice upah mandor (PDF) wajib diunggah",
+        path: ["dokumenInvoice"],
+      });
+    }
+    return;
+  }
+  if (data.jenis === "RETENSI") {
+    if (!data.dokumenInvoice) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Dokumen invoice retensi (PDF) wajib diunggah",
+        path: ["dokumenInvoice"],
+      });
+    }
+    return;
+  }
+  if (!data.dokumenInvoice) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Dokumen invoice termin (PDF) wajib diunggah",
+      path: ["dokumenInvoice"],
+    });
+  }
+  if (!data.dokumenBeritaAcara) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Dokumen berita acara (PDF) wajib diunggah",
+      path: ["dokumenBeritaAcara"],
+    });
+  }
+  if (!data.dokumenProgressSpk) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Dokumen progress SPK (PDF) wajib diunggah",
+      path: ["dokumenProgressSpk"],
+    });
+  }
+};
+
 export const createSpkPembayaranSchema = {
   params: z.object({
     spkId: z.coerce.number().int().positive(),
@@ -60,8 +140,10 @@ export const createSpkPembayaranSchema = {
       kasbonBaris: z.array(kasbonBarisSchema).optional(),
       /** Total upah tukang (jenis UPAH) */
       upahNominal: z.coerce.number().positive().optional(),
+      ...spkPembayaranDokumenSchema.shape,
     })
     .superRefine((data, ctx) => {
+      assertDokumenPengajuan(data, ctx);
       if (data.jenis === "KASBON") {
         if (!data.kasbonBaris?.length) {
           if (!data.keterangan) {
@@ -161,9 +243,12 @@ export const submitSpkKasbonDraftSchema = {
   params: z.object({
     spkId: z.coerce.number().int().positive(),
   }),
-  body: z.object({
-    mandorRekeningId: mandorRekeningIdSchema,
-  }),
+  body: z
+    .object({
+      mandorRekeningId: mandorRekeningIdSchema,
+      dokumenInvoice: dokumenUrlSchema,
+      dokumenMaterial: dokumenUrlSchema,
+    }),
 };
 
 export const getSpkPembayaranPaginatedSchema = {

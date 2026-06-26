@@ -386,6 +386,20 @@ export function getPengurangTerminCapacity(
   };
 }
 
+/** Progress sudah mencapai ambang termin berikutnya → boleh spillover ke plafon termin berikutnya. */
+export function canSpillPengurangToNextTermin(
+  progress: number,
+  termin: SpkKasbonTargetTermin,
+  spkJenis: SpkJenis = "RUMAH",
+): boolean {
+  const scheme = getSpkTerminScheme(spkJenis);
+  const targets = getKasbonTargetSteps(scheme);
+  const targetIndex = targets.findIndex((step) => step.jenis === termin);
+  if (targetIndex < 0 || targetIndex >= targets.length - 1) return false;
+  const nextStep = targets[targetIndex + 1]!;
+  return progress >= nextStep.minProgress;
+}
+
 export function validatePengurangTerminNominal(
   nilaiKontrak: number,
   rows: SpkPengurangTerminRow[],
@@ -394,6 +408,7 @@ export function validatePengurangTerminNominal(
   excludeId?: number,
   terminStatus?: TerminPaymentStatus,
   spkJenis: SpkJenis = "RUMAH",
+  spkProgress?: number,
 ): { allowed: true } | { allowed: false; reason: string } {
   const cap = getPengurangTerminCapacity(nilaiKontrak, rows, termin, {
     ...(excludeId !== undefined ? { excludeId } : {}),
@@ -402,8 +417,23 @@ export function validatePengurangTerminNominal(
     spkJenis,
   });
 
+  const labels = buildSpkKasbonTargetLabel(spkJenis);
+
+  if (
+    spkProgress != null &&
+    additionalNominal > 0 &&
+    !canSpillPengurangToNextTermin(spkProgress, termin, spkJenis)
+  ) {
+    if (additionalNominal > cap.sisa) {
+      return {
+        allowed: false,
+        reason: `Total material/upah melebihi sisa plafon ${labels[termin]} (${cap.sisa}). Progress proyek belum mencapai termin berikutnya, sehingga tidak dapat menggunakan plafon termin selanjutnya.`,
+      };
+    }
+    return { allowed: true };
+  }
+
   if (!cap.allowed) {
-    const labels = buildSpkKasbonTargetLabel(spkJenis);
     const scheme = getSpkTerminScheme(spkJenis);
     const targets = getKasbonTargetSteps(scheme);
     const isFirstTarget = targets[0]?.jenis === termin;

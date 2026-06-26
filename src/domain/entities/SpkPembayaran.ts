@@ -38,6 +38,10 @@ export interface SpkPembayaranEntity {
   status: SpkPembayaranStatus;
   buktiPembayaran: string | null;
   buktiPembayaranList: string[];
+  dokumenInvoice: string | null;
+  dokumenMaterial: string | null;
+  dokumenBeritaAcara: string | null;
+  dokumenProgressSpk: string | null;
   tanggalPembayaran: Date | null;
   bsiCmsDilaporkan: boolean;
   bsiCmsDilaporkanAt: Date | null;

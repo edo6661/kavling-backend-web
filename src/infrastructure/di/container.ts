@@ -18,6 +18,7 @@ import {
   UpdateSpkUpahUseCase,
   DeleteSpkPenguranganUseCase,
   UploadKasbonFotoBonUseCase,
+  UploadSpkPengajuanDokumenUseCase,
   ApproveSpkPembayaranUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import { TukangRepository } from "../../domain/repositories/tukangRepo.js";
@@ -1030,6 +1031,9 @@ export const createContainer = (dbClient: PrismaClient) => {
   const uploadKasbonFotoBonUseCase = new UploadKasbonFotoBonUseCase(
     cloudinaryService,
   );
+  const uploadSpkPengajuanDokumenUseCase = new UploadSpkPengajuanDokumenUseCase(
+    cloudinaryService,
+  );
   const approveSpkPembayaranUseCase = new ApproveSpkPembayaranUseCase(
     spkPembayaranRepo,
     spkRepo,
@@ -1050,6 +1054,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     updateSpkUpahUseCase,
     deleteSpkPenguranganUseCase,
     uploadKasbonFotoBonUseCase,
+    uploadSpkPengajuanDokumenUseCase,
     approveSpkPembayaranUseCase,
   );
 

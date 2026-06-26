@@ -72,6 +72,13 @@ export const createSpkPembayaranRoutes = (
   );
 
   router.post(
+    "/upload-dokumen-pengajuan",
+    requirePermission("SPK", "read"),
+    upload.single("dokumen_pengajuan"),
+    controller.uploadDokumenPengajuan,
+  );
+
+  router.post(
     "/spk/:spkId",
     requirePermission("SPK", "read"),
     validate(createSpkPembayaranSchema),

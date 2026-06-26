@@ -17,6 +17,7 @@ import type {
   UpdateSpkUpahUseCase,
   DeleteSpkPenguranganUseCase,
   UploadKasbonFotoBonUseCase,
+  UploadSpkPengajuanDokumenUseCase,
   ApproveSpkPembayaranUseCase,
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import type {
@@ -34,6 +35,18 @@ import { routeParam } from "../../utils/object.js";
 
 const withOptionalMandorRekeningId = (mandorRekeningId?: number) =>
   mandorRekeningId !== undefined ? { mandorRekeningId } : {};
+
+const mapDokumenFromBody = (body: {
+  dokumenInvoice?: string | undefined;
+  dokumenMaterial?: string | undefined;
+  dokumenBeritaAcara?: string | undefined;
+  dokumenProgressSpk?: string | undefined;
+}) => ({
+  ...(body.dokumenInvoice ? { dokumenInvoice: body.dokumenInvoice } : {}),
+  ...(body.dokumenMaterial ? { dokumenMaterial: body.dokumenMaterial } : {}),
+  ...(body.dokumenBeritaAcara ? { dokumenBeritaAcara: body.dokumenBeritaAcara } : {}),
+  ...(body.dokumenProgressSpk ? { dokumenProgressSpk: body.dokumenProgressSpk } : {}),
+});
 
 const mapUpahBarisInput = (
   baris: {
@@ -69,6 +82,7 @@ export class SpkPembayaranController {
     private readonly updateUpahUseCase: UpdateSpkUpahUseCase,
     private readonly deletePenguranganUseCase: DeleteSpkPenguranganUseCase,
     private readonly uploadKasbonFotoBonUseCase: UploadKasbonFotoBonUseCase,
+    private readonly uploadDokumenPengajuanUseCase: UploadSpkPengajuanDokumenUseCase,
     private readonly approveUseCase: ApproveSpkPembayaranUseCase,
   ) {}
 
@@ -86,6 +100,28 @@ export class SpkPembayaranController {
     sendResponse(res, StatusCodes.OK, "Foto bon berhasil diunggah", result);
   };
 
+  uploadDokumenPengajuan = async (req: Request, res: Response): Promise<void> => {
+    const file = req.file;
+    if (!file?.buffer?.length) {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "File dokumen pengajuan wajib diunggah.",
+      );
+      return;
+    }
+    if (file.mimetype !== "application/pdf") {
+      sendResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        "Dokumen pengajuan harus berformat PDF.",
+      );
+      return;
+    }
+    const result = await this.uploadDokumenPengajuanUseCase.execute(file.buffer);
+    sendResponse(res, StatusCodes.OK, "Dokumen pengajuan berhasil diunggah", result);
+  };
+
   createRequest = async (
     req: TypedRequest<
       typeof createSpkPembayaranSchema.body,
@@ -99,6 +135,7 @@ export class SpkPembayaranController {
 
     const mandorRekeningId = req.body.mandorRekeningId;
     const rekeningFields = withOptionalMandorRekeningId(mandorRekeningId);
+    const dokumenFields = mapDokumenFromBody(req.body);
 
     const payload: CreateSpkPembayaranDTO =
       req.body.jenis === "KASBON"
@@ -107,6 +144,7 @@ export class SpkPembayaranController {
             jenis: "KASBON",
             diajukanOlehId: userId,
             ...rekeningFields,
+            ...dokumenFields,
             ...(req.body.kasbonBaris?.length
               ? {
                   kasbonBaris: req.body.kasbonBaris.map((b) => ({
@@ -133,12 +171,14 @@ export class SpkPembayaranController {
               nominal: req.body.upahNominal ?? 0,
               diajukanOlehId: userId,
               ...rekeningFields,
+              ...dokumenFields,
             }
           : {
               spkId,
               jenis: req.body.jenis,
               diajukanOlehId: userId,
               ...rekeningFields,
+              ...dokumenFields,
             };
 
     const result = await this.createRequestUseCase.execute(
@@ -185,12 +225,23 @@ export class SpkPembayaranController {
   submitKasbonDraft = async (req: Request, res: Response): Promise<void> => {
     const spkId = parseInt(routeParam(req.params.spkId), 10);
     const userId = req.user!.userId;
+    const submitOptions: {
+      dokumenInvoice: string;
+      dokumenMaterial: string;
+      mandorRekeningId?: number;
+    } = {
+      dokumenInvoice: req.body.dokumenInvoice as string,
+      dokumenMaterial: req.body.dokumenMaterial as string,
+    };
     const mandorRekeningId = req.body.mandorRekeningId as number | undefined;
+    if (mandorRekeningId !== undefined) {
+      submitOptions.mandorRekeningId = mandorRekeningId;
+    }
     const result = await this.submitKasbonDraftUseCase.execute(
       spkId,
       userId,
       req.user!.role,
-      mandorRekeningId,
+      submitOptions,
     );
     sendResponse(res, StatusCodes.OK, "Draft kasbon berhasil diajukan ke pengawas", result);
   };

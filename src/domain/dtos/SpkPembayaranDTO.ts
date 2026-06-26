@@ -26,14 +26,21 @@ export interface SpkPembayaranKasbonBarisInput {
   fotoBon?: string | null;
 }
 
+export interface SpkPembayaranDokumenInput {
+  dokumenInvoice?: string;
+  dokumenMaterial?: string;
+  dokumenBeritaAcara?: string;
+  dokumenProgressSpk?: string;
+}
+
 export type CreateSpkPembayaranDTO =
-  | {
+  | ({
       spkId: number;
       jenis: SpkTerminPembayaranJenis;
       diajukanOlehId: number;
       mandorRekeningId?: number;
-    }
-  | {
+    } & SpkPembayaranDokumenInput)
+  | ({
       spkId: number;
       jenis: "KASBON";
       diajukanOlehId: number;
@@ -44,8 +51,8 @@ export type CreateSpkPembayaranDTO =
       keterangan?: string;
       nominal?: number;
       tanggalPo?: Date;
-    }
-  | {
+    } & SpkPembayaranDokumenInput)
+  | ({
       spkId: number;
       jenis: "UPAH";
       tanggalDari: Date;
@@ -55,7 +62,7 @@ export type CreateSpkPembayaranDTO =
       nominal: number;
       diajukanOlehId: number;
       mandorRekeningId?: number;
-    };
+    } & SpkPembayaranDokumenInput);
 
 export interface BayarSpkPembayaranDTO {
   id: number;

@@ -24,6 +24,8 @@ export interface ISpkPembayaranRepository {
     spkId: number,
     diajukanOlehId: number,
     mandorRekeningId?: number,
+    dokumen?: { dokumenInvoice: string; dokumenMaterial: string },
+    spkProgress?: number,
   ): Promise<SpkPembayaranEntity>;
   markAsPaid(data: BayarSpkPembayaranDTO): Promise<SpkPembayaranEntity>;
   findPaginated(
