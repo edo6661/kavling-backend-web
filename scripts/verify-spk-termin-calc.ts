@@ -7,6 +7,7 @@ import {
   canRequestSpkPembayaran,
   canRequestKasbon,
   getSpkTerminJenisOrder,
+  isTerminFulfilled,
 } from '../src/domain/spk/spkPembayaranCalc.js';
 
 const kontrak = 100_000_000;
@@ -105,6 +106,55 @@ const totalBruto = infraTerminOnly.reduce(
 );
 const retensi = calcSpkPembayaranNominal('RETENSI', { nilaiKontrak: kontrak }, [], 'INFRASTRUKTUR');
 ok('total termin infra + retensi = 100% kontrak', totalBruto + retensi === kontrak);
+
+console.log('\n=== TERMIN LUNAS VIA KASBON (nominal Rp 0) ===');
+const kontrakInfra = 436_507_000;
+const bruto20 = Math.round(kontrakInfra * 0.2);
+const kasbonFullTermin1 = [
+  {
+    id: 1,
+    jenis: 'KASBON' as const,
+    status: 'SUDAH_DIBAYAR' as const,
+    nominal: bruto20,
+    mengurangiTermin: 'TERMIN_INFRA_20_1' as const,
+  },
+];
+const nInfra1Kasbon = calcSpkPembayaranNominal(
+  'TERMIN_INFRA_20_1',
+  { nilaiKontrak: kontrakInfra },
+  kasbonFullTermin1,
+  'INFRASTRUKTUR',
+);
+ok('termin infra 1 nominal 0 setelah kasbon penuh', nInfra1Kasbon === 0);
+ok(
+  'termin infra 1 terpenuhi via kasbon',
+  isTerminFulfilled(
+    'TERMIN_INFRA_20_1',
+    { nilaiKontrak: kontrakInfra },
+    kasbonFullTermin1,
+    'INFRASTRUKTUR',
+  ),
+);
+const cantAjukanTermin1 = canRequestSpkPembayaran(
+  'TERMIN_INFRA_20_1',
+  { nilaiKontrak: kontrakInfra, progress: 85 },
+  kasbonFullTermin1,
+  'INFRASTRUKTUR',
+);
+ok('tidak bisa ajukan termin infra 1 @ nominal 0', !cantAjukanTermin1.allowed);
+
+const kasbon3Termin = [
+  ...kasbonFullTermin1,
+  { id: 2, jenis: 'KASBON' as const, status: 'SUDAH_DIBAYAR' as const, nominal: bruto20, mengurangiTermin: 'TERMIN_INFRA_20_2' as const },
+  { id: 3, jenis: 'KASBON' as const, status: 'SUDAH_DIBAYAR' as const, nominal: bruto20, mengurangiTermin: 'TERMIN_INFRA_20_3' as const },
+];
+const canAjukanTermin4 = canRequestSpkPembayaran(
+  'TERMIN_INFRA_20_4',
+  { nilaiKontrak: kontrakInfra, progress: 85 },
+  kasbon3Termin,
+  'INFRASTRUKTUR',
+);
+ok('bisa ajukan termin infra 4 setelah termin 1-3 lunas kasbon', canAjukanTermin4.allowed);
 
 console.log(`\n=== HASIL: ${passed} lulus, ${failed} gagal ===\n`);
 process.exit(failed > 0 ? 1 : 0);

@@ -657,6 +657,26 @@ export function canRequestKasbon(
   return { allowed: true, targetTermin: target, sisaPengurang: 0, brutoTermin: 0, terpakai: 0 };
 }
 
+/** Termin sudah dibayar finance, atau nominal Rp 0 karena lunas via kasbon/upah. */
+export function isTerminFulfilled(
+  jenis: SpkTerminPembayaranJenis,
+  spk: SpkNominalInput,
+  pembayaranList: SpkPembayaranStatusRow[],
+  spkJenis: SpkJenis = "RUMAH",
+): boolean {
+  if (
+    pembayaranList.some((p) => p.jenis === jenis && p.status === "SUDAH_DIBAYAR")
+  ) {
+    return true;
+  }
+  if (pembayaranList.some((p) => p.jenis === jenis)) {
+    return false;
+  }
+  const calcRows = toSpkPembayaranCalcRows(pembayaranList);
+  const nominal = calcSpkPembayaranNominal(jenis, spk, calcRows, spkJenis);
+  return nominal <= 0;
+}
+
 export function canRequestSpkPembayaran(
   jenis: SpkPembayaranJenis,
   spk: SpkNominalInput & { progress: number },
@@ -686,6 +706,14 @@ export function canRequestSpkPembayaran(
     return { allowed: false, reason: "Pengajuan termin ini sudah ada." };
   }
 
+  const nominal = calcSpkPembayaranNominal(jenis, spk, calcRows, spkJenis);
+  if (nominal <= 0) {
+    return {
+      allowed: false,
+      reason: "Nominal termin Rp 0 — sudah lunas melalui pengurangan kasbon.",
+    };
+  }
+
   if (spk.progress < getMinProgressForJenis(jenis, spkJenis)) {
     return {
       allowed: false,
@@ -694,12 +722,7 @@ export function canRequestSpkPembayaran(
   }
 
   const prereq = getPrerequisiteJenis(jenis, spkJenis);
-  if (
-    prereq &&
-    !pembayaranList.some(
-      (p) => p.jenis === prereq && p.status === "SUDAH_DIBAYAR",
-    )
-  ) {
+  if (prereq && !isTerminFulfilled(prereq, spk, pembayaranList, spkJenis)) {
     return {
       allowed: false,
       reason: `Termin sebelumnya (${labels[prereq]}) harus sudah dibayar finance.`,
