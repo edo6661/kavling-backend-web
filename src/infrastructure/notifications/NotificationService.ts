@@ -66,11 +66,17 @@ export class NotificationService {
 
     if (payload.type === "UPLOAD_BUKTI" && this.telegramNotifyService) {
       try {
-        await this.telegramNotifyService.sendApprovalAlert(
-          payload.title,
-          payload.message,
-          payload.linkPath,
-        );
+        if (!this.telegramNotifyService.isConfigured()) {
+          console.warn(
+            "Telegram notify dilewati: TELEGRAM_BOT_TOKEN atau TELEGRAM_NOTIFY_CHAT_IDS belum dikonfigurasi.",
+          );
+        } else {
+          await this.telegramNotifyService.sendApprovalAlert(
+            payload.title,
+            payload.message,
+            payload.linkPath,
+          );
+        }
       } catch (error) {
         console.error("Gagal mengirim notifikasi Telegram:", error);
       }

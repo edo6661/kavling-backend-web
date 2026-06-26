@@ -7,6 +7,7 @@ import { StatusCodes } from "http-status-codes";
 import { collectTagihanFileBuktiUrls } from "../../../utils/tagihanBukti.js";
 import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
 import { Role } from "@prisma/client";
+import { buildTagihanUploadBuktiNotification } from "../../notifications/uploadBuktiNotificationHelpers.js";
 
 export class UploadBuktiTagihanUseCase {
   constructor(
@@ -81,18 +82,18 @@ export class UploadBuktiTagihanUseCase {
       this.notificationService
     ) {
       try {
-        const actorLabel = isCustomer
-          ? `Customer ${existing.namaCustomer}`
-          : "Staff";
         await this.notificationService.notifyRoles(
           [Role.ADMIN, Role.SUPERADMIN, Role.FINANCE],
-          {
-            type: "UPLOAD_BUKTI",
-            title: "Bukti Pembayaran Baru",
-            message: `${actorLabel} mengunggah bukti untuk tagihan ${existing.pembayaran} dan menunggu konfirmasi.`,
-            data: { tagihanId: existing.id, noTagihan: existing.noTagihan },
-            linkPath: "/finance/approve-pembayaran",
-          },
+          buildTagihanUploadBuktiNotification({
+            namaCustomer: existing.namaCustomer,
+            pembayaran: existing.pembayaran,
+            noTagihan: existing.noTagihan,
+            nominal: existing.nominal,
+            blok: existing.blok,
+            nomorUnit: existing.nomorUnit,
+            perumahan: existing.perumahan,
+            isCustomer,
+          }),
         );
       } catch (error) {
         console.error("Gagal mengirim notifikasi upload bukti:", error);

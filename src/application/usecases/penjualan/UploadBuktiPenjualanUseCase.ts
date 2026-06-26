@@ -6,6 +6,7 @@ import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 import { effectiveTagihanTujuan } from "../../../domain/tagihan/tagihanTujuan.js";
+import { buildBookingFeeUploadBuktiNotification } from "../../notifications/uploadBuktiNotificationHelpers.js";
 
 export class UploadBuktiPenjualanUseCase {
   constructor(
@@ -23,7 +24,17 @@ export class UploadBuktiPenjualanUseCase {
     }
     const penjualan = await this.db.penjualan.findUnique({
       where: { noTransaksi: id },
-      include: { tagihan: true },
+      include: {
+        tagihan: true,
+        customer: { select: { nama: true } },
+        kavling: {
+          select: {
+            blok: true,
+            nomorUnit: true,
+            perumahan: { select: { nama: true } },
+          },
+        },
+      },
     });
     if (!penjualan)
       throw new AppError(
@@ -112,17 +123,16 @@ export class UploadBuktiPenjualanUseCase {
         try {
           await this.notificationService.notifyRoles(
             [Role.ADMIN, Role.SUPERADMIN, Role.FINANCE],
-            {
-              type: "UPLOAD_BUKTI",
-              title: "Bukti Booking Fee Baru",
-              message: `Bukti transfer booking fee transaksi ${penjualan.noTransaksi} menunggu konfirmasi.`,
-              data: {
-                tagihanId: tagihanTerkait.id,
-                noTagihan: tagihanTerkait.noTagihan,
-                penjualanId: penjualan.noTransaksi,
-              },
-              linkPath: "/finance/approve-pembayaran",
-            },
+            buildBookingFeeUploadBuktiNotification({
+              namaCustomer: penjualan.customer.nama,
+              noTransaksi: penjualan.noTransaksi,
+              pembayaran: tagihanTerkait.pembayaran,
+              noTagihan: tagihanTerkait.noTagihan,
+              nominal: Number(tagihanTerkait.nominal),
+              blok: penjualan.kavling.blok,
+              nomorUnit: penjualan.kavling.nomorUnit,
+              perumahan: penjualan.kavling.perumahan?.nama,
+            }),
           );
         } catch (error) {
           console.error("Gagal mengirim notifikasi upload bukti booking:", error);

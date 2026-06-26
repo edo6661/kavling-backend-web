@@ -12,8 +12,12 @@ export class TelegramNotifyService {
       .filter((id) => Number.isFinite(id) && id > 0);
   }
 
-  isConfigured(): boolean {
-    return Boolean(env.TELEGRAM_BOT_TOKEN) && this.chatIds.length > 0;
+  public isConfigured(): boolean {
+    return (
+      Boolean(env.TELEGRAM_BOT_TOKEN) &&
+      env.TELEGRAM_BOT_TOKEN !== "supersecretbotkey" &&
+      this.chatIds.length > 0
+    );
   }
 
   async sendApprovalAlert(title: string, message: string, linkPath?: string): Promise<void> {
