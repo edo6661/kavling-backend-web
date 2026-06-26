@@ -1,4 +1,4 @@
-import type { Role } from "@prisma/client";
+import type { Role, NotificationType } from "@prisma/client";
 import type { CreateNotificationDTO } from "../../domain/dtos/NotificationDTO.js";
 import type { NotificationEntity } from "../../domain/entities/Notification.js";
 import type { INotificationRepository } from "../../domain/repositories/INotificationRepo.js";
@@ -13,6 +13,14 @@ export interface NotificationPayload {
   data?: Record<string, unknown>;
   linkPath?: string;
 }
+
+/** Notifikasi yang juga dikirim ke Telegram (TELEGRAM_NOTIFY_CHAT_IDS). */
+const TELEGRAM_FINANCE_ALERT_TYPES = new Set<NotificationType>([
+  "UPLOAD_BUKTI",
+  "KODE_BILLING_PPH",
+  "SPK_DISETUJUI",
+  "AGENT_PENCAIRAN",
+]);
 
 export class NotificationService {
   constructor(
@@ -63,25 +71,30 @@ export class NotificationService {
       userIds.push(...users.map((u) => u.id));
     }
     const notifications = await this.notifyUsers(userIds, payload);
+    await this.maybeSendTelegramAlert(payload);
+    return notifications;
+  }
 
-    if (payload.type === "UPLOAD_BUKTI" && this.telegramNotifyService) {
-      try {
-        if (!this.telegramNotifyService.isConfigured()) {
-          console.warn(
-            "Telegram notify dilewati: TELEGRAM_BOT_TOKEN atau TELEGRAM_NOTIFY_CHAT_IDS belum dikonfigurasi.",
-          );
-        } else {
-          await this.telegramNotifyService.sendApprovalAlert(
-            payload.title,
-            payload.message,
-            payload.linkPath,
-          );
-        }
-      } catch (error) {
-        console.error("Gagal mengirim notifikasi Telegram:", error);
-      }
+  private async maybeSendTelegramAlert(payload: NotificationPayload): Promise<void> {
+    if (!TELEGRAM_FINANCE_ALERT_TYPES.has(payload.type) || !this.telegramNotifyService) {
+      return;
     }
 
-    return notifications;
+    try {
+      if (!this.telegramNotifyService.isConfigured()) {
+        console.warn(
+          "Telegram notify dilewati: TELEGRAM_BOT_TOKEN atau TELEGRAM_NOTIFY_CHAT_IDS belum dikonfigurasi.",
+        );
+        return;
+      }
+
+      await this.telegramNotifyService.sendApprovalAlert(
+        payload.title,
+        payload.message,
+        payload.linkPath,
+      );
+    } catch (error) {
+      console.error("Gagal mengirim notifikasi Telegram:", error);
+    }
   }
 }

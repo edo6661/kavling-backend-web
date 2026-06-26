@@ -31,13 +31,31 @@ export function unlockPdf(buffer: Buffer, password?: string): Buffer {
 
     // Selalu jalankan qpdf — dia sendiri yang tahu apakah perlu decrypt atau tidak
     // --decrypt pada PDF tidak terenkripsi tetap menghasilkan PDF valid
+    // --warning-exit-0: PDF rusak/non-standar (mis. scan KK) sering berhasil diproses
+    // dengan peringatan; tanpa flag ini qpdf exit 3 dan execSync menganggap gagal
     const passwordArg = password ? `--password=${password}` : "";
-    execSync(`qpdf ${passwordArg} --decrypt "${inputPath}" "${outputPath}"`, {
-      stdio: "pipe",
-    });
+    execSync(
+      `qpdf --warning-exit-0 ${passwordArg} --decrypt "${inputPath}" "${outputPath}"`,
+      { stdio: "pipe" },
+    );
 
     return fs.readFileSync(outputPath);
   } catch (err: unknown) {
+    // qpdf kadang exit non-zero meski file output sudah terbentuk (PDF rusak tapi bisa diperbaiki)
+    if (fs.existsSync(outputPath)) {
+      try {
+        const repaired = fs.readFileSync(outputPath);
+        if (repaired.length > 0) {
+          console.warn(
+            "[pdfUtils] qpdf selesai dengan peringatan, memakai file hasil perbaikan",
+          );
+          return repaired;
+        }
+      } catch {
+        // lanjut ke penanganan error di bawah
+      }
+    }
+
     const stderr =
       err instanceof Error && "stderr" in err
         ? String((err as NodeJS.ErrnoException & { stderr?: Buffer }).stderr)
@@ -66,9 +84,17 @@ export function unlockPdf(buffer: Buffer, password?: string): Buffer {
       );
     }
 
+    // PDF tidak terenkripsi: unggah buffer asli jika qpdf benar-benar gagal
+    if (!password && !isPdfEncrypted(buffer)) {
+      console.warn(
+        "[pdfUtils] qpdf gagal pada PDF tidak terenkripsi, memakai file asli",
+      );
+      return buffer;
+    }
+
     throw new AppError(
       StatusCodes.BAD_REQUEST,
-      `Gagal memproses PDF: ${message || "File rusak atau format tidak didukung."}`,
+      "Gagal memproses PDF. File mungkin rusak atau format tidak didukung. Coba simpan ulang PDF dari aplikasi asalnya.",
       true,
     );
   } finally {
