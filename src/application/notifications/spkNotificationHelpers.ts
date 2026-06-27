@@ -2,19 +2,9 @@ import type { SpkPembayaranJenis } from "@prisma/client";
 import type { SpkEntity } from "../../domain/entities/Spk.js";
 import type { SpkPembayaranEntity } from "../../domain/entities/SpkPembayaran.js";
 import type { NotificationPayload } from "../../infrastructure/notifications/NotificationService.js";
+import { buildAllSpkPembayaranJenisLabel } from "../../domain/spk/spkTerminScheme.js";
 
-const JENIS_LABEL: Record<SpkPembayaranJenis, string> = {
-  TERMIN_55: "Termin 55%",
-  TERMIN_100: "Termin 100%",
-  TERMIN_INFRA_20_1: "Termin 20% (1)",
-  TERMIN_INFRA_20_2: "Termin 20% (2)",
-  TERMIN_INFRA_20_3: "Termin 20% (3)",
-  TERMIN_INFRA_20_4: "Termin 20% (4)",
-  TERMIN_INFRA_15: "Termin 15%",
-  RETENSI: "Retensi",
-  KASBON: "Kasbon",
-  UPAH: "Upah Tukang",
-};
+const JENIS_LABEL: Record<SpkPembayaranJenis, string> = buildAllSpkPembayaranJenisLabel();
 
 const formatRupiah = (value: number): string =>
   new Intl.NumberFormat("id-ID", {

@@ -7,6 +7,8 @@ import type { SpkPembayaranEntity } from "./SpkPembayaran.js";
 
 export type SpkJenis = "RUMAH" | "INFRASTRUKTUR";
 
+export type SpkTerminSchemeKey = "RUMAH_DEFAULT" | "INFRA_20_6" | "INFRA_30_4";
+
 export interface SpkKavlingItem {
   id: number;
   kavlingId: number;
@@ -37,6 +39,7 @@ export interface SpkEntity {
   id: number;
   noSpk: string;
   jenis: SpkJenis;
+  terminScheme: SpkTerminSchemeKey;
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;

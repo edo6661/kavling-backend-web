@@ -23,6 +23,7 @@ import { SpkPembayaranMapper } from "../../infrastructure/mapper/SpkPembayaranMa
 import type { SpkKasbonTargetTermin } from "@prisma/client";
 import { normalizeKasbonNamaSupplier } from "../spk/kasbonNamaSupplier.js";
 import type { SpkJenis } from "../entities/Spk.js";
+import { resolveSpkTerminScheme, type SpkTerminSchemeKey } from "../spk/spkTerminScheme.js";
 import {
   calcSpkPembayaranNominal,
   calcSisaNilaiKontrak,
@@ -108,12 +109,12 @@ function resolveKasbonTargetTermin(
     mengurangiTermin?: SpkKasbonTargetTermin | null;
   }[],
   nilaiKontrak: number,
-  spkJenis: SpkJenis,
+  terminScheme: SpkTerminSchemeKey,
 ) {
   return getKasbonTargetTermin(calcRows, {
     nilaiKontrak,
     pengurangRows: toPengurangRowsFromDb(existingRows),
-    spkJenis,
+    terminScheme,
   });
 }
 
@@ -309,7 +310,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     tx: Prisma.TransactionClient,
     spkId: number,
     nilaiKontrak: number,
-    spkJenis: SpkJenis,
+    terminScheme: SpkTerminSchemeKey,
     pembayaranRows: {
       id: number;
       jenis: SpkPembayaranJenis;
@@ -322,7 +323,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     const calcRows = toCalcRows(pembayaranRows);
     const spkInput = { nilaiKontrak };
 
-    for (const jenis of getSpkTerminJenisForRecalc(spkJenis)) {
+    for (const jenis of getSpkTerminJenisForRecalc(terminScheme)) {
       const row = pembayaranRows.find(
         (p) =>
           p.jenis === jenis &&
@@ -335,7 +336,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         jenis,
         spkInput,
         calcRows,
-        spkJenis,
+        terminScheme,
       );
       if (Number(row.nominal) !== newNominal) {
         await tx.spkPembayaran.update({
@@ -367,13 +368,16 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     });
 
     const nilaiKontrak = Number(spk.nilaiKontrak);
-    const spkJenis = spk.jenis as SpkJenis;
+    const terminScheme = resolveSpkTerminScheme({
+      jenis: spk.jenis as SpkJenis,
+      terminScheme: spk.terminScheme as SpkTerminSchemeKey,
+    });
 
     await this.recalcPendingTerminNominals(
       tx,
       spkId,
       nilaiKontrak,
-      spkJenis,
+      terminScheme,
       pembayaranRows,
     );
 
@@ -453,7 +457,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const spk = await tx.spk.findUnique({
         where: { id: spkId },
-        select: { id: true, nilaiKontrak: true, jenis: true, progressOverride: true },
+        select: { id: true, nilaiKontrak: true, jenis: true, terminScheme: true, progressOverride: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
@@ -470,12 +474,15 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       });
       const calcRows = toCalcRows(existingRows);
       const nilaiKontrakDraft = Number(spk.nilaiKontrak);
-      const spkJenis = spk.jenis as SpkJenis;
+      const terminScheme = resolveSpkTerminScheme({
+      jenis: spk.jenis as SpkJenis,
+      terminScheme: spk.terminScheme as SpkTerminSchemeKey,
+    });
       const target = resolveKasbonTargetTermin(
         calcRows,
         existingRows,
         nilaiKontrakDraft,
-        spkJenis,
+        terminScheme,
       );
       if (!target) throw new Error("KASBON_NOT_ALLOWED");
 
@@ -577,7 +584,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const spk = await tx.spk.findUnique({
         where: { id: spkId },
-        select: { id: true, nilaiKontrak: true, jenis: true, progressOverride: true },
+        select: { id: true, nilaiKontrak: true, jenis: true, terminScheme: true, progressOverride: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
@@ -593,11 +600,15 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         },
       });
       const calcRows = toCalcRows(existingRows);
+      const terminSchemeDraft = resolveSpkTerminScheme({
+        jenis: spk.jenis as SpkJenis,
+        terminScheme: spk.terminScheme as SpkTerminSchemeKey,
+      });
       const target = resolveKasbonTargetTermin(
         calcRows,
         existingRows,
         Number(spk.nilaiKontrak),
-        spk.jenis as SpkJenis,
+        terminSchemeDraft,
       );
       if (!target) throw new Error("KASBON_NOT_ALLOWED");
 
@@ -619,8 +630,14 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         target,
         totalNominal,
         undefined,
-        getTerminPaymentStatus(calcRows, spk.jenis as SpkJenis),
-        spk.jenis as SpkJenis,
+        getTerminPaymentStatus(calcRows, resolveSpkTerminScheme({
+          jenis: spk.jenis as SpkJenis,
+          terminScheme: spk.terminScheme as SpkTerminSchemeKey,
+        })),
+        resolveSpkTerminScheme({
+          jenis: spk.jenis as SpkJenis,
+          terminScheme: spk.terminScheme as SpkTerminSchemeKey,
+        }),
         spkProgress,
       );
       if (!capCheck.allowed) throw new Error("KASBON_OVER_CAP");
@@ -673,7 +690,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     return await this.db.$transaction(async (tx) => {
       const spk = await tx.spk.findUnique({
         where: { id: data.spkId },
-        select: { id: true, nilaiKontrak: true, jenis: true },
+        select: { id: true, nilaiKontrak: true, jenis: true, terminScheme: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
@@ -691,7 +708,10 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const calcRows = toCalcRows(existingRows);
       const nilaiKontrak = Number(spk.nilaiKontrak);
-      const spkJenis = spk.jenis as SpkJenis;
+      const terminScheme = resolveSpkTerminScheme({
+      jenis: spk.jenis as SpkJenis,
+      terminScheme: spk.terminScheme as SpkTerminSchemeKey,
+    });
       const resolvedRekeningId = await this.resolveMandorRekeningId(
         tx,
         data.spkId,
@@ -706,7 +726,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           calcRows,
           existingRows,
           nilaiKontrak,
-          spkJenis,
+          terminScheme,
         );
         if (!target) throw new Error("KASBON_NOT_ALLOWED");
 
@@ -758,7 +778,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           calcRows,
           existingRows,
           nilaiKontrak,
-          spkJenis,
+          terminScheme,
         );
         if (!target) throw new Error("UPAH_NOT_ALLOWED");
         if (!data.baris.length) throw new Error("UPAH_BARIS_EMPTY");
@@ -803,7 +823,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           data.jenis,
           { nilaiKontrak },
           calcRows,
-          spkJenis,
+          terminScheme,
         );
 
         createData = {
@@ -850,7 +870,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         tx,
         data.spkId,
         nilaiKontrak,
-        spkJenis,
+        terminScheme,
         allRows,
       );
 

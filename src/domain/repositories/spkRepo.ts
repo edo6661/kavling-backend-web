@@ -1,4 +1,4 @@
-import { Prisma, Role, SpkJenis } from "@prisma/client";
+import { Prisma, Role, SpkJenis, SpkTerminScheme } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { ISpkRepository } from "./ISpkRepo.js";
 import type { CreateSpkDTO, SpkFilterDTO, UpdateSpkDTO } from "../dtos/SpkDTO.js";
@@ -11,6 +11,11 @@ import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { AppError } from "../errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import {
+  defaultTerminSchemeForJenis,
+  validateTerminSchemeForJenis,
+  type SpkTerminSchemeKey,
+} from "../spk/spkTerminScheme.js";
 
 export class SpkRepository implements ISpkRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -229,6 +234,39 @@ export class SpkRepository implements ISpkRepository {
     }));
   }
 
+  private resolveCreateTerminScheme(
+    jenis: SpkJenis,
+    requested?: SpkTerminSchemeKey,
+  ): SpkTerminScheme {
+    const scheme = requested ?? defaultTerminSchemeForJenis(jenis);
+    try {
+      validateTerminSchemeForJenis(jenis, scheme);
+    } catch (err) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        err instanceof Error ? err.message : "Skema termin tidak valid.",
+      );
+    }
+    return scheme as SpkTerminScheme;
+  }
+
+  private async assertTerminSchemeMutable(
+    tx: Prisma.TransactionClient,
+    spkId: number,
+    existingScheme: SpkTerminSchemeKey,
+    nextScheme: SpkTerminSchemeKey,
+  ) {
+    if (existingScheme === nextScheme) return;
+
+    const pembayaranCount = await tx.spkPembayaran.count({ where: { spkId } });
+    if (pembayaranCount > 0) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Skema termin tidak dapat diubah setelah ada pengajuan pembayaran.",
+      );
+    }
+  }
+
   async create(data: CreateSpkDTO): Promise<SpkEntity> {
     const jenis = data.jenis ?? SpkJenis.RUMAH;
 
@@ -243,6 +281,7 @@ export class SpkRepository implements ISpkRepository {
           data: {
             noSpk: data.noSpk,
             jenis: SpkJenis.RUMAH,
+            terminScheme: this.resolveCreateTerminScheme(SpkJenis.RUMAH, data.terminScheme),
             tanggalSpk: data.tanggalSpk,
             judulPekerjaan: data.judulPekerjaan,
             nilaiKontrak: new Prisma.Decimal(data.nilaiKontrak),
@@ -282,6 +321,10 @@ export class SpkRepository implements ISpkRepository {
         data: {
           noSpk: data.noSpk,
           jenis: SpkJenis.INFRASTRUKTUR,
+          terminScheme: this.resolveCreateTerminScheme(
+            SpkJenis.INFRASTRUKTUR,
+            data.terminScheme,
+          ),
           tanggalSpk: data.tanggalSpk,
           judulPekerjaan: data.judulPekerjaan,
           nilaiKontrak: new Prisma.Decimal(data.nilaiKontrak),
@@ -329,6 +372,16 @@ export class SpkRepository implements ISpkRepository {
       const mandorId = data.mandorId ?? existing.mandorId;
       if (data.mandorId !== undefined) {
         await this.validateMandor(tx, mandorId);
+      }
+
+      if (data.terminScheme !== undefined) {
+        validateTerminSchemeForJenis(existing.jenis, data.terminScheme);
+        await this.assertTerminSchemeMutable(
+          tx,
+          id,
+          existing.terminScheme,
+          data.terminScheme,
+        );
       }
 
       if (existing.jenis === SpkJenis.RUMAH) {
@@ -398,6 +451,9 @@ export class SpkRepository implements ISpkRepository {
         if (data.fileSpk !== undefined) updateData.fileSpk = data.fileSpk;
         if (data.mandorId !== undefined) {
           updateData.mandor = { connect: { id: mandorId } };
+        }
+        if (data.terminScheme !== undefined) {
+          updateData.terminScheme = data.terminScheme;
         }
 
         const result = await tx.spk.update({
@@ -475,6 +531,9 @@ export class SpkRepository implements ISpkRepository {
       if (data.fileSpk !== undefined) updateData.fileSpk = data.fileSpk;
       if (data.mandorId !== undefined) {
         updateData.mandor = { connect: { id: mandorId } };
+      }
+      if (data.terminScheme !== undefined) {
+        updateData.terminScheme = data.terminScheme;
       }
 
       const result = await tx.spk.update({

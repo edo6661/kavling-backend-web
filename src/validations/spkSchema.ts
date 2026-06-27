@@ -26,9 +26,12 @@ const optionalNumberArrayField = (fieldLabel: string) =>
 
 const spkJenisField = z.enum(["RUMAH", "INFRASTRUKTUR"]).optional().default("RUMAH");
 
+const spkTerminSchemeField = z.enum(["RUMAH_DEFAULT", "INFRA_20_6", "INFRA_30_4"]).optional();
+
 const spkBodyBase = z.object({
   noSpk: z.string().min(1, "Nomor SPK wajib diisi"),
   jenis: spkJenisField,
+  terminScheme: spkTerminSchemeField,
   tanggalSpk: z.coerce.date(),
   judulPekerjaan: z.string().min(1, "Judul pekerjaan wajib diisi"),
   nilaiKontrak: z.coerce.number().positive("Nilai kontrak harus lebih dari 0"),

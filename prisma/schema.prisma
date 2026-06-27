@@ -597,6 +597,12 @@ enum SpkJenis {
   INFRASTRUKTUR @map("infrastruktur")
 }
 
+enum SpkTerminScheme {
+  RUMAH_DEFAULT @map("rumah_default")
+  INFRA_20_6    @map("infra_20_6")
+  INFRA_30_4    @map("infra_30_4")
+}
+
 model Zona {
   id        Int      @id @default(autoincrement())
   nama      String   @db.VarChar(150)
@@ -634,6 +640,7 @@ model Spk {
   id             Int       @id @default(autoincrement())
   noSpk          String    @unique @map("no_spk") @db.VarChar(100)
   jenis          SpkJenis  @default(RUMAH)
+  terminScheme   SpkTerminScheme @default(RUMAH_DEFAULT) @map("termin_scheme")
   tanggalSpk     DateTime  @default(dbgenerated("(CURDATE())")) @map("tanggal_spk") @db.Date
   judulPekerjaan String    @map("judul_pekerjaan") @db.VarChar(255)
   nilaiKontrak   Decimal   @map("nilai_kontrak") @db.Decimal(15, 2)
@@ -788,6 +795,10 @@ enum SpkPembayaranJenis {
   TERMIN_INFRA_20_3 @map("termin_infra_20_3")
   TERMIN_INFRA_20_4 @map("termin_infra_20_4")
   TERMIN_INFRA_15   @map("termin_infra_15")
+  TERMIN_INFRA_30_1 @map("termin_infra_30_1")
+  TERMIN_INFRA_30_2 @map("termin_infra_30_2")
+  TERMIN_INFRA_30_3 @map("termin_infra_30_3")
+  TERMIN_INFRA_10   @map("termin_infra_10")
   RETENSI           @map("retensi")
   KASBON            @map("kasbon")
   UPAH              @map("upah")
@@ -801,6 +812,10 @@ enum SpkKasbonTargetTermin {
   TERMIN_INFRA_20_3 @map("termin_infra_20_3")
   TERMIN_INFRA_20_4 @map("termin_infra_20_4")
   TERMIN_INFRA_15   @map("termin_infra_15")
+  TERMIN_INFRA_30_1 @map("termin_infra_30_1")
+  TERMIN_INFRA_30_2 @map("termin_infra_30_2")
+  TERMIN_INFRA_30_3 @map("termin_infra_30_3")
+  TERMIN_INFRA_10   @map("termin_infra_10")
 }
 
 enum SpkPembayaranStatus {

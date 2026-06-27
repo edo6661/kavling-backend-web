@@ -8,6 +8,10 @@ const terminJenis = z.enum([
   "TERMIN_INFRA_20_3",
   "TERMIN_INFRA_20_4",
   "TERMIN_INFRA_15",
+  "TERMIN_INFRA_30_1",
+  "TERMIN_INFRA_30_2",
+  "TERMIN_INFRA_30_3",
+  "TERMIN_INFRA_10",
   "RETENSI",
 ]);
 
@@ -126,6 +130,10 @@ export const createSpkPembayaranSchema = {
         "TERMIN_INFRA_20_3",
         "TERMIN_INFRA_20_4",
         "TERMIN_INFRA_15",
+        "TERMIN_INFRA_30_1",
+        "TERMIN_INFRA_30_2",
+        "TERMIN_INFRA_30_3",
+        "TERMIN_INFRA_10",
         "RETENSI",
         "KASBON",
         "UPAH",

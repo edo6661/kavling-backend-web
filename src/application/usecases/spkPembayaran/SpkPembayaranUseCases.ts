@@ -25,6 +25,7 @@ import {
   validatePengurangTerminNominal,
   type SpkPengurangTerminRow,
 } from "../../../domain/spk/spkPembayaranCalc.js";
+import { resolveSpkTerminScheme } from "../../../domain/spk/spkTerminScheme.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
 import {
@@ -188,7 +189,7 @@ export class CreateSpkPembayaranRequestUseCase {
 
     const existing = await this.pembayaranRepo.findBySpkId(data.spkId);
     const nilaiKontrak = Number(spk.nilaiKontrak);
-    const spkJenis = spk.jenis;
+    const terminScheme = resolveSpkTerminScheme(spk);
     const statusRows = existing.map((p) => ({
       id: p.id,
       jenis: p.jenis,
@@ -199,11 +200,11 @@ export class CreateSpkPembayaranRequestUseCase {
     const pengurangRows = toPengurangRows(existing);
     const terminStatus = getTerminPaymentStatus(
       toSpkPembayaranCalcRows(statusRows),
-      spkJenis,
+      terminScheme,
     );
 
     if (data.jenis === "KASBON") {
-      const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak, spkJenis);
+      const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak, terminScheme);
       if (!kasbonCheck.allowed) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
@@ -232,14 +233,14 @@ export class CreateSpkPembayaranRequestUseCase {
         additionalNominal,
         undefined,
         terminStatus,
-        spkJenis,
+        terminScheme,
         spk.progress,
       );
       if (!capCheck.allowed) {
         throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
       }
     } else if (data.jenis === "UPAH") {
-      const upahCheck = canRequestKasbon(statusRows, nilaiKontrak, spkJenis);
+      const upahCheck = canRequestKasbon(statusRows, nilaiKontrak, terminScheme);
       if (!upahCheck.allowed) {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
@@ -273,7 +274,7 @@ export class CreateSpkPembayaranRequestUseCase {
         additionalNominal,
         undefined,
         terminStatus,
-        spkJenis,
+        terminScheme,
         spk.progress,
       );
       if (!capCheck.allowed) {
@@ -284,7 +285,7 @@ export class CreateSpkPembayaranRequestUseCase {
         data.jenis,
         { nilaiKontrak, progress: spk.progress },
         statusRows,
-        spkJenis,
+        terminScheme,
       );
 
       if (!check.allowed) {
@@ -664,7 +665,7 @@ export class UpdateSpkKasbonUseCase {
             keterangan: p.keterangan,
           })),
         ),
-        { spkJenis: spk.jenis },
+        { terminScheme: resolveSpkTerminScheme(spk) },
       );
 
     if (!mengurangiTermin) {
@@ -699,7 +700,7 @@ export class UpdateSpkKasbonUseCase {
           mengurangiTermin: p.mengurangiTermin,
         })),
       ),
-      spk.jenis,
+      resolveSpkTerminScheme(spk),
     );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
@@ -708,7 +709,7 @@ export class UpdateSpkKasbonUseCase {
       additionalNominal,
       data.id,
       terminStatusKasbon,
-      spk.jenis,
+      resolveSpkTerminScheme(spk),
       spk.progress,
     );
     if (!capCheck.allowed) {
@@ -808,7 +809,7 @@ export class UpdateSpkUpahUseCase {
             keterangan: p.keterangan,
           })),
         ),
-        { spkJenis: spk.jenis },
+        { terminScheme: resolveSpkTerminScheme(spk) },
       );
 
     if (!mengurangiTerminUpah) {
@@ -832,7 +833,7 @@ export class UpdateSpkUpahUseCase {
           mengurangiTermin: p.mengurangiTermin,
         })),
       ),
-      spk.jenis,
+      resolveSpkTerminScheme(spk),
     );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
@@ -841,7 +842,7 @@ export class UpdateSpkUpahUseCase {
       data.nominal,
       data.id,
       terminStatusUpah,
-      spk.jenis,
+      resolveSpkTerminScheme(spk),
       spk.progress,
     );
     if (!capCheck.allowed) {

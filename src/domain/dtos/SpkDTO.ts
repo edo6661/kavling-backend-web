@@ -1,8 +1,9 @@
-import type { SpkJenis } from "../entities/Spk.js";
+import type { SpkJenis, SpkTerminSchemeKey } from "../entities/Spk.js";
 
 export interface CreateSpkDTO {
   noSpk: string;
   jenis?: SpkJenis;
+  terminScheme?: SpkTerminSchemeKey;
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;
@@ -20,6 +21,7 @@ export interface CreateSpkDTO {
 
 export interface UpdateSpkDTO {
   noSpk?: string | undefined;
+  terminScheme?: SpkTerminSchemeKey | undefined;
   tanggalSpk?: Date | undefined;
   judulPekerjaan?: string | undefined;
   nilaiKontrak?: number | undefined;
