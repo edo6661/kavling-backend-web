@@ -895,27 +895,19 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
       ];
     }
 
-    const totalItems = await this.db.spk.count({ where });
-    const totalPages = Math.ceil(totalItems / limit) || 1;
-    const skip = (page - 1) * limit;
-
-    const rows = await this.db.spk.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: [{ jatuhTempo: "asc" }, { noSpk: "asc" }],
-      include: {
-        mandor: { select: { id: true, username: true } },
-        zona: { select: { nama: true, hgb: true } },
-        progressProyek: { include: ProgressProyekMapper.include },
-        pekerjaanInfraItems: {
-          include: { pekerjaanInfra: { select: { id: true, nama: true, kategori: true } } },
-          orderBy: { urutan: "asc" },
-        },
+    const include = {
+      mandor: { select: { id: true, username: true } },
+      zona: { select: { nama: true, hgb: true } },
+      progressProyek: { include: ProgressProyekMapper.include },
+      pekerjaanInfraItems: {
+        include: { pekerjaanInfra: { select: { id: true, nama: true, kategori: true } } },
+        orderBy: { urutan: "asc" as const },
       },
-    });
+    };
 
-    const items: ProgressInfraListItemDTO[] = rows.map((spk) => {
+    type InfraSpkRow = PrismaTypes.SpkGetPayload<{ include: typeof include }>;
+
+    const mapSpkRow = (spk: InfraSpkRow): ProgressInfraListItemDTO => {
       const latestByNama = this.buildLatestTahapanMap(
         spk.progressProyek?.tahapan ?? [],
       );
@@ -943,7 +935,75 @@ export class ProgressProyekRepository implements IProgressProyekRepository {
         ),
         pekerjaanItems,
       };
+    };
+
+    const compareInfraProyekList = (
+      a: ProgressInfraListItemDTO,
+      b: ProgressInfraListItemDTO,
+    ) => {
+      const mandorCmp = a.mandor.username.localeCompare(b.mandor.username, "id", {
+        numeric: true,
+        sensitivity: "base",
+      });
+      if (mandorCmp !== 0) return mandorCmp;
+      return a.noSpk.localeCompare(b.noSpk, "id", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    };
+
+    const sortField = filters?.orderBy?.field;
+    const sortDirection = filters?.orderBy?.direction ?? "desc";
+
+    if (sortField === "progress") {
+      const rows = await this.db.spk.findMany({
+        where,
+        orderBy: [{ jatuhTempo: "asc" }, { noSpk: "asc" }],
+        include,
+      });
+
+      const allItems = rows.map(mapSpkRow).sort((a, b) => {
+        const progressA = a.progressProyek?.persentase ?? 0;
+        const progressB = b.progressProyek?.persentase ?? 0;
+        if (progressA !== progressB) {
+          return sortDirection === "desc"
+            ? progressB - progressA
+            : progressA - progressB;
+        }
+        return compareInfraProyekList(a, b);
+      });
+
+      const totalItems = allItems.length;
+      const totalPages = Math.ceil(totalItems / limit) || 1;
+      const skip = (page - 1) * limit;
+      const items = allItems.slice(skip, skip + limit);
+
+      return {
+        items,
+        meta: {
+          page,
+          limit,
+          totalItems,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    }
+
+    const totalItems = await this.db.spk.count({ where });
+    const totalPages = Math.ceil(totalItems / limit) || 1;
+    const skip = (page - 1) * limit;
+
+    const rows = await this.db.spk.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: [{ jatuhTempo: "asc" }, { noSpk: "asc" }],
+      include,
     });
+
+    const items = rows.map(mapSpkRow);
 
     return {
       items,

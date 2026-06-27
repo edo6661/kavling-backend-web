@@ -96,6 +96,10 @@ export interface ProgressInfraListItemDTO {
 export interface ProgressInfraListFilterDTO {
   mandorUserId?: number;
   search?: string;
+  orderBy?: {
+    field: string;
+    direction: "asc" | "desc";
+  };
 }
 
 export interface ProgressInfraDetailDTO {

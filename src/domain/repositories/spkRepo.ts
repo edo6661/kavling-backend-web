@@ -176,6 +176,7 @@ export class SpkRepository implements ISpkRepository {
   private async validateZonaAvailableForInfraSpk(
     tx: Prisma.TransactionClient,
     zonaId: number,
+    mandorId: number,
     excludeSpkId?: number,
   ) {
     await this.validateZonaId(tx, zonaId);
@@ -184,6 +185,7 @@ export class SpkRepository implements ISpkRepository {
       where: {
         jenis: SpkJenis.INFRASTRUKTUR,
         zonaId,
+        mandorId,
         ...(excludeSpkId ? { id: { not: excludeSpkId } } : {}),
       },
       select: { noSpk: true },
@@ -192,7 +194,7 @@ export class SpkRepository implements ISpkRepository {
     if (taken) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        `Zona ini sudah digunakan oleh SPK ${taken.noSpk}. Satu zona hanya boleh satu SPK infrastruktur.`,
+        `Zona ini sudah digunakan oleh SPK ${taken.noSpk} untuk mandor yang sama. Satu zona hanya boleh satu SPK infrastruktur per mandor.`,
       );
     }
   }
@@ -314,7 +316,7 @@ export class SpkRepository implements ISpkRepository {
         throw new AppError(StatusCodes.BAD_REQUEST, "Zona wajib dipilih.");
       }
 
-      await this.validateZonaAvailableForInfraSpk(tx, zonaId);
+      await this.validateZonaAvailableForInfraSpk(tx, zonaId, data.mandorId);
       await this.validatePekerjaanInfraIds(tx, pekerjaanInfraIds);
 
       const result = await tx.spk.create({
@@ -474,8 +476,17 @@ export class SpkRepository implements ISpkRepository {
         );
       }
 
-      if (data.zonaId !== undefined && data.zonaId !== null) {
-        await this.validateZonaAvailableForInfraSpk(tx, data.zonaId, id);
+      const finalZonaId = data.zonaId ?? existing.zonaId;
+      if (
+        finalZonaId &&
+        (data.zonaId !== undefined || data.mandorId !== undefined)
+      ) {
+        await this.validateZonaAvailableForInfraSpk(
+          tx,
+          finalZonaId,
+          mandorId,
+          id,
+        );
       }
 
       if (data.pekerjaanInfraIds !== undefined) {

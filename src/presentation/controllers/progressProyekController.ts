@@ -111,7 +111,7 @@ export class ProgressProyekController {
   };
 
   getInfraProyekList = async (req: Request, res: Response): Promise<void> => {
-    const { page, limit, search } =
+    const { page, limit, search, orderBy } =
       getProgressInfraListSchema.query.parse(req.query);
 
     const filters: ProgressInfraListFilterDTO = {};
@@ -120,6 +120,12 @@ export class ProgressProyekController {
     }
     if (search) {
       filters.search = search;
+    }
+    if (orderBy?.field) {
+      filters.orderBy = {
+        field: orderBy.field,
+        direction: orderBy.direction,
+      };
     }
 
     const result = await this.getInfraListUseCase.execute(page, limit, filters);
