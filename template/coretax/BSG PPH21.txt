@@ -1,0 +1,70 @@
+npwp pemotong diantara 2 value:
+
+sgmp / gajah (ini berdasarkan bank rekening pt aja ya):
+1000000000423419
+mahligai / bms
+1000000005313046
+
+masa pajak:
+bulan saat ini.
+tahun pajak:
+tahun saat ini.
+npwp:
+nik tukang
+ID TKU Penerima Penghasilan:
+nik tukang + 000000
+Status PTKP:
+ini ngarang aja dulu untuk sementara, value nya diantara: (TK/0,K/1,K/2,K/3)
+
+kalo belom Kawin TK/0
+kalo udah Kawin + anak 1 K/1
+kalo udah Kawin + anak 2 K/2
+kalo udah Kawin + anak 3 K/3
+
+Fasilitas:
+N/A
+Kode Objek Pajak:
+21-100-35
+Penghasilan:
+ngarang yang penting gaboleh lebih dari 5 juta dan sesuai dengan total pengajuan upah.
+Deemed:
+100
+Tarif:
+0
+Jenis Dok. Referensi:
+Other
+Nomor Dok. Referensi
+contoh value:
+(bsg ini kso gajah)
+(bsm ini kso mahligai)
+195/BSG/IIII/2026
+195 itu nomor increment.
+BSG perusahaan
+IV = bulan
+2026 tahun.
+
+Tanggal Dok. Referensi (tanggal gajian [periode upah])
+2026-04-15
+
+ID TKU Pemotong
+npwp perusahaan ditambahin 0 nya 6 biji.
+
+Tanggal Pemotongan:
+Tanggal Pemotongan itu lebih dari 1 bulan Tanggal Dok. Referensi dan tanggal 15.
+
+DPP = penghasilan.
+TER A:
+0
+TER B:
+0
+TER C:
+0
+PS17:
+5
+HARIAN:
+0
+PESANGON:
+0
+PENSIUN:
+0
+
