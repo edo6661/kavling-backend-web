@@ -48,6 +48,9 @@ Tanggal Dok. Referensi (tanggal gajian [periode upah])
 
 ID TKU Pemotong
 npwp perusahaan ditambahin 0 nya 6 biji.
+PENTING: 6 digit terakhir harus sesuai NITKU yang terdaftar di Coretax
+(Portal Saya > Profil > Tempat Kegiatan Usaha), bukan asal 000000.
+Contoh format: 1000000000423419000000 (22 digit total).
 
 Tanggal Pemotongan:
 Tanggal Pemotongan itu lebih dari 1 bulan Tanggal Dok. Referensi dan tanggal 15.

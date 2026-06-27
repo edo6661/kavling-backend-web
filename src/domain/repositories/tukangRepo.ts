@@ -7,6 +7,18 @@ import type {
 } from "../dtos/TukangDTO.js";
 import type { TukangEntity } from "../entities/Tukang.js";
 
+const NIK_DIGIT_LENGTH = 16;
+
+function normalizeNikDigits(nik: string): string {
+  return nik.replace(/\D/g, "");
+}
+
+function assertNik16ForNewRecord(nik: string): void {
+  if (normalizeNikDigits(nik).length !== NIK_DIGIT_LENGTH) {
+    throw new Error("NIK_INVALID");
+  }
+}
+
 const toEntity = (row: {
   id: number;
   nik: string;
@@ -92,6 +104,8 @@ export class TukangRepository {
       });
       return toEntity(row);
     }
+
+    assertNik16ForNewRecord(nik);
 
     const row = await this.db.tukang.create({
       data: {
