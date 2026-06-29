@@ -18,6 +18,8 @@ export interface NotificationPayload {
 const TELEGRAM_FINANCE_ALERT_TYPES = new Set<NotificationType>([
   "UPLOAD_BUKTI",
   "KODE_BILLING_PPH",
+  "SPK_MENUNGGU_APPROVAL",
+  "SPK_PENGAJUAN_BARU",
   "SPK_DISETUJUI",
   "AGENT_PENCAIRAN",
 ]);
