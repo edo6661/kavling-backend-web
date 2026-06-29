@@ -156,6 +156,8 @@ export interface MonthlyMetricRowDTO {
   monthLabel: string;
   total: number;
   count: number;
+  /** Tahun kalender (untuk baris all-time per bulan) */
+  year?: number;
 }
 
 /** KPI ringkas dashboard eksekutif */
@@ -195,6 +197,8 @@ export interface ExecutiveDashboardDTO {
   bookingHariIni: TodayUnitItemDTO[];
   prosesHariIni: TodayUnitItemDTO[];
   pendapatanTahunIni: MonthlyMetricRowDTO[];
+  /** Pendapatan lunas all-time, dikelompokkan per bulan-tahun */
+  pendapatanAllTime: MonthlyMetricRowDTO[];
   akadTahunIni: MonthlyMetricRowDTO[];
   penjualanCashTahunIni: MonthlyMetricRowDTO[];
   tingkatPemesanan: BookingRateRowDTO[];

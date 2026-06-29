@@ -87,6 +87,36 @@ function buildMonthlyRows(
   });
 }
 
+function buildPendapatanAllTimeRows(
+  tagihan: { nominal: unknown; jatuhTempo: Date }[],
+): MonthlyMetricRowDTO[] {
+  const buckets = new Map<
+    string,
+    { year: number; month: number; total: number; count: number }
+  >();
+
+  for (const t of tagihan) {
+    const d = t.jatuhTempo;
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const key = `${year}-${month}`;
+    const existing = buckets.get(key) ?? { year, month, total: 0, count: 0 };
+    existing.total += Number(t.nominal);
+    existing.count += 1;
+    buckets.set(key, existing);
+  }
+
+  return Array.from(buckets.values())
+    .sort((a, b) => a.year - b.year || a.month - b.month)
+    .map((bucket) => ({
+      year: bucket.year,
+      month: bucket.month,
+      monthLabel: `${FULL_MONTH_LABELS[bucket.month - 1]} ${bucket.year}`,
+      total: bucket.total,
+      count: bucket.count,
+    }));
+}
+
 export class GetExecutiveDashboardUseCase {
   constructor(private readonly db: PrismaClient) {}
 
@@ -108,6 +138,7 @@ export class GetExecutiveDashboardUseCase {
       totalUnitCashBertahap,
       totalKavling,
       paidTagihanYear,
+      paidTagihanAllTime,
       akadDetailsYear,
       penjualanCashYear,
       penjualanYear,
@@ -145,6 +176,13 @@ export class GetExecutiveDashboardUseCase {
           status: "LUNAS",
           isRefunded: false,
           jatuhTempo: { gte: yearStart, lte: yearEnd },
+        },
+        select: { nominal: true, jatuhTempo: true },
+      }),
+      this.db.tagihan.findMany({
+        where: {
+          status: "LUNAS",
+          isRefunded: false,
         },
         select: { nominal: true, jatuhTempo: true },
       }),
@@ -224,6 +262,8 @@ export class GetExecutiveDashboardUseCase {
       };
     });
 
+    const pendapatanAllTime = buildPendapatanAllTimeRows(paidTagihanAllTime);
+
     const akadTahunIni = buildMonthlyRows(year, (monthIndex) => {
       const { start, end } = monthRange(year, monthIndex);
       const inMonth = akadDetailsYear.filter(
@@ -275,6 +315,7 @@ export class GetExecutiveDashboardUseCase {
       bookingHariIni,
       prosesHariIni,
       pendapatanTahunIni,
+      pendapatanAllTime,
       akadTahunIni,
       penjualanCashTahunIni,
       tingkatPemesanan,
