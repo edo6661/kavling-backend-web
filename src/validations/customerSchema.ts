@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import { offsetPaginationQuerySchema } from "./paginationSchema.js";
+import { emptyOrNikDigitsSchema, requiredNikDigitsSchema } from "./nikSchema.js";
 
 export const createCustomerSchema = {
   body: z.object({
-    nikKtp: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nikKtp: emptyOrNikDigitsSchema.optional(),
     nama: z.string().min(3, "Nama minimal 3 karakter"),
     noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),
@@ -23,9 +24,7 @@ export const updateCustomerSchema = {
   }),
   body: z.object({
     userId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
-    nikKtp: emptyAsUndefined(
-      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
-    ),
+    nikKtp: emptyAsUndefined(requiredNikDigitsSchema.optional()),
     nama: emptyAsUndefined(z.string().min(3).optional()),
     noHp: emptyAsUndefined(z.string().min(9).optional()),
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),

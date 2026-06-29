@@ -7,6 +7,7 @@ import type {
 import { CustomerMapper } from "../../../infrastructure/mapper/CustomerMapper.js";
 import { hashPassword } from "../../../utils/hashing.js";
 import { Role } from "@prisma/client";
+import { resolveCustomerNik } from "../../../domain/customer/customerNik.js";
 
 export class CreateCustomerUseCase {
   constructor(
@@ -15,7 +16,8 @@ export class CreateCustomerUseCase {
   ) {}
 
   async execute(data: CreateCustomerDTO): Promise<CustomerResponseDTO> {
-    const hashedPassword = await hashPassword(data.nikKtp);
+    const nikKtp = resolveCustomerNik(data.nikKtp?.trim() || null);
+    const hashedPassword = await hashPassword(nikKtp);
     const dummyEmail = data.email ?? `${data.noHp}@customer.local`;
 
     const newUser = await this.userRepo.create({
@@ -27,6 +29,7 @@ export class CreateCustomerUseCase {
 
     const customer = await this.customerRepo.create({
       ...data,
+      nikKtp,
       userId: newUser.id,
     });
 

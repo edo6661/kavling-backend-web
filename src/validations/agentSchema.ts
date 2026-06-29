@@ -2,6 +2,7 @@ import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
 import { offsetPaginationQuerySchema } from "./paginationSchema.js";
 import { AgentStatus, AgentType } from "@prisma/client";
+import { requiredNikDigitsSchema } from "./nikSchema.js";
 
 // Schema untuk nested PIC
 const picSchema = z.object({
@@ -11,7 +12,7 @@ const picSchema = z.object({
 });
 export const createAgentSchema = {
   body: z.object({
-    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nik: requiredNikDigitsSchema,
     nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
     noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),
@@ -36,9 +37,7 @@ export const createAgentSchema = {
 export const updateAgentSchema = {
   params: z.object({ id: z.string().regex(/^\d+$/, "ID harus berupa angka") }),
   body: z.object({
-    nik: emptyAsUndefined(
-      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
-    ),
+    nik: emptyAsUndefined(requiredNikDigitsSchema.optional()),
     nama: emptyAsUndefined(z.string().min(3).optional()),
     noHp: emptyAsUndefined(z.string().min(9).optional()),
     email: emptyAsUndefined(z.string().email("Format email salah").optional()),
@@ -60,9 +59,7 @@ export const updateAgentSchema = {
 };
 export const updateAgentSelfSchema = {
   body: z.object({
-    nik: emptyAsUndefined(
-      z.string().length(16, "NIK harus tepat 16 karakter").optional(),
-    ),
+    nik: emptyAsUndefined(requiredNikDigitsSchema.optional()),
     nama: emptyAsUndefined(
       z.string().min(3, "Nama Agent minimal 3 karakter").optional(),
     ),

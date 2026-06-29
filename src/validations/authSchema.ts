@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Role } from "@prisma/client";
 import { emptyAsUndefined } from "./emptySchema.js";
+import { requiredNikDigitsSchema } from "./nikSchema.js";
 export const registerSchema = {
   body: z.object({
     username: z.string().min(3, "Username minimal 3 karakter"),
@@ -26,7 +27,7 @@ export const customerLoginSchema = {
 
 export const registerAgentSchema = {
   body: z.object({
-    nik: z.string().length(16, "NIK harus tepat 16 karakter"),
+    nik: requiredNikDigitsSchema,
     nama: z.string().min(3, "Nama Agent minimal 3 karakter"),
     noHp: z.string().min(9, "Nomor HP minimal 9 karakter"),
     email: z.string().email("Format email salah"),
