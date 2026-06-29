@@ -170,10 +170,15 @@ export class GetDashboardDrilldownUseCase {
       );
     }
 
-    if (status === "AKAD_BULAN_INI") {
+    const akadMonthFilter = this.parseYearMonthFilter(status, "AKAD");
+    if (status === "AKAD_BULAN_INI" || akadMonthFilter) {
+      const range = akadMonthFilter
+        ? monthRange(akadMonthFilter.year, akadMonthFilter.month - 1)
+        : { start: monthStartDate, end: monthEndDate };
+
       const akadDetails = await this.db.detailKavlingPajak.findMany({
         where: {
-          tanggalAkadPpjb: { gte: monthStartDate, lte: monthEndDate },
+          tanggalAkadPpjb: { gte: range.start, lte: range.end },
           penjualan: { status: { not: "BATAL" } },
         },
         orderBy: { tanggalAkadPpjb: "desc" },
@@ -202,6 +207,48 @@ export class GetDashboardDrilldownUseCase {
       });
     }
 
+    const cashMonthFilter = this.parseYearMonthFilter(status, "CASH");
+    if (cashMonthFilter) {
+      const { start, end } = monthRange(cashMonthFilter.year, cashMonthFilter.month - 1);
+      return this.mapPenjualanItems(
+        await this.db.penjualan.findMany({
+          where: {
+            caraPembayaran: { in: ["CASH_KERAS", "CASH_BERTAHAP"] },
+            status: { not: "BATAL" },
+            createdAt: { gte: start, lte: end },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            customer: { select: { nama: true } },
+            kavling: { select: { blok: true, nomorUnit: true } },
+          },
+        }),
+      );
+    }
+
+    const pemesananMonthFilter = this.parseYearMonthFilter(status, "PEMESANAN");
+    if (pemesananMonthFilter) {
+      const { start, end } = monthRange(
+        pemesananMonthFilter.year,
+        pemesananMonthFilter.month - 1,
+      );
+      return this.mapPenjualanItems(
+        await this.db.penjualan.findMany({
+          where: {
+            status: { not: "BATAL" },
+            createdAt: { gte: start, lte: end },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            customer: { select: { nama: true } },
+            kavling: { select: { blok: true, nomorUnit: true } },
+          },
+        }),
+      );
+    }
+
     const penjualan = await this.db.penjualan.findMany({
       where: status ? { status: status as "BOOKED" | "PROSES" | "LUNAS" | "BATAL" } : { status: { not: "BATAL" } },
       orderBy: { createdAt: "desc" },
@@ -213,6 +260,20 @@ export class GetDashboardDrilldownUseCase {
     });
 
     return this.mapPenjualanItems(penjualan);
+  }
+
+  private parseYearMonthFilter(
+    filter: string | undefined,
+    prefix: string,
+  ): { year: number; month: number } | null {
+    const match = filter?.match(new RegExp(`^${prefix}:(\\d{4}):(\\d{1,2})$`));
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+      return null;
+    }
+    return { year, month };
   }
 
   private mapPenjualanItems(
