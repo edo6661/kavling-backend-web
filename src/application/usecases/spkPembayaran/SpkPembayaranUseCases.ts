@@ -31,6 +31,7 @@ import type { NotificationService } from "../../../infrastructure/notifications/
 import {
   buildSpkDibayarNotification,
   buildSpkDisetujuiNotification,
+  buildSpkMenungguApprovalAdminNotification,
   buildSpkPengajuanBaruNotification,
 } from "../../notifications/spkNotificationHelpers.js";
 import { Role, SpkPembayaranStatus } from "@prisma/client";
@@ -56,11 +57,27 @@ async function notifySpkPengajuanBaru(
   if (!notificationService) return;
   try {
     await notificationService.notifyRoles(
-      [Role.PENGAWAS, Role.ADMIN, Role.SUPERADMIN],
+      [Role.PENGAWAS, Role.SUPERADMIN],
       buildSpkPengajuanBaruNotification(spk, pembayaran),
     );
   } catch (error) {
     console.error("Gagal mengirim notifikasi pengajuan SPK:", error);
+  }
+}
+
+async function notifySpkMenungguApprovalAdmin(
+  notificationService: NotificationService | undefined,
+  spk: SpkEntity,
+  pembayaran: SpkPembayaranEntity,
+): Promise<void> {
+  if (!notificationService) return;
+  try {
+    await notificationService.notifyRoles(
+      [Role.ADMIN, Role.SUPERADMIN],
+      buildSpkMenungguApprovalAdminNotification(spk, pembayaran),
+    );
+  } catch (error) {
+    console.error("Gagal mengirim notifikasi persetujuan admin SPK:", error);
   }
 }
 
@@ -166,6 +183,7 @@ function assertMandorCanDeletePengurangan(
   if (
     record.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN &&
     record.status !== SpkPembayaranStatus.MENUNGGU_PERSETUJUAN &&
+    record.status !== SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN &&
     record.status !== SpkPembayaranStatus.DRAFT
   ) {
     throw new AppError(
@@ -601,7 +619,8 @@ export class BayarSpkPembayaranUseCase {
     if (existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        existing.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN
+        existing.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN ||
+        existing.status === SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN
           ? "Pengajuan masih menunggu persetujuan pengawas."
           : "Status pembayaran tidak valid untuk diproses.",
       );
@@ -1098,18 +1117,28 @@ export class ApproveSpkPembayaranUseCase {
   ) {}
 
   async execute(id: number, userId: number, userRole: string): Promise<SpkPembayaranEntity> {
-    if (userRole !== Role.PENGAWAS && userRole !== Role.SUPERADMIN && userRole !== Role.ADMIN) {
+    const role = userRole as Role;
+
+    if (
+      role !== Role.PENGAWAS &&
+      role !== Role.ADMIN &&
+      role !== Role.SUPERADMIN
+    ) {
       throw new AppError(
         StatusCodes.FORBIDDEN,
-        "Hanya pengawas yang dapat menyetujui pengajuan pembayaran SPK.",
+        "Anda tidak memiliki akses untuk menyetujui pengajuan pembayaran SPK.",
       );
     }
 
     try {
-      const approved = await this.pembayaranRepo.approvePengajuan(id, userId);
+      const approved = await this.pembayaranRepo.approvePengajuan(id, userId, role);
       const spk = await this.spkRepo.findById(approved.spkId);
       if (spk) {
-        await notifySpkDisetujui(this.notificationService, spk, approved);
+        if (approved.status === SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN) {
+          await notifySpkMenungguApprovalAdmin(this.notificationService, spk, approved);
+        } else if (approved.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN) {
+          await notifySpkDisetujui(this.notificationService, spk, approved);
+        }
       }
       return approved;
     } catch (err) {
@@ -1120,7 +1149,7 @@ export class ApproveSpkPembayaranUseCase {
       if (msg === "NOT_PENDING_APPROVAL") {
         throw new AppError(
           StatusCodes.BAD_REQUEST,
-          "Pengajuan tidak dalam status menunggu persetujuan.",
+          "Pengajuan tidak dalam status yang dapat disetujui pada tahap ini.",
         );
       }
       throw err;

@@ -1,5 +1,6 @@
 import {
   Prisma,
+  Role,
   SpkPembayaranStatus,
 } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
@@ -70,7 +71,8 @@ function toCalcStatus(
 function isEditablePenguranganStatus(status: SpkPembayaranStatus): boolean {
   return (
     status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
-    status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN
+    status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN ||
+    status === SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN
   );
 }
 
@@ -328,7 +330,8 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         (p) =>
           p.jenis === jenis &&
           (p.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
-            p.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN),
+            p.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN ||
+            p.status === SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN),
       );
       if (!row) continue;
 
@@ -1009,11 +1012,13 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       status:
         filters?.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
         filters?.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN ||
+        filters?.status === SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN ||
         filters?.status === SpkPembayaranStatus.SUDAH_DIBAYAR
           ? filters.status
           : {
               in: [
                 SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
+                SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN,
                 SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
                 SpkPembayaranStatus.SUDAH_DIBAYAR,
               ],
@@ -1225,6 +1230,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       if (
         existing.status !== SpkPembayaranStatus.MENUNGGU_PEMBAYARAN &&
         existing.status !== SpkPembayaranStatus.MENUNGGU_PERSETUJUAN &&
+        existing.status !== SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN &&
         existing.status !== SpkPembayaranStatus.DRAFT
       ) {
         throw new Error("ALREADY_PAID");
@@ -1240,23 +1246,39 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
   async approvePengajuan(
     id: number,
     disetujuiOlehId: number,
+    userRole: Role,
   ): Promise<SpkPembayaranEntity> {
     return await this.db.$transaction(async (tx) => {
       const existing = await tx.spkPembayaran.findUnique({
         where: { id },
       });
       if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
-      if (existing.status !== SpkPembayaranStatus.MENUNGGU_PERSETUJUAN) {
+
+      const isPengawasStep =
+        existing.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN &&
+        (userRole === Role.PENGAWAS || userRole === Role.SUPERADMIN);
+
+      const isAdminStep =
+        existing.status === SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN &&
+        (userRole === Role.ADMIN || userRole === Role.SUPERADMIN);
+
+      if (!isPengawasStep && !isAdminStep) {
         throw new Error("NOT_PENDING_APPROVAL");
       }
 
+      const nextStatus = isPengawasStep
+        ? SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN
+        : SpkPembayaranStatus.MENUNGGU_PEMBAYARAN;
+
       const result = await tx.spkPembayaran.update({
         where: { id },
-        data: {
-          status: SpkPembayaranStatus.MENUNGGU_PEMBAYARAN,
-          disetujuiOleh: { connect: { id: disetujuiOlehId } },
-          tanggalDisetujui: new Date(),
-        },
+        data: isAdminStep
+          ? {
+              status: nextStatus,
+              disetujuiOleh: { connect: { id: disetujuiOlehId } },
+              tanggalDisetujui: new Date(),
+            }
+          : { status: nextStatus },
         include: SpkPembayaranMapper.include,
       });
 

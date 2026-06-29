@@ -36,6 +36,28 @@ export function buildSpkPengajuanBaruNotification(
   };
 }
 
+export function buildSpkMenungguApprovalAdminNotification(
+  spk: SpkEntity,
+  pembayaran: SpkPembayaranEntity,
+): NotificationPayload {
+  const jenisLabel = JENIS_LABEL[pembayaran.jenis];
+  const mandorName = pembayaran.diajukanOleh?.username ?? spk.mandor?.username ?? "Mandor";
+
+  return {
+    type: "SPK_PENGAJUAN_BARU",
+    title: "Pengajuan SPK Menunggu Persetujuan Admin",
+    message: `${jenisLabel} (${formatRupiah(pembayaran.nominal)}) untuk SPK ${spk.noSpk} dari ${mandorName} telah disetujui pengawas dan menunggu persetujuan admin.`,
+    data: {
+      spkId: spk.id,
+      noSpk: spk.noSpk,
+      pembayaranId: pembayaran.id,
+      jenis: pembayaran.jenis,
+      nominal: pembayaran.nominal,
+    },
+    linkPath: "/proyek/approve-kasbon-admin",
+  };
+}
+
 export function buildSpkDisetujuiNotification(
   spk: SpkEntity,
   pembayaran: SpkPembayaranEntity,

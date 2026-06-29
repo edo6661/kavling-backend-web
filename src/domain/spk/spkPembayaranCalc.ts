@@ -557,7 +557,7 @@ export function getPrerequisiteJenis(
 export interface SpkPembayaranStatusRow {
   id?: number;
   jenis: SpkPembayaranJenis;
-  status: "MENUNGGU_PEMBAYARAN" | "MENUNGGU_PERSETUJUAN" | "SUDAH_DIBAYAR" | "DRAFT";
+  status: "MENUNGGU_PEMBAYARAN" | "MENUNGGU_PERSETUJUAN" | "MENUNGGU_APPROVAL_ADMIN" | "SUDAH_DIBAYAR" | "DRAFT";
   nominal?: number;
   mengurangiTermin?: SpkKasbonTargetTermin | null;
 }

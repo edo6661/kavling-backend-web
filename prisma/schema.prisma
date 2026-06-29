@@ -833,6 +833,7 @@ enum SpkKasbonTargetTermin {
 enum SpkPembayaranStatus {
   MENUNGGU_PEMBAYARAN @map("menunggu_pembayaran")
   MENUNGGU_PERSETUJUAN @map("menunggu_persetujuan")
+  MENUNGGU_APPROVAL_ADMIN @map("menunggu_approval_admin")
   SUDAH_DIBAYAR       @map("sudah_dibayar")
   DRAFT               @map("draft")
 }

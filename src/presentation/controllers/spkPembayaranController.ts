@@ -253,10 +253,14 @@ export class SpkPembayaranController {
       req.user!.userId,
       req.user!.role,
     );
+    const message =
+      result.status === "MENUNGGU_APPROVAL_ADMIN"
+        ? "Pengajuan pembayaran SPK disetujui dan diteruskan ke admin"
+        : "Pengajuan pembayaran SPK disetujui dan diteruskan ke finance";
     sendResponse(
       res,
       StatusCodes.OK,
-      "Pengajuan pembayaran SPK disetujui dan diteruskan ke finance",
+      message,
       result,
     );
   };
