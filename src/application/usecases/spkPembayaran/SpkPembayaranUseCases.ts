@@ -8,6 +8,7 @@ import type {
   SetBsiCmsDilaporkanDTO,
   SpkPembayaranFilterDTO,
   SpkPembayaranKasbonBarisInput,
+  SpkPembayaranDokumenInput,
   UpdateSpkKasbonDTO,
   UpdateSpkUpahDTO,
 } from "../../../domain/dtos/SpkPembayaranDTO.js";
@@ -39,6 +40,13 @@ import type { SpkEntity } from "../../../domain/entities/Spk.js";
 
 const withOptionalMandorRekeningId = (mandorRekeningId?: number) =>
   mandorRekeningId !== undefined ? { mandorRekeningId } : {};
+
+const mapDokumenFromDto = (data: SpkPembayaranDokumenInput): SpkPembayaranDokumenInput => ({
+  ...(data.dokumenInvoice ? { dokumenInvoice: data.dokumenInvoice } : {}),
+  ...(data.dokumenMaterial ? { dokumenMaterial: data.dokumenMaterial } : {}),
+  ...(data.dokumenBeritaAcara ? { dokumenBeritaAcara: data.dokumenBeritaAcara } : {}),
+  ...(data.dokumenProgressSpk ? { dokumenProgressSpk: data.dokumenProgressSpk } : {}),
+});
 
 const assertSpkApproved = (spk: SpkEntity) => {
   if (spk.statusApproval !== "APPROVED") {
@@ -326,6 +334,7 @@ export class CreateSpkPembayaranRequestUseCase {
     }
 
     try {
+      const dokumenFields = mapDokumenFromDto(data);
       const created = await this.pembayaranRepo.createRequestWithSync(
         data.jenis === "KASBON"
           ? {
@@ -333,6 +342,7 @@ export class CreateSpkPembayaranRequestUseCase {
               jenis: "KASBON",
               diajukanOlehId: userId,
               ...withOptionalMandorRekeningId(data.mandorRekeningId),
+              ...dokumenFields,
               ...(data.kasbonBaris?.length
                 ? { kasbonBaris: data.kasbonBaris }
                 : {
@@ -351,12 +361,14 @@ export class CreateSpkPembayaranRequestUseCase {
                 nominal: data.nominal,
                 diajukanOlehId: userId,
                 ...withOptionalMandorRekeningId(data.mandorRekeningId),
+                ...dokumenFields,
               }
             : {
                 spkId: data.spkId,
                 jenis: data.jenis,
                 diajukanOlehId: userId,
                 ...withOptionalMandorRekeningId(data.mandorRekeningId),
+                ...dokumenFields,
               },
       );
       await notifySpkPengajuanBaru(this.notificationService, spk, created);
