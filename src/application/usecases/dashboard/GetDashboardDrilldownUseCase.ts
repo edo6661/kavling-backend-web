@@ -3,6 +3,7 @@ import type {
   DashboardDrilldownQueryDTO,
   DrilldownItemDTO,
 } from "../../../domain/dtos/DashboardDTO.js";
+import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 
 const KAVLING_STATUS_LABELS: Record<string, string> = {
   AVAILABLE: "Tersedia",
@@ -39,6 +40,23 @@ function dayStart(date: Date): Date {
 
 function dayEnd(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
+function monthRange(year: number, monthIndex: number): { start: Date; end: Date } {
+  const start = new Date(year, monthIndex, 1);
+  const end = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+function parsePendapatanFilter(filter?: string): { year: number; month: number } | null {
+  const match = filter?.match(/^PENDAPATAN:(\d{4}):(\d{1,2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    return null;
+  }
+  return { year, month };
 }
 
 export class GetDashboardDrilldownUseCase {
@@ -216,6 +234,38 @@ export class GetDashboardDrilldownUseCase {
   }
 
   private async drilldownTagihan(status?: string): Promise<DrilldownItemDTO[]> {
+    const pendapatanFilter = parsePendapatanFilter(status);
+    if (pendapatanFilter) {
+      const { year, month } = pendapatanFilter;
+      const { start, end } = monthRange(year, month - 1);
+
+      const tagihan = await this.db.tagihan.findMany({
+        where: {
+          status: "LUNAS",
+          isRefunded: false,
+          jatuhTempo: { gte: start, lte: end },
+        },
+        orderBy: [{ jatuhTempo: "asc" }, { id: "asc" }],
+        include: {
+          customer: { select: { nama: true } },
+          penjualan: {
+            include: { kavling: { select: { blok: true, nomorUnit: true } } },
+          },
+        },
+      });
+
+      return tagihan.map((t) => ({
+        id: t.noTagihan,
+        label: t.customer.nama,
+        sublabel: `Blok ${t.penjualan.kavling.blok} - ${t.penjualan.kavling.nomorUnit}`,
+        pembayaran: t.pembayaran,
+        value: `Rp ${Number(t.nominal).toLocaleString("id-ID")}`,
+        status: t.jatuhTempo.toISOString().substring(0, 10),
+        tanggalBayar: t.jatuhTempo.toISOString().substring(0, 10),
+        buktiUrls: normalizeTagihanFileBuktiList(t.fileBuktiList, t.fileBukti),
+      }));
+    }
+
     const tagihan = await this.db.tagihan.findMany({
       where: status ? { status: status as "BELUM_BAYAR" | "MENUNGGU_KONFIRMASI" | "LUNAS" } : undefined,
       orderBy: { jatuhTempo: "desc" },

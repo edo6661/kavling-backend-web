@@ -130,6 +130,12 @@ export interface DrilldownItemDTO {
   sublabel?: string;
   value?: string;
   status?: string;
+  /** Keterangan pembayaran tagihan (drill-down pendapatan) */
+  pembayaran?: string;
+  /** ISO date — tanggal bayar / jatuh tempo */
+  tanggalBayar?: string;
+  /** URL bukti transfer */
+  buktiUrls?: string[];
 }
 
 export type DashboardDrilldownCategory =
