@@ -39,6 +39,15 @@ import type { SpkEntity } from "../../../domain/entities/Spk.js";
 const withOptionalMandorRekeningId = (mandorRekeningId?: number) =>
   mandorRekeningId !== undefined ? { mandorRekeningId } : {};
 
+const assertSpkApproved = (spk: SpkEntity) => {
+  if (spk.statusApproval !== "APPROVED") {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "SPK belum disetujui. Pengajuan pembayaran tidak dapat dilakukan.",
+    );
+  }
+};
+
 async function notifySpkPengajuanBaru(
   notificationService: NotificationService | undefined,
   spk: SpkEntity,
@@ -110,6 +119,7 @@ async function loadPenguranganForMutation(
 
   const spk = await spkRepo.findById(record.spkId);
   if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+  assertSpkApproved(spk);
 
   return { record, spk };
 }
@@ -179,6 +189,7 @@ export class CreateSpkPembayaranRequestUseCase {
   ): Promise<SpkPembayaranEntity> {
     const spk = await this.spkRepo.findById(data.spkId);
     if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+    assertSpkApproved(spk);
 
     if (userRole === Role.MANDOR && spk.mandorId !== userId) {
       throw new AppError(
@@ -426,6 +437,7 @@ export class SaveSpkKasbonDraftUseCase {
   ): Promise<SpkPembayaranEntity> {
     const spk = await this.spkRepo.findById(spkId);
     if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+    assertSpkApproved(spk);
 
     if (userRole === Role.MANDOR && spk.mandorId !== userId) {
       throw new AppError(
@@ -475,6 +487,7 @@ export class SubmitSpkKasbonDraftUseCase {
   ): Promise<SpkPembayaranEntity> {
     const spk = await this.spkRepo.findById(spkId);
     if (!spk) throw new NotFoundError("SPK tidak ditemukan");
+    assertSpkApproved(spk);
 
     if (userRole === Role.MANDOR && spk.mandorId !== userId) {
       throw new AppError(

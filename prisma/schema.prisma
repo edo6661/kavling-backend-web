@@ -24,6 +24,8 @@ model User {
   pengajuanGantiKavling   RiwayatGantiKavling[] @relation("PengajuGantiKavling")
   progressProyekAsMandor  ProgressProyek[]      @relation("ProgressMandor")
   spkAsMandor             Spk[]                 @relation("SpkMandor")
+  spkDiajukan             Spk[]                 @relation("SpkDiajukan")
+  spkDisetujui            Spk[]                 @relation("SpkDisetujui")
   spkPembayaranDiajukan   SpkPembayaran[]       @relation("SpkPembayaranDiajukan")
   spkPembayaranDisetujui  SpkPembayaran[]       @relation("SpkPembayaranDisetujui")
   spkPembayaranDibayar    SpkPembayaran[]       @relation("SpkPembayaranDibayar")
@@ -653,10 +655,17 @@ model Spk {
   jatuhTempo     DateTime? @map("jatuh_tempo") @db.Date
   fileSpk        String?   @map("file_spk") @db.VarChar(255)
   mandorId       Int       @map("mandor_id")
+  statusApproval ApprovalStatus @default(APPROVED) @map("status_approval")
+  diajukanOlehId Int?      @map("diajukan_oleh_id")
+  disetujuiOlehId Int?     @map("disetujui_oleh_id")
+  tanggalDisetujui DateTime? @map("tanggal_disetujui")
+  catatanPenolakan String? @map("catatan_penolakan") @db.Text
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   mandor              User                @relation("SpkMandor", fields: [mandorId], references: [id])
+  diajukanOleh        User?               @relation("SpkDiajukan", fields: [diajukanOlehId], references: [id])
+  disetujuiOleh       User?               @relation("SpkDisetujui", fields: [disetujuiOlehId], references: [id])
   bankRekeningPt      BankRekeningPt?     @relation(fields: [bankRekeningPtId], references: [id])
   zona                Zona?               @relation(fields: [zonaId], references: [id])
   penjualanItems      SpkPenjualan[]
@@ -668,6 +677,9 @@ model Spk {
   @@index([bankRekeningPtId], map: "spk_bank_rekening_pt_id_fkey")
   @@index([zonaId], map: "spk_zona_id_fkey")
   @@index([jenis], map: "spk_jenis_idx")
+  @@index([statusApproval], map: "spk_status_approval_idx")
+  @@index([diajukanOlehId], map: "spk_diajukan_oleh_id_fkey")
+  @@index([disetujuiOlehId], map: "spk_disetujui_oleh_id_fkey")
   @@map("spk")
 }
 
@@ -1142,6 +1154,8 @@ enum ApprovalStatus {
 
 enum NotificationType {
   SPK_PENGAJUAN_BARU @map("spk_pengajuan_baru")
+  SPK_MENUNGGU_APPROVAL @map("spk_menunggu_approval")
+  SPK_APPROVAL_SELESAI @map("spk_approval_selesai")
   SPK_DISETUJUI      @map("spk_disetujui")
   SPK_DIBAYAR        @map("spk_dibayar")
   UPLOAD_BUKTI       @map("upload_bukti")

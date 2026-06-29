@@ -4,6 +4,8 @@ import { SpkPembayaranMapper } from "./SpkPembayaranMapper.js";
 
 export const spkInclude = {
   mandor: { select: { id: true, username: true } },
+  diajukanOleh: { select: { id: true, username: true } },
+  disetujuiOleh: { select: { id: true, username: true } },
   bankRekeningPt: { select: { id: true, namaBank: true, noRekening: true, atasNama: true } },
   zona: {
     select: { id: true, nama: true, hgb: true, luas: true, deskripsi: true },
@@ -71,6 +73,13 @@ export class SpkMapper {
       fileSpk: row.fileSpk,
       mandorId: row.mandorId,
       mandor: row.mandor,
+      statusApproval: row.statusApproval,
+      diajukanOlehId: row.diajukanOlehId ?? null,
+      disetujuiOlehId: row.disetujuiOlehId ?? null,
+      tanggalDisetujui: row.tanggalDisetujui ?? null,
+      catatanPenolakan: row.catatanPenolakan ?? null,
+      diajukanOleh: row.diajukanOleh ?? null,
+      disetujuiOleh: row.disetujuiOleh ?? null,
       kavlingItems: row.penjualanItems.map((item) => {
         const activePenjualan = item.kavling.penjualan[0];
         return {

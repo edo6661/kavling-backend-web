@@ -79,3 +79,42 @@ export function buildSpkDibayarNotification(
     linkPath: "/proyek/spk",
   };
 }
+
+export function buildSpkMenungguApprovalNotification(
+  spk: SpkEntity,
+): NotificationPayload {
+  const pengaju = spk.diajukanOleh?.username ?? spk.mandor?.username ?? "Staff";
+
+  return {
+    type: "SPK_MENUNGGU_APPROVAL",
+    title: "SPK Baru Menunggu Persetujuan",
+    message: `${pengaju} mengajukan SPK ${spk.noSpk} (${spk.judulPekerjaan}) senilai ${formatRupiah(spk.nilaiKontrak)}.`,
+    data: {
+      spkId: spk.id,
+      noSpk: spk.noSpk,
+      jenis: spk.jenis,
+      nilaiKontrak: spk.nilaiKontrak,
+    },
+    linkPath: "/proyek/approve-spk",
+  };
+}
+
+export function buildSpkApprovalSelesaiNotification(
+  spk: SpkEntity,
+  approved: boolean,
+): NotificationPayload {
+  return {
+    type: "SPK_APPROVAL_SELESAI",
+    title: approved ? "SPK Disetujui" : "SPK Ditolak",
+    message: approved
+      ? `SPK ${spk.noSpk} telah disetujui dan siap digunakan.`
+      : `SPK ${spk.noSpk} ditolak${spk.catatanPenolakan ? `: ${spk.catatanPenolakan}` : "."}`,
+    data: {
+      spkId: spk.id,
+      noSpk: spk.noSpk,
+      statusApproval: spk.statusApproval,
+      catatanPenolakan: spk.catatanPenolakan,
+    },
+    linkPath: "/proyek/spk",
+  };
+}

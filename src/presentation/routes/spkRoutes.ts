@@ -10,6 +10,7 @@ import {
   updateSpkSchema,
   getSpkPaginatedSchema,
   getSpkByIdSchema,
+  rejectSpkSchema,
 } from "../../validations/spkSchema.js";
 import type { SpkController } from "../controllers/spkController.js";
 
@@ -46,6 +47,20 @@ export const createSpkRoutes = (controller: SpkController): Router => {
     upload.single("fileSpk"),
     validate(updateSpkSchema),
     controller.update,
+  );
+
+  router.post(
+    "/:id/approve",
+    requirePermission("SPK", "update"),
+    validate(getSpkByIdSchema),
+    controller.approve,
+  );
+
+  router.post(
+    "/:id/reject",
+    requirePermission("SPK", "update"),
+    validate({ ...getSpkByIdSchema, body: rejectSpkSchema.body }),
+    controller.reject,
   );
 
   router.delete(

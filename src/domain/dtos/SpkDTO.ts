@@ -1,4 +1,4 @@
-import type { SpkJenis, SpkTerminSchemeKey } from "../entities/Spk.js";
+import type { SpkJenis, SpkTerminSchemeKey, SpkApprovalStatus } from "../entities/Spk.js";
 
 export interface CreateSpkDTO {
   noSpk: string;
@@ -17,6 +17,7 @@ export interface CreateSpkDTO {
   mandorId: number;
   kavlingIds?: number[] | undefined;
   pekerjaanInfraIds?: number[] | undefined;
+  diajukanOlehId?: number | undefined;
 }
 
 export interface UpdateSpkDTO {
@@ -42,6 +43,7 @@ export interface SpkFilterDTO {
   search?: string;
   mandorId?: number;
   jenis?: SpkJenis;
+  statusApproval?: SpkApprovalStatus;
   orderBy?: "mandor:asc" | "mandor:desc" | "id:desc";
 }
 

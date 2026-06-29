@@ -148,7 +148,14 @@ export const getSpkPaginatedSchema = {
     cursor: z.coerce.number().int().positive().optional(),
     search: z.string().optional(),
     jenis: z.enum(["RUMAH", "INFRASTRUKTUR"]).optional(),
+    statusApproval: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
     orderBy: z.enum(["mandor:asc", "mandor:desc", "id:desc"]).optional(),
+  }),
+};
+
+export const rejectSpkSchema = {
+  body: z.object({
+    catatanPenolakan: emptyAsUndefined(z.string().max(2000).optional()),
   }),
 };
 

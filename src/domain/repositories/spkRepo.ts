@@ -1,4 +1,4 @@
-import { Prisma, Role, SpkJenis, SpkTerminScheme } from "@prisma/client";
+import { Prisma, Role, SpkJenis, SpkTerminScheme, ApprovalStatus } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import type { ISpkRepository } from "./ISpkRepo.js";
 import type { CreateSpkDTO, SpkFilterDTO, UpdateSpkDTO } from "../dtos/SpkDTO.js";
@@ -71,6 +71,7 @@ export class SpkRepository implements ISpkRepository {
     const rows = await this.db.spkPenjualan.findMany({
       where: {
         kavlingId: { in: kavlingIds },
+        spk: { statusApproval: { not: ApprovalStatus.REJECTED } },
         ...(excludeSpkId ? { spkId: { not: excludeSpkId } } : {}),
       },
       select: { kavlingId: true },
@@ -186,6 +187,7 @@ export class SpkRepository implements ISpkRepository {
         jenis: SpkJenis.INFRASTRUKTUR,
         zonaId,
         mandorId,
+        statusApproval: { not: ApprovalStatus.REJECTED },
         ...(excludeSpkId ? { id: { not: excludeSpkId } } : {}),
       },
       select: { noSpk: true },
@@ -294,6 +296,8 @@ export class SpkRepository implements ISpkRepository {
             jatuhTempo: data.jatuhTempo ?? null,
             fileSpk: data.fileSpk ?? null,
             mandorId: data.mandorId,
+            statusApproval: ApprovalStatus.PENDING,
+            diajukanOlehId: data.diajukanOlehId ?? null,
             penjualanItems: {
               create: kavlingIds.map((kavlingId) => ({ kavlingId })),
             },
@@ -338,6 +342,8 @@ export class SpkRepository implements ISpkRepository {
           jatuhTempo: data.jatuhTempo ?? null,
           fileSpk: data.fileSpk ?? null,
           mandorId: data.mandorId,
+          statusApproval: ApprovalStatus.PENDING,
+          diajukanOlehId: data.diajukanOlehId ?? null,
           pekerjaanInfraItems: {
             create: this.buildPekerjaanInfraCreateData(pekerjaanInfraIds),
           },
@@ -574,6 +580,10 @@ export class SpkRepository implements ISpkRepository {
       where.jenis = filters.jenis;
     }
 
+    if (filters?.statusApproval) {
+      where.statusApproval = filters.statusApproval;
+    }
+
     const search = filters?.search?.trim();
     if (search) {
       where.OR = [
@@ -740,6 +750,75 @@ export class SpkRepository implements ISpkRepository {
         }
       }
       await tx.spk.delete({ where: { id } });
+    });
+  }
+
+  private async releaseSpkAssignments(
+    tx: Prisma.TransactionClient,
+    existing: SpkEntity,
+  ) {
+    if (existing.jenis === SpkJenis.RUMAH) {
+      const kavlingIds = existing.kavlingItems.map((p) => p.kavlingId);
+      if (kavlingIds.length > 0) {
+        await this.syncMandorOnProgressForKavlings(tx, kavlingIds, null);
+        await tx.spkPenjualan.deleteMany({ where: { spkId: existing.id } });
+      }
+    }
+  }
+
+  async approve(id: number, disetujuiOlehId: number): Promise<SpkEntity> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("SPK tidak ditemukan");
+    if (existing.statusApproval !== ApprovalStatus.PENDING) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "SPK tidak dalam status menunggu persetujuan.",
+      );
+    }
+
+    const result = await this.db.spk.update({
+      where: { id },
+      data: {
+        statusApproval: ApprovalStatus.APPROVED,
+        disetujuiOlehId,
+        tanggalDisetujui: new Date(),
+        catatanPenolakan: null,
+      },
+      include: SpkMapper.include,
+    });
+
+    return await this.withComputedProgress(SpkMapper.toDomain(result));
+  }
+
+  async reject(
+    id: number,
+    disetujuiOlehId: number,
+    catatanPenolakan?: string,
+  ): Promise<SpkEntity> {
+    const existing = await this.findById(id);
+    if (!existing) throw new NotFoundError("SPK tidak ditemukan");
+    if (existing.statusApproval !== ApprovalStatus.PENDING) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "SPK tidak dalam status menunggu persetujuan.",
+      );
+    }
+
+    return await this.db.$transaction(async (tx) => {
+      await this.releaseSpkAssignments(tx, existing);
+
+      const result = await tx.spk.update({
+        where: { id },
+        data: {
+          statusApproval: ApprovalStatus.REJECTED,
+          disetujuiOlehId,
+          tanggalDisetujui: new Date(),
+          catatanPenolakan: catatanPenolakan?.trim() || null,
+        },
+        include: SpkMapper.include,
+      });
+
+      return await this.withComputedProgress(SpkMapper.toDomain(result));
     });
   }
 }

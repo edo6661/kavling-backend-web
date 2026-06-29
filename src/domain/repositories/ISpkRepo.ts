@@ -17,6 +17,8 @@ export interface ISpkRepository {
     filters?: SpkFilterDTO,
   ): Promise<OffsetPaginatedData<SpkEntity>>;
   delete(id: number): Promise<void>;
+  approve(id: number, disetujuiOlehId: number): Promise<SpkEntity>;
+  reject(id: number, disetujuiOlehId: number, catatanPenolakan?: string): Promise<SpkEntity>;
   findKavlingIdsAssignedToOtherSpk(
     kavlingIds: number[],
     excludeSpkId?: number,

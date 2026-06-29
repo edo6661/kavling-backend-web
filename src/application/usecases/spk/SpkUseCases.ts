@@ -10,16 +10,24 @@ import { NotFoundError } from "../../../domain/errors/NotFoundError.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import { AppError } from "../../../domain/errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import { Role } from "@prisma/client";
+import type { NotificationService } from "../../../infrastructure/notifications/NotificationService.js";
+import {
+  buildSpkApprovalSelesaiNotification,
+  buildSpkMenungguApprovalNotification,
+} from "../../notifications/spkNotificationHelpers.js";
 
 export class CreateSpkUseCase {
   constructor(
     private readonly repo: ISpkRepository,
     private readonly cloudinary: CloudinaryService,
+    private readonly notificationService?: NotificationService,
   ) {}
 
   async execute(
     data: CreateSpkDTO,
     fileBuffer?: Buffer,
+    userId?: number,
   ): Promise<SpkEntity> {
     let fileSpk = data.fileSpk ?? null;
     if (fileBuffer) {
@@ -29,7 +37,24 @@ export class CreateSpkUseCase {
       );
     }
 
-    return await this.repo.create({ ...data, fileSpk });
+    const created = await this.repo.create({
+      ...data,
+      fileSpk,
+      diajukanOlehId: userId ?? data.diajukanOlehId,
+    });
+
+    if (this.notificationService) {
+      try {
+        await this.notificationService.notifyRoles(
+          [Role.ADMIN, Role.SUPERADMIN],
+          buildSpkMenungguApprovalNotification(created),
+        );
+      } catch (error) {
+        console.error("Gagal mengirim notifikasi SPK menunggu approval:", error);
+      }
+    }
+
+    return created;
   }
 }
 
@@ -109,5 +134,80 @@ export class UploadSpkDocumentUseCase {
     );
 
     return await this.repo.update(id, { fileSpk });
+  }
+}
+
+export class ApproveSpkUseCase {
+  constructor(
+    private readonly repo: ISpkRepository,
+    private readonly notificationService?: NotificationService,
+  ) {}
+
+  async execute(id: number, userId: number, userRole: string): Promise<SpkEntity> {
+    if (userRole !== Role.SUPERADMIN && userRole !== Role.ADMIN) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Hanya admin yang dapat menyetujui SPK.",
+      );
+    }
+
+    const approved = await this.repo.approve(id, userId);
+
+    if (this.notificationService) {
+      try {
+        const notifyIds = [
+          approved.mandorId,
+          approved.diajukanOlehId ?? undefined,
+        ].filter((v): v is number => typeof v === "number" && v > 0);
+        await this.notificationService.notifyUsers(
+          notifyIds,
+          buildSpkApprovalSelesaiNotification(approved, true),
+        );
+      } catch (error) {
+        console.error("Gagal mengirim notifikasi persetujuan SPK:", error);
+      }
+    }
+
+    return approved;
+  }
+}
+
+export class RejectSpkUseCase {
+  constructor(
+    private readonly repo: ISpkRepository,
+    private readonly notificationService?: NotificationService,
+  ) {}
+
+  async execute(
+    id: number,
+    userId: number,
+    userRole: string,
+    catatanPenolakan?: string,
+  ): Promise<SpkEntity> {
+    if (userRole !== Role.SUPERADMIN && userRole !== Role.ADMIN) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        "Hanya admin yang dapat menolak SPK.",
+      );
+    }
+
+    const rejected = await this.repo.reject(id, userId, catatanPenolakan);
+
+    if (this.notificationService) {
+      try {
+        const notifyIds = [
+          rejected.mandorId,
+          rejected.diajukanOlehId ?? undefined,
+        ].filter((v): v is number => typeof v === "number" && v > 0);
+        await this.notificationService.notifyUsers(
+          notifyIds,
+          buildSpkApprovalSelesaiNotification(rejected, false),
+        );
+      } catch (error) {
+        console.error("Gagal mengirim notifikasi penolakan SPK:", error);
+      }
+    }
+
+    return rejected;
   }
 }

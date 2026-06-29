@@ -9,6 +9,13 @@ export type SpkJenis = "RUMAH" | "INFRASTRUKTUR";
 
 export type SpkTerminSchemeKey = "RUMAH_DEFAULT" | "INFRA_20_6" | "INFRA_30_4";
 
+export type SpkApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface SpkUserSummary {
+  id: number;
+  username: string;
+}
+
 export interface SpkKavlingItem {
   id: number;
   kavlingId: number;
@@ -56,6 +63,13 @@ export interface SpkEntity {
   fileSpk: string | null;
   mandorId: number;
   mandor: MandorSummary;
+  statusApproval: SpkApprovalStatus;
+  diajukanOlehId: number | null;
+  disetujuiOlehId: number | null;
+  tanggalDisetujui: Date | null;
+  catatanPenolakan: string | null;
+  diajukanOleh: SpkUserSummary | null;
+  disetujuiOleh: SpkUserSummary | null;
   kavlingItems: SpkKavlingItem[];
   pekerjaanInfraItems: SpkPekerjaanInfraItem[];
   pembayaranList?: SpkPembayaranEntity[];

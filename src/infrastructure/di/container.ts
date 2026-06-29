@@ -52,6 +52,8 @@ import {
   GetSpkByIdUseCase,
   GetSpkPaginatedUseCase,
   DeleteSpkUseCase,
+  ApproveSpkUseCase,
+  RejectSpkUseCase,
 } from "../../application/usecases/spk/SpkUseCases.js";
 import { SpkController } from "../../presentation/controllers/spkController.js";
 import { ZonaRepository } from "../../domain/repositories/zonaRepo.js";
@@ -951,17 +953,21 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
 
   const spkRepo = new SpkRepository(dbClient);
-  const createSpkUseCase = new CreateSpkUseCase(spkRepo, cloudinaryService);
+  const createSpkUseCase = new CreateSpkUseCase(spkRepo, cloudinaryService, notificationService);
   const updateSpkUseCase = new UpdateSpkUseCase(spkRepo, cloudinaryService);
   const getSpkByIdUseCase = new GetSpkByIdUseCase(spkRepo);
   const getSpkPaginatedUseCase = new GetSpkPaginatedUseCase(spkRepo);
   const deleteSpkUseCase = new DeleteSpkUseCase(spkRepo);
+  const approveSpkUseCase = new ApproveSpkUseCase(spkRepo, notificationService);
+  const rejectSpkUseCase = new RejectSpkUseCase(spkRepo, notificationService);
   const spkController = new SpkController(
     createSpkUseCase,
     updateSpkUseCase,
     getSpkByIdUseCase,
     getSpkPaginatedUseCase,
     deleteSpkUseCase,
+    approveSpkUseCase,
+    rejectSpkUseCase,
   );
 
   const zonaRepo = new ZonaRepository(dbClient);
