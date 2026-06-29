@@ -40,9 +40,9 @@ export interface DashboardStatsDTO {
   customerJatuhTempo: number;
   proyekAktif: number;
   rataRataProgress: number;
-  /** Pendapatan tagihan lunas bulan berjalan */
+  /** Pendapatan tagihan lunas bulan berjalan (berdasarkan jatuh tempo / tanggal bayar) */
   pendapatanBulanIni: number;
-  /** Pendapatan tagihan lunas bulan sebelumnya */
+  /** Pendapatan tagihan lunas bulan sebelumnya (berdasarkan jatuh tempo / tanggal bayar) */
   pendapatanBulanLalu: number;
   /** Jumlah penjualan (non-batal) bulan berjalan */
   penjualanBulanIni: number;

@@ -318,13 +318,18 @@ export class GetDashboardSummaryUseCase {
       }),
       this.db.tagihan.aggregate({
         _sum: { nominal: true },
-        where: { status: "LUNAS", updatedAt: { gte: currentPeriod.start, lte: currentPeriod.end } },
+        where: {
+          status: "LUNAS",
+          isRefunded: false,
+          jatuhTempo: { gte: currentPeriod.start, lte: currentPeriod.end },
+        },
       }),
       this.db.tagihan.aggregate({
         _sum: { nominal: true },
         where: {
           status: "LUNAS",
-          updatedAt: { gte: previousPeriod.start, lte: previousPeriod.end },
+          isRefunded: false,
+          jatuhTempo: { gte: previousPeriod.start, lte: previousPeriod.end },
         },
       }),
       this.db.penjualan.count({
@@ -345,8 +350,12 @@ export class GetDashboardSummaryUseCase {
         where: { status: "MENUNGGU_KONFIRMASI" },
       }),
       this.db.tagihan.findMany({
-        where: { status: "LUNAS", updatedAt: { gte: trendStart } },
-        select: { nominal: true, updatedAt: true },
+        where: {
+          status: "LUNAS",
+          isRefunded: false,
+          jatuhTempo: { gte: trendStart },
+        },
+        select: { nominal: true, jatuhTempo: true },
       }),
       this.db.penjualan.findMany({
         where: {
@@ -409,7 +418,7 @@ export class GetDashboardSummaryUseCase {
     const revenueTrend: TrendPointDTO[] = monthRanges.map((m) => ({
       label: m.label,
       value: paidTagihanRecent
-        .filter((t) => t.updatedAt >= m.start && t.updatedAt <= m.end)
+        .filter((t) => t.jatuhTempo >= m.start && t.jatuhTempo <= m.end)
         .reduce((sum, t) => sum + Number(t.nominal), 0),
     }));
 
@@ -431,7 +440,7 @@ export class GetDashboardSummaryUseCase {
     const collectionTrend = monthRanges.map((m) => ({
       label: m.label,
       terkumpul: paidTagihanRecent
-        .filter((t) => t.updatedAt >= m.start && t.updatedAt <= m.end)
+        .filter((t) => t.jatuhTempo >= m.start && t.jatuhTempo <= m.end)
         .reduce((sum, t) => sum + Number(t.nominal), 0),
       menungguKonfirmasi: menungguTagihanRecent
         .filter((t) => t.updatedAt >= m.start && t.updatedAt <= m.end)

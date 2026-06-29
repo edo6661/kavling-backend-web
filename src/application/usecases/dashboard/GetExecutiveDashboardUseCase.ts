@@ -143,9 +143,10 @@ export class GetExecutiveDashboardUseCase {
       this.db.tagihan.findMany({
         where: {
           status: "LUNAS",
-          updatedAt: { gte: yearStart, lte: yearEnd },
+          isRefunded: false,
+          jatuhTempo: { gte: yearStart, lte: yearEnd },
         },
-        select: { nominal: true, updatedAt: true },
+        select: { nominal: true, jatuhTempo: true },
       }),
       this.db.detailKavlingPajak.findMany({
         where: {
@@ -215,7 +216,7 @@ export class GetExecutiveDashboardUseCase {
     const pendapatanTahunIni = buildMonthlyRows(year, (monthIndex) => {
       const { start, end } = monthRange(year, monthIndex);
       const inMonth = paidTagihanYear.filter(
-        (t) => t.updatedAt >= start && t.updatedAt <= end,
+        (t) => t.jatuhTempo >= start && t.jatuhTempo <= end,
       );
       return {
         total: inMonth.reduce((sum, t) => sum + Number(t.nominal), 0),
