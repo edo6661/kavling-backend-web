@@ -84,7 +84,7 @@ describe("buildPenjualanByCaraTahunIni", () => {
       total: 80_000_000,
       count: 1,
     });
-    expect(rows.cashKeras[5].count).toBe(0);
+    expect(rows.cashKeras[5]?.count).toBe(0);
     expect(rows.cashKeras[6]).toEqual({
       month: 7,
       monthLabel: "Juli",

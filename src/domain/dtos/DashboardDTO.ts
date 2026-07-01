@@ -136,6 +136,14 @@ export interface DrilldownItemDTO {
   tanggalBayar?: string;
   /** URL bukti transfer */
   buktiUrls?: string[];
+  /** ISO date — tanggal transaksi/booking dibuat */
+  tanggalBooking?: string;
+  /** ISO date — tanggal bayar booking fee (tagihan BOOKING_FEE lunas) */
+  tanggalBayarBookingFee?: string;
+  /** Apakah tagihan booking fee sudah lunas */
+  bookingFeeLunas?: boolean;
+  /** Nama agent marketing */
+  agentNama?: string;
 }
 
 export type DashboardDrilldownCategory =

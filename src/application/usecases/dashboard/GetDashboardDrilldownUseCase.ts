@@ -4,6 +4,11 @@ import type {
   DrilldownItemDTO,
 } from "../../../domain/dtos/DashboardDTO.js";
 import { parsePenjualanBulanFilter } from "../../../domain/dashboard/dashboardPenjualanBulan.js";
+import {
+  mapPenjualanListToDrilldownItems,
+  mapPenjualanToDrilldownItem,
+  PENJUALAN_DRILLDOWN_INCLUDE,
+} from "../../../domain/dashboard/penjualanDrilldownMapper.js";
 import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 
 const KAVLING_STATUS_LABELS: Record<string, string> = {
@@ -11,13 +16,6 @@ const KAVLING_STATUS_LABELS: Record<string, string> = {
   BOOKING: "Booking",
   TERJUAL: "Terjual",
   HOLD: "Hold",
-};
-
-const PENJUALAN_STATUS_LABELS: Record<string, string> = {
-  BOOKED: "Booked",
-  PROSES: "Proses",
-  LUNAS: "Lunas",
-  BATAL: "Batal",
 };
 
 const TAGIHAN_STATUS_LABELS: Record<string, string> = {
@@ -110,7 +108,7 @@ export class GetDashboardDrilldownUseCase {
     const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     if (status === "BOOKED_TODAY") {
-      return this.mapPenjualanItems(
+      return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: {
             status: { not: "BATAL" },
@@ -118,16 +116,13 @@ export class GetDashboardDrilldownUseCase {
           },
           orderBy: { createdAt: "desc" },
           take: 50,
-          include: {
-            customer: { select: { nama: true } },
-            kavling: { select: { blok: true, nomorUnit: true } },
-          },
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
         }),
       );
     }
 
     if (status === "PROSES_TODAY") {
-      return this.mapPenjualanItems(
+      return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: {
             status: "PROSES",
@@ -135,38 +130,29 @@ export class GetDashboardDrilldownUseCase {
           },
           orderBy: { updatedAt: "desc" },
           take: 50,
-          include: {
-            customer: { select: { nama: true } },
-            kavling: { select: { blok: true, nomorUnit: true } },
-          },
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
         }),
       );
     }
 
     if (status === "KPR") {
-      return this.mapPenjualanItems(
+      return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: { caraPembayaran: "KPR", status: { not: "BATAL" } },
           orderBy: { createdAt: "desc" },
           take: 50,
-          include: {
-            customer: { select: { nama: true } },
-            kavling: { select: { blok: true, nomorUnit: true } },
-          },
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
         }),
       );
     }
 
     if (status === "CASH_BERTAHAP") {
-      return this.mapPenjualanItems(
+      return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: { caraPembayaran: "CASH_BERTAHAP", status: { not: "BATAL" } },
           orderBy: { createdAt: "desc" },
           take: 50,
-          include: {
-            customer: { select: { nama: true } },
-            kavling: { select: { blok: true, nomorUnit: true } },
-          },
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
         }),
       );
     }
@@ -186,32 +172,24 @@ export class GetDashboardDrilldownUseCase {
         take: 50,
         include: {
           penjualan: {
-            include: {
-              customer: { select: { nama: true } },
-              kavling: { select: { blok: true, nomorUnit: true } },
-            },
+            include: PENJUALAN_DRILLDOWN_INCLUDE,
           },
         },
       });
 
-      return akadDetails.map((d) => {
-        const p = d.penjualan;
-        return {
-          id: p.noTransaksi,
-          label: p.customer.nama,
-          sublabel: `Blok ${p.kavling.blok} - ${p.kavling.nomorUnit}`,
-          value: `Rp ${Number(p.hargaJual ?? 0).toLocaleString("id-ID")}`,
+      return akadDetails.map((d) =>
+        mapPenjualanToDrilldownItem(d.penjualan, {
           status: d.tanggalAkadPpjb
             ? d.tanggalAkadPpjb.toISOString().substring(0, 10)
             : "Akad PPJB",
-        };
-      });
+        }),
+      );
     }
 
     const cashMonthFilter = this.parseYearMonthFilter(status, "CASH");
     if (cashMonthFilter) {
       const { start, end } = monthRange(cashMonthFilter.year, cashMonthFilter.month - 1);
-      return this.mapPenjualanItems(
+      return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: {
             caraPembayaran: { in: ["CASH_KERAS", "CASH_BERTAHAP"] },
@@ -220,10 +198,7 @@ export class GetDashboardDrilldownUseCase {
           },
           orderBy: { createdAt: "desc" },
           take: 50,
-          include: {
-            customer: { select: { nama: true } },
-            kavling: { select: { blok: true, nomorUnit: true } },
-          },
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
         }),
       );
     }
@@ -234,7 +209,7 @@ export class GetDashboardDrilldownUseCase {
         penjualanBulanFilter.year,
         penjualanBulanFilter.month - 1,
       );
-      return this.mapPenjualanItems(
+      return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: {
             caraPembayaran: penjualanBulanFilter.caraPembayaran,
@@ -243,10 +218,7 @@ export class GetDashboardDrilldownUseCase {
           },
           orderBy: { createdAt: "desc" },
           take: 50,
-          include: {
-            customer: { select: { nama: true } },
-            kavling: { select: { blok: true, nomorUnit: true } },
-          },
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
         }),
       );
     }
@@ -257,7 +229,7 @@ export class GetDashboardDrilldownUseCase {
         pemesananMonthFilter.year,
         pemesananMonthFilter.month - 1,
       );
-      return this.mapPenjualanItems(
+      return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: {
             status: { not: "BATAL" },
@@ -265,10 +237,7 @@ export class GetDashboardDrilldownUseCase {
           },
           orderBy: { createdAt: "desc" },
           take: 50,
-          include: {
-            customer: { select: { nama: true } },
-            kavling: { select: { blok: true, nomorUnit: true } },
-          },
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
         }),
       );
     }
@@ -277,13 +246,10 @@ export class GetDashboardDrilldownUseCase {
       where: status ? { status: status as "BOOKED" | "PROSES" | "LUNAS" | "BATAL" } : { status: { not: "BATAL" } },
       orderBy: { createdAt: "desc" },
       take: 50,
-      include: {
-        customer: { select: { nama: true } },
-        kavling: { select: { blok: true, nomorUnit: true } },
-      },
+      include: PENJUALAN_DRILLDOWN_INCLUDE,
     });
 
-    return this.mapPenjualanItems(penjualan);
+    return mapPenjualanListToDrilldownItems(penjualan);
   }
 
   private parseYearMonthFilter(
@@ -298,24 +264,6 @@ export class GetDashboardDrilldownUseCase {
       return null;
     }
     return { year, month };
-  }
-
-  private mapPenjualanItems(
-    penjualan: {
-      noTransaksi: string;
-      hargaJual: unknown;
-      status: string;
-      customer: { nama: string };
-      kavling: { blok: string; nomorUnit: string };
-    }[],
-  ): DrilldownItemDTO[] {
-    return penjualan.map((p) => ({
-      id: p.noTransaksi,
-      label: p.customer.nama,
-      sublabel: `Blok ${p.kavling.blok} - ${p.kavling.nomorUnit}`,
-      value: `Rp ${Number(p.hargaJual ?? 0).toLocaleString("id-ID")}`,
-      status: PENJUALAN_STATUS_LABELS[p.status] ?? p.status,
-    }));
   }
 
   private async drilldownTagihan(status?: string): Promise<DrilldownItemDTO[]> {
@@ -352,7 +300,9 @@ export class GetDashboardDrilldownUseCase {
     }
 
     const tagihan = await this.db.tagihan.findMany({
-      where: status ? { status: status as "BELUM_BAYAR" | "MENUNGGU_KONFIRMASI" | "LUNAS" } : undefined,
+      ...(status
+        ? { where: { status: status as "BELUM_BAYAR" | "MENUNGGU_KONFIRMASI" | "LUNAS" } }
+        : {}),
       orderBy: { jatuhTempo: "desc" },
       take: 50,
       include: {
