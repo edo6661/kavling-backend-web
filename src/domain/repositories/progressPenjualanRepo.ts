@@ -13,7 +13,10 @@ import { ConflictError } from "../errors/ConflictError.js";
 import { AppError } from "../errors/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { syncNotarisPembayaranForPenjualan } from "../notaris/notarisPembayaranSync.js";
-import { calcPajakFromNilaiAjb } from "../progressPenjualan/progressPenjualanSertifikatUtils.js";
+import {
+  calcPajakAllSlots,
+  type NilaiAjbSlot,
+} from "../progressPenjualan/progressPenjualanSertifikatUtils.js";
 
 const progressInclude = {
   penjualan: { include: { detailKavlingPajak: true } },
@@ -95,6 +98,63 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
     return ProgressPenjualanMapper.toDomain(updatedResult as any);
   }
 
+  private async recalculateAllPajakFromNilaiAjb(
+    penjualanId: number,
+    db: PrismaClient | Prisma.TransactionClient = this.db,
+  ): Promise<void> {
+    const jumlah = await this.getJumlahSertifikatTanah(penjualanId);
+    const progress = await db.progressPenjualan.findUnique({
+      where: { penjualanId },
+      include: { sertifikatTambahan: true },
+    });
+    if (!progress) return;
+
+    const slots: NilaiAjbSlot[] = [];
+    for (let urutan = 1; urutan <= jumlah; urutan++) {
+      if (urutan === 1) {
+        slots.push({
+          urutan,
+          nilaiAjb: progress.nilaiAjb ? Number(progress.nilaiAjb) : 0,
+        });
+        continue;
+      }
+      const row = progress.sertifikatTambahan.find((item) => item.urutan === urutan);
+      slots.push({
+        urutan,
+        nilaiAjb: row?.nilaiAjb ? Number(row.nilaiAjb) : 0,
+      });
+    }
+
+    const pajakMap = calcPajakAllSlots(slots);
+    const utama = slots[0];
+    const utamaPajak = pajakMap.get(1)!;
+
+    await db.progressPenjualan.update({
+      where: { penjualanId },
+      data: {
+        biayaPph: utama.nilaiAjb > 0 ? utamaPajak.biayaPph : null,
+        biayaBphtb: utama.nilaiAjb > 0 ? utamaPajak.biayaBphtb : null,
+      },
+    });
+
+    for (let urutan = 2; urutan <= jumlah; urutan++) {
+      const existingRow = progress.sertifikatTambahan.find(
+        (item) => item.urutan === urutan,
+      );
+      if (!existingRow) continue;
+
+      const slot = slots.find((item) => item.urutan === urutan)!;
+      const pajak = pajakMap.get(urutan)!;
+      await db.progressPenjualanSertifikatTambahan.update({
+        where: { penjualanId_urutan: { penjualanId, urutan } },
+        data: {
+          biayaPph: slot.nilaiAjb > 0 ? pajak.biayaPph : null,
+          biayaBphtb: slot.nilaiAjb > 0 ? pajak.biayaBphtb : null,
+        },
+      });
+    }
+  }
+
   async update(
     penjualanId: number,
     data: UpdateProgressPenjualanDTO,
@@ -128,15 +188,6 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
 
     if (data.nilaiAjb !== undefined) {
       updateData.nilaiAjb = data.nilaiAjb ?? null;
-
-      if (data.nilaiAjb) {
-        const pajak = calcPajakFromNilaiAjb(data.nilaiAjb);
-        updateData.biayaPph = pajak.biayaPph;
-        updateData.biayaBphtb = pajak.biayaBphtb;
-      } else {
-        updateData.biayaBphtb = null;
-        updateData.biayaPph = null;
-      }
     }
 
     if (data.fileAjb !== undefined) updateData.fileAjb = data.fileAjb ?? null;
@@ -154,10 +205,20 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
           : (data.checklistBast as Prisma.InputJsonValue);
     }
 
-    await this.db.progressPenjualan.update({
-      where: { penjualanId },
-      data: updateData,
-    });
+    if (data.nilaiAjb !== undefined) {
+      await this.db.$transaction(async (tx) => {
+        await tx.progressPenjualan.update({
+          where: { penjualanId },
+          data: updateData,
+        });
+        await this.recalculateAllPajakFromNilaiAjb(penjualanId, tx);
+      });
+    } else {
+      await this.db.progressPenjualan.update({
+        where: { penjualanId },
+        data: updateData,
+      });
+    }
 
     if (data.notarisId !== undefined || data.biayaNotaris !== undefined) {
       const pajakUpdateData: Prisma.DetailKavlingPajakUncheckedUpdateInput = {};
@@ -208,25 +269,32 @@ export class ProgressPenjualanRepository implements IProgressPenjualanRepository
 
     if (data.nilaiAjb !== undefined) {
       updateData.nilaiAjb = data.nilaiAjb ?? null;
-      if (data.nilaiAjb) {
-        const pajak = calcPajakFromNilaiAjb(data.nilaiAjb);
-        updateData.biayaPph = pajak.biayaPph;
-        updateData.biayaBphtb = pajak.biayaBphtb;
-      } else {
-        updateData.biayaBphtb = null;
-        updateData.biayaPph = null;
-      }
     }
 
-    await this.db.progressPenjualanSertifikatTambahan.upsert({
-      where: { penjualanId_urutan: { penjualanId, urutan } },
-      create: {
-        penjualanId,
-        urutan,
-        ...updateData,
-      },
-      update: updateData,
-    });
+    if (data.nilaiAjb !== undefined) {
+      await this.db.$transaction(async (tx) => {
+        await tx.progressPenjualanSertifikatTambahan.upsert({
+          where: { penjualanId_urutan: { penjualanId, urutan } },
+          create: {
+            penjualanId,
+            urutan,
+            ...updateData,
+          },
+          update: updateData,
+        });
+        await this.recalculateAllPajakFromNilaiAjb(penjualanId, tx);
+      });
+    } else {
+      await this.db.progressPenjualanSertifikatTambahan.upsert({
+        where: { penjualanId_urutan: { penjualanId, urutan } },
+        create: {
+          penjualanId,
+          urutan,
+          ...updateData,
+        },
+        update: updateData,
+      });
+    }
 
     return await this.finalizeUpdate(penjualanId, {});
   }

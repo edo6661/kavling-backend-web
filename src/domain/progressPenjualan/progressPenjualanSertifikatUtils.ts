@@ -12,13 +12,65 @@ export interface ProgressSertifikatTambahanSlot extends ProgressSertifikatSlot {
   tanggalAjb?: Date | string | null;
 }
 
-export function calcPajakFromNilaiAjb(nilaiAjb: number): {
+const BPHTB_EXEMPTION = 80_000_000;
+const BPHTB_RATE = 0.05;
+const PPH_RATE = 0.025;
+
+export interface NilaiAjbSlot {
+  urutan: number;
+  nilaiAjb: number;
+}
+
+export interface PajakSlot {
   biayaPph: number;
   biayaBphtb: number;
-} {
-  const biayaPph = nilaiAjb * 0.025;
-  const biayaBphtb = Math.max(0, nilaiAjb - 80_000_000) * 0.05;
+}
+
+function getExemptUrutan(slots: NilaiAjbSlot[]): number | null {
+  const withValue = slots.filter((slot) => slot.nilaiAjb > 0);
+  if (withValue.length <= 1) return null;
+  const minNilai = Math.min(...withValue.map((slot) => slot.nilaiAjb));
+  const minSlots = withValue.filter((slot) => slot.nilaiAjb === minNilai);
+  return Math.min(...minSlots.map((slot) => slot.urutan));
+}
+
+export function calcBphtbFromNilaiAjb(
+  nilaiAjb: number,
+  urutan: number,
+  allSlots: NilaiAjbSlot[],
+): number {
+  if (nilaiAjb <= 0) return 0;
+  const exemptUrutan = getExemptUrutan(allSlots);
+  if (exemptUrutan === urutan) {
+    return nilaiAjb * BPHTB_RATE;
+  }
+  return Math.max(0, nilaiAjb - BPHTB_EXEMPTION) * BPHTB_RATE;
+}
+
+export function calcPajakFromNilaiAjb(
+  nilaiAjb: number,
+  options?: { urutan?: number; allSlots?: NilaiAjbSlot[] },
+): PajakSlot {
+  const biayaPph = nilaiAjb * PPH_RATE;
+  const biayaBphtb =
+    options?.allSlots && options.urutan != null
+      ? calcBphtbFromNilaiAjb(nilaiAjb, options.urutan, options.allSlots)
+      : Math.max(0, nilaiAjb - BPHTB_EXEMPTION) * BPHTB_RATE;
   return { biayaPph, biayaBphtb };
+}
+
+export function calcPajakAllSlots(slots: NilaiAjbSlot[]): Map<number, PajakSlot> {
+  const result = new Map<number, PajakSlot>();
+  for (const slot of slots) {
+    result.set(
+      slot.urutan,
+      calcPajakFromNilaiAjb(slot.nilaiAjb, {
+        urutan: slot.urutan,
+        allSlots: slots,
+      }),
+    );
+  }
+  return result;
 }
 
 export function sumNilaiAjb(
