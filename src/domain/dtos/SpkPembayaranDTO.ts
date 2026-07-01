@@ -18,6 +18,8 @@ export interface SpkPembayaranUpahBarisInput {
   tukangId?: number | null | undefined;
   nik: string;
   nama: string;
+  sudahMenikah?: boolean | null | undefined;
+  jumlahAnak?: number | null | undefined;
   /** Opsional; jika total upah di level pembayaran, baris disimpan dengan nominal 0 */
   nominal?: number | undefined;
 }

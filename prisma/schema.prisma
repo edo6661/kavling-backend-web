@@ -710,12 +710,14 @@ model SpkPenjualan {
 }
 
 model Tukang {
-  id        Int      @id @default(autoincrement())
-  nik       String   @unique @db.VarChar(20)
-  nama      String   @db.VarChar(150)
-  mandorId  Int?     @map("mandor_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  nik          String   @unique @db.VarChar(20)
+  nama         String   @db.VarChar(150)
+  sudahMenikah Boolean? @map("sudah_menikah")
+  jumlahAnak   Int?     @map("jumlah_anak")
+  mandorId     Int?     @map("mandor_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   mandor    User?                    @relation("TukangMandor", fields: [mandorId], references: [id], onDelete: SetNull)
   upahBaris SpkPembayaranUpahBaris[]

@@ -23,6 +23,7 @@ import type { OffsetPaginatedData } from "../../types/response.js";
 import { SpkPembayaranMapper } from "../../infrastructure/mapper/SpkPembayaranMapper.js";
 import type { SpkKasbonTargetTermin } from "@prisma/client";
 import { normalizeKasbonNamaSupplier } from "../spk/kasbonNamaSupplier.js";
+import { normalizeTukangMaritalForSave } from "../tukang/tukangMarital.js";
 import type { SpkJenis } from "../entities/Spk.js";
 import { resolveSpkTerminScheme, type SpkTerminSchemeKey } from "../spk/spkTerminScheme.js";
 import {
@@ -196,6 +197,21 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       : {};
   }
 
+  private buildTukangMaritalData(barisItem: SpkPembayaranUpahBarisInput) {
+    try {
+      return normalizeTukangMaritalForSave(barisItem);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg === "TUKANG_JUMLAH_ANAK_REQUIRED" ||
+        msg === "TUKANG_JUMLAH_ANAK_INVALID"
+      ) {
+        throw new Error("UPAH_BARIS_INVALID");
+      }
+      throw err;
+    }
+  }
+
   private async resolveUpahBaris(
     tx: Prisma.TransactionClient,
     baris: SpkPembayaranUpahBarisInput[],
@@ -213,6 +229,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       const nik = barisItem.nik.trim();
       const nama = barisItem.nama.trim();
       const rowNominal = barisItem.nominal ?? 0;
+      const maritalData = this.buildTukangMaritalData(barisItem);
       if (!nik || !nama) {
         throw new Error("UPAH_BARIS_INVALID");
       }
@@ -225,10 +242,24 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           where: { id: barisItem.tukangId },
         });
         if (existingTukang) {
-          if (existingTukang.nama !== nama) {
+          const updateData: {
+            nama: string;
+            sudahMenikah?: boolean;
+            jumlahAnak?: number;
+          } = { nama };
+          if (maritalData) {
+            updateData.sudahMenikah = maritalData.sudahMenikah;
+            updateData.jumlahAnak = maritalData.jumlahAnak;
+          }
+          if (
+            existingTukang.nama !== nama ||
+            (maritalData &&
+              (existingTukang.sudahMenikah !== maritalData.sudahMenikah ||
+                existingTukang.jumlahAnak !== maritalData.jumlahAnak))
+          ) {
             await tx.tukang.update({
               where: { id: existingTukang.id },
-              data: { nama },
+              data: updateData,
             });
           }
           resolved.push({
@@ -246,10 +277,22 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         create: {
           nik,
           nama,
+          ...(maritalData
+            ? {
+                sudahMenikah: maritalData.sudahMenikah,
+                jumlahAnak: maritalData.jumlahAnak,
+              }
+            : {}),
           ...(defaultMandorId ? { mandorId: defaultMandorId } : {}),
         },
         update: {
           nama,
+          ...(maritalData
+            ? {
+                sudahMenikah: maritalData.sudahMenikah,
+                jumlahAnak: maritalData.jumlahAnak,
+              }
+            : {}),
           ...(defaultMandorId ? { mandorId: defaultMandorId } : {}),
         },
       });

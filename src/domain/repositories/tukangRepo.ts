@@ -6,6 +6,7 @@ import type {
   UpsertTukangDTO,
 } from "../dtos/TukangDTO.js";
 import type { TukangEntity } from "../entities/Tukang.js";
+import { normalizeTukangMaritalForSave } from "../tukang/tukangMarital.js";
 
 const NIK_DIGIT_LENGTH = 16;
 
@@ -23,6 +24,8 @@ const toEntity = (row: {
   id: number;
   nik: string;
   nama: string;
+  sudahMenikah: boolean | null;
+  jumlahAnak: number | null;
   mandorId: number | null;
   createdAt: Date;
   updatedAt: Date;
@@ -31,11 +34,22 @@ const toEntity = (row: {
   id: row.id,
   nik: row.nik,
   nama: row.nama,
+  sudahMenikah: row.sudahMenikah,
+  jumlahAnak: row.jumlahAnak,
   mandorId: row.mandorId,
   mandorUsername: row.mandor?.username ?? null,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
+
+function buildMaritalUpdateData(data: UpsertTukangDTO) {
+  const normalized = normalizeTukangMaritalForSave(data);
+  if (!normalized) return {};
+  return {
+    sudahMenikah: normalized.sudahMenikah,
+    jumlahAnak: normalized.jumlahAnak,
+  };
+}
 
 export class TukangRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -85,6 +99,7 @@ export class TukangRepository {
   ): Promise<TukangEntity> {
     const nik = data.nik.trim();
     const nama = data.nama.trim();
+    const maritalData = buildMaritalUpdateData(data);
     const isMandor = ctx.role === Role.MANDOR;
 
     const existing = await this.db.tukang.findUnique({ where: { nik } });
@@ -98,6 +113,7 @@ export class TukangRepository {
         where: { id: existing.id },
         data: {
           nama,
+          ...maritalData,
           ...(isMandor ? { mandorId: ctx.userId } : {}),
         },
         include: { mandor: { select: { username: true } } },
@@ -111,6 +127,7 @@ export class TukangRepository {
       data: {
         nik,
         nama,
+        ...maritalData,
         mandorId: isMandor ? ctx.userId : null,
       },
       include: { mandor: { select: { username: true } } },

@@ -25,6 +25,12 @@ export const spkPembayaranInclude = {
       nik: true,
       nama: true,
       nominal: true,
+      tukang: {
+        select: {
+          sudahMenikah: true,
+          jumlahAnak: true,
+        },
+      },
     },
   },
   kasbonBaris: {
@@ -120,6 +126,8 @@ export class SpkPembayaranMapper {
         nik: b.nik,
         nama: b.nama,
         nominal: Number(b.nominal),
+        sudahMenikah: b.tukang?.sudahMenikah ?? null,
+        jumlahAnak: b.tukang?.jumlahAnak ?? null,
       })),
       kasbonBaris: row.kasbonBaris?.map((b) => ({
         id: b.id,

@@ -44,6 +44,18 @@ export class TukangController {
           "NIK tukang sudah terdaftar untuk mandor lain.",
         );
       }
+      if (msg === "TUKANG_JUMLAH_ANAK_REQUIRED") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Jumlah anak wajib diisi jika sudah menikah.",
+        );
+      }
+      if (msg === "TUKANG_JUMLAH_ANAK_INVALID") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Jumlah anak harus antara 0 sampai 3.",
+        );
+      }
       throw err;
     }
   };

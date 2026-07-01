@@ -54,6 +54,8 @@ const mapUpahBarisInput = (
     nama: string;
     tukangId?: number | null | undefined;
     nominal?: number | undefined;
+    sudahMenikah?: boolean | null | undefined;
+    jumlahAnak?: number | null | undefined;
   }[],
 ): SpkPembayaranUpahBarisInput[] =>
   baris.map((b) => {
@@ -63,6 +65,8 @@ const mapUpahBarisInput = (
     };
     if (b.tukangId !== undefined) row.tukangId = b.tukangId;
     if (b.nominal !== undefined) row.nominal = b.nominal;
+    if (b.sudahMenikah !== undefined) row.sudahMenikah = b.sudahMenikah;
+    if (b.jumlahAnak !== undefined) row.jumlahAnak = b.jumlahAnak;
     return row;
   });
 

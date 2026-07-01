@@ -11,6 +11,8 @@ export interface SpkPembayaranUpahBarisEntity {
   nik: string;
   nama: string;
   nominal: number;
+  sudahMenikah: boolean | null;
+  jumlahAnak: number | null;
 }
 
 export interface SpkPembayaranKasbonBarisEntity {
