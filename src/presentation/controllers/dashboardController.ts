@@ -3,6 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../../utils/response.js";
 import type { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
 import type { GetDashboardDrilldownUseCase } from "../../application/usecases/dashboard/GetDashboardDrilldownUseCase.js";
+import type { GetPenjualanPeriodeSummaryUseCase } from "../../application/usecases/dashboard/GetPenjualanPeriodeSummaryUseCase.js";
 import type {
   DashboardDrilldownCategory,
   DashboardKpiPeriod,
@@ -20,6 +21,7 @@ export class DashboardController {
   constructor(
     private readonly getDashboardSummaryUseCase: GetDashboardSummaryUseCase,
     private readonly getDashboardDrilldownUseCase: GetDashboardDrilldownUseCase,
+    private readonly getPenjualanPeriodeSummaryUseCase: GetPenjualanPeriodeSummaryUseCase,
   ) {}
 
   getSummary = async (req: Request, res: Response): Promise<void> => {
@@ -66,5 +68,31 @@ export class DashboardController {
       "Berhasil mengambil detail drill-down",
       result,
     );
+  };
+
+  getPenjualanPeriodeSummary = async (req: Request, res: Response): Promise<void> => {
+    const dateFrom = req.query.from as string;
+    const dateTo = req.query.to as string;
+
+    if (!dateFrom || !dateTo) {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Parameter from dan to wajib diisi");
+      return;
+    }
+
+    try {
+      const result = await this.getPenjualanPeriodeSummaryUseCase.execute({
+        dateFrom,
+        dateTo,
+      });
+
+      sendResponse(
+        res,
+        StatusCodes.OK,
+        "Berhasil mengambil ringkasan penjualan periode",
+        result,
+      );
+    } catch {
+      sendResponse(res, StatusCodes.BAD_REQUEST, "Rentang tanggal tidak valid");
+    }
   };
 }

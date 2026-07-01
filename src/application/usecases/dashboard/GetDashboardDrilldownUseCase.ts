@@ -5,6 +5,11 @@ import type {
 } from "../../../domain/dtos/DashboardDTO.js";
 import { parsePenjualanBulanFilter } from "../../../domain/dashboard/dashboardPenjualanBulan.js";
 import {
+  buildPenjualanCaraWhere,
+  parseDateRangeFromIso,
+  parsePenjualanPeriodeFilter,
+} from "../../../domain/dashboard/dashboardPenjualanPeriode.js";
+import {
   mapPenjualanListToDrilldownItems,
   mapPenjualanToDrilldownItem,
   PENJUALAN_DRILLDOWN_INCLUDE,
@@ -212,15 +217,31 @@ export class GetDashboardDrilldownUseCase {
       return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: {
-            ...(penjualanBulanFilter.caraPembayaran === "SEMUA"
-              ? {
-                  caraPembayaran: {
-                    in: ["KPR", "CASH_BERTAHAP", "CASH_KERAS"],
-                  },
-                }
-              : { caraPembayaran: penjualanBulanFilter.caraPembayaran }),
+            ...buildPenjualanCaraWhere(penjualanBulanFilter.caraPembayaran),
             status: { not: "BATAL" },
             createdAt: { gte: start, lte: end },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: PENJUALAN_DRILLDOWN_INCLUDE,
+        }),
+      );
+    }
+
+    const penjualanPeriodeFilter = parsePenjualanPeriodeFilter(status);
+    if (penjualanPeriodeFilter) {
+      const range = parseDateRangeFromIso(
+        penjualanPeriodeFilter.dateFrom,
+        penjualanPeriodeFilter.dateTo,
+      );
+      if (!range) return [];
+
+      return mapPenjualanListToDrilldownItems(
+        await this.db.penjualan.findMany({
+          where: {
+            ...buildPenjualanCaraWhere(penjualanPeriodeFilter.caraPembayaran),
+            status: { not: "BATAL" },
+            createdAt: { gte: range.start, lte: range.end },
           },
           orderBy: { createdAt: "desc" },
           take: 50,

@@ -195,6 +195,13 @@ export interface PenjualanByCaraTahunIniDTO {
   cashKeras: MonthlyMetricRowDTO[];
 }
 
+export interface PenjualanPeriodeSummaryDTO {
+  kpr: number;
+  cashBertahap: number;
+  cashKeras: number;
+  semua: number;
+}
+
 /** Unit penjualan per hari (booking / proses) */
 export interface TodayUnitItemDTO {
   id: string;

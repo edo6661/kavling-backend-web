@@ -21,6 +21,11 @@ export const createDashboardRoutes = (
     requirePermission(["DASHBOARD", "LAPORAN"], "read"),
     controller.getDrilldown,
   );
+  router.get(
+    "/penjualan-periode",
+    requirePermission(["DASHBOARD", "LAPORAN"], "read"),
+    controller.getPenjualanPeriodeSummary,
+  );
 
   return router;
 };

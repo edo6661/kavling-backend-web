@@ -157,6 +157,7 @@ import {
 import { PerumahanController } from "../../presentation/controllers/perumahanController.js";
 import { GetDashboardSummaryUseCase } from "../../application/usecases/dashboard/GetDashboardSummaryUseCase.js";
 import { GetDashboardDrilldownUseCase } from "../../application/usecases/dashboard/GetDashboardDrilldownUseCase.js";
+import { GetPenjualanPeriodeSummaryUseCase } from "../../application/usecases/dashboard/GetPenjualanPeriodeSummaryUseCase.js";
 import { DashboardController } from "../../presentation/controllers/dashboardController.js";
 import { GetBiayaProyekReportUseCase } from "../../application/usecases/report/GetBiayaProyekReportUseCase.js";
 import { GetProgressProyekReportUseCase } from "../../application/usecases/report/GetProgressProyekReportUseCase.js";
@@ -519,6 +520,7 @@ export const createContainer = (dbClient: PrismaClient) => {
 
   const getDashboardSummaryUseCase = new GetDashboardSummaryUseCase(dbClient);
   const getDashboardDrilldownUseCase = new GetDashboardDrilldownUseCase(dbClient);
+  const getPenjualanPeriodeSummaryUseCase = new GetPenjualanPeriodeSummaryUseCase(dbClient);
 
   const notarisRepo = new NotarisRepository(dbClient);
   const createNotarisUseCase = new CreateNotarisUseCase(notarisRepo);
@@ -540,6 +542,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const dashboardController = new DashboardController(
     getDashboardSummaryUseCase,
     getDashboardDrilldownUseCase,
+    getPenjualanPeriodeSummaryUseCase,
   );
 
   const getBiayaProyekReportUseCase = new GetBiayaProyekReportUseCase(dbClient);
