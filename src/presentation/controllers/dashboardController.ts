@@ -56,8 +56,8 @@ export class DashboardController {
 
     const result = await this.getDashboardDrilldownUseCase.execute({
       category: category as DashboardDrilldownCategory,
-      filter,
-      blok,
+      ...(filter !== undefined ? { filter } : {}),
+      ...(blok !== undefined ? { blok } : {}),
     });
 
     sendResponse(
