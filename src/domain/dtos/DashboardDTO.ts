@@ -178,6 +178,13 @@ export interface BookingRateRowDTO {
   tingkatPersen: number;
 }
 
+/** Penjualan per bulan dikelompokkan cara pembayaran (tahun berjalan) */
+export interface PenjualanByCaraTahunIniDTO {
+  kpr: MonthlyMetricRowDTO[];
+  cashBertahap: MonthlyMetricRowDTO[];
+  cashKeras: MonthlyMetricRowDTO[];
+}
+
 /** Unit penjualan per hari (booking / proses) */
 export interface TodayUnitItemDTO {
   id: string;
@@ -201,6 +208,7 @@ export interface ExecutiveDashboardDTO {
   pendapatanAllTime: MonthlyMetricRowDTO[];
   akadTahunIni: MonthlyMetricRowDTO[];
   penjualanCashTahunIni: MonthlyMetricRowDTO[];
+  penjualanByCaraTahunIni: PenjualanByCaraTahunIniDTO;
   tingkatPemesanan: BookingRateRowDTO[];
 }
 

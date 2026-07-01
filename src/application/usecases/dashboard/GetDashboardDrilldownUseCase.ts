@@ -3,6 +3,7 @@ import type {
   DashboardDrilldownQueryDTO,
   DrilldownItemDTO,
 } from "../../../domain/dtos/DashboardDTO.js";
+import { parsePenjualanBulanFilter } from "../../../domain/dashboard/dashboardPenjualanBulan.js";
 import { normalizeTagihanFileBuktiList } from "../../../utils/tagihanBukti.js";
 
 const KAVLING_STATUS_LABELS: Record<string, string> = {
@@ -214,6 +215,29 @@ export class GetDashboardDrilldownUseCase {
         await this.db.penjualan.findMany({
           where: {
             caraPembayaran: { in: ["CASH_KERAS", "CASH_BERTAHAP"] },
+            status: { not: "BATAL" },
+            createdAt: { gte: start, lte: end },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: {
+            customer: { select: { nama: true } },
+            kavling: { select: { blok: true, nomorUnit: true } },
+          },
+        }),
+      );
+    }
+
+    const penjualanBulanFilter = parsePenjualanBulanFilter(status);
+    if (penjualanBulanFilter) {
+      const { start, end } = monthRange(
+        penjualanBulanFilter.year,
+        penjualanBulanFilter.month - 1,
+      );
+      return this.mapPenjualanItems(
+        await this.db.penjualan.findMany({
+          where: {
+            caraPembayaran: penjualanBulanFilter.caraPembayaran,
             status: { not: "BATAL" },
             createdAt: { gte: start, lte: end },
           },

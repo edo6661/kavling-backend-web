@@ -6,6 +6,7 @@ import type {
   MonthlyMetricRowDTO,
   TodayUnitItemDTO,
 } from "../../../domain/dtos/DashboardDTO.js";
+import { buildPenjualanByCaraTahunIni } from "../../../domain/dashboard/dashboardPenjualanBulan.js";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH_KERAS: "Cash Keras",
@@ -209,7 +210,7 @@ export class GetExecutiveDashboardUseCase {
           status: { not: "BATAL" },
           createdAt: { gte: yearStart, lte: yearEnd },
         },
-        select: { createdAt: true },
+        select: { createdAt: true, hargaJual: true, caraPembayaran: true },
       }),
       this.db.penjualan.findMany({
         where: {
@@ -292,6 +293,8 @@ export class GetExecutiveDashboardUseCase {
       };
     });
 
+    const penjualanByCaraTahunIni = buildPenjualanByCaraTahunIni(year, penjualanYear);
+
     const tingkatPemesanan: BookingRateRowDTO[] = FULL_MONTH_LABELS.map(
       (monthLabel, monthIndex) => {
         const { start, end } = monthRange(year, monthIndex);
@@ -318,6 +321,7 @@ export class GetExecutiveDashboardUseCase {
       pendapatanAllTime,
       akadTahunIni,
       penjualanCashTahunIni,
+      penjualanByCaraTahunIni,
       tingkatPemesanan,
     };
   }
