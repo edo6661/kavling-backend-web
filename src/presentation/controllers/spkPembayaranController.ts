@@ -110,11 +110,14 @@ export class SpkPembayaranController {
       );
       return;
     }
-    if (file.mimetype !== "application/pdf") {
+    if (
+      !file.mimetype.startsWith("image/") &&
+      file.mimetype !== "application/pdf"
+    ) {
       sendResponse(
         res,
         StatusCodes.BAD_REQUEST,
-        "Dokumen pengajuan harus berformat PDF.",
+        "Dokumen pengajuan harus berformat PDF atau gambar.",
       );
       return;
     }
