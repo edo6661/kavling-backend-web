@@ -144,6 +144,8 @@ export interface DrilldownItemDTO {
   bookingFeeLunas?: boolean;
   /** Nama agent marketing */
   agentNama?: string;
+  /** Label cara pembayaran penjualan (KPR / Cash Bertahap / Cash Keras) */
+  caraPembayaranLabel?: string;
 }
 
 export type DashboardDrilldownCategory =

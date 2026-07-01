@@ -1,4 +1,8 @@
-export type PenjualanBulanCaraPembayaran = "KPR" | "CASH_BERTAHAP" | "CASH_KERAS";
+export type PenjualanBulanCaraPembayaran =
+  | "KPR"
+  | "CASH_BERTAHAP"
+  | "CASH_KERAS"
+  | "SEMUA";
 
 export interface MonthlyPenjualanCountRow {
   month: number;
@@ -42,7 +46,7 @@ export function parsePenjualanBulanFilter(filter?: string): {
   caraPembayaran: PenjualanBulanCaraPembayaran;
 } | null {
   const match = filter?.match(
-    /^PENJUALAN_BULAN:(\d{4}):(\d{1,2}):(KPR|CASH_BERTAHAP|CASH_KERAS)$/,
+    /^PENJUALAN_BULAN:(\d{4}):(\d{1,2}):(KPR|CASH_BERTAHAP|CASH_KERAS|SEMUA)$/,
   );
   if (!match) return null;
 

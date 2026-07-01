@@ -212,7 +212,13 @@ export class GetDashboardDrilldownUseCase {
       return mapPenjualanListToDrilldownItems(
         await this.db.penjualan.findMany({
           where: {
-            caraPembayaran: penjualanBulanFilter.caraPembayaran,
+            ...(penjualanBulanFilter.caraPembayaran === "SEMUA"
+              ? {
+                  caraPembayaran: {
+                    in: ["KPR", "CASH_BERTAHAP", "CASH_KERAS"],
+                  },
+                }
+              : { caraPembayaran: penjualanBulanFilter.caraPembayaran }),
             status: { not: "BATAL" },
             createdAt: { gte: start, lte: end },
           },

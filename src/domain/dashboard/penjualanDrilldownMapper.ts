@@ -8,6 +8,17 @@ const PENJUALAN_STATUS_LABELS: Record<string, string> = {
   BATAL: "Batal",
 };
 
+const CARA_PEMBAYARAN_LABELS: Record<string, string> = {
+  KPR: "KPR",
+  CASH_BERTAHAP: "Cash Bertahap",
+  CASH_KERAS: "Cash Keras",
+};
+
+function formatCaraPembayaranLabel(caraPembayaran: string | null): string {
+  if (!caraPembayaran) return "—";
+  return CARA_PEMBAYARAN_LABELS[caraPembayaran] ?? caraPembayaran;
+}
+
 export const PENJUALAN_DRILLDOWN_INCLUDE = {
   customer: { select: { nama: true } },
   kavling: { select: { blok: true, nomorUnit: true } },
@@ -50,6 +61,7 @@ export function mapPenjualanToDrilldownItem(
     ...(tanggalBayarBookingFee ? { tanggalBayarBookingFee } : {}),
     bookingFeeLunas,
     agentNama: penjualan.agent?.nama ?? "",
+    caraPembayaranLabel: formatCaraPembayaranLabel(penjualan.caraPembayaran),
     ...overrides,
   };
 }

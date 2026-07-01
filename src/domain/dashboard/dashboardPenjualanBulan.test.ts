@@ -27,6 +27,14 @@ describe("parsePenjualanBulanFilter", () => {
     });
   });
 
+  it("parses SEMUA filter", () => {
+    expect(parsePenjualanBulanFilter("PENJUALAN_BULAN:2026:6:SEMUA")).toEqual({
+      year: 2026,
+      month: 6,
+      caraPembayaran: "SEMUA",
+    });
+  });
+
   it("rejects invalid filters", () => {
     expect(parsePenjualanBulanFilter("KPR")).toBeNull();
     expect(parsePenjualanBulanFilter("PENJUALAN_BULAN:2026:13:KPR")).toBeNull();

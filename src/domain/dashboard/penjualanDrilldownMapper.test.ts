@@ -6,6 +6,7 @@ function buildPenjualanRow(overrides: Record<string, unknown> = {}) {
     noTransaksi: "TRX-202606-001",
     hargaJual: 393_000_000,
     status: "PROSES",
+    caraPembayaran: "KPR",
     createdAt: new Date("2026-06-10T08:30:00.000Z"),
     customer: { nama: "Mei Trihastuti" },
     kavling: { blok: "RK3", nomorUnit: "12" },
@@ -30,6 +31,7 @@ describe("mapPenjualanToDrilldownItem", () => {
     expect(item.tanggalBayarBookingFee).toBe("2026-06-12");
     expect(item.bookingFeeLunas).toBe(true);
     expect(item.agentNama).toBe("Wiwi");
+    expect(item.caraPembayaranLabel).toBe("KPR");
   });
 
   it("marks booking fee as belum lunas when tagihan not paid", () => {
