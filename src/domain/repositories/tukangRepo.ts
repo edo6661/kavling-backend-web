@@ -7,6 +7,7 @@ import type {
 } from "../dtos/TukangDTO.js";
 import type { TukangEntity } from "../entities/Tukang.js";
 import { normalizeTukangMaritalForSave } from "../tukang/tukangMarital.js";
+import { buildKtpUpdateData, normalizeKtpForSave } from "../tukang/tukangKtp.js";
 
 const NIK_DIGIT_LENGTH = 16;
 
@@ -24,6 +25,7 @@ const toEntity = (row: {
   id: number;
   nik: string;
   nama: string;
+  ktp: string | null;
   sudahMenikah: boolean | null;
   jumlahAnak: number | null;
   mandorId: number | null;
@@ -34,6 +36,7 @@ const toEntity = (row: {
   id: row.id,
   nik: row.nik,
   nama: row.nama,
+  ktp: row.ktp,
   sudahMenikah: row.sudahMenikah,
   jumlahAnak: row.jumlahAnak,
   mandorId: row.mandorId,
@@ -99,6 +102,7 @@ export class TukangRepository {
   ): Promise<TukangEntity> {
     const nik = data.nik.trim();
     const nama = data.nama.trim();
+    const ktpData = buildKtpUpdateData(data.ktp);
     const maritalData = buildMaritalUpdateData(data);
     const isMandor = ctx.role === Role.MANDOR;
 
@@ -113,6 +117,7 @@ export class TukangRepository {
         where: { id: existing.id },
         data: {
           nama,
+          ...ktpData,
           ...maritalData,
           ...(isMandor ? { mandorId: ctx.userId } : {}),
         },
@@ -127,6 +132,7 @@ export class TukangRepository {
       data: {
         nik,
         nama,
+        ktp: normalizeKtpForSave(data.ktp),
         ...maritalData,
         mandorId: isMandor ? ctx.userId : null,
       },
