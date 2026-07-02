@@ -713,7 +713,7 @@ model Tukang {
   id           Int      @id @default(autoincrement())
   nik          String   @unique @db.VarChar(20)
   nama         String   @db.VarChar(150)
-  ktp          String?  @db.VarChar(20)
+  fileKtp      String?  @map("file_ktp") @db.VarChar(255)
   sudahMenikah Boolean? @map("sudah_menikah")
   jumlahAnak   Int?     @map("jumlah_anak")
   mandorId     Int?     @map("mandor_id")

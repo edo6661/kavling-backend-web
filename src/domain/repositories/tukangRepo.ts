@@ -7,7 +7,6 @@ import type {
 } from "../dtos/TukangDTO.js";
 import type { TukangEntity } from "../entities/Tukang.js";
 import { normalizeTukangMaritalForSave } from "../tukang/tukangMarital.js";
-import { buildKtpUpdateData, normalizeKtpForSave } from "../tukang/tukangKtp.js";
 
 const NIK_DIGIT_LENGTH = 16;
 
@@ -25,7 +24,7 @@ const toEntity = (row: {
   id: number;
   nik: string;
   nama: string;
-  ktp: string | null;
+  fileKtp: string | null;
   sudahMenikah: boolean | null;
   jumlahAnak: number | null;
   mandorId: number | null;
@@ -36,7 +35,7 @@ const toEntity = (row: {
   id: row.id,
   nik: row.nik,
   nama: row.nama,
-  ktp: row.ktp,
+  fileKtp: row.fileKtp,
   sudahMenikah: row.sudahMenikah,
   jumlahAnak: row.jumlahAnak,
   mandorId: row.mandorId,
@@ -52,6 +51,19 @@ function buildMaritalUpdateData(data: UpsertTukangDTO) {
     sudahMenikah: normalized.sudahMenikah,
     jumlahAnak: normalized.jumlahAnak,
   };
+}
+
+function assertMandorCanAccess(
+  existing: { mandorId: number | null },
+  ctx: TukangListContext,
+): void {
+  if (
+    ctx.role === Role.MANDOR &&
+    existing.mandorId &&
+    existing.mandorId !== ctx.userId
+  ) {
+    throw new Error("TUKANG_NIK_OTHER_MANDOR");
+  }
 }
 
 export class TukangRepository {
@@ -102,22 +114,18 @@ export class TukangRepository {
   ): Promise<TukangEntity> {
     const nik = data.nik.trim();
     const nama = data.nama.trim();
-    const ktpData = buildKtpUpdateData(data.ktp);
     const maritalData = buildMaritalUpdateData(data);
     const isMandor = ctx.role === Role.MANDOR;
 
     const existing = await this.db.tukang.findUnique({ where: { nik } });
 
     if (existing) {
-      if (isMandor && existing.mandorId && existing.mandorId !== ctx.userId) {
-        throw new Error("TUKANG_NIK_OTHER_MANDOR");
-      }
+      assertMandorCanAccess(existing, ctx);
 
       const row = await this.db.tukang.update({
         where: { id: existing.id },
         data: {
           nama,
-          ...ktpData,
           ...maritalData,
           ...(isMandor ? { mandorId: ctx.userId } : {}),
         },
@@ -132,10 +140,29 @@ export class TukangRepository {
       data: {
         nik,
         nama,
-        ktp: normalizeKtpForSave(data.ktp),
         ...maritalData,
         mandorId: isMandor ? ctx.userId : null,
       },
+      include: { mandor: { select: { username: true } } },
+    });
+    return toEntity(row);
+  }
+
+  async updateFileKtp(
+    nik: string,
+    fileKtp: string,
+    ctx: TukangListContext,
+  ): Promise<TukangEntity> {
+    const existing = await this.db.tukang.findUnique({
+      where: { nik: nik.trim() },
+    });
+    if (!existing) throw new Error("TUKANG_NOT_FOUND");
+
+    assertMandorCanAccess(existing, ctx);
+
+    const row = await this.db.tukang.update({
+      where: { id: existing.id },
+      data: { fileKtp },
       include: { mandor: { select: { username: true } } },
     });
     return toEntity(row);

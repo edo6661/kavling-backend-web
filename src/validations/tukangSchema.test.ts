@@ -9,28 +9,9 @@ const baseBody = {
 };
 
 describe("upsertTukangSchema", () => {
-  it("accepts requests without ktp (existing API compat)", () => {
+  it("accepts requests without fileKtp (existing API compat)", () => {
     const parsed = upsertTukangSchema.body.parse(baseBody);
-    expect(parsed.ktp).toBeUndefined();
-  });
-
-  it("accepts valid optional ktp", () => {
-    const parsed = upsertTukangSchema.body.parse({
-      ...baseBody,
-      ktp: "3201234567890124",
-    });
-    expect(parsed.ktp).toBe("3201234567890124");
-  });
-
-  it("accepts null or empty ktp to clear value", () => {
-    expect(upsertTukangSchema.body.parse({ ...baseBody, ktp: null }).ktp).toBeNull();
-    expect(upsertTukangSchema.body.parse({ ...baseBody, ktp: "" }).ktp).toBe("");
-  });
-
-  it("rejects invalid ktp length", () => {
-    expect(() =>
-      upsertTukangSchema.body.parse({ ...baseBody, ktp: "12345" }),
-    ).toThrow();
+    expect(parsed.nik).toBe(baseBody.nik);
   });
 
   it("still validates marital fields", () => {

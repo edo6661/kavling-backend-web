@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { TUKANG_MAX_JUMLAH_ANAK } from "../domain/tukang/tukangMarital.js";
-import { emptyOrNikDigitsSchema } from "./nikSchema.js";
 
 const tukangMaritalBodySchema = z
   .object({
@@ -34,7 +33,6 @@ export const upsertTukangSchema = {
     .object({
       nik: z.string().trim().min(1).max(20),
       nama: z.string().trim().min(1).max(150),
-      ktp: emptyOrNikDigitsSchema.optional().nullable(),
       sudahMenikah: z.boolean().optional().nullable(),
       jumlahAnak: z.coerce
         .number()
@@ -53,6 +51,12 @@ export const upsertTukangSchema = {
         });
       }
     }),
+};
+
+export const uploadTukangKtpSchema = {
+  params: z.object({
+    nik: z.string().trim().min(1).max(20),
+  }),
 };
 
 export const tukangMaritalFieldsSchema = tukangMaritalBodySchema;

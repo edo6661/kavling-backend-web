@@ -23,6 +23,7 @@ import {
 } from "../../application/usecases/spkPembayaran/SpkPembayaranUseCases.js";
 import { TukangRepository } from "../../domain/repositories/tukangRepo.js";
 import { TukangController } from "../../presentation/controllers/tukangController.js";
+import { UploadTukangKtpUseCase } from "../../application/usecases/tukang/UploadTukangKtpUseCase.js";
 import {
   BayarNotarisPembayaranUseCase,
   GetNotarisPembayaranPaginatedUseCase,
@@ -1071,7 +1072,14 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
 
   const tukangRepo = new TukangRepository(dbClient);
-  const tukangController = new TukangController(tukangRepo);
+  const uploadTukangKtpUseCase = new UploadTukangKtpUseCase(
+    tukangRepo,
+    cloudinaryService,
+  );
+  const tukangController = new TukangController(
+    tukangRepo,
+    uploadTukangKtpUseCase,
+  );
 
   const notarisPembayaranRepo = new NotarisPembayaranRepository(dbClient);
   const getNotarisPembayaranPaginatedUseCase = new GetNotarisPembayaranPaginatedUseCase(
