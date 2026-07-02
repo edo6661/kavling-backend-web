@@ -16,6 +16,7 @@ import {
   validateTerminSchemeForJenis,
   type SpkTerminSchemeKey,
 } from "../spk/spkTerminScheme.js";
+import { findBlockedKavlingTransferSource } from "../spk/spkKavlingTransfer.js";
 
 export class SpkRepository implements ISpkRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -65,10 +66,12 @@ export class SpkRepository implements ISpkRepository {
   async findKavlingIdsAssignedToOtherSpk(
     kavlingIds: number[],
     excludeSpkId?: number,
+    tx?: Prisma.TransactionClient,
   ): Promise<number[]> {
     if (kavlingIds.length === 0) return [];
 
-    const rows = await this.db.spkPenjualan.findMany({
+    const db = tx ?? this.db;
+    const rows = await db.spkPenjualan.findMany({
       where: {
         kavlingId: { in: kavlingIds },
         spk: { statusApproval: { not: ApprovalStatus.REJECTED } },
@@ -84,6 +87,7 @@ export class SpkRepository implements ISpkRepository {
     tx: Prisma.TransactionClient,
     kavlingIds: number[],
     excludeSpkId?: number,
+    options?: { allowTransferFromOtherSpk?: boolean },
   ) {
     if (kavlingIds.length === 0) {
       throw new AppError(
@@ -112,12 +116,78 @@ export class SpkRepository implements ISpkRepository {
     const assignedElsewhere = await this.findKavlingIdsAssignedToOtherSpk(
       uniqueIds,
       excludeSpkId,
+      tx,
     );
     if (assignedElsewhere.length > 0) {
+      if (options?.allowTransferFromOtherSpk && excludeSpkId) {
+        await this.transferKavlingsFromOtherSpks(tx, assignedElsewhere, excludeSpkId);
+        return;
+      }
       throw new ConflictError(
         "Salah satu kavling sudah terdaftar di SPK lain.",
       );
     }
+  }
+
+  private async transferKavlingsFromOtherSpks(
+    tx: Prisma.TransactionClient,
+    kavlingIds: number[],
+    targetSpkId: number,
+  ) {
+    if (kavlingIds.length === 0) return;
+
+    const assignments = await tx.spkPenjualan.findMany({
+      where: {
+        kavlingId: { in: kavlingIds },
+        spkId: { not: targetSpkId },
+        spk: { statusApproval: { not: ApprovalStatus.REJECTED } },
+      },
+      select: {
+        kavlingId: true,
+        spkId: true,
+        spk: { select: { noSpk: true } },
+      },
+    });
+
+    if (assignments.length === 0) return;
+
+    const bySourceSpk = new Map<number, typeof assignments>();
+    for (const assignment of assignments) {
+      const list = bySourceSpk.get(assignment.spkId) ?? [];
+      list.push(assignment);
+      bySourceSpk.set(assignment.spkId, list);
+    }
+
+    const totalsBySpkId = new Map<number, number>();
+    for (const sourceSpkId of bySourceSpk.keys()) {
+      totalsBySpkId.set(
+        sourceSpkId,
+        await tx.spkPenjualan.count({ where: { spkId: sourceSpkId } }),
+      );
+    }
+
+    const blocked = findBlockedKavlingTransferSource(
+      Array.from(bySourceSpk.entries()).map(([spkId, items]) => ({
+        spkId,
+        noSpk: items[0]!.spk.noSpk,
+        transferringKavlingIds: items.map((item) => item.kavlingId),
+      })),
+      totalsBySpkId,
+    );
+    if (blocked) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        `Tidak dapat memindahkan kavling: SPK ${blocked.noSpk} akan kehilangan semua kavling. Lepas kavling dari SPK tujuan terlebih dahulu, atau edit SPK sumber secara terpisah.`,
+      );
+    }
+
+    const transferredIds = assignments.map((a) => a.kavlingId);
+    await tx.spkPenjualan.deleteMany({
+      where: {
+        kavlingId: { in: transferredIds },
+        spkId: { not: targetSpkId },
+      },
+    });
   }
 
   private async validateMandor(
@@ -402,7 +472,9 @@ export class SpkRepository implements ISpkRepository {
 
         let kavlingIds = existing.kavlingItems.map((p) => p.kavlingId);
         if (data.kavlingIds !== undefined) {
-          await this.validateKavlingIds(tx, data.kavlingIds, id);
+          await this.validateKavlingIds(tx, data.kavlingIds, id, {
+            allowTransferFromOtherSpk: true,
+          });
           kavlingIds = data.kavlingIds;
 
           const removedIds = existing.kavlingItems
