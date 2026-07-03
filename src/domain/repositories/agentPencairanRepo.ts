@@ -225,4 +225,14 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
 
     return rows.map((r) => AgentPencairanMapper.toDomain(r));
   }
+
+  async deletePending(id: number): Promise<boolean> {
+    const result = await this.db.agentPencairan.deleteMany({
+      where: {
+        id,
+        status: AgentPencairanStatus.MENUNGGU_PEMBAYARAN,
+      },
+    });
+    return result.count > 0;
+  }
 }

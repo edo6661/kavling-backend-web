@@ -42,6 +42,7 @@ import { BankKprPembayaranController } from "../../presentation/controllers/bank
 import { AgentPencairanRepository } from "../../domain/repositories/agentPencairanRepo.js";
 import {
   AjukanAgentPencairanUseCase,
+  BatalAgentPencairanUseCase,
   BayarAgentPencairanUseCase,
   GetAgentPencairanPaginatedUseCase,
   SetAgentBsiCmsDilaporkanUseCase,
@@ -1137,6 +1138,9 @@ export const createContainer = (dbClient: PrismaClient) => {
     agentPencairanRepo,
     cloudinaryService,
   );
+  const batalAgentPencairanUseCase = new BatalAgentPencairanUseCase(
+    agentPencairanRepo,
+  );
   const setAgentBsiCmsDilaporkanUseCase = new SetAgentBsiCmsDilaporkanUseCase(
     agentPencairanRepo,
   );
@@ -1144,6 +1148,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     getAgentPencairanPaginatedUseCase,
     ajukanAgentPencairanUseCase,
     bayarAgentPencairanUseCase,
+    batalAgentPencairanUseCase,
     setAgentBsiCmsDilaporkanUseCase,
   );
 

@@ -3,6 +3,7 @@ import { mock, type MockProxy } from "vitest-mock-extended";
 import type { PrismaClient } from "@prisma/client";
 import {
   AjukanAgentPencairanUseCase,
+  BatalAgentPencairanUseCase,
   BayarAgentPencairanUseCase,
 } from "./AgentPencairanUseCases.js";
 import type { IAgentPencairanRepository } from "../../../domain/repositories/IAgentPencairanRepo.js";
@@ -282,5 +283,43 @@ describe("BayarAgentPencairanUseCase — existing flow", () => {
       expect.objectContaining({ buktiPembayaran: BUKTI_URL }),
     );
     expect(result.status).toBe("SUDAH_DIBAYAR");
+  });
+});
+
+describe("BatalAgentPencairanUseCase", () => {
+  let repoMock: MockProxy<IAgentPencairanRepository>;
+  let useCase: BatalAgentPencairanUseCase;
+
+  beforeEach(() => {
+    repoMock = mock<IAgentPencairanRepository>();
+    useCase = new BatalAgentPencairanUseCase(repoMock);
+    vi.clearAllMocks();
+  });
+
+  it("membatalkan pengajuan yang masih menunggu pembayaran", async () => {
+    repoMock.findById.mockResolvedValue(buildCreatedPencairan());
+    repoMock.deletePending.mockResolvedValue(true);
+
+    await expect(useCase.execute(99)).resolves.toBeUndefined();
+    expect(repoMock.deletePending).toHaveBeenCalledWith(99);
+  });
+
+  it("menolak batal jika sudah dibayar", async () => {
+    repoMock.findById.mockResolvedValue(
+      buildCreatedPencairan({ status: "SUDAH_DIBAYAR" }),
+    );
+
+    await expect(useCase.execute(99)).rejects.toMatchObject({
+      message: "Hanya pengajuan yang belum dibayar yang bisa dibatalkan.",
+    });
+    expect(repoMock.deletePending).not.toHaveBeenCalled();
+  });
+
+  it("menolak batal jika pengajuan tidak ditemukan", async () => {
+    repoMock.findById.mockResolvedValue(null);
+
+    await expect(useCase.execute(99)).rejects.toMatchObject({
+      message: "Pengajuan pencairan agent tidak ditemukan",
+    });
   });
 });

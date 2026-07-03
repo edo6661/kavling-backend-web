@@ -37,6 +37,12 @@ export const bayarAgentPencairanSchema = {
   }),
 };
 
+export const batalAgentPencairanSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+};
+
 export const setAgentBsiCmsDilaporkanSchema = {
   body: z.object({
     ids: z.array(z.coerce.number().int().positive()).min(1),

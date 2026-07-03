@@ -3,6 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../../utils/response.js";
 import type {
   AjukanAgentPencairanUseCase,
+  BatalAgentPencairanUseCase,
   BayarAgentPencairanUseCase,
   GetAgentPencairanPaginatedUseCase,
   SetAgentBsiCmsDilaporkanUseCase,
@@ -16,6 +17,7 @@ export class AgentPencairanController {
     private readonly getPaginatedUseCase: GetAgentPencairanPaginatedUseCase,
     private readonly ajukanUseCase: AjukanAgentPencairanUseCase,
     private readonly bayarUseCase: BayarAgentPencairanUseCase,
+    private readonly batalUseCase: BatalAgentPencairanUseCase,
     private readonly setBsiCmsDilaporkanUseCase: SetAgentBsiCmsDilaporkanUseCase,
   ) {}
 
@@ -77,6 +79,17 @@ export class AgentPencairanController {
       tanggalPembayaran,
     );
     sendResponse(res, StatusCodes.OK, "Pembayaran agent berhasil diproses", result);
+  };
+
+  batal = async (req: Request, res: Response): Promise<void> => {
+    const id = parseInt(routeParam(req.params.id), 10);
+    await this.batalUseCase.execute(id);
+    sendResponse(
+      res,
+      StatusCodes.OK,
+      "Pengajuan pencairan agent berhasil dibatalkan",
+      null,
+    );
   };
 
   setBsiCmsDilaporkan = async (req: Request, res: Response): Promise<void> => {

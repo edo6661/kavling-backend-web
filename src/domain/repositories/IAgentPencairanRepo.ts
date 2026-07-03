@@ -37,4 +37,6 @@ export interface IAgentPencairanRepository {
   setBsiCmsDilaporkan(
     data: SetAgentBsiCmsDilaporkanDTO,
   ): Promise<AgentPencairanEntity[]>;
+  /** Hapus pengajuan yang masih menunggu pembayaran (untuk batal ajukan). */
+  deletePending(id: number): Promise<boolean>;
 }

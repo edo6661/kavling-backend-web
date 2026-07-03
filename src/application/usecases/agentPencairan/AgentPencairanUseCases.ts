@@ -332,6 +332,32 @@ export class BayarAgentPencairanUseCase {
   }
 }
 
+export class BatalAgentPencairanUseCase {
+  constructor(private readonly repo: IAgentPencairanRepository) {}
+
+  async execute(id: number): Promise<void> {
+    const existing = await this.repo.findById(id);
+    if (!existing) {
+      throw new NotFoundError("Pengajuan pencairan agent tidak ditemukan");
+    }
+
+    if (existing.status !== "MENUNGGU_PEMBAYARAN") {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        "Hanya pengajuan yang belum dibayar yang bisa dibatalkan.",
+      );
+    }
+
+    const deleted = await this.repo.deletePending(id);
+    if (!deleted) {
+      throw new AppError(
+        StatusCodes.CONFLICT,
+        "Pengajuan pencairan tidak bisa dibatalkan.",
+      );
+    }
+  }
+}
+
 export class SetAgentBsiCmsDilaporkanUseCase {
   constructor(private readonly repo: IAgentPencairanRepository) {}
 
