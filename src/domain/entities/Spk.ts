@@ -61,6 +61,7 @@ export interface SpkEntity {
   notesPekerjaan: string | null;
   jatuhTempo: Date | null;
   fileSpk: string | null;
+  fileRab: string | null;
   mandorId: number;
   mandor: MandorSummary;
   statusApproval: SpkApprovalStatus;

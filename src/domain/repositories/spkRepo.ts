@@ -365,6 +365,7 @@ export class SpkRepository implements ISpkRepository {
             notesPekerjaan: data.notesPekerjaan ?? null,
             jatuhTempo: data.jatuhTempo ?? null,
             fileSpk: data.fileSpk ?? null,
+            fileRab: data.fileRab ?? null,
             mandorId: data.mandorId,
             statusApproval: ApprovalStatus.PENDING,
             diajukanOlehId: data.diajukanOlehId ?? null,
@@ -411,6 +412,7 @@ export class SpkRepository implements ISpkRepository {
           notesPekerjaan: data.notesPekerjaan ?? null,
           jatuhTempo: data.jatuhTempo ?? null,
           fileSpk: data.fileSpk ?? null,
+          fileRab: data.fileRab ?? null,
           mandorId: data.mandorId,
           statusApproval: ApprovalStatus.PENDING,
           diajukanOlehId: data.diajukanOlehId ?? null,
@@ -529,6 +531,7 @@ export class SpkRepository implements ISpkRepository {
         }
         if (data.jatuhTempo !== undefined) updateData.jatuhTempo = data.jatuhTempo;
         if (data.fileSpk !== undefined) updateData.fileSpk = data.fileSpk;
+        if (data.fileRab !== undefined) updateData.fileRab = data.fileRab;
         if (data.mandorId !== undefined) {
           updateData.mandor = { connect: { id: mandorId } };
         }
@@ -618,6 +621,7 @@ export class SpkRepository implements ISpkRepository {
       }
       if (data.jatuhTempo !== undefined) updateData.jatuhTempo = data.jatuhTempo;
       if (data.fileSpk !== undefined) updateData.fileSpk = data.fileSpk;
+      if (data.fileRab !== undefined) updateData.fileRab = data.fileRab;
       if (data.mandorId !== undefined) {
         updateData.mandor = { connect: { id: mandorId } };
       }

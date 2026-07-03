@@ -26,20 +26,30 @@ export class CreateSpkUseCase {
 
   async execute(
     data: CreateSpkDTO,
-    fileBuffer?: Buffer,
+    fileSpkBuffer?: Buffer,
+    fileRabBuffer?: Buffer,
     userId?: number,
   ): Promise<SpkEntity> {
     let fileSpk = data.fileSpk ?? null;
-    if (fileBuffer) {
+    if (fileSpkBuffer) {
       fileSpk = await this.cloudinary.uploadFile(
-        fileBuffer,
+        fileSpkBuffer,
         "bumantara/spk",
+      );
+    }
+
+    let fileRab = data.fileRab ?? null;
+    if (fileRabBuffer) {
+      fileRab = await this.cloudinary.uploadFile(
+        fileRabBuffer,
+        "bumantara/spk/rab",
       );
     }
 
     const created = await this.repo.create({
       ...data,
       fileSpk,
+      fileRab,
       diajukanOlehId: userId ?? data.diajukanOlehId,
     });
 
@@ -67,22 +77,32 @@ export class UpdateSpkUseCase {
   async execute(
     id: number,
     data: UpdateSpkDTO,
-    fileBuffer?: Buffer,
+    fileSpkBuffer?: Buffer,
+    fileRabBuffer?: Buffer,
   ): Promise<SpkEntity> {
     const existing = await this.repo.findById(id);
     if (!existing) throw new NotFoundError("SPK tidak ditemukan");
 
     let fileSpk = data.fileSpk;
-    if (fileBuffer) {
+    if (fileSpkBuffer) {
       fileSpk = await this.cloudinary.uploadFile(
-        fileBuffer,
+        fileSpkBuffer,
         "bumantara/spk",
+      );
+    }
+
+    let fileRab = data.fileRab;
+    if (fileRabBuffer) {
+      fileRab = await this.cloudinary.uploadFile(
+        fileRabBuffer,
+        "bumantara/spk/rab",
       );
     }
 
     return await this.repo.update(id, {
       ...data,
       ...(fileSpk !== undefined ? { fileSpk } : {}),
+      ...(fileRab !== undefined ? { fileRab } : {}),
     });
   }
 }

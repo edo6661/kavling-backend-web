@@ -14,6 +14,11 @@ import {
 } from "../../validations/spkSchema.js";
 import type { SpkController } from "../controllers/spkController.js";
 
+const spkDocumentUpload = upload.fields([
+  { name: "fileSpk", maxCount: 1 },
+  { name: "fileRab", maxCount: 1 },
+]);
+
 export const createSpkRoutes = (controller: SpkController): Router => {
   const router = Router();
 
@@ -22,7 +27,7 @@ export const createSpkRoutes = (controller: SpkController): Router => {
   router.post(
     "/",
     requirePermission("SPK", "create"),
-    upload.single("fileSpk"),
+    spkDocumentUpload,
     validate(createSpkSchema),
     controller.create,
   );
@@ -44,7 +49,7 @@ export const createSpkRoutes = (controller: SpkController): Router => {
   router.patch(
     "/:id",
     requirePermission("SPK", "update"),
-    upload.single("fileSpk"),
+    spkDocumentUpload,
     validate(updateSpkSchema),
     controller.update,
   );

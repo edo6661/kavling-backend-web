@@ -71,6 +71,7 @@ export class SpkMapper {
       notesPekerjaan: row.notesPekerjaan,
       jatuhTempo: row.jatuhTempo,
       fileSpk: row.fileSpk,
+      fileRab: row.fileRab,
       mandorId: row.mandorId,
       mandor: row.mandor,
       statusApproval: row.statusApproval,

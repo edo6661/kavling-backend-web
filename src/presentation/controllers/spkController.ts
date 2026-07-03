@@ -21,6 +21,7 @@ import type {
 import { getSpkPaginatedSchema, getSpkByIdSchema } from "../../validations/spkSchema.js";
 import type { SpkFilterDTO } from "../../domain/dtos/SpkDTO.js";
 import { omitUndefined } from "../../utils/object.js";
+import { getSpkUploadBuffers } from "../../utils/spkUpload.js";
 
 export class SpkController {
   constructor(
@@ -37,10 +38,11 @@ export class SpkController {
     req: TypedRequest<typeof createSpkSchema.body>,
     res: Response,
   ): Promise<void> => {
-    const file = req.file as Express.Multer.File | undefined;
+    const { fileSpkBuffer, fileRabBuffer } = getSpkUploadBuffers(req);
     const result = await this.createUseCase.execute(
       omitUndefined(req.body),
-      file?.buffer,
+      fileSpkBuffer,
+      fileRabBuffer,
       req.user?.userId,
     );
     sendResponse(res, StatusCodes.CREATED, "SPK berhasil diajukan dan menunggu persetujuan", result);
@@ -55,11 +57,12 @@ export class SpkController {
     res: Response,
   ): Promise<void> => {
     const id = parseInt(req.params.id, 10);
-    const file = req.file as Express.Multer.File | undefined;
+    const { fileSpkBuffer, fileRabBuffer } = getSpkUploadBuffers(req);
     const result = await this.updateUseCase.execute(
       id,
       omitUndefined(req.body),
-      file?.buffer,
+      fileSpkBuffer,
+      fileRabBuffer,
     );
     sendResponse(res, StatusCodes.OK, "SPK berhasil diperbarui", result);
   };

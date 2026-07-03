@@ -654,6 +654,7 @@ model Spk {
   notesPekerjaan String?   @map("notes_pekerjaan") @db.Text
   jatuhTempo     DateTime? @map("jatuh_tempo") @db.Date
   fileSpk        String?   @map("file_spk") @db.VarChar(255)
+  fileRab        String?   @map("file_rab") @db.VarChar(255)
   mandorId       Int       @map("mandor_id")
   statusApproval ApprovalStatus @default(APPROVED) @map("status_approval")
   diajukanOlehId Int?      @map("diajukan_oleh_id")
