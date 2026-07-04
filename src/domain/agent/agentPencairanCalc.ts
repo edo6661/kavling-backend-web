@@ -79,11 +79,11 @@ export interface AgentPencairanCalcContext {
     closingNominal: number | null;
   } | null;
   nilaiAjb: number;
-  tagihanList: Array<{
+  tagihanList: {
     tujuan?: string | null;
     pembayaran: string;
     status: string;
-  }>;
+  }[];
   hasPpjb: boolean;
   hasSp3k: boolean;
   hasAjb: boolean;
@@ -132,7 +132,7 @@ export interface PencairanExistingRecord {
 }
 
 export function sumPotonganPphSudahDiajukan(
-  records: Array<{ potonganPph: number }>,
+  records: { potonganPph: number }[],
 ): number {
   return records.reduce((s, r) => s + Number(r.potonganPph), 0);
 }
@@ -140,7 +140,7 @@ export function sumPotonganPphSudahDiajukan(
 /** PPh total sekali per penjualan; pengajuan berikutnya tidak memotong lagi */
 export function calcPotonganPphSisa(
   pphTotalPenuh: number,
-  existingRecords: Array<{ potonganPph: number }>,
+  existingRecords: { potonganPph: number }[],
 ): number {
   const sudah = sumPotonganPphSudahDiajukan(existingRecords);
   return Math.max(0, pphTotalPenuh - sudah);
@@ -196,7 +196,9 @@ export function hasAkadKreditComplete(
 export function isBookingFeePaid(
   tagihanList: AgentPencairanCalcContext["tagihanList"],
   bookingFeeLunasBatal = false,
+  penjualanStatus?: string | null,
 ): boolean {
+  if (isPenjualanBatal(penjualanStatus)) return bookingFeeLunasBatal;
   if (bookingFeeLunasBatal) return true;
   return tagihanList.some(
     (t) =>
@@ -248,6 +250,7 @@ export function getTotalFeeReferensi(ctx: AgentPencairanCalcContext): number {
   const bookingPaid = isBookingFeePaid(
     ctx.tagihanList,
     ctx.bookingFeeLunasBatal,
+    ctx.penjualanStatus,
   );
   const isBatal = isPenjualanBatal(ctx.penjualanStatus);
 
@@ -272,7 +275,7 @@ export function calcPotonganPph(
 }
 
 export function sumSudahDiajukan(
-  records: Array<{ closingNominal: number; marketingNominal: number; tahap: AgentPencairanTahap }>,
+  records: { closingNominal: number; marketingNominal: number; tahap: AgentPencairanTahap }[],
 ): PencairanSudahDiajukan {
   return {
     closingNominal: records.reduce((s, r) => s + Number(r.closingNominal), 0),
@@ -328,6 +331,7 @@ function getClosingEligibility(
   const bookingPaid = isBookingFeePaid(
     ctx.tagihanList,
     ctx.bookingFeeLunasBatal,
+    ctx.penjualanStatus,
   );
   const nominalSisa = Math.max(0, closingFull - sudah.closingNominal);
 
@@ -374,6 +378,7 @@ function getMarketingEligibility(
   const bookingPaid = isBookingFeePaid(
     ctx.tagihanList,
     ctx.bookingFeeLunasBatal,
+    ctx.penjualanStatus,
   );
   const fullMarketing = getFullMarketingFee(ctx);
 
@@ -603,6 +608,7 @@ export function getPencairanPreview(
   const bookingPaid = isBookingFeePaid(
     ctx.tagihanList,
     ctx.bookingFeeLunasBatal,
+    ctx.penjualanStatus,
   );
   const closingFull = getClosingFeeAmount(
     bookingPaid,

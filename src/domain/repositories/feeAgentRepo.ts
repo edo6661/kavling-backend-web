@@ -24,24 +24,14 @@ const includeRelations = {
   },
 } satisfies Prisma.FeeAgentInclude;
 
-/** Penjualan yang boleh punya baris fee_agent (termasuk BATAL + booking fee lunas). */
+/** Penjualan yang boleh punya baris fee_agent (termasuk BATAL + flag booking fee lunas). */
 const penjualanEligibleForFeeAgentWhere = {
   agentId: { not: null },
   OR: [
     { status: { not: "BATAL" } },
     {
       status: "BATAL",
-      OR: [
-        { bookingFeeLunasBatal: true },
-        {
-          tagihan: {
-            some: {
-              tujuan: "BOOKING_FEE",
-              status: "LUNAS",
-            },
-          },
-        },
-      ],
+      bookingFeeLunasBatal: true,
     },
   ],
 } satisfies Prisma.PenjualanWhereInput;
