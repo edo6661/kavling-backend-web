@@ -1,4 +1,5 @@
 import type { AgentPencairanEntity } from "../../domain/entities/AgentPencairan.js";
+import { formatPencairanTahapLabel } from "../../domain/agent/agentPencairanCalc.js";
 import type { NotificationPayload } from "../../infrastructure/notifications/NotificationService.js";
 
 function formatKavlingLabel(record: AgentPencairanEntity): string {
@@ -15,12 +16,12 @@ export function buildAgentPencairanBaruNotification(
   const agentName = record.agent?.nama ?? "Agent";
   const customerName = record.penjualan?.customer?.nama ?? "customer";
   const kavling = formatKavlingLabel(record);
-  const tahapLabel = record.tahap === "AJB" ? "AJB" : "PPJB";
+  const tahapLabel = formatPencairanTahapLabel(record.tahap, null);
 
   return {
     type: "AGENT_PENCAIRAN",
     title: "Pengajuan Pencairan Agent",
-    message: `${agentName} — ${customerName} (${kavling}): pengajuan pencairan tahap ${tahapLabel} menunggu pembayaran.`,
+    message: `${agentName} — ${customerName} (${kavling}): pengajuan ${tahapLabel} menunggu pembayaran.`,
     data: {
       agentPencairanId: record.id,
       agentId: record.agentId,
