@@ -272,6 +272,7 @@ import { RolePermissionController } from "../../presentation/controllers/rolePer
 import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
 import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
 import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
+import { LunaskanBookingFeeUseCase } from "../../application/usecases/penjualan/LunaskanBookingFeeUseCase.js";
 import { KodeBillingPphRepository } from "../../domain/repositories/kodeBillingPphRepo.js";
 import {
   UploadKodeBillingPphUseCase,
@@ -670,6 +671,16 @@ export const createContainer = (dbClient: PrismaClient) => {
     cloudinaryService,
     generateSprPdfUseCase,
   );
+  const approveBuktiTagihanUseCase = new ApproveBuktiTagihanUseCase(
+    tagihanRepo,
+    cloudinaryService,
+    penjualanRepo,
+    generateSprPdfUseCase,
+  );
+  const lunaskanBookingFeeUseCase = new LunaskanBookingFeeUseCase(
+    dbClient,
+    approveBuktiTagihanUseCase,
+  );
   const penjualanController = new PenjualanController(
     createPenjualanUseCase,
     getPenjualanPaginatedUseCase,
@@ -684,6 +695,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     getPengajuanBatalUseCase,
     getPengajuanGantiKavlingUseCase,
     regenerateSprUseCase,
+    lunaskanBookingFeeUseCase,
   );
 
   const uploadBuktiTagihanUseCase = new UploadBuktiTagihanUseCase(
@@ -698,12 +710,6 @@ export const createContainer = (dbClient: PrismaClient) => {
   const saveTagihanSignatureUseCase = new SaveTagihanSignatureUseCase(
     dbClient,
     cloudinaryService,
-  );
-  const approveBuktiTagihanUseCase = new ApproveBuktiTagihanUseCase(
-    tagihanRepo,
-    cloudinaryService,
-    penjualanRepo,
-    generateSprPdfUseCase,
   );
   const removeBuktiTagihanUseCase = new RemoveBuktiTagihanUseCase(
     tagihanRepo,

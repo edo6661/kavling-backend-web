@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   authenticate,
   requirePermission,
+  requireRole,
 } from "../../middlewares/authMiddleware.js";
 import { validate } from "../../middlewares/validate.js";
 import {
@@ -13,6 +14,7 @@ import {
   updateBatalPenjualanSchema,
   uploadSignatureSchema,
   approveSchema,
+  lunaskanBookingFeeSchema,
 } from "../../validations/penjualanSchema.js";
 import type { PenjualanController } from "../controllers/penjualanController.js";
 import { upload } from "../../middlewares/upload.js";
@@ -101,6 +103,12 @@ export const createPenjualanRoutes = (
     "/:id/generate-spr",
     requirePermission("PENJUALAN", "update"),
     controller.regenerateSpr,
+  );
+  router.post(
+    "/:id/lunaskan-booking-fee",
+    requireRole(["SUPERADMIN", "FINANCE"]),
+    validate(lunaskanBookingFeeSchema),
+    controller.lunaskanBookingFee,
   );
 
   return router;

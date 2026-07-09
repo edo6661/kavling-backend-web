@@ -35,6 +35,7 @@ import { Role } from "@prisma/client";
 import { NotFoundError } from "../../domain/errors/NotFoundError.js";
 import { omitUndefined } from "../../utils/object.js";
 import type { RegenerateSprUseCase } from "../../application/usecases/penjualan/RegenerateSprUseCase.js";
+import type { LunaskanBookingFeeUseCase } from "../../application/usecases/penjualan/LunaskanBookingFeeUseCase.js";
 import {
   resolveAgentIdFilter,
   resolveAgentNameForUser,
@@ -55,6 +56,7 @@ export class PenjualanController {
     private readonly getPengajuanBatalUseCase: GetPengajuanBatalUseCase,
     private readonly getPengajuanGantiKavlingUseCase: GetPengajuanGantiKavlingUseCase,
     private readonly regenerateSprUseCase: RegenerateSprUseCase,
+    private readonly lunaskanBookingFeeUseCase: LunaskanBookingFeeUseCase,
   ) {}
 
   create = async (
@@ -362,5 +364,21 @@ export class PenjualanController {
       "Dokumen SPR berhasil di-generate ulang dengan aman.",
       result,
     );
+  };
+
+  lunaskanBookingFee = async (
+    req: TypedRequest<
+      undefined,
+      any,
+      { id: string }
+    >,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = req.params;
+    const result = await this.lunaskanBookingFeeUseCase.execute(id);
+    const message = result.alreadyLunas
+      ? "Booking fee sudah lunas sebelumnya."
+      : "Booking fee berhasil dilunaskan.";
+    sendResponse(res, StatusCodes.OK, message, result);
   };
 }
