@@ -8,6 +8,7 @@ import { validate } from "../../middlewares/validate.js";
 import {
   cancelPenjualanSchema,
   createPenjualanSchema,
+  createManualBatalPenjualanSchema,
   gantiKavlingSchema,
   getPenjualanPaginatedSchema,
   updatePenjualanSchema,
@@ -61,6 +62,14 @@ export const createPenjualanRoutes = (
     requirePermission("PENJUALAN", "create"),
     validate(createPenjualanSchema),
     controller.create,
+  );
+
+  /** Create penjualan BATAL historis — tidak mengubah status kavling */
+  router.post(
+    "/batal",
+    requirePermission("BATAL_TRANSAKSI", "update"),
+    validate(createManualBatalPenjualanSchema),
+    controller.createManualBatal,
   );
 
   router.patch(

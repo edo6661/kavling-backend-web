@@ -10,6 +10,7 @@ import type { UploadBuktiPenjualanUseCase } from "../../application/usecases/pen
 import type { SaveSignatureUseCase } from "../../application/usecases/penjualan/SaveSignatureUseCase.js";
 import type { UpdatePenjualanUseCase } from "../../application/usecases/penjualan/UpdatePenjualanUseCase.js";
 import type { UpdateBatalPenjualanUseCase } from "../../application/usecases/penjualan/UpdateBatalPenjualanUseCase.js";
+import type { CreateManualBatalPenjualanUseCase } from "../../application/usecases/penjualan/CreateManualBatalPenjualanUseCase.js";
 import type { GantiKavlingUseCase } from "../../application/usecases/penjualan/GantiKavlingUseCase.js";
 import type { ApproveBatalUseCase } from "../../application/usecases/penjualan/ApproveBatalUseCase.js";
 import type { ApproveGantiKavlingUseCase } from "../../application/usecases/penjualan/ApproveGantiKavlingUseCase.js";
@@ -19,6 +20,7 @@ import type { GetPengajuanGantiKavlingUseCase } from "../../application/usecases
 import type {
   cancelPenjualanSchema,
   createPenjualanSchema,
+  createManualBatalPenjualanSchema,
   gantiKavlingSchema,
   updatePenjualanSchema,
   updateBatalPenjualanSchema,
@@ -50,6 +52,7 @@ export class PenjualanController {
     private readonly saveSignatureUseCase: SaveSignatureUseCase,
     private readonly updateUseCase: UpdatePenjualanUseCase,
     private readonly updateBatalUseCase: UpdateBatalPenjualanUseCase,
+    private readonly createManualBatalUseCase: CreateManualBatalPenjualanUseCase,
     private readonly gantiKavlingUseCase: GantiKavlingUseCase,
     private readonly approveBatalUseCase: ApproveBatalUseCase,
     private readonly approveGantiKavlingUseCase: ApproveGantiKavlingUseCase,
@@ -242,6 +245,23 @@ export class PenjualanController {
       res,
       StatusCodes.OK,
       "Data penjualan batal berhasil diperbarui.",
+      result,
+    );
+  };
+  createManualBatal = async (
+    req: TypedRequest<typeof createManualBatalPenjualanSchema.body>,
+    res: Response,
+  ): Promise<void> => {
+    const createdBy = req.user?.username ?? "Admin";
+    const result = await this.createManualBatalUseCase.execute(
+      req.body,
+      createdBy,
+    );
+
+    sendResponse(
+      res,
+      StatusCodes.CREATED,
+      "Penjualan batal berhasil dibuat. Status kavling tidak diubah.",
       result,
     );
   };

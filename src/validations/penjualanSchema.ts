@@ -190,3 +190,19 @@ export const updateBatalPenjualanSchema = {
     })
     .partial(),
 };
+
+/** Create penjualan BATAL historis — tidak mengubah status kavling */
+export const createManualBatalPenjualanSchema = {
+  body: z.object({
+    customerId: z.coerce.number().int().positive("Customer wajib dipilih"),
+    blok: z.string().min(1, "Blok wajib diisi").max(10, "Blok max 10 karakter"),
+    nomorUnit: z
+      .string()
+      .min(1, "Nomor unit wajib diisi")
+      .max(10, "No unit max 10 karakter"),
+    agent: z.string().min(1, "Agent wajib dipilih"),
+    alasanBatal: emptyAsUndefined(z.string().max(2000).optional()),
+    bookingFeeLunasBatal: z.boolean().optional().default(true),
+    tanggal: emptyAsUndefined(z.string().optional()),
+  }),
+};
