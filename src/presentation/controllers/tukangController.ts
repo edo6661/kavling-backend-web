@@ -48,6 +48,18 @@ export class TukangController {
           "NIK tukang sudah terdaftar untuk mandor lain.",
         );
       }
+      if (msg === "TUKANG_NOT_FOUND") {
+        throw new AppError(StatusCodes.NOT_FOUND, "Tukang tidak ditemukan");
+      }
+      if (msg === "TUKANG_NIK_DUPLICATE") {
+        throw new AppError(StatusCodes.CONFLICT, "NIK tukang sudah terdaftar.");
+      }
+      if (msg === "NIK_INVALID") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "NIK harus tepat 16 digit angka",
+        );
+      }
       if (msg === "TUKANG_JUMLAH_ANAK_REQUIRED") {
         throw new AppError(
           StatusCodes.BAD_REQUEST,

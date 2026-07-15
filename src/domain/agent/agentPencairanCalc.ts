@@ -1,5 +1,5 @@
 import { effectiveTagihanTujuan } from "../tagihan/tagihanTujuan.js";
-import { extractClosingDpp } from "./agentPkpTax.js";
+import { extractClosingDpp, extractClosingPpn } from "./agentPkpTax.js";
 import {
   isAllProgressFileAjbComplete,
   isAllProgressFilePpjbComplete,
@@ -236,6 +236,17 @@ export function getEffectiveMarketingPct(
   return Number(agent.feeMarketingPct) || 0;
 }
 
+/** Nominal bruto closing (incl. PPN jika PKP) — sebelum extract DPP */
+export function getClosingFeeGross(
+  bookingPaid: boolean,
+  feeAgentClosing: number | null | undefined,
+  agentClosing: number | null | undefined,
+  isInHouse = false,
+): number {
+  if (isInHouse || !bookingPaid) return 0;
+  return Number(feeAgentClosing) || Number(agentClosing) || 0;
+}
+
 export function getClosingFeeAmount(
   bookingPaid: boolean,
   feeAgentClosing: number | null | undefined,
@@ -243,9 +254,10 @@ export function getClosingFeeAmount(
   isPkp = false,
   isInHouse = false,
 ): number {
-  if (isInHouse || !bookingPaid) return 0;
-  const gross = Number(feeAgentClosing) || Number(agentClosing) || 0;
-  return extractClosingDpp(gross, isPkp);
+  return extractClosingDpp(
+    getClosingFeeGross(bookingPaid, feeAgentClosing, agentClosing, isInHouse),
+    isPkp,
+  );
 }
 
 /** Komisi marketing penuh — dari nilai AJB (cash & KPR) */
@@ -280,8 +292,8 @@ export function calcPotonganPph(
   totalFeeReferensi: number,
   potonganPphPct: number,
 ): number {
-  /** total fee = closing + marketing; pot. PPh = total fee × % */
-  return totalFeeReferensi * (potonganPphPct / 100);
+  /** total fee = closing (DPP) + marketing; pot. PPh = total fee × % (bulat rupiah) */
+  return Math.round(totalFeeReferensi * (potonganPphPct / 100));
 }
 
 export function sumSudahDiajukan(
@@ -781,7 +793,26 @@ export function calcPencairanSubmit(
       ? Number(ppjb.potonganPph) + pphForThisSubmit
       : pphForThisSubmit;
 
-  const finalGross = finalClosing + finalMarketing;
+  // PKP: PPh dihitung dari DPP, tapi PPN closing ikut ditransfer → TF = DPP + PPN + marketing − PPh
+  const bookingPaid = isBookingFeePaid(
+    ctx.tagihanList,
+    ctx.bookingFeeLunasBatal,
+    ctx.penjualanStatus,
+  );
+  const closingPpn =
+    !!ctx.agent.isPkp && finalClosing > 0
+      ? extractClosingPpn(
+          getClosingFeeGross(
+            bookingPaid,
+            ctx.feeAgent?.closingNominal,
+            ctx.agent.feeClosingNominal,
+            ctx.agent.isInHouse,
+          ),
+          true,
+        )
+      : 0;
+
+  const finalGross = finalClosing + finalMarketing + closingPpn;
   const finalTotal = finalGross - potonganPph;
 
   if (finalTotal <= 0) {

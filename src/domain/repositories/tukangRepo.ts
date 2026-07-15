@@ -114,8 +114,38 @@ export class TukangRepository {
   ): Promise<TukangEntity> {
     const nik = data.nik.trim();
     const nama = data.nama.trim();
+    const originalNik = data.originalNik?.trim() || null;
     const maritalData = buildMaritalUpdateData(data);
     const isMandor = ctx.role === Role.MANDOR;
+
+    // Edit: lookup by NIK lama agar koreksi NIK meng-update baris yang sama (bukan create).
+    if (originalNik) {
+      const existing = await this.db.tukang.findUnique({
+        where: { nik: originalNik },
+      });
+      if (!existing) throw new Error("TUKANG_NOT_FOUND");
+      assertMandorCanAccess(existing, ctx);
+
+      if (nik !== originalNik) {
+        assertNik16ForNewRecord(nik);
+        const conflict = await this.db.tukang.findUnique({ where: { nik } });
+        if (conflict && conflict.id !== existing.id) {
+          throw new Error("TUKANG_NIK_DUPLICATE");
+        }
+      }
+
+      const row = await this.db.tukang.update({
+        where: { id: existing.id },
+        data: {
+          nik,
+          nama,
+          ...maritalData,
+          ...(isMandor ? { mandorId: ctx.userId } : {}),
+        },
+        include: { mandor: { select: { username: true } } },
+      });
+      return toEntity(row);
+    }
 
     const existing = await this.db.tukang.findUnique({ where: { nik } });
 

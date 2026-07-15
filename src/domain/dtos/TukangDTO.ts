@@ -1,6 +1,8 @@
 export interface UpsertTukangDTO {
   nik: string;
   nama: string;
+  /** NIK lama saat edit — dipakai untuk lookup baris yang diubah (termasuk koreksi NIK). */
+  originalNik?: string | null | undefined;
   sudahMenikah?: boolean | null | undefined;
   jumlahAnak?: number | null | undefined;
 }

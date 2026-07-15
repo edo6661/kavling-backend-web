@@ -33,6 +33,7 @@ export const upsertTukangSchema = {
     .object({
       nik: z.string().trim().min(1).max(20),
       nama: z.string().trim().min(1).max(150),
+      originalNik: z.string().trim().min(1).max(20).optional().nullable(),
       sudahMenikah: z.boolean().optional().nullable(),
       jumlahAnak: z.coerce
         .number()

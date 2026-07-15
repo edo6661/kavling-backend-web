@@ -23,4 +23,14 @@ describe("upsertTukangSchema", () => {
       }),
     ).toThrow();
   });
+
+  it("accepts optional originalNik for edit/correct NIK flow", () => {
+    const parsed = upsertTukangSchema.body.parse({
+      ...baseBody,
+      originalNik: "33091721049199001",
+      nik: "3201234567890123",
+    });
+    expect(parsed.originalNik).toBe("33091721049199001");
+    expect(parsed.nik).toBe(baseBody.nik);
+  });
 });
