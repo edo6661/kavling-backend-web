@@ -69,6 +69,29 @@ function assertMandorCanAccess(
 export class TukangRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  /**
+   * NIK/nama di pengajuan upah disimpan sebagai snapshot.
+   * Saat master tukang dikoreksi, sync agar Convert to XML & halaman Upah tetap valid.
+   */
+  private async syncUpahBarisSnapshot(
+    tukangId: number,
+    next: { nik: string; nama: string },
+    previousNik?: string | null,
+  ): Promise<void> {
+    await this.db.spkPembayaranUpahBaris.updateMany({
+      where: { tukangId },
+      data: { nik: next.nik, nama: next.nama },
+    });
+
+    // Baris orphan (tukangId null) yang masih pakai NIK lama ikut dilink + dikoreksi.
+    if (previousNik && previousNik !== next.nik) {
+      await this.db.spkPembayaranUpahBaris.updateMany({
+        where: { nik: previousNik, tukangId: null },
+        data: { nik: next.nik, nama: next.nama, tukangId },
+      });
+    }
+  }
+
   async findAll(
     filters: TukangFilterDTO | undefined,
     ctx: TukangListContext,
@@ -144,6 +167,11 @@ export class TukangRepository {
         },
         include: { mandor: { select: { username: true } } },
       });
+      await this.syncUpahBarisSnapshot(
+        existing.id,
+        { nik, nama },
+        originalNik,
+      );
       return toEntity(row);
     }
 
@@ -160,6 +188,10 @@ export class TukangRepository {
           ...(isMandor ? { mandorId: ctx.userId } : {}),
         },
         include: { mandor: { select: { username: true } } },
+      });
+      await this.syncUpahBarisSnapshot(existing.id, {
+        nik: existing.nik,
+        nama,
       });
       return toEntity(row);
     }

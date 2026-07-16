@@ -27,6 +27,8 @@ export const spkPembayaranInclude = {
       nominal: true,
       tukang: {
         select: {
+          nik: true,
+          nama: true,
           sudahMenikah: true,
           jumlahAnak: true,
         },
@@ -123,8 +125,9 @@ export class SpkPembayaranMapper {
         id: b.id,
         spkPembayaranId: b.spkPembayaranId,
         tukangId: b.tukangId,
-        nik: b.nik,
-        nama: b.nama,
+        // Prefer master tukang: snapshot bisa usang setelah koreksi NIK/nama.
+        nik: b.tukang?.nik ?? b.nik,
+        nama: b.tukang?.nama ?? b.nama,
         nominal: Number(b.nominal),
         sudahMenikah: b.tukang?.sudahMenikah ?? null,
         jumlahAnak: b.tukang?.jumlahAnak ?? null,
