@@ -6,6 +6,7 @@ import {
 import { validate } from "../../middlewares/validate.js";
 import { upload } from "../../middlewares/upload.js";
 import {
+  deleteTukangSchema,
   getTukangListSchema,
   uploadTukangKtpSchema,
   upsertTukangSchema,
@@ -24,6 +25,13 @@ export const createTukangRoutes = (controller: TukangController): Router => {
     controller.getList,
   );
 
+  router.get(
+    "/export/excel",
+    requirePermission(["SPK", "PROGRESS_PROYEK"], "read"),
+    validate(getTukangListSchema),
+    controller.exportExcel,
+  );
+
   router.post(
     "/",
     requirePermission(["SPK", "PROGRESS_PROYEK"], "read"),
@@ -37,6 +45,13 @@ export const createTukangRoutes = (controller: TukangController): Router => {
     upload.single("file"),
     validate(uploadTukangKtpSchema),
     controller.uploadKtp,
+  );
+
+  router.delete(
+    "/:id",
+    requirePermission(["SPK", "PROGRESS_PROYEK"], "read"),
+    validate(deleteTukangSchema),
+    controller.delete,
   );
 
   return router;

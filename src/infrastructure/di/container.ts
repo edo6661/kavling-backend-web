@@ -24,6 +24,7 @@ import {
 import { TukangRepository } from "../../domain/repositories/tukangRepo.js";
 import { TukangController } from "../../presentation/controllers/tukangController.js";
 import { UploadTukangKtpUseCase } from "../../application/usecases/tukang/UploadTukangKtpUseCase.js";
+import { ExportTukangsUseCase } from "../../application/usecases/tukang/ExportTukangsUseCase.js";
 import {
   BayarNotarisPembayaranUseCase,
   GetNotarisPembayaranPaginatedUseCase,
@@ -1087,9 +1088,11 @@ export const createContainer = (dbClient: PrismaClient) => {
     tukangRepo,
     cloudinaryService,
   );
+  const exportTukangsUseCase = new ExportTukangsUseCase(tukangRepo);
   const tukangController = new TukangController(
     tukangRepo,
     uploadTukangKtpUseCase,
+    exportTukangsUseCase,
   );
 
   const notarisPembayaranRepo = new NotarisPembayaranRepository(dbClient);

@@ -60,4 +60,10 @@ export const uploadTukangKtpSchema = {
   }),
 };
 
+export const deleteTukangSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+};
+
 export const tukangMaritalFieldsSchema = tukangMaritalBodySchema;

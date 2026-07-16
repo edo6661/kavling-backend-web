@@ -3,6 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../../utils/response.js";
 import type { TukangRepository } from "../../domain/repositories/tukangRepo.js";
 import type { UploadTukangKtpUseCase } from "../../application/usecases/tukang/UploadTukangKtpUseCase.js";
+import type { ExportTukangsUseCase } from "../../application/usecases/tukang/ExportTukangsUseCase.js";
 import { getTukangListSchema } from "../../validations/tukangSchema.js";
 import type { TypedRequest } from "../../types/request.js";
 import type { upsertTukangSchema } from "../../validations/tukangSchema.js";
@@ -12,6 +13,7 @@ export class TukangController {
   constructor(
     private readonly tukangRepo: TukangRepository,
     private readonly uploadKtpUseCase: UploadTukangKtpUseCase,
+    private readonly exportTukangsUseCase: ExportTukangsUseCase,
   ) {}
 
   private listContext(req: Request) {
@@ -28,6 +30,23 @@ export class TukangController {
       this.listContext(req),
     );
     sendResponse(res, StatusCodes.OK, "Daftar tukang berhasil diambil", result);
+  };
+
+  exportExcel = async (req: Request, res: Response): Promise<void> => {
+    const { search } = getTukangListSchema.query.parse(req.query);
+    const excelBuffer = await this.exportTukangsUseCase.execute(
+      search ? { search } : undefined,
+      this.listContext(req),
+    );
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Data_Tukang_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(excelBuffer);
   };
 
   upsert = async (
@@ -96,6 +115,27 @@ export class TukangController {
         throw new AppError(
           StatusCodes.CONFLICT,
           "NIK tukang sudah terdaftar untuk mandor lain.",
+        );
+      }
+      throw err;
+    }
+  };
+
+  delete = async (req: Request, res: Response): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      throw new AppError(StatusCodes.BAD_REQUEST, "ID tukang tidak valid");
+    }
+    try {
+      await this.tukangRepo.deleteForUser(id, this.listContext(req));
+      sendResponse(res, StatusCodes.OK, "Tukang berhasil dihapus");
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "TUKANG_NIK_OTHER_MANDOR") {
+        throw new AppError(
+          StatusCodes.FORBIDDEN,
+          "Anda tidak berhak menghapus tukang milik mandor lain.",
         );
       }
       throw err;

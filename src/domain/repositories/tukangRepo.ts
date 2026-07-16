@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { Role } from "@prisma/client";
 import type {
   TukangFilterDTO,
@@ -6,6 +6,8 @@ import type {
   UpsertTukangDTO,
 } from "../dtos/TukangDTO.js";
 import type { TukangEntity } from "../entities/Tukang.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
 import { normalizeTukangMaritalForSave } from "../tukang/tukangMarital.js";
 
 const NIK_DIGIT_LENGTH = 16;
@@ -74,27 +76,32 @@ export class TukangRepository {
    * Saat master tukang dikoreksi, sync agar Convert to XML & halaman Upah tetap valid.
    */
   private async syncUpahBarisSnapshot(
+    tx: Prisma.TransactionClient,
     tukangId: number,
     next: { nik: string; nama: string },
     previousNik?: string | null,
   ): Promise<void> {
-    await this.db.spkPembayaranUpahBaris.updateMany({
+    await tx.spkPembayaranUpahBaris.updateMany({
       where: { tukangId },
       data: { nik: next.nik, nama: next.nama },
     });
 
     // Baris orphan (tukangId null) yang masih pakai NIK lama ikut dilink + dikoreksi.
     if (previousNik && previousNik !== next.nik) {
-      await this.db.spkPembayaranUpahBaris.updateMany({
+      await tx.spkPembayaranUpahBaris.updateMany({
         where: { nik: previousNik, tukangId: null },
         data: { nik: next.nik, nama: next.nama, tukangId },
       });
     }
   }
 
+  /**
+   * @param limit `null` = tanpa batas (untuk export). Default 500 untuk list UI.
+   */
   async findAll(
     filters: TukangFilterDTO | undefined,
     ctx: TukangListContext,
+    limit: number | null = 500,
   ): Promise<TukangEntity[]> {
     const search = filters?.search?.trim();
     const where =
@@ -122,7 +129,7 @@ export class TukangRepository {
     const rows = await this.db.tukang.findMany({
       where,
       orderBy: [{ nama: "asc" }],
-      take: 500,
+      ...(limit != null ? { take: limit } : {}),
       include: {
         mandor: { select: { username: true } },
       },
@@ -157,21 +164,25 @@ export class TukangRepository {
         }
       }
 
-      const row = await this.db.tukang.update({
-        where: { id: existing.id },
-        data: {
-          nik,
-          nama,
-          ...maritalData,
-          ...(isMandor ? { mandorId: ctx.userId } : {}),
-        },
-        include: { mandor: { select: { username: true } } },
+      const row = await this.db.$transaction(async (tx) => {
+        const updated = await tx.tukang.update({
+          where: { id: existing.id },
+          data: {
+            nik,
+            nama,
+            ...maritalData,
+            ...(isMandor ? { mandorId: ctx.userId } : {}),
+          },
+          include: { mandor: { select: { username: true } } },
+        });
+        await this.syncUpahBarisSnapshot(
+          tx,
+          existing.id,
+          { nik, nama },
+          originalNik,
+        );
+        return updated;
       });
-      await this.syncUpahBarisSnapshot(
-        existing.id,
-        { nik, nama },
-        originalNik,
-      );
       return toEntity(row);
     }
 
@@ -180,18 +191,21 @@ export class TukangRepository {
     if (existing) {
       assertMandorCanAccess(existing, ctx);
 
-      const row = await this.db.tukang.update({
-        where: { id: existing.id },
-        data: {
+      const row = await this.db.$transaction(async (tx) => {
+        const updated = await tx.tukang.update({
+          where: { id: existing.id },
+          data: {
+            nama,
+            ...maritalData,
+            ...(isMandor ? { mandorId: ctx.userId } : {}),
+          },
+          include: { mandor: { select: { username: true } } },
+        });
+        await this.syncUpahBarisSnapshot(tx, existing.id, {
+          nik: existing.nik,
           nama,
-          ...maritalData,
-          ...(isMandor ? { mandorId: ctx.userId } : {}),
-        },
-        include: { mandor: { select: { username: true } } },
-      });
-      await this.syncUpahBarisSnapshot(existing.id, {
-        nik: existing.nik,
-        nama,
+        });
+        return updated;
       });
       return toEntity(row);
     }
@@ -237,5 +251,25 @@ export class TukangRepository {
     });
     if (!row) return null;
     return toEntity(row);
+  }
+
+  async deleteForUser(id: number, ctx: TukangListContext): Promise<void> {
+    const existing = await this.db.tukang.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("Tukang tidak ditemukan");
+    assertMandorCanAccess(existing, ctx);
+
+    const usedInUpah = await this.db.spkPembayaranUpahBaris.count({
+      where: {
+        OR: [{ tukangId: id }, { nik: existing.nik }],
+      },
+    });
+
+    if (usedInUpah > 0) {
+      throw new ConflictError(
+        "Tidak bisa menghapus tukang karena tukang sudah ada di upah tukang atau SPK.",
+      );
+    }
+
+    await this.db.tukang.delete({ where: { id } });
   }
 }
