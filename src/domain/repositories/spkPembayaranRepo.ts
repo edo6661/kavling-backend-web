@@ -1138,7 +1138,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     };
   }
 
-  async updateKasbon(data: UpdateSpkKasbonDTO): Promise<SpkPembayaranEntity> {
+  async updateKasbon(
+    data: UpdateSpkKasbonDTO,
+    options?: { force?: boolean },
+  ): Promise<SpkPembayaranEntity> {
+    const force = options?.force === true;
     return await this.db.$transaction(async (tx) => {
       const existing = await tx.spkPembayaran.findUnique({
         where: { id: data.id },
@@ -1146,10 +1150,12 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       });
       if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
       if (existing.jenis !== "KASBON") throw new Error("NOT_KASBON");
-      if (!isEditablePenguranganStatus(existing.status)) {
-        throw new Error("ALREADY_PAID");
+      if (!force) {
+        if (!isEditablePenguranganStatus(existing.status)) {
+          throw new Error("ALREADY_PAID");
+        }
+        if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
       }
-      if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
 
       const isBatchRecord = existing.kasbonBaris.length > 0;
 
@@ -1207,17 +1213,23 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     });
   }
 
-  async updateUpah(data: UpdateSpkUpahDTO): Promise<SpkPembayaranEntity> {
+  async updateUpah(
+    data: UpdateSpkUpahDTO,
+    options?: { force?: boolean },
+  ): Promise<SpkPembayaranEntity> {
+    const force = options?.force === true;
     return await this.db.$transaction(async (tx) => {
       const existing = await tx.spkPembayaran.findUnique({
         where: { id: data.id },
       });
       if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
       if (existing.jenis !== "UPAH") throw new Error("NOT_UPAH");
-      if (!isEditablePenguranganStatus(existing.status)) {
-        throw new Error("ALREADY_PAID");
+      if (!force) {
+        if (!isEditablePenguranganStatus(existing.status)) {
+          throw new Error("ALREADY_PAID");
+        }
+        if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
       }
-      if (this.hasBuktiPembayaran(existing)) throw new Error("HAS_BUKTI");
       if (!data.baris.length) throw new Error("UPAH_BARIS_EMPTY");
 
       const pembayaranSpk = await tx.spkPembayaran.findUnique({
@@ -1282,6 +1294,18 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       await tx.spkPembayaran.delete({ where: { id } });
 
+      await this.syncSpkNominals(tx, existing.spkId);
+    });
+  }
+
+  async forceDeletePembayaran(id: number): Promise<void> {
+    await this.db.$transaction(async (tx) => {
+      const existing = await tx.spkPembayaran.findUnique({
+        where: { id },
+      });
+      if (!existing) throw new Error("SPK_PEMBAYARAN_NOT_FOUND");
+
+      await tx.spkPembayaran.delete({ where: { id } });
       await this.syncSpkNominals(tx, existing.spkId);
     });
   }

@@ -394,6 +394,6 @@ export class SpkPembayaranController {
       req.user!.userId,
       req.user!.role,
     );
-    sendResponse(res, StatusCodes.OK, "Pengajuan kasbon/upah berhasil dihapus", null);
+    sendResponse(res, StatusCodes.OK, "Pengajuan berhasil dihapus", null);
   };
 }

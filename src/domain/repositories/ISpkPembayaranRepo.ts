@@ -35,9 +35,17 @@ export interface ISpkPembayaranRepository {
     filters?: SpkPembayaranFilterDTO,
   ): Promise<OffsetPaginatedData<SpkPembayaranEntity>>;
   setBsiCmsDilaporkan(data: SetBsiCmsDilaporkanDTO): Promise<SpkPembayaranEntity[]>;
-  updateKasbon(data: UpdateSpkKasbonDTO): Promise<SpkPembayaranEntity>;
-  updateUpah(data: UpdateSpkUpahDTO): Promise<SpkPembayaranEntity>;
+  updateKasbon(
+    data: UpdateSpkKasbonDTO,
+    options?: { force?: boolean },
+  ): Promise<SpkPembayaranEntity>;
+  updateUpah(
+    data: UpdateSpkUpahDTO,
+    options?: { force?: boolean },
+  ): Promise<SpkPembayaranEntity>;
   deletePengurangan(id: number): Promise<void>;
+  /** Hard delete semua jenis & status; sync nominal SPK. Khusus Superadmin. */
+  forceDeletePembayaran(id: number): Promise<void>;
   approvePengajuan(
     id: number,
     disetujuiOlehId: number,

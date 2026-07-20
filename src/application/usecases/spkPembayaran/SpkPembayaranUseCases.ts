@@ -134,6 +134,24 @@ const toPengurangRows = (list: SpkPembayaranEntity[]): SpkPengurangTerminRow[] =
       return row;
     });
 
+function collectPembayaranFileUrls(record: SpkPembayaranEntity): string[] {
+  const urls: string[] = [];
+  const push = (value: string | null | undefined) => {
+    const trimmed = value?.trim();
+    if (trimmed) urls.push(trimmed);
+  };
+
+  push(record.buktiPembayaran);
+  for (const url of record.buktiPembayaranList ?? []) push(url);
+  push(record.dokumenInvoice);
+  push(record.dokumenMaterial);
+  push(record.dokumenBeritaAcara);
+  push(record.dokumenProgressSpk);
+  for (const baris of record.kasbonBaris ?? []) push(baris.fotoBon);
+
+  return [...new Set(urls)];
+}
+
 async function loadPenguranganForMutation(
   pembayaranRepo: SpkPembayaranRepository,
   spkRepo: ISpkRepository,
@@ -761,7 +779,9 @@ export class UpdateSpkKasbonUseCase {
     }
 
     try {
-      return await this.pembayaranRepo.updateKasbon(data);
+      return await this.pembayaranRepo.updateKasbon(data, {
+        force: userRole === Role.SUPERADMIN,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {
@@ -894,7 +914,9 @@ export class UpdateSpkUpahUseCase {
     }
 
     try {
-      return await this.pembayaranRepo.updateUpah(data);
+      return await this.pembayaranRepo.updateUpah(data, {
+        force: userRole === Role.SUPERADMIN,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {
@@ -934,6 +956,7 @@ export class DeleteSpkPenguranganUseCase {
   constructor(
     private readonly pembayaranRepo: SpkPembayaranRepository,
     private readonly spkRepo: ISpkRepository,
+    private readonly cloudinary: CloudinaryService,
   ) {}
 
   async execute(id: number, userId: number, userRole: string): Promise<void> {
@@ -943,12 +966,29 @@ export class DeleteSpkPenguranganUseCase {
       id,
     );
 
-    if (userRole === Role.MANDOR) {
+    const isSuperadmin = userRole === Role.SUPERADMIN;
+
+    if (!isSuperadmin && userRole === Role.MANDOR) {
       assertMandorCanDeletePengurangan(record, spk, userId);
     }
 
+    if (!isSuperadmin) {
+      if (record.jenis !== "KASBON" && record.jenis !== "UPAH") {
+        throw new AppError(
+          StatusCodes.BAD_REQUEST,
+          "Hanya Superadmin yang dapat menghapus pengajuan termin/retensi.",
+        );
+      }
+    }
+
+    const fileUrls = collectPembayaranFileUrls(record);
+
     try {
-      await this.pembayaranRepo.deletePengurangan(id);
+      if (isSuperadmin) {
+        await this.pembayaranRepo.forceDeletePembayaran(id);
+      } else {
+        await this.pembayaranRepo.deletePengurangan(id);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "SPK_PEMBAYARAN_NOT_FOUND") {
@@ -974,6 +1014,10 @@ export class DeleteSpkPenguranganUseCase {
       }
       throw err;
     }
+
+    await Promise.all(
+      fileUrls.map((url) => this.cloudinary.deleteImageByUrl(url)),
+    );
   }
 }
 
