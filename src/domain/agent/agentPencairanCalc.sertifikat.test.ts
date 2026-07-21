@@ -14,7 +14,7 @@ describe("agentPencairanCalc — multi sertifikat", () => {
     expect(total).toBe(500_000_000);
   });
 
-  it("hasPpjbComplete butuh semua tanah lengkap", () => {
+  it("hasPpjbComplete cukup PPJB urutan 1 (multi sertifikat tetap 1 PPJB)", () => {
     expect(
       hasPpjbComplete(
         {
@@ -23,17 +23,17 @@ describe("agentPencairanCalc — multi sertifikat", () => {
         },
         2,
       ),
-    ).toBe(false);
+    ).toBe(true);
 
     expect(
       hasPpjbComplete(
         {
-          filePpjb: "a.pdf",
+          filePpjb: null,
           sertifikatTambahan: [{ urutan: 2, filePpjb: "b.pdf" }],
         },
         2,
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("hasAjbComplete butuh semua tanah lengkap", () => {
