@@ -501,6 +501,15 @@ export class SpkRepository implements ISpkRepository {
         }
         if (data.nilaiKontrak !== undefined) {
           updateData.nilaiKontrak = new Prisma.Decimal(data.nilaiKontrak);
+          if (data.sisaNilaiKontrak === undefined) {
+            const paid =
+              data.nilaiSudahDibayarkan !== undefined
+                ? Number(data.nilaiSudahDibayarkan ?? 0)
+                : Number(existing.nilaiSudahDibayarkan ?? 0);
+            updateData.sisaNilaiKontrak = new Prisma.Decimal(
+              Math.max(0, data.nilaiKontrak - paid),
+            );
+          }
         }
         if (data.bankRekeningPtId !== undefined) {
           updateData.bankRekeningPt =
@@ -588,6 +597,15 @@ export class SpkRepository implements ISpkRepository {
       }
       if (data.nilaiKontrak !== undefined) {
         updateData.nilaiKontrak = new Prisma.Decimal(data.nilaiKontrak);
+        if (data.sisaNilaiKontrak === undefined) {
+          const paid =
+            data.nilaiSudahDibayarkan !== undefined
+              ? Number(data.nilaiSudahDibayarkan ?? 0)
+              : Number(existing.nilaiSudahDibayarkan ?? 0);
+          updateData.sisaNilaiKontrak = new Prisma.Decimal(
+            Math.max(0, data.nilaiKontrak - paid),
+          );
+        }
       }
       if (data.bankRekeningPtId !== undefined) {
         updateData.bankRekeningPt =

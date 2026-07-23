@@ -1,4 +1,5 @@
 import type { ISpkRepository } from "../../../domain/repositories/ISpkRepo.js";
+import type { SpkPembayaranRepository } from "../../../domain/repositories/spkPembayaranRepo.js";
 import type {
   CreateSpkDTO,
   SpkFilterDTO,
@@ -72,6 +73,7 @@ export class UpdateSpkUseCase {
   constructor(
     private readonly repo: ISpkRepository,
     private readonly cloudinary: CloudinaryService,
+    private readonly pembayaranRepo: SpkPembayaranRepository,
   ) {}
 
   async execute(
@@ -99,11 +101,22 @@ export class UpdateSpkUseCase {
       );
     }
 
-    return await this.repo.update(id, {
+    const shouldSyncNominals = data.nilaiKontrak !== undefined;
+
+    const updated = await this.repo.update(id, {
       ...data,
       ...(fileSpk !== undefined ? { fileSpk } : {}),
       ...(fileRab !== undefined ? { fileRab } : {}),
     });
+
+    // Recalc sisa + nominal termin pending dari pembayaran aktual.
+    if (shouldSyncNominals) {
+      await this.pembayaranRepo.syncSpkNominalsForSpk(id);
+      const refreshed = await this.repo.findById(id);
+      return refreshed ?? updated;
+    }
+
+    return updated;
   }
 }
 

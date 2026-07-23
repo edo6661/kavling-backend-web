@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mock, type MockProxy } from "vitest-mock-extended";
 import { CreateSpkUseCase, UpdateSpkUseCase } from "./SpkUseCases.js";
 import type { ISpkRepository } from "../../../domain/repositories/ISpkRepo.js";
+import type { SpkPembayaranRepository } from "../../../domain/repositories/spkPembayaranRepo.js";
 import type { CloudinaryService } from "../../../infrastructure/external/CloudinaryService.js";
 import type { SpkEntity } from "../../../domain/entities/Spk.js";
 import type { CreateSpkDTO } from "../../../domain/dtos/SpkDTO.js";
@@ -126,12 +127,14 @@ describe("CreateSpkUseCase", () => {
 describe("UpdateSpkUseCase", () => {
   let repo: MockProxy<ISpkRepository>;
   let cloudinary: MockProxy<CloudinaryService>;
+  let pembayaranRepo: MockProxy<SpkPembayaranRepository>;
   let useCase: UpdateSpkUseCase;
 
   beforeEach(() => {
     repo = mock<ISpkRepository>();
     cloudinary = mock<CloudinaryService>();
-    useCase = new UpdateSpkUseCase(repo, cloudinary);
+    pembayaranRepo = mock<SpkPembayaranRepository>();
+    useCase = new UpdateSpkUseCase(repo, cloudinary, pembayaranRepo);
     repo.findById.mockResolvedValue(
       buildSpkEntity({ fileSpk: SPK_URL, fileRab: null }),
     );
@@ -141,16 +144,25 @@ describe("UpdateSpkUseCase", () => {
         fileRab: data.fileRab ?? null,
       }),
     );
+    pembayaranRepo.syncSpkNominalsForSpk.mockResolvedValue(undefined);
   });
 
   it("tidak mengubah dokumen jika tidak ada file baru", async () => {
     await useCase.execute(1, { judulPekerjaan: "Judul baru" });
 
     expect(cloudinary.uploadFile).not.toHaveBeenCalled();
+    expect(pembayaranRepo.syncSpkNominalsForSpk).not.toHaveBeenCalled();
     expect(repo.update).toHaveBeenCalledWith(
       1,
       expect.not.objectContaining({ fileSpk: expect.anything(), fileRab: expect.anything() }),
     );
+  });
+
+  it("sync nominal SPK saat nilai kontrak diubah", async () => {
+    await useCase.execute(1, { nilaiKontrak: 90_000_000 });
+
+    expect(repo.update).toHaveBeenCalled();
+    expect(pembayaranRepo.syncSpkNominalsForSpk).toHaveBeenCalledWith(1);
   });
 
   it("hanya memperbarui fileRab tanpa menyentuh fileSpk yang sudah ada", async () => {

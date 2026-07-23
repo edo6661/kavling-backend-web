@@ -107,37 +107,7 @@ const assertDokumenPengajuan = (
     }
     return;
   }
-  if (data.jenis === "RETENSI") {
-    if (!data.dokumenInvoice) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Dokumen invoice retensi (PDF) wajib diunggah",
-        path: ["dokumenInvoice"],
-      });
-    }
-    return;
-  }
-  if (!data.dokumenInvoice) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Dokumen invoice termin (PDF) wajib diunggah",
-      path: ["dokumenInvoice"],
-    });
-  }
-  if (!data.dokumenBeritaAcara) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Dokumen berita acara (PDF) wajib diunggah",
-      path: ["dokumenBeritaAcara"],
-    });
-  }
-  if (!data.dokumenProgressSpk) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Dokumen progress SPK (PDF) wajib diunggah",
-      path: ["dokumenProgressSpk"],
-    });
-  }
+  // Termin/retensi: dokumen divalidasi di use case (opsional untuk SUPERADMIN).
 };
 
 export const createSpkPembayaranSchema = {

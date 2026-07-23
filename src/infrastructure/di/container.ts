@@ -969,8 +969,13 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
 
   const spkRepo = new SpkRepository(dbClient);
+  const spkPembayaranRepo = new SpkPembayaranRepository(dbClient);
   const createSpkUseCase = new CreateSpkUseCase(spkRepo, cloudinaryService, notificationService);
-  const updateSpkUseCase = new UpdateSpkUseCase(spkRepo, cloudinaryService);
+  const updateSpkUseCase = new UpdateSpkUseCase(
+    spkRepo,
+    cloudinaryService,
+    spkPembayaranRepo,
+  );
   const getSpkByIdUseCase = new GetSpkByIdUseCase(spkRepo);
   const getSpkPaginatedUseCase = new GetSpkPaginatedUseCase(spkRepo);
   const deleteSpkUseCase = new DeleteSpkUseCase(spkRepo);
@@ -1011,8 +1016,6 @@ export const createContainer = (dbClient: PrismaClient) => {
     updatePekerjaanInfraUseCase,
     deletePekerjaanInfraUseCase,
   );
-
-  const spkPembayaranRepo = new SpkPembayaranRepository(dbClient);
   const createSpkPembayaranRequestUseCase = new CreateSpkPembayaranRequestUseCase(
     spkRepo,
     spkPembayaranRepo,

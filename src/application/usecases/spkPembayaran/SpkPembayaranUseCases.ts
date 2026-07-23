@@ -57,6 +57,36 @@ const assertSpkApproved = (spk: SpkEntity) => {
   }
 };
 
+const assertDokumenTerminPengajuan = (
+  data: SpkPembayaranDokumenInput & { jenis: string },
+  userRole: string,
+) => {
+  if (userRole === Role.SUPERADMIN) return;
+
+  if (!data.dokumenInvoice) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      data.jenis === "RETENSI"
+        ? "Dokumen invoice retensi (PDF) wajib diunggah"
+        : "Dokumen invoice termin (PDF) wajib diunggah",
+    );
+  }
+  if (data.jenis === "RETENSI") return;
+
+  if (!data.dokumenBeritaAcara) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Dokumen berita acara (PDF) wajib diunggah",
+    );
+  }
+  if (!data.dokumenProgressSpk) {
+    throw new AppError(
+      StatusCodes.BAD_REQUEST,
+      "Dokumen progress SPK (PDF) wajib diunggah",
+    );
+  }
+};
+
 async function notifySpkPengajuanBaru(
   notificationService: NotificationService | undefined,
   spk: SpkEntity,
@@ -349,6 +379,7 @@ export class CreateSpkPembayaranRequestUseCase {
           check.reason ?? "Tidak dapat mengajukan pembayaran.",
         );
       }
+      assertDokumenTerminPengajuan(data, userRole);
     }
 
     try {
