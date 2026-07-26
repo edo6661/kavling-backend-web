@@ -137,7 +137,11 @@ export function sumPotonganPphSudahDiajukan(
   return records.reduce((s, r) => s + Number(r.potonganPph), 0);
 }
 
-/** PPh total sekali per penjualan; pengajuan berikutnya tidak memotong lagi */
+/**
+ * Sisa PPh referensi (total fee penuh − sudah dipotong).
+ * Untuk pengajuan aktual, pakai PPh proporsional per nominal yang dicairkan
+ * (lihat calcPencairanSubmit) — bukan sisa ini.
+ */
 export function calcPotonganPphSisa(
   pphTotalPenuh: number,
   existingRecords: { potonganPph: number }[],
@@ -765,8 +769,12 @@ export function calcPencairanSubmit(
     ajbPortion = m.ajbPortion;
   }
 
-  const pphTotalPenuh = preview.potonganPph;
-  const pphSudahAll = sumPotonganPphSudahDiajukan(existingRecords);
+  const potonganPphPct = Number(ctx.agent.potonganPph) || 0;
+  /** PPh proporsional: rate × (closing + marketing yang dicairkan di pengajuan ini) */
+  const pphForThisSubmit = calcPotonganPph(
+    closingNominal + marketingNominal,
+    potonganPphPct,
+  );
 
   const tahap = resolvePencairanTahap(
     includeClosing,
@@ -787,7 +795,6 @@ export function calcPencairanSubmit(
     finalMarketing = Number(ppjb.marketingNominal) + marketingNominal;
   }
 
-  const pphForThisSubmit = Math.max(0, pphTotalPenuh - pphSudahAll);
   const potonganPph =
     mergeIntoExistingId && ppjb
       ? Number(ppjb.potonganPph) + pphForThisSubmit

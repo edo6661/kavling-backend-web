@@ -85,3 +85,192 @@ describe("agentPencairanCalc — agen PKP: PPN ikut di total transfer", () => {
     ).toBe(DPP);
   });
 });
+
+describe("agentPencairanCalc — PPh proporsional per pengajuan (cash)", () => {
+  it("50% PPJB: PPh = rate × (closing + marketing tahap), bukan fee penuh", () => {
+    // Kasus atasan: closing 1.500.000 + marketing 6.340.000, non-PKP 2%
+    const closing = 1_500_000;
+    const marketingFull = 12_680_000;
+    const marketingPpjb = marketingFull / 2; // 6.340.000
+    const nilaiAjb = 634_000_000; // 2% fee → 12.680.000
+
+    const ctx: AgentPencairanCalcContext = {
+      penjualanStatus: "AKTIF",
+      bookingFeeLunasBatal: false,
+      caraPembayaran: "CASH_KERAS",
+      hargaJual: 700_000_000,
+      agent: {
+        feeMarketingPct: 2,
+        feeClosingNominal: closing,
+        potonganPph: 2,
+        isPkp: false,
+        isInHouse: false,
+      },
+      feeAgent: { closingNominal: null },
+      nilaiAjb,
+      tagihanList: [
+        { tujuan: "BOOKING_FEE", pembayaran: "CASH", status: "LUNAS" },
+      ],
+      hasPpjb: true,
+      hasSp3k: false,
+      hasAjb: false,
+      hasAkadKredit: true,
+    };
+
+    const submit = calcPencairanSubmit(ctx, emptySudah, [
+      "closing",
+      "marketing",
+    ]);
+
+    expect(submit.tahap).toBe("PPJB");
+    expect(submit.closingNominal).toBe(closing);
+    expect(submit.marketingNominal).toBe(marketingPpjb);
+
+    const expectedPph = Math.round((closing + marketingPpjb) * 0.02); // 156.800
+    expect(submit.potonganPph).toBe(expectedPph);
+    expect(submit.potonganPph).toBe(156_800);
+    // Guard regress: jangan borong PPh dari fee penuh (283.600)
+    expect(submit.potonganPph).not.toBe(
+      Math.round((closing + marketingFull) * 0.02),
+    );
+    expect(submit.totalNominal).toBe(closing + marketingPpjb - expectedPph); // 7.683.200
+    expect(submit.totalNominal).toBe(7_683_200);
+  });
+
+  it("non-PKP 2,5%: PPh proporsional pada tahap PPJB", () => {
+    const closing = 1_500_000;
+    const marketingFull = 12_680_000;
+    const marketingPpjb = marketingFull / 2;
+    const nilaiAjb = 634_000_000;
+
+    const ctx: AgentPencairanCalcContext = {
+      penjualanStatus: "AKTIF",
+      bookingFeeLunasBatal: false,
+      caraPembayaran: "CASH_KERAS",
+      hargaJual: 700_000_000,
+      agent: {
+        feeMarketingPct: 2,
+        feeClosingNominal: closing,
+        potonganPph: 2.5,
+        isPkp: false,
+        isInHouse: false,
+      },
+      feeAgent: { closingNominal: null },
+      nilaiAjb,
+      tagihanList: [
+        { tujuan: "BOOKING_FEE", pembayaran: "CASH", status: "LUNAS" },
+      ],
+      hasPpjb: true,
+      hasSp3k: false,
+      hasAjb: false,
+      hasAkadKredit: true,
+    };
+
+    const submit = calcPencairanSubmit(ctx, emptySudah, [
+      "closing",
+      "marketing",
+    ]);
+
+    expect(submit.potonganPph).toBe(
+      Math.round((closing + marketingPpjb) * 0.025),
+    ); // 196.000
+    expect(submit.totalNominal).toBe(7_644_000);
+  });
+
+  it("KPR: marketing cair sekaligus, PPh tetap rate × nominal yang cair", () => {
+    // Skenario alternatif: marketing penuh 6.340.000 dicairkan sekaligus
+    const closing = 1_500_000;
+    const marketingFull = 6_340_000;
+    const nilaiAjb = 317_000_000; // 2% fee → 6.340.000
+
+    const ctx: AgentPencairanCalcContext = {
+      penjualanStatus: "AKTIF",
+      bookingFeeLunasBatal: false,
+      caraPembayaran: "KPR",
+      hargaJual: 400_000_000,
+      agent: {
+        feeMarketingPct: 2,
+        feeClosingNominal: closing,
+        potonganPph: 2,
+        isPkp: false,
+        isInHouse: false,
+      },
+      feeAgent: { closingNominal: null },
+      nilaiAjb,
+      tagihanList: [
+        { tujuan: "BOOKING_FEE", pembayaran: "CASH", status: "LUNAS" },
+      ],
+      hasPpjb: true,
+      hasSp3k: true,
+      hasAjb: false,
+      hasAkadKredit: true,
+    };
+
+    const submit = calcPencairanSubmit(ctx, emptySudah, [
+      "closing",
+      "marketing",
+    ]);
+
+    expect(submit.closingNominal).toBe(closing);
+    expect(submit.marketingNominal).toBe(marketingFull);
+    expect(submit.potonganPph).toBe(156_800); // 2% × 7.840.000
+    expect(submit.totalNominal).toBe(7_683_200);
+  });
+
+  it("tahap AJB memotong PPh hanya dari sisa marketing", () => {
+    const closing = 1_500_000;
+    const marketingFull = 12_680_000;
+    const half = marketingFull / 2;
+    const nilaiAjb = 634_000_000;
+
+    const ctx: AgentPencairanCalcContext = {
+      penjualanStatus: "AKTIF",
+      bookingFeeLunasBatal: false,
+      caraPembayaran: "CASH_KERAS",
+      hargaJual: 700_000_000,
+      agent: {
+        feeMarketingPct: 2,
+        feeClosingNominal: closing,
+        potonganPph: 2,
+        isPkp: false,
+        isInHouse: false,
+      },
+      feeAgent: { closingNominal: null },
+      nilaiAjb,
+      tagihanList: [
+        { tujuan: "BOOKING_FEE", pembayaran: "CASH", status: "LUNAS" },
+      ],
+      hasPpjb: true,
+      hasSp3k: false,
+      hasAjb: true,
+      hasAkadKredit: true,
+    };
+
+    const sudah: PencairanSudahDiajukan = {
+      closingNominal: closing,
+      marketingNominal: half,
+      tahaps: ["PPJB"],
+    };
+
+    const submit = calcPencairanSubmit(
+      ctx,
+      sudah,
+      ["marketing"],
+      [
+        {
+          id: 1,
+          tahap: "PPJB",
+          status: "SUDAH_DIBAYAR",
+          closingNominal: closing,
+          marketingNominal: half,
+          potonganPph: 156_800,
+        },
+      ],
+    );
+
+    expect(submit.tahap).toBe("AJB");
+    expect(submit.marketingNominal).toBe(half);
+    expect(submit.potonganPph).toBe(Math.round(half * 0.02)); // 126.800
+    expect(submit.totalNominal).toBe(half - 126_800);
+  });
+});
