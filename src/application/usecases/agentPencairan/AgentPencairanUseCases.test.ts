@@ -288,37 +288,80 @@ describe("BayarAgentPencairanUseCase — existing flow", () => {
 
 describe("BatalAgentPencairanUseCase", () => {
   let repoMock: MockProxy<IAgentPencairanRepository>;
+  let cloudinaryMock: MockProxy<CloudinaryService>;
   let useCase: BatalAgentPencairanUseCase;
 
   beforeEach(() => {
     repoMock = mock<IAgentPencairanRepository>();
-    useCase = new BatalAgentPencairanUseCase(repoMock);
+    cloudinaryMock = mock<CloudinaryService>();
+    useCase = new BatalAgentPencairanUseCase(repoMock, cloudinaryMock);
     vi.clearAllMocks();
   });
 
-  it("membatalkan pengajuan yang masih menunggu pembayaran", async () => {
+  it("menghapus pengajuan yang masih menunggu pembayaran", async () => {
     repoMock.findById.mockResolvedValue(buildCreatedPencairan());
-    repoMock.deletePending.mockResolvedValue(true);
+    repoMock.deleteAndRollback.mockResolvedValue("deleted");
 
-    await expect(useCase.execute(99)).resolves.toBeUndefined();
-    expect(repoMock.deletePending).toHaveBeenCalledWith(99);
+    await expect(useCase.execute(99, "FINANCE")).resolves.toBeUndefined();
+    expect(repoMock.deleteAndRollback).toHaveBeenCalledWith(99, {
+      allowPaid: false,
+    });
   });
 
-  it("menolak batal jika sudah dibayar", async () => {
+  it("menghapus pengajuan yang sudah dibayar jika actor Superadmin", async () => {
+    repoMock.findById.mockResolvedValue(
+      buildCreatedPencairan({
+        status: "SUDAH_DIBAYAR",
+        buktiPembayaran: BUKTI_URL,
+      }),
+    );
+    repoMock.deleteAndRollback.mockResolvedValue("deleted");
+    cloudinaryMock.deleteImageByUrl.mockResolvedValue(undefined);
+
+    await expect(useCase.execute(99, "SUPERADMIN")).resolves.toBeUndefined();
+    expect(repoMock.deleteAndRollback).toHaveBeenCalledWith(99, {
+      allowPaid: true,
+    });
+    expect(cloudinaryMock.deleteImageByUrl).toHaveBeenCalledWith(BUKTI_URL);
+  });
+
+  it("menolak hapus pencairan sudah dibayar jika bukan Superadmin", async () => {
     repoMock.findById.mockResolvedValue(
       buildCreatedPencairan({ status: "SUDAH_DIBAYAR" }),
     );
 
-    await expect(useCase.execute(99)).rejects.toMatchObject({
-      message: "Hanya pengajuan yang belum dibayar yang bisa dibatalkan.",
+    await expect(useCase.execute(99, "FINANCE")).rejects.toMatchObject({
+      message: "Hanya Superadmin yang dapat menghapus pencairan yang sudah dibayar.",
     });
-    expect(repoMock.deletePending).not.toHaveBeenCalled();
+    expect(repoMock.deleteAndRollback).not.toHaveBeenCalled();
   });
 
-  it("menolak batal jika pengajuan tidak ditemukan", async () => {
+  it("menolak hapus jika status berubah jadi sudah dibayar saat proses (race)", async () => {
+    repoMock.findById.mockResolvedValue(buildCreatedPencairan());
+    repoMock.deleteAndRollback.mockResolvedValue("paid_forbidden");
+
+    await expect(useCase.execute(99, "FINANCE")).rejects.toMatchObject({
+      message: "Hanya Superadmin yang dapat menghapus pencairan yang sudah dibayar.",
+    });
+    expect(repoMock.deleteAndRollback).toHaveBeenCalledWith(99, {
+      allowPaid: false,
+    });
+  });
+
+  it("menolak hapus jika pengajuan tidak ditemukan", async () => {
     repoMock.findById.mockResolvedValue(null);
 
-    await expect(useCase.execute(99)).rejects.toMatchObject({
+    await expect(useCase.execute(99, "SUPERADMIN")).rejects.toMatchObject({
+      message: "Pengajuan pencairan agent tidak ditemukan",
+    });
+    expect(repoMock.deleteAndRollback).not.toHaveBeenCalled();
+  });
+
+  it("menolak hapus jika repo tidak menemukan record", async () => {
+    repoMock.findById.mockResolvedValue(buildCreatedPencairan());
+    repoMock.deleteAndRollback.mockResolvedValue("not_found");
+
+    await expect(useCase.execute(99, "FINANCE")).rejects.toMatchObject({
       message: "Pengajuan pencairan agent tidak ditemukan",
     });
   });

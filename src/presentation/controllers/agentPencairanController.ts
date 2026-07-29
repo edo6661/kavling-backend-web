@@ -83,11 +83,11 @@ export class AgentPencairanController {
 
   batal = async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(routeParam(req.params.id), 10);
-    await this.batalUseCase.execute(id);
+    await this.batalUseCase.execute(id, req.user?.role);
     sendResponse(
       res,
       StatusCodes.OK,
-      "Pengajuan pencairan agent berhasil dibatalkan",
+      "Pengajuan pencairan agent berhasil dihapus. Marketing dapat mengajukan ulang.",
       null,
     );
   };

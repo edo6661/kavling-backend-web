@@ -37,6 +37,13 @@ export interface IAgentPencairanRepository {
   setBsiCmsDilaporkan(
     data: SetAgentBsiCmsDilaporkanDTO,
   ): Promise<AgentPencairanEntity[]>;
-  /** Hapus pengajuan yang masih menunggu pembayaran (untuk batal ajukan). */
-  deletePending(id: number): Promise<boolean>;
+  /**
+   * Hapus pengajuan pencairan (menunggu atau sudah dibayar).
+   * Jika sudah dibayar, rollback marker pembayaran di fee_agent agar bisa diajukan ulang.
+   * @returns status hasil: deleted | not_found | paid_forbidden
+   */
+  deleteAndRollback(
+    id: number,
+    options: { allowPaid: boolean },
+  ): Promise<"deleted" | "not_found" | "paid_forbidden">;
 }

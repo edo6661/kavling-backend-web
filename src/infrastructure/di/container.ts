@@ -1157,6 +1157,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   );
   const batalAgentPencairanUseCase = new BatalAgentPencairanUseCase(
     agentPencairanRepo,
+    cloudinaryService,
   );
   const setAgentBsiCmsDilaporkanUseCase = new SetAgentBsiCmsDilaporkanUseCase(
     agentPencairanRepo,

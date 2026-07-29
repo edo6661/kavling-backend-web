@@ -226,13 +226,80 @@ export class AgentPencairanRepository implements IAgentPencairanRepository {
     return rows.map((r) => AgentPencairanMapper.toDomain(r));
   }
 
-  async deletePending(id: number): Promise<boolean> {
-    const result = await this.db.agentPencairan.deleteMany({
-      where: {
-        id,
-        status: AgentPencairanStatus.MENUNGGU_PEMBAYARAN,
-      },
+  async deleteAndRollback(
+    id: number,
+    options: { allowPaid: boolean },
+  ): Promise<"deleted" | "not_found" | "paid_forbidden"> {
+    return await this.db.$transaction(async (tx) => {
+      const pencairan = await tx.agentPencairan.findUnique({ where: { id } });
+      if (!pencairan) return "not_found";
+
+      if (pencairan.status === AgentPencairanStatus.SUDAH_DIBAYAR) {
+        if (!options.allowPaid) return "paid_forbidden";
+
+        const feeAgentId = pencairan.feeAgentId;
+        const closingNominal = Number(pencairan.closingNominal);
+        const marketingNominal = Number(pencairan.marketingNominal);
+        const fee = await tx.feeAgent.findUnique({ where: { id: feeAgentId } });
+
+        if (fee) {
+          const feeUpdate: Prisma.FeeAgentUpdateInput = {};
+
+          if (closingNominal > 0) {
+            const remainingClosing = await tx.agentPencairan.findFirst({
+              where: {
+                feeAgentId,
+                id: { not: id },
+                status: AgentPencairanStatus.SUDAH_DIBAYAR,
+                closingNominal: { gt: 0 },
+              },
+              orderBy: { tanggalPembayaran: "desc" },
+            });
+
+            if (remainingClosing) {
+              feeUpdate.closingNominal = Number(remainingClosing.closingNominal);
+              feeUpdate.closingTanggal = remainingClosing.tanggalPembayaran;
+              feeUpdate.closingBukti = remainingClosing.buktiPembayaran;
+            } else {
+              feeUpdate.closingTanggal = null;
+              feeUpdate.closingBukti = null;
+            }
+          }
+
+          if (marketingNominal > 0) {
+            const prev = fee.marketingNominal ? Number(fee.marketingNominal) : 0;
+            const next = Math.max(0, prev - marketingNominal);
+            const remainingMarketing = await tx.agentPencairan.findMany({
+              where: {
+                feeAgentId,
+                id: { not: id },
+                status: AgentPencairanStatus.SUDAH_DIBAYAR,
+                marketingNominal: { gt: 0 },
+              },
+              orderBy: { tanggalPembayaran: "desc" },
+            });
+
+            feeUpdate.marketingNominal = next > 0 ? next : null;
+            if (remainingMarketing.length > 0) {
+              feeUpdate.marketingTanggal = remainingMarketing[0]!.tanggalPembayaran;
+              feeUpdate.marketingBukti = remainingMarketing[0]!.buktiPembayaran;
+            } else {
+              feeUpdate.marketingTanggal = null;
+              feeUpdate.marketingBukti = null;
+            }
+          }
+
+          if (Object.keys(feeUpdate).length > 0) {
+            await tx.feeAgent.update({
+              where: { id: feeAgentId },
+              data: feeUpdate,
+            });
+          }
+        }
+      }
+
+      await tx.agentPencairan.delete({ where: { id } });
+      return "deleted";
     });
-    return result.count > 0;
   }
 }

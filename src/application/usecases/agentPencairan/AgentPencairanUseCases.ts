@@ -333,26 +333,48 @@ export class BayarAgentPencairanUseCase {
 }
 
 export class BatalAgentPencairanUseCase {
-  constructor(private readonly repo: IAgentPencairanRepository) {}
+  constructor(
+    private readonly repo: IAgentPencairanRepository,
+    private readonly cloudinary?: CloudinaryService,
+  ) {}
 
-  async execute(id: number): Promise<void> {
+  async execute(id: number, actorRole?: string): Promise<void> {
     const existing = await this.repo.findById(id);
     if (!existing) {
       throw new NotFoundError("Pengajuan pencairan agent tidak ditemukan");
     }
 
-    if (existing.status !== "MENUNGGU_PEMBAYARAN") {
+    const allowPaid = actorRole === Role.SUPERADMIN;
+    if (existing.status === "SUDAH_DIBAYAR" && !allowPaid) {
       throw new AppError(
-        StatusCodes.BAD_REQUEST,
-        "Hanya pengajuan yang belum dibayar yang bisa dibatalkan.",
+        StatusCodes.FORBIDDEN,
+        "Hanya Superadmin yang dapat menghapus pencairan yang sudah dibayar.",
       );
     }
 
-    const deleted = await this.repo.deletePending(id);
-    if (!deleted) {
+    const result = await this.repo.deleteAndRollback(id, { allowPaid });
+    if (result === "not_found") {
+      throw new NotFoundError("Pengajuan pencairan agent tidak ditemukan");
+    }
+    if (result === "paid_forbidden") {
       throw new AppError(
-        StatusCodes.CONFLICT,
-        "Pengajuan pencairan tidak bisa dibatalkan.",
+        StatusCodes.FORBIDDEN,
+        "Hanya Superadmin yang dapat menghapus pencairan yang sudah dibayar.",
+      );
+    }
+
+    // Best-effort cleanup bukti/invoice di storage (jangan gagalkan hapus DB).
+    if (this.cloudinary) {
+      const urls = [
+        existing.buktiPembayaran,
+        ...collectAgentPencairanInvoiceUrls(
+          existing.fileInvoice,
+          existing.fileInvoiceList,
+        ),
+      ].filter((url): url is string => !!url);
+
+      await Promise.allSettled(
+        urls.map((url) => this.cloudinary!.deleteImageByUrl(url)),
       );
     }
   }
