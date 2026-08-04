@@ -271,6 +271,8 @@ import {
   DeleteRolePermissionUseCase,
 } from "../../application/usecases/rolePermission/RolePermissionUseCases.js";
 import { RolePermissionController } from "../../presentation/controllers/rolePermissionController.js";
+import { ExportDatabaseExcelUseCase } from "../../application/usecases/admin/ExportDatabaseExcelUseCase.js";
+import { AdminExportController } from "../../presentation/controllers/adminExportController.js";
 import { CustomerLoginUseCase } from "../../application/usecases/auth/CustomerLoginUseCase.js";
 import { GetCustomerDashboardUseCase } from "../../application/usecases/customer/GetCustomerDashboardUseCase.js";
 import { ApproveBuktiTagihanUseCase } from "../../application/usecases/tagihan/ApproveBuktiTagihanUseCase.js";
@@ -889,6 +891,11 @@ export const createContainer = (dbClient: PrismaClient) => {
     getRolePermissionsUseCase,
     deleteRolePermissionUseCase,
   );
+
+  const exportDatabaseExcelUseCase = new ExportDatabaseExcelUseCase(dbClient);
+  const adminExportController = new AdminExportController(
+    exportDatabaseExcelUseCase,
+  );
   const perusahaanAgentRepo = new PerusahaanAgentRepository(dbClient);
   const perusahaanAgentUseCases = new PerusahaanAgentUseCases(
     perusahaanAgentRepo,
@@ -1198,6 +1205,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     progressPenjualanController,
     telegramBotService,
     rolePermissionController,
+    adminExportController,
     socketService,
     notificationService,
     notificationController,

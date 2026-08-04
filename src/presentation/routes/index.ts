@@ -34,6 +34,7 @@ import { createSuketPphRoutes } from "./suketPphRoutes.js";
 import { createFakturPajakPpnRoutes } from "./fakturPajakPpnRoutes.js";
 import { createNotificationRoutes } from "./notificationRoutes.js";
 import { createReportRoutes } from "./reportRoutes.js";
+import { createAdminExportRoutes } from "./adminExportRoutes.js";
 export const createMainRouter = (deps: typeof container): Router => {
   const router = Router();
 
@@ -43,6 +44,7 @@ export const createMainRouter = (deps: typeof container): Router => {
   router.use("/auth", createAuthRoutes(deps.authController));
   router.use("/notifications", createNotificationRoutes(deps.notificationController));
   router.use("/users", createUserRoutes(deps.userController));
+  router.use("/admin", createAdminExportRoutes(deps.adminExportController));
   router.use("/ocr", createOcrRoutes(deps.ocrController));
 
   router.use(
