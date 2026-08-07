@@ -1080,6 +1080,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     // Halaman finance (Bayar SPK): hanya pengajuan yang sudah diajukan mandor.
     // Draft = bon dikumpulkan mandor, belum ke finance.
     const where: Prisma.SpkPembayaranWhereInput = {
+      isMandorSendiri: false,
       status:
         filters?.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
         filters?.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN ||
