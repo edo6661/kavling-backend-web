@@ -168,6 +168,14 @@ export class GoogleVisionService {
     this.genAI = new GoogleGenerativeAI(apiKey ?? "");
   }
 
+  private getModelName(): string {
+    const envModel = process.env.GEMINI_MODEL;
+    if (envModel && envModel !== "gemini-2.5-flash") {
+      return envModel;
+    }
+    return "gemini-2.0-flash";
+  }
+
   async extractKtpData(imageBuffer: Buffer): Promise<{
     nik: string | null;
     nama: string | null;
@@ -195,7 +203,7 @@ export class GoogleVisionService {
       };
 
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: this.getModelName(),
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: ktpSchema,
@@ -272,7 +280,7 @@ export class GoogleVisionService {
       };
 
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: this.getModelName(),
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: billingSchema,
@@ -339,7 +347,7 @@ ATURAN KETAT:
       };
 
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: this.getModelName(),
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: nopdSchema,
@@ -429,7 +437,7 @@ ATURAN KETAT:
       };
 
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: this.getModelName(),
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: bonSchema,
