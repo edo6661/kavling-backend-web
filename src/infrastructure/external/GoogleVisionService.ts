@@ -170,10 +170,10 @@ export class GoogleVisionService {
 
   private getModelName(): string {
     const envModel = process.env.GEMINI_MODEL;
-    if (envModel && envModel !== "gemini-2.5-flash") {
+    if (envModel && envModel !== "gemini-2.5-flash" && envModel !== "gemini-2.0-flash") {
       return envModel;
     }
-    return "gemini-2.0-flash";
+    return "gemini-1.5-flash";
   }
 
   async extractKtpData(imageBuffer: Buffer): Promise<{
