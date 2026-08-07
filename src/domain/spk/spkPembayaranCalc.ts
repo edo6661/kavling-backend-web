@@ -35,6 +35,7 @@ export interface SpkPembayaranCalcRow {
   nominal: number;
   mengurangiTermin?: SpkKasbonTargetTermin | null;
   keterangan?: string | null;
+  isMandorSendiri?: boolean | null;
 }
 
 export interface SpkPengurangTerminRow {
@@ -42,6 +43,7 @@ export interface SpkPengurangTerminRow {
   jenis: SpkPembayaranJenis;
   nominal: number;
   mengurangiTermin?: SpkKasbonTargetTermin | null;
+  isMandorSendiri?: boolean | null;
 }
 
 export interface PengurangWaterfallResult {
@@ -546,7 +548,7 @@ export function getMinProgressForJenis(
 export function getPrerequisiteJenis(
   jenis: SpkPembayaranJenis,
   terminScheme: SpkTerminSchemeKey = "RUMAH_DEFAULT",
-): SpkPembayaranJenis | null {
+): SpkTerminPembayaranJenis | null {
   const prereq = getPrerequisiteTerminJenis(
     getSpkTerminScheme(terminScheme),
     jenis as SpkTerminPembayaranJenis,
@@ -560,6 +562,7 @@ export interface SpkPembayaranStatusRow {
   status: "MENUNGGU_PEMBAYARAN" | "MENUNGGU_PERSETUJUAN" | "MENUNGGU_APPROVAL_ADMIN" | "SUDAH_DIBAYAR" | "DRAFT";
   nominal?: number;
   mengurangiTermin?: SpkKasbonTargetTermin | null;
+  isMandorSendiri?: boolean | null;
 }
 
 function normalizeCalcStatus(
@@ -573,13 +576,14 @@ export function toSpkPembayaranCalcRows(
   pembayaranList: SpkPembayaranStatusRow[],
 ): SpkPembayaranCalcRow[] {
   return pembayaranList
-    .filter((p) => p.status !== "DRAFT")
+    .filter((p) => p.status !== "DRAFT" && !p.isMandorSendiri)
     .map((p) => {
       const row: SpkPembayaranCalcRow = {
         jenis: p.jenis,
         status: normalizeCalcStatus(p.status),
         nominal: p.nominal ?? 0,
         mengurangiTermin: normalizeMengurangiTermin(p.mengurangiTermin),
+        isMandorSendiri: p.isMandorSendiri ?? false,
       };
       if (p.id !== undefined) row.id = p.id;
       return row;
@@ -603,7 +607,7 @@ export function canRequestKasbon(
 ): CanRequestKasbonResult {
   const calcRows = toSpkPembayaranCalcRows(pembayaranList);
   const pengurangRows: SpkPengurangTerminRow[] = pembayaranList
-    .filter((p) => p.status !== "DRAFT")
+    .filter((p) => p.status !== "DRAFT" && !p.isMandorSendiri)
     .map((p) =>
       toPengurangRow({
         id: p.id,

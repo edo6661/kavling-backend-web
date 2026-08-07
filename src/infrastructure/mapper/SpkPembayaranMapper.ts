@@ -162,6 +162,7 @@ export class SpkPembayaranMapper {
       dibayarOleh: row.dibayarOleh,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      isMandorSendiri: row.isMandorSendiri ?? false,
     };
 
     if (row.spk) {

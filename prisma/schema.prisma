@@ -754,6 +754,7 @@ model SpkPembayaran {
   tanggalDisetujui  DateTime?           @map("tanggal_disetujui")
   dibayarOlehId     Int?                @map("dibayar_oleh_id")
   mandorRekeningId  Int?                @map("mandor_rekening_id")
+  isMandorSendiri   Boolean             @default(false) @map("is_mandor_sendiri")
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
 

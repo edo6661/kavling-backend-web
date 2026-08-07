@@ -56,6 +56,7 @@ export interface SpkPembayaranEntity {
   dibayarOleh: { id: number; username: string } | null;
   createdAt: Date;
   updatedAt: Date;
+  isMandorSendiri?: boolean;
   mandorRekeningId?: number | null;
   mandorRekening?: {
     id: number;

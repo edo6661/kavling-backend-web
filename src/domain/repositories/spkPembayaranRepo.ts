@@ -84,12 +84,14 @@ function toPengurangRowsFromDb(
     status: SpkPembayaranStatus;
     nominal: Prisma.Decimal;
     mengurangiTermin?: SpkKasbonTargetTermin | null;
+    isMandorSendiri?: boolean | null;
   }[],
 ) {
   return rows
     .filter(
       (p) =>
         p.status !== SpkPembayaranStatus.DRAFT &&
+        !p.isMandorSendiri &&
         (p.jenis === "KASBON" || p.jenis === "UPAH"),
     )
     .map((p) => ({
@@ -99,6 +101,7 @@ function toPengurangRowsFromDb(
       mengurangiTermin: isKasbonTargetTermin(p.mengurangiTermin)
         ? p.mengurangiTermin
         : null,
+      isMandorSendiri: p.isMandorSendiri ?? false,
     }));
 }
 
@@ -110,6 +113,7 @@ function resolveKasbonTargetTermin(
     status: SpkPembayaranStatus;
     nominal: Prisma.Decimal;
     mengurangiTermin?: SpkKasbonTargetTermin | null;
+    isMandorSendiri?: boolean | null;
   }[],
   nilaiKontrak: number,
   terminScheme: SpkTerminSchemeKey,
@@ -129,11 +133,12 @@ function toCalcRows(
     nominal: Prisma.Decimal;
     mengurangiTermin?: SpkKasbonTargetTermin | null;
     keterangan?: string | null;
+    isMandorSendiri?: boolean | null;
   }[],
 ): SpkPembayaranCalcRow[] {
-  // Draft tidak boleh mempengaruhi kalkulasi termin / plafon.
+  // Draft & Nota Mandor Sendiri tidak boleh mempengaruhi kalkulasi termin / plafon.
   return rows
-    .filter((p) => p.status !== SpkPembayaranStatus.DRAFT)
+    .filter((p) => p.status !== SpkPembayaranStatus.DRAFT && !p.isMandorSendiri)
     .map((p) => {
       const row: SpkPembayaranCalcRow = {
         jenis: p.jenis,
@@ -142,6 +147,7 @@ function toCalcRows(
         mengurangiTermin: isKasbonTargetTermin(p.mengurangiTermin)
           ? p.mengurangiTermin
           : null,
+        isMandorSendiri: p.isMandorSendiri ?? false,
       };
       if (p.id !== undefined) row.id = p.id;
       if (p.keterangan !== undefined && p.keterangan !== null) {
@@ -768,13 +774,16 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       let createData: Prisma.SpkPembayaranCreateInput;
 
       if (data.jenis === "KASBON") {
-        const target = resolveKasbonTargetTermin(
-          calcRows,
-          existingRows,
-          nilaiKontrak,
-          terminScheme,
-        );
-        if (!target) throw new Error("KASBON_NOT_ALLOWED");
+        const isMandorSendiri = data.isMandorSendiri ?? false;
+        const target = isMandorSendiri
+          ? null
+          : resolveKasbonTargetTermin(
+              calcRows,
+              existingRows,
+              nilaiKontrak,
+              terminScheme,
+            );
+        if (!isMandorSendiri && !target) throw new Error("KASBON_NOT_ALLOWED");
 
         if (data.kasbonBaris?.length) {
           const normalizedBaris = this.normalizeKasbonBaris(data.kasbonBaris);
@@ -785,11 +794,14 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           createData = {
             spk: { connect: { id: data.spkId } },
             jenis: "KASBON",
-            status: SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
+            status: isMandorSendiri
+              ? SpkPembayaranStatus.SUDAH_DIBAYAR
+              : SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
             nominal: new Prisma.Decimal(totalNominal),
             keterangan,
             tanggalPo,
             mengurangiTermin: target,
+            isMandorSendiri,
             diajukanOleh: { connect: { id: data.diajukanOlehId } },
             kasbonBaris: {
               create: normalizedBaris.map((b) => ({
@@ -811,11 +823,14 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           createData = {
             spk: { connect: { id: data.spkId } },
             jenis: "KASBON",
-            status: SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
+            status: isMandorSendiri
+              ? SpkPembayaranStatus.SUDAH_DIBAYAR
+              : SpkPembayaranStatus.MENUNGGU_PERSETUJUAN,
             nominal: new Prisma.Decimal(nominal),
             keterangan,
             tanggalPo: data.tanggalPo,
             mengurangiTermin: target,
+            isMandorSendiri,
             diajukanOleh: { connect: { id: data.diajukanOlehId } },
           };
         }

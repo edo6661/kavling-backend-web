@@ -289,40 +289,42 @@ export class CreateSpkPembayaranRequestUseCase {
     );
 
     if (data.jenis === "KASBON") {
-      const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak, terminScheme);
-      if (!kasbonCheck.allowed) {
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          kasbonCheck.reason ?? "Tidak dapat mengajukan kasbon.",
-        );
-      }
-      if (!data.kasbonBaris?.length && (
-        !data.keterangan?.trim() ||
-        !data.nominal ||
-        data.nominal <= 0 ||
-        !data.tanggalPo
-      )) {
-        throw new AppError(
-          StatusCodes.BAD_REQUEST,
-          "Keterangan, nominal, dan tanggal PO kasbon wajib diisi.",
-        );
-      }
+      if (!data.isMandorSendiri) {
+        const kasbonCheck = canRequestKasbon(statusRows, nilaiKontrak, terminScheme);
+        if (!kasbonCheck.allowed) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            kasbonCheck.reason ?? "Tidak dapat mengajukan kasbon.",
+          );
+        }
+        if (!data.kasbonBaris?.length && (
+          !data.keterangan?.trim() ||
+          !data.nominal ||
+          data.nominal <= 0 ||
+          !data.tanggalPo
+        )) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            "Keterangan, nominal, dan tanggal PO kasbon wajib diisi.",
+          );
+        }
 
-      const additionalNominal = data.kasbonBaris?.length
-        ? data.kasbonBaris.reduce((sum, b) => sum + b.nominal, 0)
-        : (data.nominal ?? 0);
-      const capCheck = validatePengurangTerminNominal(
-        nilaiKontrak,
-        pengurangRows,
-        kasbonCheck.targetTermin,
-        additionalNominal,
-        undefined,
-        terminStatus,
-        terminScheme,
-        spk.progress,
-      );
-      if (!capCheck.allowed) {
-        throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
+        const additionalNominal = data.kasbonBaris?.length
+          ? data.kasbonBaris.reduce((sum, b) => sum + b.nominal, 0)
+          : (data.nominal ?? 0);
+        const capCheck = validatePengurangTerminNominal(
+          nilaiKontrak,
+          pengurangRows,
+          kasbonCheck.targetTermin,
+          additionalNominal,
+          undefined,
+          terminStatus,
+          terminScheme,
+          spk.progress,
+        );
+        if (!capCheck.allowed) {
+          throw new AppError(StatusCodes.BAD_REQUEST, capCheck.reason);
+        }
       }
     } else if (data.jenis === "UPAH") {
       const upahCheck = canRequestKasbon(statusRows, nilaiKontrak, terminScheme);
@@ -390,6 +392,7 @@ export class CreateSpkPembayaranRequestUseCase {
               spkId: data.spkId,
               jenis: "KASBON",
               diajukanOlehId: userId,
+              isMandorSendiri: data.isMandorSendiri ?? false,
               ...withOptionalMandorRekeningId(data.mandorRekeningId),
               ...dokumenFields,
               ...(data.kasbonBaris?.length

@@ -55,6 +55,7 @@ export type CreateSpkPembayaranDTO =
       jenis: "KASBON";
       diajukanOlehId: number;
       mandorRekeningId?: number;
+      isMandorSendiri?: boolean;
       /** Pengajuan multi-kasbon (satu pembayaran, beberapa bukti) */
       kasbonBaris?: SpkPembayaranKasbonBarisInput[];
       /** Kasbon tunggal — data production lama */

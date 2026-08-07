@@ -76,6 +76,7 @@ const spkPembayaranDokumenSchema = z.object({
 const assertDokumenPengajuan = (
   data: {
     jenis: string;
+    isMandorSendiri?: boolean | undefined;
     kasbonBaris?: unknown[] | undefined;
     dokumenInvoice?: string | undefined;
     dokumenMaterial?: string | undefined;
@@ -85,6 +86,10 @@ const assertDokumenPengajuan = (
   ctx: z.RefinementCtx,
 ) => {
   if (data.jenis === "KASBON") {
+    if (data.isMandorSendiri === true) {
+      // Nota material sendiri oleh mandor: tidak memerlukan dokumen invoice/material kantor.
+      return;
+    }
     if (!data.dokumenInvoice) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -141,6 +146,7 @@ export const createSpkPembayaranSchema = {
         "UPAH",
       ]),
       mandorRekeningId: mandorRekeningIdSchema,
+      isMandorSendiri: z.boolean().optional(),
       keterangan: z.string().trim().min(1).max(500).optional(),
       nominal: z.coerce.number().positive().optional(),
       tanggalPo: z.coerce.date().optional(),
@@ -246,6 +252,7 @@ export const saveSpkKasbonDraftSchema = {
   }),
   body: z.object({
     kasbonBaris: z.array(kasbonBarisSchema).min(1),
+    isMandorSendiri: z.boolean().optional(),
   }),
 };
 
@@ -256,8 +263,9 @@ export const submitSpkKasbonDraftSchema = {
   body: z
     .object({
       mandorRekeningId: mandorRekeningIdSchema,
-      dokumenInvoice: dokumenUrlSchema,
-      dokumenMaterial: dokumenUrlSchema,
+      dokumenInvoice: dokumenUrlSchema.optional(),
+      dokumenMaterial: dokumenUrlSchema.optional(),
+      isMandorSendiri: z.boolean().optional(),
     }),
 };
 
