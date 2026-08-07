@@ -10,6 +10,7 @@ import { StatusCodes } from "http-status-codes";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import * as Sentry from "@sentry/node";
 
 export interface KasbonBonBarisExtract {
   keterangan: string;
@@ -173,6 +174,7 @@ export class GoogleVisionService {
   }
 
   private handleGeminiError(error: unknown, defaultMessage: string): never {
+    Sentry.captureException(error);
     const errStr = String(error);
     const errObj = error as { status?: number; message?: string };
 

@@ -153,14 +153,15 @@ async function notifySpkDibayar(
 
 const toPengurangRows = (list: SpkPembayaranEntity[]): SpkPengurangTerminRow[] =>
   list
-    .filter((p) => p.status !== SpkPembayaranStatus.DRAFT)
+    .filter((p) => p.status !== SpkPembayaranStatus.DRAFT && !p.isMandorSendiri)
     .map((p) => {
       const row: SpkPengurangTerminRow = {
         jenis: p.jenis,
         nominal: p.nominal,
         mengurangiTermin: p.mengurangiTermin ?? null,
+        isMandorSendiri: p.isMandorSendiri ?? false,
       };
-      row.id = p.id;
+      if (p.id !== undefined) row.id = p.id;
       return row;
     });
 

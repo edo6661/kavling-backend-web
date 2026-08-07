@@ -441,6 +441,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         nominal: true,
         mengurangiTermin: true,
         keterangan: true,
+        isMandorSendiri: true,
       },
     });
 
@@ -522,6 +523,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           nominal: true,
           mengurangiTermin: true,
           keterangan: true,
+          isMandorSendiri: true,
         },
       });
       const calcRows = toCalcRows(existingRows);
@@ -649,6 +651,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           nominal: true,
           mengurangiTermin: true,
           keterangan: true,
+          isMandorSendiri: true,
         },
       });
       const calcRows = toCalcRows(existingRows);
@@ -668,7 +671,12 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       if (totalNominal <= 0) throw new Error("KASBON_NOMINAL_INVALID");
 
       const capRows = existingRows
-        .filter((p) => p.status !== SpkPembayaranStatus.DRAFT && p.id !== draft.id)
+        .filter(
+          (p) =>
+            p.status !== SpkPembayaranStatus.DRAFT &&
+            p.id !== draft.id &&
+            !p.isMandorSendiri,
+        )
         .map((p) => ({
           id: p.id,
           jenis: p.jenis,
@@ -755,6 +763,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           nominal: true,
           mengurangiTermin: true,
           keterangan: true,
+          isMandorSendiri: true,
         },
       });
 
@@ -924,6 +933,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
           nominal: true,
           mengurangiTermin: true,
           keterangan: true,
+          isMandorSendiri: true,
         },
       });
 
