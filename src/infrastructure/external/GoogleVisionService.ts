@@ -169,11 +169,30 @@ export class GoogleVisionService {
   }
 
   private getModelName(): string {
-    const envModel = process.env.GEMINI_MODEL;
-    if (envModel && envModel !== "gemini-2.5-flash" && envModel !== "gemini-2.0-flash") {
-      return envModel;
+    return process.env.GEMINI_MODEL || "gemini-3.6-flash";
+  }
+
+  private handleGeminiError(error: unknown, defaultMessage: string): never {
+    const errStr = String(error);
+    const errObj = error as { status?: number; message?: string };
+
+    if (
+      errObj?.status === 429 ||
+      errStr.includes("prepayment credits are depleted") ||
+      errStr.includes("quota") ||
+      errStr.includes("Too Many Requests") ||
+      errStr.includes("RESOURCE_EXHAUSTED")
+    ) {
+      throw new AppError(
+        StatusCodes.PAYMENT_REQUIRED,
+        "Kredit/Kuota Gemini API Key pada Google AI Studio telah habis (Prepayment credits depleted). Silakan isi saldo/billing di https://ai.studio/projects atau gunakan API Key aktif.",
+      );
     }
-    return "gemini-1.5-flash";
+
+    throw new AppError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      defaultMessage,
+    );
   }
 
   async extractKtpData(imageBuffer: Buffer): Promise<{
@@ -252,10 +271,7 @@ export class GoogleVisionService {
       };
     } catch (error) {
       console.error("Gemini Multimodal Extraction Error:", error);
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Gagal memproses gambar KTP.",
-      );
+      this.handleGeminiError(error, "Gagal memproses gambar KTP.");
     }
   }
 
@@ -322,10 +338,7 @@ ATURAN KETAT:
       return null;
     } catch (error) {
       console.error("Gemini Kode Billing PDF OCR Error:", error);
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Gagal memproses PDF scan Kode Billing.",
-      );
+      this.handleGeminiError(error, "Gagal memproses PDF scan Kode Billing.");
     }
   }
 
@@ -387,6 +400,9 @@ ATURAN KETAT:
       return parsed.nopd ? normalizeNopd(parsed.nopd) : null;
     } catch (error) {
       console.error("Gemini NOPD PBB PDF OCR Error:", error);
+      if ((error as any)?.status === 429) {
+        this.handleGeminiError(error, "Gagal memproses PDF SPPT PBB.");
+      }
       return null;
     }
   }
@@ -526,10 +542,7 @@ ATURAN:
       };
     } catch (error) {
       console.error("Gemini Kasbon Bon OCR Error:", error);
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Gagal memproses foto bon.",
-      );
+      this.handleGeminiError(error, "Gagal memproses foto bon.");
     }
   }
 }
