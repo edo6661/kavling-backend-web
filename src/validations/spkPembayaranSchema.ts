@@ -4,6 +4,10 @@ import { TUKANG_MAX_JUMLAH_ANAK } from "../domain/tukang/tukangMarital.js";
 const terminJenis = z.enum([
   "TERMIN_55",
   "TERMIN_100",
+  "TERMIN_RUMAH_25_1",
+  "TERMIN_RUMAH_25_2",
+  "TERMIN_RUMAH_25_3",
+  "TERMIN_RUMAH_25_4",
   "TERMIN_INFRA_20_1",
   "TERMIN_INFRA_20_2",
   "TERMIN_INFRA_20_3",
@@ -119,6 +123,10 @@ export const createSpkPembayaranSchema = {
       jenis: z.enum([
         "TERMIN_55",
         "TERMIN_100",
+        "TERMIN_RUMAH_25_1",
+        "TERMIN_RUMAH_25_2",
+        "TERMIN_RUMAH_25_3",
+        "TERMIN_RUMAH_25_4",
         "TERMIN_INFRA_20_1",
         "TERMIN_INFRA_20_2",
         "TERMIN_INFRA_20_3",

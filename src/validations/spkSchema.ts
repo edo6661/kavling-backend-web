@@ -26,7 +26,7 @@ const optionalNumberArrayField = (fieldLabel: string) =>
 
 const spkJenisField = z.enum(["RUMAH", "INFRASTRUKTUR"]).optional().default("RUMAH");
 
-const spkTerminSchemeField = z.enum(["RUMAH_DEFAULT", "INFRA_20_6", "INFRA_30_4"]).optional();
+const spkTerminSchemeField = z.enum(["RUMAH_DEFAULT", "RUMAH_25_4", "INFRA_20_6", "INFRA_30_4"]).optional();
 
 const spkBodyBase = z.object({
   noSpk: z.string().min(1, "Nomor SPK wajib diisi"),

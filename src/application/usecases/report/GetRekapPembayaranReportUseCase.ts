@@ -19,6 +19,10 @@ import {
 const MATERIAL_JENIS: SpkPembayaranJenis[] = [
   "TERMIN_55",
   "TERMIN_100",
+  "TERMIN_RUMAH_25_1",
+  "TERMIN_RUMAH_25_2",
+  "TERMIN_RUMAH_25_3",
+  "TERMIN_RUMAH_25_4",
   "RETENSI",
   "KASBON",
 ];

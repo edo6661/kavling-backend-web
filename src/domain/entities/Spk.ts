@@ -7,7 +7,7 @@ import type { SpkPembayaranEntity } from "./SpkPembayaran.js";
 
 export type SpkJenis = "RUMAH" | "INFRASTRUKTUR";
 
-export type SpkTerminSchemeKey = "RUMAH_DEFAULT" | "INFRA_20_6" | "INFRA_30_4";
+export type SpkTerminSchemeKey = "RUMAH_DEFAULT" | "RUMAH_25_4" | "INFRA_20_6" | "INFRA_30_4";
 
 export type SpkApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
 

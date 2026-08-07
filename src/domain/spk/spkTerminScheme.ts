@@ -1,12 +1,19 @@
 import type { SpkJenis } from "../entities/Spk.js";
 import type { SpkKasbonTargetTermin, SpkPembayaranJenis } from "@prisma/client";
 
-export type SpkTerminSchemeKey = "RUMAH_DEFAULT" | "INFRA_20_6" | "INFRA_30_4";
+export type SpkTerminSchemeKey =
+  | "RUMAH_DEFAULT"
+  | "RUMAH_25_4"
+  | "INFRA_20_6"
+  | "INFRA_30_4";
 
-export type SpkTerminPembayaranJenis = Extract<
-  SpkPembayaranJenis,
+export type SpkTerminPembayaranJenis =
   | "TERMIN_55"
   | "TERMIN_100"
+  | "TERMIN_RUMAH_25_1"
+  | "TERMIN_RUMAH_25_2"
+  | "TERMIN_RUMAH_25_3"
+  | "TERMIN_RUMAH_25_4"
   | "TERMIN_INFRA_20_1"
   | "TERMIN_INFRA_20_2"
   | "TERMIN_INFRA_20_3"
@@ -16,8 +23,7 @@ export type SpkTerminPembayaranJenis = Extract<
   | "TERMIN_INFRA_30_2"
   | "TERMIN_INFRA_30_3"
   | "TERMIN_INFRA_10"
-  | "RETENSI"
->;
+  | "RETENSI";
 
 export interface SpkTerminStepConfig {
   jenis: SpkTerminPembayaranJenis;
@@ -44,6 +50,49 @@ export const SPK_TERMIN_SCHEME_RUMAH: SpkTerminStepConfig[] = [
     label: "Termin 100% (45% kontrak)",
     shortLabel: "100%",
     kasbonTargetLabel: "Termin 100%",
+  },
+  {
+    jenis: "RETENSI",
+    minProgress: 100,
+    kontrakFraction: 0.05,
+    label: "Retensi (5% kontrak)",
+    shortLabel: "Ret.",
+    kasbonTargetLabel: "",
+  },
+];
+
+export const SPK_TERMIN_SCHEME_RUMAH_25_4: SpkTerminStepConfig[] = [
+  {
+    jenis: "TERMIN_RUMAH_25_1",
+    minProgress: 25,
+    kontrakFraction: 0.25,
+    label: "Termin 1 (25% progress)",
+    shortLabel: "25%·1",
+    kasbonTargetLabel: "Termin 1 (25%)",
+  },
+  {
+    jenis: "TERMIN_RUMAH_25_2",
+    minProgress: 50,
+    kontrakFraction: 0.25,
+    label: "Termin 2 (50% progress)",
+    shortLabel: "25%·2",
+    kasbonTargetLabel: "Termin 2 (50%)",
+  },
+  {
+    jenis: "TERMIN_RUMAH_25_3",
+    minProgress: 75,
+    kontrakFraction: 0.25,
+    label: "Termin 3 (75% progress)",
+    shortLabel: "25%·3",
+    kasbonTargetLabel: "Termin 3 (75%)",
+  },
+  {
+    jenis: "TERMIN_RUMAH_25_4",
+    minProgress: 95,
+    kontrakFraction: 0.2,
+    label: "Termin 4 (95% progress)",
+    shortLabel: "20%",
+    kasbonTargetLabel: "Termin 4 (95%)",
   },
   {
     jenis: "RETENSI",
@@ -146,6 +195,7 @@ export const SPK_TERMIN_SCHEME_INFRA = SPK_TERMIN_SCHEME_INFRA_20_6;
 
 const SCHEME_MAP: Record<SpkTerminSchemeKey, SpkTerminStepConfig[]> = {
   RUMAH_DEFAULT: SPK_TERMIN_SCHEME_RUMAH,
+  RUMAH_25_4: SPK_TERMIN_SCHEME_RUMAH_25_4,
   INFRA_20_6: SPK_TERMIN_SCHEME_INFRA_20_6,
   INFRA_30_4: SPK_TERMIN_SCHEME_INFRA_30_4,
 };
@@ -155,11 +205,15 @@ export interface SpkTerminSchemeInput {
   terminScheme?: SpkTerminSchemeKey | null;
 }
 
-export function defaultTerminSchemeForJenis(jenis: SpkJenis): SpkTerminSchemeKey {
+export function defaultTerminSchemeForJenis(
+  jenis: SpkJenis,
+): SpkTerminSchemeKey {
   return jenis === "INFRASTRUKTUR" ? "INFRA_20_6" : "RUMAH_DEFAULT";
 }
 
-export function resolveSpkTerminScheme(spk: SpkTerminSchemeInput): SpkTerminSchemeKey {
+export function resolveSpkTerminScheme(
+  spk: SpkTerminSchemeInput,
+): SpkTerminSchemeKey {
   if (spk.terminScheme) return spk.terminScheme;
   return defaultTerminSchemeForJenis(spk.jenis);
 }
@@ -190,7 +244,9 @@ export function isTerminJenisForScheme(
   jenis: SpkPembayaranJenis,
   schemeOrSpk: SpkTerminSchemeKey | SpkTerminSchemeInput,
 ): jenis is SpkTerminPembayaranJenis {
-  return getSpkTerminJenisOrder(schemeOrSpk).includes(jenis as SpkTerminPembayaranJenis);
+  return getSpkTerminJenisOrder(schemeOrSpk).includes(
+    jenis as SpkTerminPembayaranJenis,
+  );
 }
 
 /** @deprecated Use isTerminJenisForScheme with resolveSpkTerminScheme */
@@ -249,7 +305,10 @@ export function buildSpkKasbonTargetLabel(
 }
 
 /** Gabungan label semua skema untuk laporan & finance. */
-export function buildAllSpkPembayaranJenisLabel(): Record<SpkPembayaranJenis, string> {
+export function buildAllSpkPembayaranJenisLabel(): Record<
+  SpkPembayaranJenis,
+  string
+> {
   const labels = {
     KASBON: "Kasbon",
     UPAH: "Upah tukang",
@@ -264,7 +323,10 @@ export function buildAllSpkPembayaranJenisLabel(): Record<SpkPembayaranJenis, st
   return labels;
 }
 
-export function buildAllSpkKasbonTargetLabel(): Record<SpkKasbonTargetTermin, string> {
+export function buildAllSpkKasbonTargetLabel(): Record<
+  SpkKasbonTargetTermin,
+  string
+> {
   const labels = {} as Record<SpkKasbonTargetTermin, string>;
   for (const key of Object.keys(SCHEME_MAP) as SpkTerminSchemeKey[]) {
     Object.assign(labels, buildSpkKasbonTargetLabel(key));
@@ -276,10 +338,19 @@ export function validateTerminSchemeForJenis(
   jenis: SpkJenis,
   terminScheme: SpkTerminSchemeKey,
 ): void {
-  if (jenis === "RUMAH" && terminScheme !== "RUMAH_DEFAULT") {
-    throw new Error("SPK rumah hanya mendukung skema termin RUMAH_DEFAULT.");
+  if (
+    jenis === "RUMAH" &&
+    terminScheme !== "RUMAH_DEFAULT" &&
+    terminScheme !== "RUMAH_25_4"
+  ) {
+    throw new Error(
+      "SPK rumah hanya mendukung skema termin RUMAH_DEFAULT atau RUMAH_25_4.",
+    );
   }
-  if (jenis === "INFRASTRUKTUR" && terminScheme === "RUMAH_DEFAULT") {
+  if (
+    jenis === "INFRASTRUKTUR" &&
+    (terminScheme === "RUMAH_DEFAULT" || terminScheme === "RUMAH_25_4")
+  ) {
     throw new Error("SPK infrastruktur memerlukan skema termin infra.");
   }
 }

@@ -601,6 +601,7 @@ enum SpkJenis {
 
 enum SpkTerminScheme {
   RUMAH_DEFAULT @map("rumah_default")
+  RUMAH_25_4    @map("rumah_25_4")
   INFRA_20_6    @map("infra_20_6")
   INFRA_30_4    @map("infra_30_4")
 }
@@ -806,6 +807,10 @@ model SpkPembayaranKasbonBaris {
 enum SpkPembayaranJenis {
   TERMIN_55         @map("termin_55")
   TERMIN_100        @map("termin_100")
+  TERMIN_RUMAH_25_1 @map("termin_rumah_25_1")
+  TERMIN_RUMAH_25_2 @map("termin_rumah_25_2")
+  TERMIN_RUMAH_25_3 @map("termin_rumah_25_3")
+  TERMIN_RUMAH_25_4 @map("termin_rumah_25_4")
   TERMIN_INFRA_20_1 @map("termin_infra_20_1")
   TERMIN_INFRA_20_2 @map("termin_infra_20_2")
   TERMIN_INFRA_20_3 @map("termin_infra_20_3")
@@ -823,6 +828,10 @@ enum SpkPembayaranJenis {
 enum SpkKasbonTargetTermin {
   TERMIN_55         @map("termin_55")
   TERMIN_100        @map("termin_100")
+  TERMIN_RUMAH_25_1 @map("termin_rumah_25_1")
+  TERMIN_RUMAH_25_2 @map("termin_rumah_25_2")
+  TERMIN_RUMAH_25_3 @map("termin_rumah_25_3")
+  TERMIN_RUMAH_25_4 @map("termin_rumah_25_4")
   TERMIN_INFRA_20_1 @map("termin_infra_20_1")
   TERMIN_INFRA_20_2 @map("termin_infra_20_2")
   TERMIN_INFRA_20_3 @map("termin_infra_20_3")
