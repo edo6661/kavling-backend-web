@@ -150,6 +150,7 @@ export class SpkPembayaranController {
             spkId,
             jenis: "KASBON",
             diajukanOlehId: userId,
+            isMandorSendiri: req.body.isMandorSendiri ?? false,
             ...rekeningFields,
             ...dokumenFields,
             ...(req.body.kasbonBaris?.length
