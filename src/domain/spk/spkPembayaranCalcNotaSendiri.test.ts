@@ -3,8 +3,11 @@ import {
   toSpkPembayaranCalcRows,
   canRequestKasbon,
   validatePengurangTerminNominal,
+  calcSpkPembayaranNominal,
+  calcSisaNilaiKontrak,
   type SpkPembayaranStatusRow,
   type SpkPengurangTerminRow,
+  type SpkPembayaranCalcRow,
 } from "./spkPembayaranCalc";
 
 describe("SPK Pembayaran Nota Material Sendiri (isMandorSendiri)", () => {
@@ -47,7 +50,6 @@ describe("SPK Pembayaran Nota Material Sendiri (isMandorSendiri)", () => {
       },
     ];
 
-    // Filtered pengurang rows inside calculation exclude isMandorSendiri
     const activePengurangRows = pengurangRows.filter((p) => !p.isMandorSendiri);
     expect(activePengurangRows).toHaveLength(0);
 
@@ -59,5 +61,32 @@ describe("SPK Pembayaran Nota Material Sendiri (isMandorSendiri)", () => {
     );
 
     expect(validation.allowed).toBe(true);
+  });
+
+  it("calcSpkPembayaranNominal dan calcSisaNilaiKontrak tidak terkurangi oleh nota material sendiri", () => {
+    const nilaiKontrak = 100000000;
+    const calcRows: SpkPembayaranCalcRow[] = [
+      {
+        id: 1,
+        jenis: "KASBON",
+        nominal: 25000000,
+        status: "SUDAH_DIBAYAR",
+        mengurangiTermin: "TERMIN_1",
+        isMandorSendiri: true, // Nota sendiri 25jt
+      },
+    ];
+
+    // Nominal TERMIN_55 (50% dari 100jt = 50jt) TIDAK boleh terpotong oleh nota sendiri
+    const nominalTermin1 = calcSpkPembayaranNominal(
+      "TERMIN_55",
+      { nilaiKontrak },
+      calcRows,
+      "RUMAH_DEFAULT",
+    );
+    expect(nominalTermin1).toBe(50000000);
+
+    // Sisa nilai kontrak SPK juga harus tetap utuh 100jt
+    const sisa = calcSisaNilaiKontrak(nilaiKontrak, calcRows);
+    expect(sisa).toBe(100000000);
   });
 });

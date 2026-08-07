@@ -115,7 +115,7 @@ function normalizeMengurangiTermin(
 
 function sortPengurangRows(rows: SpkPengurangTerminRow[]): SpkPengurangTerminRow[] {
   return [...rows]
-    .filter((p) => isPengurangJenis(p.jenis))
+    .filter((p) => isPengurangJenis(p.jenis) && !p.isMandorSendiri)
     .sort((a, b) => (a.id ?? Number.MAX_SAFE_INTEGER) - (b.id ?? Number.MAX_SAFE_INTEGER));
 }
 
@@ -138,7 +138,7 @@ export function getTerminPaymentStatus(
   const status: TerminPaymentStatus = {};
   for (const step of getKasbonTargetSteps(scheme)) {
     const target = step.jenis as SpkKasbonTargetTermin;
-    const row = pembayaranList.find((p) => p.jenis === step.jenis);
+    const row = pembayaranList.find((p) => p.jenis === step.jenis && !p.isMandorSendiri);
     status[target] = row?.status === "SUDAH_DIBAYAR";
   }
   return status;
@@ -200,7 +200,7 @@ function toPengurangRowsFromCalc(
   pembayaranList: SpkPembayaranCalcRow[],
 ): SpkPengurangTerminRow[] {
   return pembayaranList
-    .filter((p) => isPengurangJenis(p.jenis))
+    .filter((p) => isPengurangJenis(p.jenis) && !p.isMandorSendiri)
     .map((p) =>
       toPengurangRow({
         id: p.id,
@@ -529,7 +529,7 @@ export function calcSisaNilaiKontrak(
   pembayaranList: SpkPembayaranCalcRow[],
 ): number {
   const paidTotal = pembayaranList
-    .filter((p) => p.status === "SUDAH_DIBAYAR")
+    .filter((p) => p.status === "SUDAH_DIBAYAR" && !p.isMandorSendiri)
     .reduce((sum, p) => sum + p.nominal, 0);
   return Math.max(0, nilaiKontrak - paidTotal);
 }

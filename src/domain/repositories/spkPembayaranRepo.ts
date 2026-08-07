@@ -369,6 +369,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       nominal: Prisma.Decimal;
       mengurangiTermin: SpkKasbonTargetTermin | null;
       keterangan: string | null;
+      isMandorSendiri?: boolean;
     }[],
   ) {
     const calcRows = toCalcRows(pembayaranRows);
@@ -378,6 +379,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
       const row = pembayaranRows.find(
         (p) =>
           p.jenis === jenis &&
+          !p.isMandorSendiri &&
           (p.status === SpkPembayaranStatus.MENUNGGU_PEMBAYARAN ||
             p.status === SpkPembayaranStatus.MENUNGGU_PERSETUJUAN ||
             p.status === SpkPembayaranStatus.MENUNGGU_APPROVAL_ADMIN),
@@ -416,6 +418,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         nominal: true,
         mengurangiTermin: true,
         keterangan: true,
+        isMandorSendiri: true,
       },
     });
 
