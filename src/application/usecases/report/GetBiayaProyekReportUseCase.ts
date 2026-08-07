@@ -126,6 +126,7 @@ export class GetBiayaProyekReportUseCase {
             nominal: true,
             status: true,
             keterangan: true,
+            isMandorSendiri: true,
             tanggalPembayaran: true,
             tanggalPo: true,
             tanggalDari: true,
@@ -180,11 +181,13 @@ export class GetBiayaProyekReportUseCase {
         const nominal = Number(p.nominal);
         spkTotalPembayaran += nominal;
 
-        if (p.status === "SUDAH_DIBAYAR") {
+        if (p.status === "SUDAH_DIBAYAR" && !p.isMandorSendiri) {
           totalSudahDibayar += nominal;
         }
 
-        byJenis[p.jenis] = (byJenis[p.jenis] ?? 0) + nominal;
+        if (!p.isMandorSendiri) {
+          byJenis[p.jenis] = (byJenis[p.jenis] ?? 0) + nominal;
+        }
 
         if (p.jenis === "KASBON") {
           const kasbonTotal =

@@ -245,7 +245,7 @@ export class GetRekapPembayaranReportUseCase {
                 spk: {
                   select: {
                     pembayaranList: {
-                      select: { jenis: true, nominal: true, status: true },
+                      select: { jenis: true, nominal: true, status: true, isMandorSendiri: true },
                     },
                   },
                 },
@@ -363,8 +363,8 @@ export class GetRekapPembayaranReportUseCase {
       const spkPembayaran =
         row.kavling.spkItem?.spk.pembayaranList ?? [];
 
-      const materialRows = spkPembayaran.filter((p) =>
-        MATERIAL_JENIS.includes(p.jenis),
+      const materialRows = spkPembayaran.filter(
+        (p) => MATERIAL_JENIS.includes(p.jenis) && !p.isMandorSendiri,
       );
       const upahRows = spkPembayaran.filter((p) => p.jenis === "UPAH");
 
