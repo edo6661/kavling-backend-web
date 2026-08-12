@@ -28,6 +28,13 @@ export interface SpkNominalInput {
   nilaiKontrak: number;
 }
 
+/** Nota material sendiri (non-reimburse) — jangan pernah mengurangi termin/plafon. */
+export function isNotaMandorSendiri(p: {
+  isMandorSendiri?: boolean | null;
+}): boolean {
+  return p.isMandorSendiri === true;
+}
+
 export interface SpkPembayaranCalcRow {
   id?: number;
   jenis: SpkPembayaranJenis;
@@ -115,7 +122,7 @@ function normalizeMengurangiTermin(
 
 function sortPengurangRows(rows: SpkPengurangTerminRow[]): SpkPengurangTerminRow[] {
   return [...rows]
-    .filter((p) => isPengurangJenis(p.jenis) && !p.isMandorSendiri)
+    .filter((p) => isPengurangJenis(p.jenis) && !isNotaMandorSendiri(p))
     .sort((a, b) => (a.id ?? Number.MAX_SAFE_INTEGER) - (b.id ?? Number.MAX_SAFE_INTEGER));
 }
 
@@ -138,7 +145,9 @@ export function getTerminPaymentStatus(
   const status: TerminPaymentStatus = {};
   for (const step of getKasbonTargetSteps(scheme)) {
     const target = step.jenis as SpkKasbonTargetTermin;
-    const row = pembayaranList.find((p) => p.jenis === step.jenis && !p.isMandorSendiri);
+    const row = pembayaranList.find(
+      (p) => p.jenis === step.jenis && !isNotaMandorSendiri(p),
+    );
     status[target] = row?.status === "SUDAH_DIBAYAR";
   }
   return status;
@@ -200,7 +209,7 @@ function toPengurangRowsFromCalc(
   pembayaranList: SpkPembayaranCalcRow[],
 ): SpkPengurangTerminRow[] {
   return pembayaranList
-    .filter((p) => isPengurangJenis(p.jenis) && !p.isMandorSendiri)
+    .filter((p) => isPengurangJenis(p.jenis) && !isNotaMandorSendiri(p))
     .map((p) =>
       toPengurangRow({
         id: p.id,
@@ -529,7 +538,7 @@ export function calcSisaNilaiKontrak(
   pembayaranList: SpkPembayaranCalcRow[],
 ): number {
   const paidTotal = pembayaranList
-    .filter((p) => p.status === "SUDAH_DIBAYAR" && !p.isMandorSendiri)
+    .filter((p) => p.status === "SUDAH_DIBAYAR" && !isNotaMandorSendiri(p))
     .reduce((sum, p) => sum + p.nominal, 0);
   return Math.max(0, nilaiKontrak - paidTotal);
 }
@@ -562,7 +571,8 @@ export interface SpkPembayaranStatusRow {
   status: "MENUNGGU_PEMBAYARAN" | "MENUNGGU_PERSETUJUAN" | "MENUNGGU_APPROVAL_ADMIN" | "SUDAH_DIBAYAR" | "DRAFT";
   nominal?: number;
   mengurangiTermin?: SpkKasbonTargetTermin | null;
-  isMandorSendiri?: boolean | null;
+  /** Wajib diisi. Tanpa field ini nota sendiri bisa ikut mengurangi termin (bug). */
+  isMandorSendiri: boolean;
 }
 
 function normalizeCalcStatus(
@@ -576,14 +586,14 @@ export function toSpkPembayaranCalcRows(
   pembayaranList: SpkPembayaranStatusRow[],
 ): SpkPembayaranCalcRow[] {
   return pembayaranList
-    .filter((p) => p.status !== "DRAFT" && !p.isMandorSendiri)
+    .filter((p) => p.status !== "DRAFT" && !isNotaMandorSendiri(p))
     .map((p) => {
       const row: SpkPembayaranCalcRow = {
         jenis: p.jenis,
         status: normalizeCalcStatus(p.status),
         nominal: p.nominal ?? 0,
         mengurangiTermin: normalizeMengurangiTermin(p.mengurangiTermin),
-        isMandorSendiri: p.isMandorSendiri ?? false,
+        isMandorSendiri: p.isMandorSendiri,
       };
       if (p.id !== undefined) row.id = p.id;
       return row;
@@ -607,7 +617,7 @@ export function canRequestKasbon(
 ): CanRequestKasbonResult {
   const calcRows = toSpkPembayaranCalcRows(pembayaranList);
   const pengurangRows: SpkPengurangTerminRow[] = pembayaranList
-    .filter((p) => p.status !== "DRAFT" && !p.isMandorSendiri)
+    .filter((p) => p.status !== "DRAFT" && !isNotaMandorSendiri(p))
     .map((p) =>
       toPengurangRow({
         id: p.id,
@@ -669,11 +679,16 @@ export function isTerminFulfilled(
   terminScheme: SpkTerminSchemeKey = "RUMAH_DEFAULT",
 ): boolean {
   if (
-    pembayaranList.some((p) => p.jenis === jenis && p.status === "SUDAH_DIBAYAR")
+    pembayaranList.some(
+      (p) =>
+        p.jenis === jenis &&
+        p.status === "SUDAH_DIBAYAR" &&
+        !isNotaMandorSendiri(p),
+    )
   ) {
     return true;
   }
-  if (pembayaranList.some((p) => p.jenis === jenis)) {
+  if (pembayaranList.some((p) => p.jenis === jenis && !isNotaMandorSendiri(p))) {
     return false;
   }
   const calcRows = toSpkPembayaranCalcRows(pembayaranList);
@@ -706,7 +721,7 @@ export function canRequestSpkPembayaran(
 
   const calcRows = toSpkPembayaranCalcRows(pembayaranList);
 
-  if (pembayaranList.some((p) => p.jenis === jenis)) {
+  if (pembayaranList.some((p) => p.jenis === jenis && !isNotaMandorSendiri(p))) {
     return { allowed: false, reason: "Pengajuan termin ini sudah ada." };
   }
 

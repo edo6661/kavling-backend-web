@@ -24,6 +24,7 @@ import {
   getTerminPaymentStatus,
   toSpkPembayaranCalcRows,
   validatePengurangTerminNominal,
+  type SpkPembayaranStatusRow,
   type SpkPengurangTerminRow,
 } from "../../../domain/spk/spkPembayaranCalc.js";
 import { resolveSpkTerminScheme } from "../../../domain/spk/spkTerminScheme.js";
@@ -40,6 +41,17 @@ import type { SpkEntity } from "../../../domain/entities/Spk.js";
 
 const withOptionalMandorRekeningId = (mandorRekeningId?: number) =>
   mandorRekeningId !== undefined ? { mandorRekeningId } : {};
+
+/** Wajib sertakan isMandorSendiri — tanpa itu nota sendiri ikut mengurangi termin. */
+const toStatusRows = (list: SpkPembayaranEntity[]): SpkPembayaranStatusRow[] =>
+  list.map((p) => ({
+    id: p.id,
+    jenis: p.jenis,
+    status: p.status,
+    nominal: p.nominal,
+    mengurangiTermin: p.mengurangiTermin,
+    isMandorSendiri: p.isMandorSendiri ?? false,
+  }));
 
 const mapDokumenFromDto = (data: SpkPembayaranDokumenInput): SpkPembayaranDokumenInput => ({
   ...(data.dokumenInvoice ? { dokumenInvoice: data.dokumenInvoice } : {}),
@@ -276,13 +288,7 @@ export class CreateSpkPembayaranRequestUseCase {
     const existing = await this.pembayaranRepo.findBySpkId(data.spkId);
     const nilaiKontrak = Number(spk.nilaiKontrak);
     const terminScheme = resolveSpkTerminScheme(spk);
-    const statusRows = existing.map((p) => ({
-      id: p.id,
-      jenis: p.jenis,
-      status: p.status,
-      nominal: p.nominal,
-      mengurangiTermin: p.mengurangiTermin,
-    }));
+    const statusRows = toStatusRows(existing);
     const pengurangRows = toPengurangRows(existing);
     const terminStatus = getTerminPaymentStatus(
       toSpkPembayaranCalcRows(statusRows),
@@ -753,15 +759,7 @@ export class UpdateSpkKasbonUseCase {
     const mengurangiTermin =
       record.mengurangiTermin ??
       getKasbonTargetTermin(
-        toSpkPembayaranCalcRows(
-          all.map((p) => ({
-            jenis: p.jenis,
-            status: p.status,
-            nominal: p.nominal,
-            mengurangiTermin: p.mengurangiTermin,
-            keterangan: p.keterangan,
-          })),
-        ),
+        toSpkPembayaranCalcRows(toStatusRows(all)),
         { terminScheme: resolveSpkTerminScheme(spk) },
       );
 
@@ -788,15 +786,7 @@ export class UpdateSpkKasbonUseCase {
     }
 
     const terminStatusKasbon = getTerminPaymentStatus(
-      toSpkPembayaranCalcRows(
-        all.map((p) => ({
-          id: p.id,
-          jenis: p.jenis,
-          status: p.status,
-          nominal: p.nominal,
-          mengurangiTermin: p.mengurangiTermin,
-        })),
-      ),
+      toSpkPembayaranCalcRows(toStatusRows(all)),
       resolveSpkTerminScheme(spk),
     );
     const capCheck = validatePengurangTerminNominal(
@@ -899,15 +889,7 @@ export class UpdateSpkUpahUseCase {
     const mengurangiTerminUpah =
       record.mengurangiTermin ??
       getKasbonTargetTermin(
-        toSpkPembayaranCalcRows(
-          allUpah.map((p) => ({
-            jenis: p.jenis,
-            status: p.status,
-            nominal: p.nominal,
-            mengurangiTermin: p.mengurangiTermin,
-            keterangan: p.keterangan,
-          })),
-        ),
+        toSpkPembayaranCalcRows(toStatusRows(allUpah)),
         { terminScheme: resolveSpkTerminScheme(spk) },
       );
 
@@ -923,15 +905,7 @@ export class UpdateSpkUpahUseCase {
     }
 
     const terminStatusUpah = getTerminPaymentStatus(
-      toSpkPembayaranCalcRows(
-        allUpah.map((p) => ({
-          id: p.id,
-          jenis: p.jenis,
-          status: p.status,
-          nominal: p.nominal,
-          mengurangiTermin: p.mengurangiTermin,
-        })),
-      ),
+      toSpkPembayaranCalcRows(toStatusRows(allUpah)),
       resolveSpkTerminScheme(spk),
     );
     const capCheck = validatePengurangTerminNominal(

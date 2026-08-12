@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   toSpkPembayaranCalcRows,
   canRequestKasbon,
+  canRequestSpkPembayaran,
   validatePengurangTerminNominal,
   calcSpkPembayaranNominal,
   calcSisaNilaiKontrak,
@@ -88,5 +89,62 @@ describe("SPK Pembayaran Nota Material Sendiri (isMandorSendiri)", () => {
     // Sisa nilai kontrak SPK juga harus tetap utuh 100jt
     const sisa = calcSisaNilaiKontrak(nilaiKontrak, calcRows);
     expect(sisa).toBe(100000000);
+  });
+
+  it("canRequest TERMIN_55: nota sendiri tidak membuat nominal jadi 0 (regresi SPK 51)", () => {
+    const nilaiKontrak = 348705834;
+    const statusRows: SpkPembayaranStatusRow[] = [
+      {
+        id: 234,
+        jenis: "KASBON",
+        nominal: 52458000,
+        status: "SUDAH_DIBAYAR",
+        mengurangiTermin: "TERMIN_55",
+        isMandorSendiri: false,
+      },
+      {
+        id: 287,
+        jenis: "KASBON",
+        nominal: 70279000,
+        status: "SUDAH_DIBAYAR",
+        mengurangiTermin: null,
+        isMandorSendiri: true,
+      },
+      {
+        id: 286,
+        jenis: "UPAH",
+        nominal: 51615917,
+        status: "MENUNGGU_PERSETUJUAN",
+        mengurangiTermin: "TERMIN_55",
+        isMandorSendiri: false,
+      },
+    ];
+
+    const check = canRequestSpkPembayaran(
+      "TERMIN_55",
+      { nilaiKontrak, progress: 55 },
+      statusRows,
+      "RUMAH_DEFAULT",
+    );
+    expect(check.allowed).toBe(true);
+    expect(
+      calcSpkPembayaranNominal(
+        "TERMIN_55",
+        { nilaiKontrak },
+        toSpkPembayaranCalcRows(statusRows),
+        "RUMAH_DEFAULT",
+      ),
+    ).toBe(70279000);
+
+    // Simulasi bug lama: statusRows tanpa isMandorSendiri → nota sendiri ikut terhitung.
+    const buggyRows = statusRows.map(({ isMandorSendiri: _omit, ...rest }) => rest) as SpkPembayaranStatusRow[];
+    const buggy = canRequestSpkPembayaran(
+      "TERMIN_55",
+      { nilaiKontrak, progress: 55 },
+      buggyRows,
+      "RUMAH_DEFAULT",
+    );
+    expect(buggy.allowed).toBe(false);
+    expect(buggy.reason).toContain("Nominal termin Rp 0");
   });
 });
