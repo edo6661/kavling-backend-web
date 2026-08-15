@@ -600,10 +600,12 @@ enum SpkJenis {
 }
 
 enum SpkTerminScheme {
-  RUMAH_DEFAULT @map("rumah_default")
-  RUMAH_25_4    @map("rumah_25_4")
-  INFRA_20_6    @map("infra_20_6")
-  INFRA_30_4    @map("infra_30_4")
+  RUMAH_DEFAULT  @map("rumah_default")
+  RUMAH_25_4     @map("rumah_25_4")
+  RUMAH_3_TERMIN @map("rumah_3_termin")
+  INFRA_20_6     @map("infra_20_6")
+  INFRA_30_4     @map("infra_30_4")
+  CUSTOM         @map("custom")
 }
 
 model Zona {
@@ -644,6 +646,7 @@ model Spk {
   noSpk          String    @unique @map("no_spk") @db.VarChar(100)
   jenis          SpkJenis  @default(RUMAH)
   terminScheme   SpkTerminScheme @default(RUMAH_DEFAULT) @map("termin_scheme")
+  terminConfig   Json?     @map("termin_config")
   tanggalSpk     DateTime  @default(dbgenerated("(CURDATE())")) @map("tanggal_spk") @db.Date
   judulPekerjaan String    @map("judul_pekerjaan") @db.VarChar(255)
   nilaiKontrak   Decimal   @map("nilai_kontrak") @db.Decimal(15, 2)
@@ -812,6 +815,9 @@ enum SpkPembayaranJenis {
   TERMIN_RUMAH_25_2 @map("termin_rumah_25_2")
   TERMIN_RUMAH_25_3 @map("termin_rumah_25_3")
   TERMIN_RUMAH_25_4 @map("termin_rumah_25_4")
+  TERMIN_RUMAH_3_1  @map("termin_rumah_3_1")
+  TERMIN_RUMAH_3_2  @map("termin_rumah_3_2")
+  TERMIN_RUMAH_3_3  @map("termin_rumah_3_3")
   TERMIN_INFRA_20_1 @map("termin_infra_20_1")
   TERMIN_INFRA_20_2 @map("termin_infra_20_2")
   TERMIN_INFRA_20_3 @map("termin_infra_20_3")
@@ -821,6 +827,16 @@ enum SpkPembayaranJenis {
   TERMIN_INFRA_30_2 @map("termin_infra_30_2")
   TERMIN_INFRA_30_3 @map("termin_infra_30_3")
   TERMIN_INFRA_10   @map("termin_infra_10")
+  TERMIN_CUSTOM_1   @map("termin_custom_1")
+  TERMIN_CUSTOM_2   @map("termin_custom_2")
+  TERMIN_CUSTOM_3   @map("termin_custom_3")
+  TERMIN_CUSTOM_4   @map("termin_custom_4")
+  TERMIN_CUSTOM_5   @map("termin_custom_5")
+  TERMIN_CUSTOM_6   @map("termin_custom_6")
+  TERMIN_CUSTOM_7   @map("termin_custom_7")
+  TERMIN_CUSTOM_8   @map("termin_custom_8")
+  TERMIN_CUSTOM_9   @map("termin_custom_9")
+  TERMIN_CUSTOM_10  @map("termin_custom_10")
   RETENSI           @map("retensi")
   KASBON            @map("kasbon")
   UPAH              @map("upah")
@@ -833,6 +849,9 @@ enum SpkKasbonTargetTermin {
   TERMIN_RUMAH_25_2 @map("termin_rumah_25_2")
   TERMIN_RUMAH_25_3 @map("termin_rumah_25_3")
   TERMIN_RUMAH_25_4 @map("termin_rumah_25_4")
+  TERMIN_RUMAH_3_1  @map("termin_rumah_3_1")
+  TERMIN_RUMAH_3_2  @map("termin_rumah_3_2")
+  TERMIN_RUMAH_3_3  @map("termin_rumah_3_3")
   TERMIN_INFRA_20_1 @map("termin_infra_20_1")
   TERMIN_INFRA_20_2 @map("termin_infra_20_2")
   TERMIN_INFRA_20_3 @map("termin_infra_20_3")
@@ -842,6 +861,16 @@ enum SpkKasbonTargetTermin {
   TERMIN_INFRA_30_2 @map("termin_infra_30_2")
   TERMIN_INFRA_30_3 @map("termin_infra_30_3")
   TERMIN_INFRA_10   @map("termin_infra_10")
+  TERMIN_CUSTOM_1   @map("termin_custom_1")
+  TERMIN_CUSTOM_2   @map("termin_custom_2")
+  TERMIN_CUSTOM_3   @map("termin_custom_3")
+  TERMIN_CUSTOM_4   @map("termin_custom_4")
+  TERMIN_CUSTOM_5   @map("termin_custom_5")
+  TERMIN_CUSTOM_6   @map("termin_custom_6")
+  TERMIN_CUSTOM_7   @map("termin_custom_7")
+  TERMIN_CUSTOM_8   @map("termin_custom_8")
+  TERMIN_CUSTOM_9   @map("termin_custom_9")
+  TERMIN_CUSTOM_10  @map("termin_custom_10")
 }
 
 enum SpkPembayaranStatus {

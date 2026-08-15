@@ -328,15 +328,16 @@ export class SpkRepository implements ISpkRepository {
     tx: Prisma.TransactionClient,
     spkId: number,
     existingScheme: SpkTerminSchemeKey,
-    nextScheme: SpkTerminSchemeKey,
+    nextScheme?: SpkTerminSchemeKey,
+    hasTerminConfigChange?: boolean,
   ) {
-    if (existingScheme === nextScheme) return;
+    if ((nextScheme === undefined || existingScheme === nextScheme) && !hasTerminConfigChange) return;
 
     const pembayaranCount = await tx.spkPembayaran.count({ where: { spkId } });
     if (pembayaranCount > 0) {
       throw new AppError(
         StatusCodes.BAD_REQUEST,
-        "Skema termin tidak dapat diubah setelah ada pengajuan pembayaran.",
+        "Skema dan konfigurasi termin tidak dapat diubah setelah ada pengajuan pembayaran.",
       );
     }
   }
@@ -356,6 +357,7 @@ export class SpkRepository implements ISpkRepository {
             noSpk: data.noSpk,
             jenis: SpkJenis.RUMAH,
             terminScheme: this.resolveCreateTerminScheme(SpkJenis.RUMAH, data.terminScheme),
+            terminConfig: data.terminConfig ? (data.terminConfig as Prisma.InputJsonValue) : Prisma.JsonNull,
             tanggalSpk: data.tanggalSpk,
             judulPekerjaan: data.judulPekerjaan,
             nilaiKontrak: new Prisma.Decimal(data.nilaiKontrak),
@@ -402,6 +404,7 @@ export class SpkRepository implements ISpkRepository {
             SpkJenis.INFRASTRUKTUR,
             data.terminScheme,
           ),
+          terminConfig: data.terminConfig ? (data.terminConfig as Prisma.InputJsonValue) : Prisma.JsonNull,
           tanggalSpk: data.tanggalSpk,
           judulPekerjaan: data.judulPekerjaan,
           nilaiKontrak: new Prisma.Decimal(data.nilaiKontrak),
@@ -454,13 +457,16 @@ export class SpkRepository implements ISpkRepository {
         await this.validateMandor(tx, mandorId);
       }
 
-      if (data.terminScheme !== undefined) {
-        validateTerminSchemeForJenis(existing.jenis, data.terminScheme);
+      if (data.terminScheme !== undefined || data.terminConfig !== undefined) {
+        if (data.terminScheme !== undefined) {
+          validateTerminSchemeForJenis(existing.jenis, data.terminScheme);
+        }
         await this.assertTerminSchemeMutable(
           tx,
           id,
           existing.terminScheme,
           data.terminScheme,
+          data.terminConfig !== undefined,
         );
       }
 
@@ -546,6 +552,11 @@ export class SpkRepository implements ISpkRepository {
         }
         if (data.terminScheme !== undefined) {
           updateData.terminScheme = data.terminScheme;
+        }
+        if (data.terminConfig !== undefined) {
+          updateData.terminConfig = data.terminConfig
+            ? (data.terminConfig as Prisma.InputJsonValue)
+            : Prisma.JsonNull;
         }
 
         const result = await tx.spk.update({
@@ -645,6 +656,11 @@ export class SpkRepository implements ISpkRepository {
       }
       if (data.terminScheme !== undefined) {
         updateData.terminScheme = data.terminScheme;
+      }
+      if (data.terminConfig !== undefined) {
+        updateData.terminConfig = data.terminConfig
+          ? (data.terminConfig as Prisma.InputJsonValue)
+          : Prisma.JsonNull;
       }
 
       const result = await tx.spk.update({

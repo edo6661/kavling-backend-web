@@ -287,7 +287,7 @@ export class CreateSpkPembayaranRequestUseCase {
 
     const existing = await this.pembayaranRepo.findBySpkId(data.spkId);
     const nilaiKontrak = Number(spk.nilaiKontrak);
-    const terminScheme = resolveSpkTerminScheme(spk);
+    const terminScheme = spk;
     const statusRows = toStatusRows(existing);
     const pengurangRows = toPengurangRows(existing);
     const terminStatus = getTerminPaymentStatus(
@@ -760,7 +760,7 @@ export class UpdateSpkKasbonUseCase {
       record.mengurangiTermin ??
       getKasbonTargetTermin(
         toSpkPembayaranCalcRows(toStatusRows(all)),
-        { terminScheme: resolveSpkTerminScheme(spk) },
+        { terminScheme: spk },
       );
 
     if (!mengurangiTermin) {
@@ -787,7 +787,7 @@ export class UpdateSpkKasbonUseCase {
 
     const terminStatusKasbon = getTerminPaymentStatus(
       toSpkPembayaranCalcRows(toStatusRows(all)),
-      resolveSpkTerminScheme(spk),
+      spk,
     );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
@@ -796,7 +796,7 @@ export class UpdateSpkKasbonUseCase {
       additionalNominal,
       data.id,
       terminStatusKasbon,
-      resolveSpkTerminScheme(spk),
+      spk,
       spk.progress,
     );
     if (!capCheck.allowed) {
@@ -890,7 +890,7 @@ export class UpdateSpkUpahUseCase {
       record.mengurangiTermin ??
       getKasbonTargetTermin(
         toSpkPembayaranCalcRows(toStatusRows(allUpah)),
-        { terminScheme: resolveSpkTerminScheme(spk) },
+        { terminScheme: spk },
       );
 
     if (!mengurangiTerminUpah) {
@@ -906,7 +906,7 @@ export class UpdateSpkUpahUseCase {
 
     const terminStatusUpah = getTerminPaymentStatus(
       toSpkPembayaranCalcRows(toStatusRows(allUpah)),
-      resolveSpkTerminScheme(spk),
+      spk,
     );
     const capCheck = validatePengurangTerminNominal(
       Number(spk.nilaiKontrak),
@@ -915,7 +915,7 @@ export class UpdateSpkUpahUseCase {
       data.nominal,
       data.id,
       terminStatusUpah,
-      resolveSpkTerminScheme(spk),
+      spk,
       spk.progress,
     );
     if (!capCheck.allowed) {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { emptyAsUndefined } from "./emptySchema.js";
+import { validateCustomTerminConfig } from "../domain/spk/spkTerminScheme.js";
 
 const parseJsonNumberArray = (val: string, ctx: z.RefinementCtx, fieldLabel: string) => {
   try {
@@ -24,14 +25,57 @@ const optionalNumberArrayField = (fieldLabel: string) =>
     ])
     .optional();
 
+const customTerminStepSchema = z.object({
+  urutan: z.coerce.number().int().positive(),
+  label: z.string().min(1, "Nama termin wajib diisi"),
+  shortLabel: z.string().optional(),
+  kontrakFraction: z.coerce.number().positive().max(1),
+  minProgress: z.coerce.number().min(0).max(100),
+  isRetensi: z.boolean().optional(),
+});
+
+const terminConfigField = z
+  .union([
+    z.array(customTerminStepSchema),
+    z.string().transform((val, ctx) => {
+      const trimmed = val.trim();
+      if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed === null) return null;
+        const res = z.array(customTerminStepSchema).safeParse(parsed);
+        if (!res.success) {
+          ctx.addIssue({ code: "custom", message: "Format konfigurasi termin custom tidak valid" });
+          return z.NEVER;
+        }
+        return res.data;
+      } catch {
+        ctx.addIssue({ code: "custom", message: "Format konfigurasi termin custom tidak valid" });
+        return z.NEVER;
+      }
+    }),
+  ])
+  .optional()
+  .nullable();
+
 const spkJenisField = z.enum(["RUMAH", "INFRASTRUKTUR"]).optional().default("RUMAH");
 
-const spkTerminSchemeField = z.enum(["RUMAH_DEFAULT", "RUMAH_25_4", "INFRA_20_6", "INFRA_30_4"]).optional();
+const spkTerminSchemeField = z
+  .enum([
+    "RUMAH_DEFAULT",
+    "RUMAH_25_4",
+    "RUMAH_3_TERMIN",
+    "INFRA_20_6",
+    "INFRA_30_4",
+    "CUSTOM",
+  ])
+  .optional();
 
 const spkBodyBase = z.object({
   noSpk: z.string().min(1, "Nomor SPK wajib diisi"),
   jenis: spkJenisField,
   terminScheme: spkTerminSchemeField,
+  terminConfig: terminConfigField,
   tanggalSpk: z.coerce.date(),
   judulPekerjaan: z.string().min(1, "Judul pekerjaan wajib diisi"),
   nilaiKontrak: z.coerce.number().positive("Nilai kontrak harus lebih dari 0"),
@@ -46,6 +90,33 @@ const spkBodyBase = z.object({
   kavlingIds: optionalNumberArrayField("kavlingIds"),
   pekerjaanInfraIds: optionalNumberArrayField("pekerjaanInfraIds"),
 });
+
+const validateSpkTerminConfig = (
+  data: {
+    terminScheme?: string | undefined;
+    terminConfig?: any;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (data.terminScheme === "CUSTOM") {
+    if (!data.terminConfig || !Array.isArray(data.terminConfig) || data.terminConfig.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Konfigurasi termin custom wajib diisi jika memilih skema CUSTOM",
+        path: ["terminConfig"],
+      });
+      return;
+    }
+    const check = validateCustomTerminConfig(data.terminConfig);
+    if (!check.valid) {
+      ctx.addIssue({
+        code: "custom",
+        message: check.message ?? "Konfigurasi termin custom tidak valid",
+        path: ["terminConfig"],
+      });
+    }
+  }
+};
 
 const validateSpkByJenis = (
   data: {
@@ -106,6 +177,7 @@ const validateSpkByJenis = (
 export const createSpkSchema = {
   body: spkBodyBase.superRefine((data, ctx) => {
     validateSpkByJenis(data, ctx, "create");
+    validateSpkTerminConfig(data, ctx);
   }),
 };
 
@@ -120,6 +192,7 @@ export const updateSpkSchema = {
       message: "Minimal satu field harus diisi untuk update",
     })
     .superRefine((data, ctx) => {
+      validateSpkTerminConfig(data, ctx);
       if (
         data.kavlingIds !== undefined ||
         data.zonaId !== undefined ||

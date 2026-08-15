@@ -49,6 +49,7 @@ export class SpkMapper {
       noSpk: row.noSpk,
       jenis: row.jenis,
       terminScheme: row.terminScheme,
+      terminConfig: (row.terminConfig as any) ?? null,
       tanggalSpk: row.tanggalSpk,
       judulPekerjaan: row.judulPekerjaan,
       nilaiKontrak: Number(row.nilaiKontrak),

@@ -36,6 +36,7 @@ import {
   isKasbonTargetTermin,
   validatePengurangTerminNominal,
   type SpkPembayaranCalcRow,
+  type SpkTerminSchemeParam,
 } from "../spk/spkPembayaranCalc.js";
 import type { SpkPembayaranDokumenInput } from "../dtos/SpkPembayaranDTO.js";
 
@@ -116,7 +117,7 @@ function resolveKasbonTargetTermin(
     isMandorSendiri?: boolean | null;
   }[],
   nilaiKontrak: number,
-  terminScheme: SpkTerminSchemeKey,
+  terminScheme: SpkTerminSchemeParam,
 ) {
   return getKasbonTargetTermin(calcRows, {
     nilaiKontrak,
@@ -361,7 +362,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     tx: Prisma.TransactionClient,
     spkId: number,
     nilaiKontrak: number,
-    terminScheme: SpkTerminSchemeKey,
+    terminScheme: SpkTerminSchemeParam,
     pembayaranRows: {
       id: number;
       jenis: SpkPembayaranJenis;
@@ -423,16 +424,17 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     });
 
     const nilaiKontrak = Number(spk.nilaiKontrak);
-    const terminScheme = resolveSpkTerminScheme({
+    const terminSchemeParam: SpkTerminSchemeParam = {
       jenis: spk.jenis as SpkJenis,
       terminScheme: spk.terminScheme as SpkTerminSchemeKey,
-    });
+      terminConfig: spk.terminConfig as any,
+    };
 
     await this.recalcPendingTerminNominals(
       tx,
       spkId,
       nilaiKontrak,
-      terminScheme,
+      terminSchemeParam,
       pembayaranRows,
     );
 
@@ -641,7 +643,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const spk = await tx.spk.findUnique({
         where: { id: spkId },
-        select: { id: true, nilaiKontrak: true, jenis: true, terminScheme: true, progressOverride: true },
+        select: { id: true, nilaiKontrak: true, jenis: true, terminScheme: true, terminConfig: true, progressOverride: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
@@ -658,10 +660,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         },
       });
       const calcRows = toCalcRows(existingRows);
-      const terminSchemeDraft = resolveSpkTerminScheme({
+      const terminSchemeDraft: SpkTerminSchemeParam = {
         jenis: spk.jenis as SpkJenis,
         terminScheme: spk.terminScheme as SpkTerminSchemeKey,
-      });
+        terminConfig: spk.terminConfig as any,
+      };
       const target = resolveKasbonTargetTermin(
         calcRows,
         existingRows,
@@ -693,14 +696,8 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
         target,
         totalNominal,
         undefined,
-        getTerminPaymentStatus(calcRows, resolveSpkTerminScheme({
-          jenis: spk.jenis as SpkJenis,
-          terminScheme: spk.terminScheme as SpkTerminSchemeKey,
-        })),
-        resolveSpkTerminScheme({
-          jenis: spk.jenis as SpkJenis,
-          terminScheme: spk.terminScheme as SpkTerminSchemeKey,
-        }),
+        getTerminPaymentStatus(calcRows, terminSchemeDraft),
+        terminSchemeDraft,
         spkProgress,
       );
       if (!capCheck.allowed) throw new Error("KASBON_OVER_CAP");
@@ -753,7 +750,7 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
     return await this.db.$transaction(async (tx) => {
       const spk = await tx.spk.findUnique({
         where: { id: data.spkId },
-        select: { id: true, nilaiKontrak: true, jenis: true, terminScheme: true },
+        select: { id: true, nilaiKontrak: true, jenis: true, terminScheme: true, terminConfig: true },
       });
       if (!spk) throw new Error("SPK_NOT_FOUND");
 
@@ -772,10 +769,11 @@ export class SpkPembayaranRepository implements ISpkPembayaranRepository {
 
       const calcRows = toCalcRows(existingRows);
       const nilaiKontrak = Number(spk.nilaiKontrak);
-      const terminScheme = resolveSpkTerminScheme({
-      jenis: spk.jenis as SpkJenis,
-      terminScheme: spk.terminScheme as SpkTerminSchemeKey,
-    });
+      const terminScheme: SpkTerminSchemeParam = {
+        jenis: spk.jenis as SpkJenis,
+        terminScheme: spk.terminScheme as SpkTerminSchemeKey,
+        terminConfig: spk.terminConfig as any,
+      };
       const resolvedRekeningId = await this.resolveMandorRekeningId(
         tx,
         data.spkId,

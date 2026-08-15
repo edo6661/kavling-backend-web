@@ -4,8 +4,10 @@ import type { SpkKasbonTargetTermin, SpkPembayaranJenis } from "@prisma/client";
 export type SpkTerminSchemeKey =
   | "RUMAH_DEFAULT"
   | "RUMAH_25_4"
+  | "RUMAH_3_TERMIN"
   | "INFRA_20_6"
-  | "INFRA_30_4";
+  | "INFRA_30_4"
+  | "CUSTOM";
 
 export type SpkTerminPembayaranJenis =
   | "TERMIN_55"
@@ -14,6 +16,9 @@ export type SpkTerminPembayaranJenis =
   | "TERMIN_RUMAH_25_2"
   | "TERMIN_RUMAH_25_3"
   | "TERMIN_RUMAH_25_4"
+  | "TERMIN_RUMAH_3_1"
+  | "TERMIN_RUMAH_3_2"
+  | "TERMIN_RUMAH_3_3"
   | "TERMIN_INFRA_20_1"
   | "TERMIN_INFRA_20_2"
   | "TERMIN_INFRA_20_3"
@@ -23,7 +28,39 @@ export type SpkTerminPembayaranJenis =
   | "TERMIN_INFRA_30_2"
   | "TERMIN_INFRA_30_3"
   | "TERMIN_INFRA_10"
+  | "TERMIN_CUSTOM_1"
+  | "TERMIN_CUSTOM_2"
+  | "TERMIN_CUSTOM_3"
+  | "TERMIN_CUSTOM_4"
+  | "TERMIN_CUSTOM_5"
+  | "TERMIN_CUSTOM_6"
+  | "TERMIN_CUSTOM_7"
+  | "TERMIN_CUSTOM_8"
+  | "TERMIN_CUSTOM_9"
+  | "TERMIN_CUSTOM_10"
   | "RETENSI";
+
+export const CUSTOM_TERMIN_JENIS_KEYS: SpkTerminPembayaranJenis[] = [
+  "TERMIN_CUSTOM_1",
+  "TERMIN_CUSTOM_2",
+  "TERMIN_CUSTOM_3",
+  "TERMIN_CUSTOM_4",
+  "TERMIN_CUSTOM_5",
+  "TERMIN_CUSTOM_6",
+  "TERMIN_CUSTOM_7",
+  "TERMIN_CUSTOM_8",
+  "TERMIN_CUSTOM_9",
+  "TERMIN_CUSTOM_10",
+];
+
+export interface SpkCustomTerminStep {
+  urutan: number;
+  label: string;
+  shortLabel?: string | undefined;
+  kontrakFraction: number; // 0.0 to 1.0 (misal 0.35 untuk 35%)
+  minProgress: number; // 0 to 100
+  isRetensi?: boolean | undefined;
+}
 
 export interface SpkTerminStepConfig {
   jenis: SpkTerminPembayaranJenis;
@@ -93,6 +130,41 @@ export const SPK_TERMIN_SCHEME_RUMAH_25_4: SpkTerminStepConfig[] = [
     label: "Termin 4 (95% progress)",
     shortLabel: "20%",
     kasbonTargetLabel: "Termin 4 (95%)",
+  },
+  {
+    jenis: "RETENSI",
+    minProgress: 100,
+    kontrakFraction: 0.05,
+    label: "Retensi (5% kontrak)",
+    shortLabel: "Ret.",
+    kasbonTargetLabel: "",
+  },
+];
+
+export const SPK_TERMIN_SCHEME_RUMAH_3_TERMIN: SpkTerminStepConfig[] = [
+  {
+    jenis: "TERMIN_RUMAH_3_1",
+    minProgress: 35,
+    kontrakFraction: 0.35,
+    label: "Termin 1 (35% progress)",
+    shortLabel: "35%·1",
+    kasbonTargetLabel: "Termin 1 (35%)",
+  },
+  {
+    jenis: "TERMIN_RUMAH_3_2",
+    minProgress: 70,
+    kontrakFraction: 0.35,
+    label: "Termin 2 (70% progress)",
+    shortLabel: "35%·2",
+    kasbonTargetLabel: "Termin 2 (70%)",
+  },
+  {
+    jenis: "TERMIN_RUMAH_3_3",
+    minProgress: 95,
+    kontrakFraction: 0.25,
+    label: "Termin 3 (95% progress)",
+    shortLabel: "25%",
+    kasbonTargetLabel: "Termin 3 (95%)",
   },
   {
     jenis: "RETENSI",
@@ -193,20 +265,22 @@ export const SPK_TERMIN_SCHEME_INFRA_30_4: SpkTerminStepConfig[] = [
 /** @deprecated Use SPK_TERMIN_SCHEME_INFRA_20_6 */
 export const SPK_TERMIN_SCHEME_INFRA = SPK_TERMIN_SCHEME_INFRA_20_6;
 
-const SCHEME_MAP: Record<SpkTerminSchemeKey, SpkTerminStepConfig[]> = {
+const SCHEME_MAP: Record<Exclude<SpkTerminSchemeKey, "CUSTOM">, SpkTerminStepConfig[]> = {
   RUMAH_DEFAULT: SPK_TERMIN_SCHEME_RUMAH,
   RUMAH_25_4: SPK_TERMIN_SCHEME_RUMAH_25_4,
+  RUMAH_3_TERMIN: SPK_TERMIN_SCHEME_RUMAH_3_TERMIN,
   INFRA_20_6: SPK_TERMIN_SCHEME_INFRA_20_6,
   INFRA_30_4: SPK_TERMIN_SCHEME_INFRA_30_4,
 };
 
 export interface SpkTerminSchemeInput {
-  jenis: SpkJenis;
+  jenis?: SpkJenis;
   terminScheme?: SpkTerminSchemeKey | null;
+  terminConfig?: SpkCustomTerminStep[] | string | null;
 }
 
 export function defaultTerminSchemeForJenis(
-  jenis: SpkJenis,
+  jenis: SpkJenis = "RUMAH",
 ): SpkTerminSchemeKey {
   return jenis === "INFRASTRUKTUR" ? "INFRA_20_6" : "RUMAH_DEFAULT";
 }
@@ -218,14 +292,135 @@ export function resolveSpkTerminScheme(
   return defaultTerminSchemeForJenis(spk.jenis);
 }
 
+export function parseCustomTerminSteps(
+  rawConfig: SpkCustomTerminStep[] | string | null | undefined,
+): SpkTerminStepConfig[] {
+  if (!rawConfig) return [];
+  let parsed: SpkCustomTerminStep[];
+  if (typeof rawConfig === "string") {
+    try {
+      parsed = JSON.parse(rawConfig);
+    } catch {
+      return [];
+    }
+  } else {
+    parsed = rawConfig;
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return [];
+
+  const result: SpkTerminStepConfig[] = [];
+  let customIndex = 0;
+
+  for (let i = 0; i < parsed.length; i++) {
+    const step = parsed[i]!;
+    const isRet =
+      step.isRetensi === true ||
+      step.label.trim().toLowerCase() === "retensi";
+
+    let stepJenis: SpkTerminPembayaranJenis;
+    if (isRet) {
+      stepJenis = "RETENSI";
+    } else {
+      stepJenis =
+        CUSTOM_TERMIN_JENIS_KEYS[customIndex] ??
+        (`TERMIN_CUSTOM_${customIndex + 1}` as SpkTerminPembayaranJenis);
+      customIndex++;
+    }
+
+    const pctNumber = Math.round(step.kontrakFraction * 100);
+    const shortLabel =
+      step.shortLabel?.trim() ||
+      (isRet ? "Ret." : `${pctNumber}%·${step.urutan || i + 1}`);
+
+    result.push({
+      jenis: stepJenis,
+      minProgress: Number(step.minProgress) || 0,
+      kontrakFraction: Number(step.kontrakFraction) || 0,
+      label: step.label.trim() || `Termin ${step.urutan || i + 1} (${pctNumber}%)`,
+      shortLabel,
+      kasbonTargetLabel: isRet ? "" : (step.label.trim() || `Termin ${step.urutan || i + 1}`),
+    });
+  }
+
+  return result;
+}
+
+export function validateCustomTerminConfig(steps: SpkCustomTerminStep[]): {
+  valid: boolean;
+  message?: string;
+} {
+  if (!Array.isArray(steps) || steps.length < 1) {
+    return { valid: false, message: "Minimal harus ada 1 termin." };
+  }
+  if (steps.length > 11) {
+    return { valid: false, message: "Maksimal 10 termin bertahap dan 1 retensi." };
+  }
+
+  let totalFraction = 0;
+  let prevMinProgress = -1;
+
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i]!;
+    if (!s.label?.trim()) {
+      return { valid: false, message: `Nama baris ke-${i + 1} wajib diisi.` };
+    }
+    if (s.kontrakFraction <= 0 || s.kontrakFraction > 1) {
+      return {
+        valid: false,
+        message: `Persentase baris ke-${i + 1} harus lebih dari 0% dan maksimal 100%.`,
+      };
+    }
+    if (s.minProgress < 0 || s.minProgress > 100) {
+      return {
+        valid: false,
+        message: `Target progress baris ke-${i + 1} harus antara 0% dan 100%.`,
+      };
+    }
+    if (s.minProgress < prevMinProgress) {
+      return {
+        valid: false,
+        message: `Target progress baris ke-${i + 1} (${s.minProgress}%) tidak boleh lebih kecil dari baris sebelumnya (${prevMinProgress}%).`,
+      };
+    }
+    prevMinProgress = s.minProgress;
+    totalFraction += s.kontrakFraction;
+  }
+
+  // Toleransi rounding 0.001 (0.1%)
+  if (Math.abs(totalFraction - 1.0) > 0.001) {
+    const totalPercent = Math.round(totalFraction * 100);
+    return {
+      valid: false,
+      message: `Total persentase kontrak harus tepat 100% (saat ini ${totalPercent}%).`,
+    };
+  }
+
+  return { valid: true };
+}
+
 export function getSpkTerminScheme(
   schemeOrSpk: SpkTerminSchemeKey | SpkTerminSchemeInput = "RUMAH_DEFAULT",
 ): SpkTerminStepConfig[] {
-  const key =
-    typeof schemeOrSpk === "string"
-      ? schemeOrSpk
-      : resolveSpkTerminScheme(schemeOrSpk);
-  return SCHEME_MAP[key];
+  if (typeof schemeOrSpk === "object" && schemeOrSpk !== null) {
+    if (
+      schemeOrSpk.terminScheme === "CUSTOM" ||
+      (schemeOrSpk.terminConfig &&
+        Array.isArray(schemeOrSpk.terminConfig) &&
+        schemeOrSpk.terminConfig.length > 0)
+    ) {
+      const customSteps = parseCustomTerminSteps(schemeOrSpk.terminConfig);
+      if (customSteps.length > 0) return customSteps;
+    }
+    const key = resolveSpkTerminScheme(schemeOrSpk);
+    if (key !== "CUSTOM") return SCHEME_MAP[key];
+    return SCHEME_MAP.RUMAH_DEFAULT;
+  }
+
+  if (schemeOrSpk === "CUSTOM") {
+    return SCHEME_MAP.RUMAH_DEFAULT;
+  }
+
+  return SCHEME_MAP[schemeOrSpk] ?? SCHEME_MAP.RUMAH_DEFAULT;
 }
 
 export function getSpkTerminJenisOrder(
@@ -320,6 +515,11 @@ export function buildAllSpkPembayaranJenisLabel(): Record<
     }
   }
 
+  for (let i = 0; i < CUSTOM_TERMIN_JENIS_KEYS.length; i++) {
+    const k = CUSTOM_TERMIN_JENIS_KEYS[i]!;
+    if (!labels[k]) labels[k] = `Termin Kustom ${i + 1}`;
+  }
+
   return labels;
 }
 
@@ -328,8 +528,12 @@ export function buildAllSpkKasbonTargetLabel(): Record<
   string
 > {
   const labels = {} as Record<SpkKasbonTargetTermin, string>;
-  for (const key of Object.keys(SCHEME_MAP) as SpkTerminSchemeKey[]) {
+  for (const key of Object.keys(SCHEME_MAP) as Exclude<SpkTerminSchemeKey, "CUSTOM">[]) {
     Object.assign(labels, buildSpkKasbonTargetLabel(key));
+  }
+  for (let i = 0; i < CUSTOM_TERMIN_JENIS_KEYS.length; i++) {
+    const k = CUSTOM_TERMIN_JENIS_KEYS[i]! as SpkKasbonTargetTermin;
+    if (!labels[k]) labels[k] = `Termin Kustom ${i + 1}`;
   }
   return labels;
 }
@@ -338,19 +542,23 @@ export function validateTerminSchemeForJenis(
   jenis: SpkJenis,
   terminScheme: SpkTerminSchemeKey,
 ): void {
+  if (terminScheme === "CUSTOM") return;
   if (
     jenis === "RUMAH" &&
     terminScheme !== "RUMAH_DEFAULT" &&
-    terminScheme !== "RUMAH_25_4"
+    terminScheme !== "RUMAH_25_4" &&
+    terminScheme !== "RUMAH_3_TERMIN"
   ) {
     throw new Error(
-      "SPK rumah hanya mendukung skema termin RUMAH_DEFAULT atau RUMAH_25_4.",
+      "SPK rumah hanya mendukung skema termin rumah atau CUSTOM.",
     );
   }
   if (
     jenis === "INFRASTRUKTUR" &&
-    (terminScheme === "RUMAH_DEFAULT" || terminScheme === "RUMAH_25_4")
+    (terminScheme === "RUMAH_DEFAULT" ||
+      terminScheme === "RUMAH_25_4" ||
+      terminScheme === "RUMAH_3_TERMIN")
   ) {
-    throw new Error("SPK infrastruktur memerlukan skema termin infra.");
+    throw new Error("SPK infrastruktur memerlukan skema termin infra atau CUSTOM.");
   }
 }

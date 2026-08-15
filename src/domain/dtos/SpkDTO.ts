@@ -1,9 +1,15 @@
-import type { SpkJenis, SpkTerminSchemeKey, SpkApprovalStatus } from "../entities/Spk.js";
+import type {
+  SpkJenis,
+  SpkTerminSchemeKey,
+  SpkApprovalStatus,
+  SpkCustomTerminStep,
+} from "../entities/Spk.js";
 
 export interface CreateSpkDTO {
   noSpk: string;
-  jenis?: SpkJenis;
-  terminScheme?: SpkTerminSchemeKey;
+  jenis?: SpkJenis | undefined;
+  terminScheme?: SpkTerminSchemeKey | undefined;
+  terminConfig?: SpkCustomTerminStep[] | null | undefined;
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;
@@ -24,6 +30,7 @@ export interface CreateSpkDTO {
 export interface UpdateSpkDTO {
   noSpk?: string | undefined;
   terminScheme?: SpkTerminSchemeKey | undefined;
+  terminConfig?: SpkCustomTerminStep[] | null | undefined;
   tanggalSpk?: Date | undefined;
   judulPekerjaan?: string | undefined;
   nilaiKontrak?: number | undefined;

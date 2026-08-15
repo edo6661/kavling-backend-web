@@ -4,10 +4,14 @@ export interface MandorSummary {
 }
 
 import type { SpkPembayaranEntity } from "./SpkPembayaran.js";
+import type {
+  SpkCustomTerminStep,
+  SpkTerminSchemeKey,
+} from "../spk/spkTerminScheme.js";
+
+export type { SpkCustomTerminStep, SpkTerminSchemeKey };
 
 export type SpkJenis = "RUMAH" | "INFRASTRUKTUR";
-
-export type SpkTerminSchemeKey = "RUMAH_DEFAULT" | "RUMAH_25_4" | "INFRA_20_6" | "INFRA_30_4";
 
 export type SpkApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -47,6 +51,7 @@ export interface SpkEntity {
   noSpk: string;
   jenis: SpkJenis;
   terminScheme: SpkTerminSchemeKey;
+  terminConfig?: SpkCustomTerminStep[] | null;
   tanggalSpk: Date;
   judulPekerjaan: string;
   nilaiKontrak: number;
