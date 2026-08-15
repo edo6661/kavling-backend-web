@@ -192,5 +192,37 @@ const canAjukanTermin4 = canRequestSpkPembayaran(
 );
 ok('bisa ajukan termin infra 4 setelah termin 1-3 lunas kasbon', canAjukanTermin4.allowed);
 
+console.log('\n=== TEST WATERFALL SPLIT PENGURANG (KASBON & UPAH) ===');
+const { getPengurangRowWaterfallSplit } = await import('../src/domain/spk/spkPembayaranCalc.js');
+const testKontrak = 436_507_000;
+const testRows = [
+  { id: 1, jenis: 'KASBON' as const, nominal: 261_904_200 },
+  { id: 2, jenis: 'UPAH' as const, nominal: 87_301_400 },
+  { id: 3, jenis: 'UPAH' as const, nominal: 37_301_400 },
+];
+
+const splitRow1 = getPengurangRowWaterfallSplit(testKontrak, testRows, 1, {}, 'INFRA_20_6');
+ok('kasbon 1 (261.9M) mengisi Termin 1, 2, 3 masing-masing 87.3M',
+  splitRow1.byTarget.TERMIN_INFRA_20_1 === 87_301_400 &&
+  splitRow1.byTarget.TERMIN_INFRA_20_2 === 87_301_400 &&
+  splitRow1.byTarget.TERMIN_INFRA_20_3 === 87_301_400 &&
+  splitRow1.byTarget.TERMIN_INFRA_20_4 === undefined &&
+  splitRow1.byTarget.TERMIN_INFRA_15 === undefined
+);
+
+const splitRow2 = getPengurangRowWaterfallSplit(testKontrak, testRows, 2, {}, 'INFRA_20_6');
+ok('upah 1 (87.3M) mengisi Termin 4 penuh (87.3M)',
+  splitRow2.byTarget.TERMIN_INFRA_20_4 === 87_301_400 &&
+  splitRow2.byTarget.TERMIN_INFRA_20_1 === undefined &&
+  splitRow2.byTarget.TERMIN_INFRA_15 === undefined
+);
+
+const splitRow3 = getPengurangRowWaterfallSplit(testKontrak, testRows, 3, {}, 'INFRA_20_6');
+ok('upah 2 (37.3M) mengisi Termin 15% (37.3M)',
+  splitRow3.byTarget.TERMIN_INFRA_15 === 37_301_400 &&
+  splitRow3.byTarget.TERMIN_INFRA_20_4 === undefined
+);
+
 console.log(`\n=== HASIL: ${passed} lulus, ${failed} gagal ===\n`);
 process.exit(failed > 0 ? 1 : 0);
+

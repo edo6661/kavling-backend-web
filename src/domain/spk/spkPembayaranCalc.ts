@@ -237,6 +237,47 @@ export function sumKasbonForTermin(
   return allocated.byTarget[termin] ?? 0;
 }
 
+export function sumPengurangJenisForTermin(
+  nilaiKontrak: number,
+  pembayaranList: SpkPembayaranCalcRow[],
+  termin: SpkKasbonTargetTermin,
+  jenis: "KASBON" | "UPAH",
+  terminScheme: SpkTerminSchemeKey = "RUMAH_DEFAULT",
+): number {
+  const scheme = getSpkTerminScheme(terminScheme);
+  const targets = getKasbonTargetSteps(scheme);
+  const brutoByTarget = getTargetBrutoMap(scheme, nilaiKontrak);
+  const terminStatus = getTerminPaymentStatus(pembayaranList, terminScheme);
+
+  const filled: Partial<Record<SpkKasbonTargetTermin, number>> = {};
+  for (const step of targets) {
+    const target = step.jenis as SpkKasbonTargetTermin;
+    filled[target] = terminStatus[target] ? brutoByTarget[target] : 0;
+  }
+
+  let total = 0;
+  const consume = (nominal: number, rowJenis: "KASBON" | "UPAH") => {
+    let remaining = nominal;
+    for (const step of targets) {
+      const target = step.jenis as SpkKasbonTargetTermin;
+      const bruto = brutoByTarget[target];
+      const current = filled[target] ?? 0;
+      const toFill = Math.min(remaining, Math.max(0, bruto - current));
+      if (toFill > 0 && rowJenis === jenis && termin === target) total += toFill;
+      filled[target] = current + toFill;
+      remaining -= toFill;
+    }
+    return remaining;
+  };
+
+  for (const row of sortPengurangRows(toPengurangRowsFromCalc(pembayaranList))) {
+    if (!isPengurangJenis(row.jenis)) continue;
+    consume(row.nominal, row.jenis);
+  }
+
+  return total;
+}
+
 export function sumPengurangForTermin(
   nilaiKontrak: number,
   rows: SpkPengurangTerminRow[],
@@ -307,26 +348,40 @@ export function getPengurangRowWaterfallSplit(
   terminStatus?: TerminPaymentStatus,
   terminScheme: SpkTerminSchemeKey = "RUMAH_DEFAULT",
 ): PengurangRowSplit {
-  const without = allocatePengurangWaterfall(
-    nilaiKontrak,
-    rows,
-    buildAllocateOptions({ excludeId: rowId, terminStatus, terminScheme }),
-  );
-  const withRow = allocatePengurangWaterfall(
-    nilaiKontrak,
-    rows,
-    buildAllocateOptions({ terminStatus, terminScheme }),
-  );
+  const scheme = getSpkTerminScheme(terminScheme);
+  const targets = getKasbonTargetSteps(scheme);
+  const brutoByTarget = getTargetBrutoMap(scheme, nilaiKontrak);
+
+  const filled: Partial<Record<SpkKasbonTargetTermin, number>> = {};
+  for (const step of targets) {
+    const target = step.jenis as SpkKasbonTargetTermin;
+    filled[target] = terminStatus?.[target] ? brutoByTarget[target] : 0;
+  }
 
   const byTarget: Partial<Record<SpkKasbonTargetTermin, number>> = {};
-  const keys = new Set([
-    ...Object.keys(without.byTarget),
-    ...Object.keys(withRow.byTarget),
-  ]) as Set<SpkKasbonTargetTermin>;
 
-  for (const key of keys) {
-    const delta = (withRow.byTarget[key] ?? 0) - (without.byTarget[key] ?? 0);
-    if (delta > 0) byTarget[key] = delta;
+  for (const row of sortPengurangRows(rows)) {
+    let remaining = row.nominal;
+    const isTargetRow = row.id === rowId;
+
+    for (const step of targets) {
+      const target = step.jenis as SpkKasbonTargetTermin;
+      const bruto = brutoByTarget[target];
+      const current = filled[target] ?? 0;
+      const toFill = Math.min(remaining, Math.max(0, bruto - current));
+
+      if (toFill > 0) {
+        filled[target] = current + toFill;
+        remaining -= toFill;
+        if (isTargetRow) {
+          byTarget[target] = (byTarget[target] ?? 0) + toFill;
+        }
+      }
+    }
+
+    if (isTargetRow) {
+      break;
+    }
   }
 
   return { byTarget };
