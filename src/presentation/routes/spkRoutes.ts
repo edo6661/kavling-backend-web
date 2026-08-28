@@ -9,6 +9,7 @@ import {
   createSpkSchema,
   updateSpkSchema,
   getSpkPaginatedSchema,
+  getSpkExportSchema,
   getSpkByIdSchema,
   rejectSpkSchema,
 } from "../../validations/spkSchema.js";
@@ -37,6 +38,13 @@ export const createSpkRoutes = (controller: SpkController): Router => {
     requirePermission("SPK", "read"),
     validate(getSpkPaginatedSchema),
     controller.getPaginated,
+  );
+
+  router.get(
+    "/export/excel",
+    requirePermission("SPK", "read"),
+    validate(getSpkExportSchema),
+    controller.exportExcel,
   );
 
   router.get(

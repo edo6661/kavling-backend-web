@@ -138,7 +138,7 @@ const validateSpkByJenis = (
         path: ["kavlingIds"],
       });
     }
-    if (data.kavlingIds && data.kavlingIds.length === 0) {
+    if (data.kavlingIds?.length === 0) {
       ctx.addIssue({
         code: "custom",
         message: "Minimal 1 kavling wajib dipilih",
@@ -165,7 +165,7 @@ const validateSpkByJenis = (
       path: ["pekerjaanInfraIds"],
     });
   }
-  if (data.pekerjaanInfraIds && data.pekerjaanInfraIds.length === 0) {
+  if (data.pekerjaanInfraIds?.length === 0) {
     ctx.addIssue({
       code: "custom",
       message: "Minimal 1 pekerjaan infrastruktur wajib dipilih",
@@ -222,6 +222,12 @@ export const getSpkPaginatedSchema = {
     search: z.string().optional(),
     jenis: z.enum(["RUMAH", "INFRASTRUKTUR"]).optional(),
     statusApproval: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
+    orderBy: z.enum(["mandor:asc", "mandor:desc", "id:desc"]).optional(),
+  }),
+};
+
+export const getSpkExportSchema = {
+  query: z.object({
     orderBy: z.enum(["mandor:asc", "mandor:desc", "id:desc"]).optional(),
   }),
 };

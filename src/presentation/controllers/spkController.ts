@@ -13,12 +13,17 @@ import type {
   ApproveSpkUseCase,
   RejectSpkUseCase,
 } from "../../application/usecases/spk/SpkUseCases.js";
+import type { ExportSpksUseCase } from "../../application/usecases/spk/ExportSpksUseCase.js";
 import type {
   createSpkSchema,
   updateSpkSchema,
   rejectSpkSchema,
 } from "../../validations/spkSchema.js";
-import { getSpkPaginatedSchema, getSpkByIdSchema } from "../../validations/spkSchema.js";
+import {
+  getSpkExportSchema,
+  getSpkPaginatedSchema,
+} from "../../validations/spkSchema.js";
+import type { getSpkByIdSchema } from "../../validations/spkSchema.js";
 import type { SpkFilterDTO } from "../../domain/dtos/SpkDTO.js";
 import { omitUndefined } from "../../utils/object.js";
 import { getSpkUploadBuffers } from "../../utils/spkUpload.js";
@@ -32,6 +37,7 @@ export class SpkController {
     private readonly deleteUseCase: DeleteSpkUseCase,
     private readonly approveUseCase: ApproveSpkUseCase,
     private readonly rejectUseCase: RejectSpkUseCase,
+    private readonly exportSpksUseCase: ExportSpksUseCase,
   ) {}
 
   create = async (
@@ -94,6 +100,29 @@ export class SpkController {
 
     const result = await this.getPaginatedUseCase.execute(page, limit, filters);
     sendResponse(res, StatusCodes.OK, "Daftar SPK berhasil diambil", result);
+  };
+
+  exportExcel = async (req: Request, res: Response): Promise<void> => {
+    const { orderBy } = getSpkExportSchema.query.parse(req.query);
+    const mandorId =
+      req.user?.role === Role.MANDOR ? req.user.userId : undefined;
+    const excelBuffer = await this.exportSpksUseCase.execute(
+      orderBy || mandorId
+        ? {
+            ...(orderBy ? { orderBy } : {}),
+            ...(mandorId ? { mandorId } : {}),
+          }
+        : undefined,
+    );
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Rekap_SPK_Disetujui_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.status(StatusCodes.OK).send(excelBuffer);
   };
 
   approve = async (

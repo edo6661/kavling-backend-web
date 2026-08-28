@@ -54,6 +54,13 @@ export class SpkMapper {
       judulPekerjaan: row.judulPekerjaan,
       nilaiKontrak: Number(row.nilaiKontrak),
       bankRekeningPtId: row.bankRekeningPtId ?? null,
+      bankRekeningPt: row.bankRekeningPt
+        ? {
+            id: row.bankRekeningPt.id,
+            namaBank: row.bankRekeningPt.namaBank,
+            atasNama: row.bankRekeningPt.atasNama,
+          }
+        : null,
       zonaId: row.zonaId ?? null,
       zona: row.zona
         ? {

@@ -5,6 +5,7 @@ import type { SpkEntity } from "../entities/Spk.js";
 export interface ISpkRepository {
   create(data: CreateSpkDTO): Promise<SpkEntity>;
   findById(id: number): Promise<SpkEntity | null>;
+  findAll(filters?: SpkFilterDTO): Promise<SpkEntity[]>;
   update(id: number, data: UpdateSpkDTO): Promise<SpkEntity>;
   findWithCursorPagination(
     limit: number,

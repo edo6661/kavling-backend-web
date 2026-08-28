@@ -58,6 +58,7 @@ import {
   ApproveSpkUseCase,
   RejectSpkUseCase,
 } from "../../application/usecases/spk/SpkUseCases.js";
+import { ExportSpksUseCase } from "../../application/usecases/spk/ExportSpksUseCase.js";
 import { SpkController } from "../../presentation/controllers/spkController.js";
 import { ZonaRepository } from "../../domain/repositories/zonaRepo.js";
 import { PekerjaanInfraRepository } from "../../domain/repositories/pekerjaanInfraRepo.js";
@@ -988,6 +989,7 @@ export const createContainer = (dbClient: PrismaClient) => {
   const deleteSpkUseCase = new DeleteSpkUseCase(spkRepo);
   const approveSpkUseCase = new ApproveSpkUseCase(spkRepo, notificationService);
   const rejectSpkUseCase = new RejectSpkUseCase(spkRepo, notificationService);
+  const exportSpksUseCase = new ExportSpksUseCase(spkRepo);
   const spkController = new SpkController(
     createSpkUseCase,
     updateSpkUseCase,
@@ -996,6 +998,7 @@ export const createContainer = (dbClient: PrismaClient) => {
     deleteSpkUseCase,
     approveSpkUseCase,
     rejectSpkUseCase,
+    exportSpksUseCase,
   );
 
   const zonaRepo = new ZonaRepository(dbClient);

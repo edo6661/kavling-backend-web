@@ -38,6 +38,12 @@ export interface SpkZonaSummary {
   deskripsi: string;
 }
 
+export interface SpkBankRekeningPtSummary {
+  id: number;
+  namaBank: string;
+  atasNama: string;
+}
+
 export interface SpkPekerjaanInfraItem {
   id: number;
   pekerjaanInfraId: number;
@@ -56,6 +62,7 @@ export interface SpkEntity {
   judulPekerjaan: string;
   nilaiKontrak: number;
   bankRekeningPtId: number | null;
+  bankRekeningPt?: SpkBankRekeningPtSummary | null;
   zonaId: number | null;
   zona: SpkZonaSummary | null;
   nilaiSudahDibayarkan: number | null;

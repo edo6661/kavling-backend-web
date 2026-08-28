@@ -447,6 +447,18 @@ export class SpkRepository implements ISpkRepository {
     return await this.withComputedProgress(SpkMapper.toDomain(result));
   }
 
+  async findAll(filters?: SpkFilterDTO): Promise<SpkEntity[]> {
+    const rows = await this.db.spk.findMany({
+      where: this.buildWhere(filters),
+      orderBy: this.resolveOrderBy(filters?.orderBy),
+      include: SpkMapper.include,
+    });
+
+    return await Promise.all(
+      rows.map((item) => this.withComputedProgress(SpkMapper.toDomain(item))),
+    );
+  }
+
   async update(id: number, data: UpdateSpkDTO): Promise<SpkEntity> {
     const existing = await this.findById(id);
     if (!existing) throw new NotFoundError("SPK tidak ditemukan");
